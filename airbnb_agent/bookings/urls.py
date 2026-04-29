@@ -1,6 +1,7 @@
 from django.urls import path
 from django.contrib.auth.views import LoginView, LogoutView
 
+from .reports import OpsReportsView
 from .views import (
     AgentAPIView,
     AboutPageView,
@@ -14,7 +15,6 @@ from .views import (
     HomePageView,
     InvoicePrintView,
     OpsDashboardView,
-    OpsReportsView,
     ReservationCancelView,
     ReservationDetailView,
     ReservationUpdateView,
