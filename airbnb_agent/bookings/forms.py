@@ -44,11 +44,19 @@ class BookingInquiryForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["item"].queryset = BookableItem.objects.filter(is_active=True)
         self.fields["item"].empty_label = _("Flexible / help me choose")
-        self.fields["phone"].required = False
+        self.fields["phone"].required = True
+        self.fields["phone"].label = _("Phone number")
         self.fields["message"].required = False
         self.fields["coupon_code"].required = False
         self.fields["guests"].min_value = 1
         self.fields["guests"].widget.attrs["min"] = "1"
+        if self.user and self.user.is_authenticated:
+            full_name = self.user.get_full_name()
+            self.fields["guest_name"].initial = self.fields["guest_name"].initial or full_name or self.user.username
+            self.fields["email"].initial = self.fields["email"].initial or self.user.email
+            profile = getattr(self.user, "customer_profile", None)
+            if profile:
+                self.fields["phone"].initial = self.fields["phone"].initial or profile.phone
         if not (self.user and self.user.is_staff):
             self.fields.pop("is_admin_test")
         for field_name, field in self.fields.items():
@@ -79,6 +87,8 @@ class BookingInquiryForm(forms.ModelForm):
 
 
 class DamageDepositForm(forms.ModelForm):
+    inquiry_id = forms.IntegerField(required=False, widget=forms.HiddenInput)
+
     class Meta:
         model = DamageDeposit
         fields = ["item", "guest_name", "email"]
@@ -98,6 +108,14 @@ class DamageDepositForm(forms.ModelForm):
 
     def save(self, commit=True):
         deposit = super().save(commit=False)
+        inquiry_id = self.cleaned_data.get("inquiry_id")
+        if inquiry_id:
+            inquiry = BookingInquiry.objects.filter(pk=inquiry_id).select_related("item").first()
+            if inquiry:
+                deposit.inquiry = inquiry
+                deposit.item = deposit.item or inquiry.item
+                deposit.guest_name = deposit.guest_name or inquiry.guest_name
+                deposit.email = deposit.email or inquiry.email
         deposit.amount_cents = settings.DEPOSIT_AMOUNT_CENTS
         deposit.currency = settings.DEPOSIT_CURRENCY
         if commit:
@@ -151,10 +169,11 @@ class SignUpForm(UserCreationForm):
     email = forms.EmailField(label=_("Email"))
     first_name = forms.CharField(label=_("First name"), max_length=150, required=False)
     last_name = forms.CharField(label=_("Last name"), max_length=150, required=False)
+    phone = forms.CharField(label=_("Phone number"), max_length=40, required=False)
 
     class Meta:
         model = get_user_model()
-        fields = ("username", "email", "first_name", "last_name", "password1", "password2")
+        fields = ("username", "email", "first_name", "last_name", "phone", "password1", "password2")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -179,7 +198,7 @@ class ReservationManageForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["phone"].required = False
+        self.fields["phone"].required = True
         self.fields["message"].required = False
         self.fields["guests"].min_value = 1
         self.fields["guests"].widget.attrs["min"] = "1"

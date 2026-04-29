@@ -1,5 +1,5 @@
 {% extends "bookings/base.html" %}
-{% load i18n %}
+{% load i18n socialaccount %}
 
 {% block title %}{% trans "Log in" %} | MLADIS{% endblock %}
 
@@ -8,6 +8,25 @@
   <section class="auth-panel">
     <h1>{% trans "Log in to MLADIS" %}</h1>
     <p>{% trans "See your reservations, invoices, and booking updates." %}</p>
+    <div class="social-auth-grid" aria-label="{% trans 'Social login options' %}">
+      <form method="post" action="{% url 'google_login' %}">
+        {% csrf_token %}
+        <button class="button social full" type="submit">Google</button>
+      </form>
+      <form method="post" action="{% url 'facebook_login' %}">
+        {% csrf_token %}
+        <button class="button social full" type="submit">Facebook</button>
+      </form>
+      <form method="post" action="{% url 'microsoft_login' %}">
+        {% csrf_token %}
+        <button class="button social full" type="submit">Microsoft</button>
+      </form>
+      <form method="post" action="{% url 'github_login' %}">
+        {% csrf_token %}
+        <button class="button social full" type="submit">GitHub</button>
+      </form>
+    </div>
+    <div class="auth-divider"><span>{% trans "or use email" %}</span></div>
     <form method="post" class="booking-form">
       {% csrf_token %}
       {% for field in form %}

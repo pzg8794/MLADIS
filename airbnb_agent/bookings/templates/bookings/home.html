@@ -11,7 +11,7 @@
       <p>{% trans "Comfortable Airbnb-listed homes with direct host support, tropical Dominican energy, and room for family trips, celebrations, and longer stays." %}</p>
       <div class="hero-actions">
         <a class="button primary" href="#stays">{% trans "Explore stays" %}</a>
-        <a class="button secondary" href="#booking">{% trans "Request dates" %}</a>
+        <a class="button secondary" href="#booking">{% trans "Start booking" %}</a>
       </div>
       <dl class="hero-stats">
         <div>
@@ -117,15 +117,12 @@
 
   <section class="about-teaser" aria-labelledby="about-teaser-title">
     <div class="about-gallery" aria-label="Dominican Republic travel gallery preview">
-      <figure class="demo-tile is-city">
-        <figcaption>Santo Domingo nights</figcaption>
-      </figure>
-      <figure class="demo-tile is-beach">
-        <figcaption>Island day trips</figcaption>
-      </figure>
-      <figure class="demo-tile is-hosted">
-        <figcaption>Hosted with care</figcaption>
-      </figure>
+      {% for tile in area_tiles %}
+        <figure class="demo-tile {{ tile.class_name }}">
+          <img src="{{ tile.image_url }}" alt="{{ tile.title }}" loading="lazy">
+          <figcaption>{{ tile.title }} <span>{{ tile.caption }}</span></figcaption>
+        </figure>
+      {% endfor %}
     </div>
     <div>
       <h2 id="about-teaser-title">{% trans "More than a place to sleep." %}</h2>
@@ -136,9 +133,9 @@
 
   <section class="booking-band" id="booking" aria-labelledby="booking-title">
     <div class="booking-copy">
-      <h2 id="booking-title">{% trans "Request dates, then let us help." %}</h2>
-      <p>{% trans "Send your dates, guest count, and the stay you prefer. This same flow is ready to become the direct booking path once live availability and pricing are connected." %}</p>
-      <p class="deposit-note">Damage deposit: {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization hold through Stripe Checkout.</p>
+      <h2 id="booking-title">{% trans "Start booking with an agent beside you." %}</h2>
+      <p>{% trans "Ask questions on the left while you choose dates on the right. When the booking starts, the next step is the secure damage-deposit hold." %}</p>
+      <p class="deposit-note">{% trans "Damage deposit" %}: {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} {% trans "authorization hold through Stripe Checkout." %}</p>
       {% if service_items %}
         <div class="service-list">
           {% for service in service_items %}
@@ -164,11 +161,12 @@
           </div>
         {% elif submitted %}
           <div class="form-success" role="status">
-              <p>{% trans "We received your request and will follow up soon." %}</p>
+              <p>{% trans "Your booking is started. Complete the secure deposit hold below." %}</p>
           </div>
         {% endif %}
 
-        {% for field in booking_form %}
+        {% for hidden in booking_form.hidden_fields %}{{ hidden }}{% endfor %}
+        {% for field in booking_form.visible_fields %}
           <div class="field-group {% if field.errors %}has-error{% endif %}">
             <label for="{{ field.id_for_label }}">{{ field.label }}</label>
             {{ field }}
@@ -177,37 +175,44 @@
             {% endif %}
           </div>
         {% endfor %}
-        <button class="button primary full" type="submit">{% trans "Send request" %}</button>
+        <button class="button primary full" type="submit">{% trans "Make secure deposit hold" %}</button>
       </form>
     </div>
   </section>
 
-  <section class="deposit-band" id="deposit" aria-labelledby="deposit-title">
-    <div>
-      <h2 id="deposit-title">{% trans "Hold the damage deposit securely." %}</h2>
-      <p>Airbnb does not hold the extra damage deposit for this setup, so MLADIS can collect a separate {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization. The hold is captured only if there is a valid damage claim; otherwise it is released.</p>
-      <div class="deposit-facts" aria-label="Deposit details">
-        <span>{{ deposit_amount|floatformat:0 }} {{ deposit_currency }}</span>
-        <span>Manual capture</span>
-        <span>Stripe Checkout</span>
-      </div>
-    </div>
-
-    <form class="deposit-form" method="post" action="{% url 'bookings:deposit-checkout' %}">
-      {% csrf_token %}
-      {% for field in deposit_form %}
-        <div class="field-group {% if field.errors %}has-error{% endif %}">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}
-            <p class="field-error">{{ field.errors|striptags }}</p>
-          {% endif %}
+  {% if show_deposit %}
+    <section class="deposit-band" id="deposit" aria-labelledby="deposit-title">
+      <div>
+        <h2 id="deposit-title">{% trans "Complete the secure damage deposit hold." %}</h2>
+        {% if deposit_inquiry %}
+          <p>{% blocktrans with guest=deposit_inquiry.guest_name %}{{ guest }}, your booking is started. Complete the refundable damage-deposit hold so the reservation can move forward for admin confirmation.{% endblocktrans %}</p>
+        {% else %}
+          <p>Airbnb does not hold the extra damage deposit for this setup, so MLADIS can collect a separate {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization. The hold is captured only if there is a valid damage claim; otherwise it is released.</p>
+        {% endif %}
+        <div class="deposit-facts" aria-label="Deposit details">
+          <span>{{ deposit_amount|floatformat:0 }} {{ deposit_currency }}</span>
+          <span>Manual capture</span>
+          <span>Stripe Checkout</span>
         </div>
-      {% endfor %}
-      <p class="payment-copy">Stripe will show safe eligible payment methods for an authorization hold. Some payment methods cannot be held and may not appear.</p>
-      <button class="button primary full" type="submit">{% trans "Start secure deposit hold" %}</button>
-    </form>
-  </section>
+      </div>
+
+      <form class="deposit-form" method="post" action="{% url 'bookings:deposit-checkout' %}">
+        {% csrf_token %}
+        {% for hidden in deposit_form.hidden_fields %}{{ hidden }}{% endfor %}
+        {% for field in deposit_form.visible_fields %}
+          <div class="field-group {% if field.errors %}has-error{% endif %}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              <p class="field-error">{{ field.errors|striptags }}</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <p class="payment-copy">Stripe will show safe eligible payment methods for an authorization hold. Some payment methods cannot be held and may not appear.</p>
+        <button class="button primary full" type="submit">{% trans "Complete secure deposit hold" %}</button>
+      </form>
+    </section>
+  {% endif %}
 
   <section class="mission-strip" id="mission" aria-labelledby="mission-strip-title">
     <div>

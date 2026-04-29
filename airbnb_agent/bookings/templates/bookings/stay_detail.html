@@ -113,37 +113,61 @@
       <h2 id="rules-title">{% trans "Apartment rules" %}</h2>
       <p>Guests can review the core stay rules before requesting dates. Admin can update these rules any time.</p>
     </div>
-    <div class="rules-grid">
-      {% for rule in stay.house_rules.all %}
-        {% if rule.is_active %}
+    <div class="rules-book" aria-label="Apartment rules book">
+      <div class="rules-page">
+        <span class="book-label">{% trans "House guide" %}</span>
+        {% for rule in stay.house_rules.all %}
+          {% if rule.is_active and forloop.counter <= 3 %}
+            <article>
+              <h3>{{ rule.title }}</h3>
+              <p>{{ rule.description }}</p>
+              {% if rule.source_url %}
+                <a class="text-link" href="{{ rule.source_url }}" rel="nofollow">Source</a>
+              {% endif %}
+            </article>
+          {% endif %}
+        {% empty %}
           <article>
-            <h3>{{ rule.title }}</h3>
-            <p>{{ rule.description }}</p>
-            {% if rule.source_url %}
-              <a class="text-link" href="{{ rule.source_url }}" rel="nofollow">Source</a>
-            {% endif %}
+            <h3>Respect the home</h3>
+            <p>No parties, no smoking indoors, and keep guest count aligned with the reservation.</p>
           </article>
-        {% endif %}
-      {% empty %}
-        <article>
-          <h3>Respect the home</h3>
-          <p>No parties, no smoking indoors, and keep guest count aligned with the reservation.</p>
-        </article>
-      {% endfor %}
+        {% endfor %}
+      </div>
+      <div class="rules-spine" aria-hidden="true"></div>
+      <div class="rules-page is-right">
+        <span class="book-label">{% trans "Good guests" %}</span>
+        {% for rule in stay.house_rules.all %}
+          {% if rule.is_active and forloop.counter > 3 %}
+            <article>
+              <h3>{{ rule.title }}</h3>
+              <p>{{ rule.description }}</p>
+              {% if rule.source_url %}
+                <a class="text-link" href="{{ rule.source_url }}" rel="nofollow">Source</a>
+              {% endif %}
+            </article>
+          {% endif %}
+        {% empty %}
+          <article>
+            <h3>Keep it comfortable</h3>
+            <p>Please protect the home, the neighbors, and the next guest's experience.</p>
+          </article>
+        {% endfor %}
+      </div>
     </div>
   </section>
 
   <section class="booking-band detail-booking" id="booking" aria-labelledby="booking-title">
     <div class="booking-copy">
-      <h2 id="booking-title">Request {{ stay.name }}.</h2>
-      <p>Tell us the dates, number of guests, and anything special you need. We will follow up with availability and the best next step.</p>
+      <h2 id="booking-title">Start booking {{ stay.name }}.</h2>
+      <p>Use the agent on the left while you choose dates on the right. Once started, the next step is the secure damage-deposit hold.</p>
       <p class="deposit-note">Damage deposit: {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization hold through Stripe Checkout.</p>
     </div>
     <div class="booking-action-grid">
-      {% include "bookings/partials/agent_panel.html" with selected_item_id=stay.id panel_title="Ask about this stay" panel_intro="Ask while you request dates: rooms, rules, deposits, location, or fit for your group." %}
+      {% include "bookings/partials/agent_panel.html" with selected_item_id=stay.id panel_title="Ask about this stay" panel_intro="Ask while you book: rooms, rules, deposits, location, or fit for your group." %}
       <form class="booking-form" method="post" action="{% url 'bookings:inquiry-create' %}" novalidate>
         {% csrf_token %}
-        {% for field in booking_form %}
+        {% for hidden in booking_form.hidden_fields %}{{ hidden }}{% endfor %}
+        {% for field in booking_form.visible_fields %}
           <div class="field-group {% if field.errors %}has-error{% endif %}">
             <label for="{{ field.id_for_label }}">{{ field.label }}</label>
             {{ field }}
@@ -152,29 +176,9 @@
             {% endif %}
           </div>
         {% endfor %}
-        <button class="button primary full" type="submit">{% trans "Send request" %}</button>
+        <button class="button primary full" type="submit">{% trans "Make secure deposit hold" %}</button>
       </form>
     </div>
-  </section>
-
-  <section class="deposit-band compact-band" id="deposit" aria-labelledby="deposit-title">
-    <div>
-      <h2 id="deposit-title">{% trans "Secure deposit hold" %}</h2>
-      <p>Start a separate {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization hold for this stay. It is captured only if there is a valid damage claim.</p>
-    </div>
-    <form class="deposit-form" method="post" action="{% url 'bookings:deposit-checkout' %}">
-      {% csrf_token %}
-      {% for field in deposit_form %}
-        <div class="field-group {% if field.errors %}has-error{% endif %}">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}
-            <p class="field-error">{{ field.errors|striptags }}</p>
-          {% endif %}
-        </div>
-      {% endfor %}
-      <button class="button primary full" type="submit">{% trans "Start secure deposit hold" %}</button>
-    </form>
   </section>
 
   {% if other_stays %}

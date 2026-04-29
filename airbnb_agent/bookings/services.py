@@ -8,6 +8,7 @@ from django.utils import timezone
 import stripe
 
 from .models import (
+    AdminAccess,
     AgentConversation,
     BookableItem,
     BookingInquiry,
@@ -47,6 +48,70 @@ class DepositCheckoutResult:
     success: bool
     message: str
     checkout_url: str = ""
+
+
+class AdminAccessService:
+    """Promotes known owner/admin emails after password or social login."""
+
+    def apply_to_user(self, user):
+        if not user or not getattr(user, "email", ""):
+            return None
+
+        access = AdminAccess.objects.filter(email__iexact=user.email, is_active=True).first()
+        if not access:
+            return None
+
+        user_fields = []
+        if access.grant_staff_access and not user.is_staff:
+            user.is_staff = True
+            user_fields.append("is_staff")
+        if access.grant_superuser_access and not user.is_superuser:
+            user.is_superuser = True
+            user_fields.append("is_superuser")
+
+        name_parts = access.name.split()
+        if name_parts and not user.first_name:
+            user.first_name = name_parts[0]
+            user_fields.append("first_name")
+        if len(name_parts) > 1 and not user.last_name:
+            user.last_name = " ".join(name_parts[1:])
+            user_fields.append("last_name")
+
+        if user_fields:
+            user.save(update_fields=[*user_fields, "last_login"] if user.last_login else user_fields)
+
+        self._sync_customer_profile(user, access)
+        return access
+
+    def _sync_customer_profile(self, user, access):
+        profile = CustomerProfile.objects.filter(user=user).first()
+        if not profile and user.email:
+            profile = CustomerProfile.objects.filter(email__iexact=user.email, user__isnull=True).first()
+        if not profile:
+            CustomerProfile.objects.create(
+                user=user,
+                name=access.name,
+                email=access.email,
+                phone=access.phone,
+                segment=ClientSegment.VIP,
+            )
+            return
+
+        changed = []
+        if profile.user_id != user.id:
+            profile.user = user
+            changed.append("user")
+        for field, value in {
+            "name": access.name,
+            "email": access.email,
+            "phone": access.phone,
+            "segment": ClientSegment.VIP,
+        }.items():
+            if value and getattr(profile, field) != value:
+                setattr(profile, field, value)
+                changed.append(field)
+        if changed:
+            profile.save(update_fields=[*changed, "updated_at"])
 
 
 class BookingAgentService:

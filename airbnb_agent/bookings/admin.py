@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    AdminAccess,
     AgentConversation,
     BookableItem,
     BookingInquiry,
@@ -30,6 +31,13 @@ from .services import InvoiceEmailService, PromotionEmailService
 admin.site.site_header = "MLADIS Admin"
 admin.site.site_title = "MLADIS Admin"
 admin.site.index_title = "Booking platform controls"
+
+
+@admin.register(AdminAccess)
+class AdminAccessAdmin(admin.ModelAdmin):
+    list_display = ("name", "email", "phone", "grant_staff_access", "grant_superuser_access", "is_active", "updated_at")
+    list_filter = ("is_active", "grant_staff_access", "grant_superuser_access")
+    search_fields = ("name", "email", "phone", "notes")
 
 
 class StayGalleryImageInline(admin.TabularInline):

@@ -39,6 +39,7 @@ from .models import (
     PageVisit,
 )
 from .services import (
+    AdminAccessService,
     AgentRequest,
     BookingAgentService,
     BookingEmailService,
@@ -52,20 +53,64 @@ class HomePageView(TemplateView):
     template_name = "bookings/home.html"
 
     @staticmethod
-    def booking_context(request, form=None):
+    def booking_context(request, form=None, deposit_form=None):
         selected_item_id = request.GET.get("item", "")
+        deposit_inquiry = None
+        deposit_for_id = request.GET.get("deposit_for", "")
+        if deposit_for_id.isdigit():
+            deposit_inquiry = (
+                BookingInquiry.objects.filter(pk=deposit_for_id, is_admin_test=False)
+                .select_related("item")
+                .first()
+            )
         if form is None and selected_item_id:
-            form = BookingInquiryForm(initial={"item": selected_item_id})
+            form = BookingInquiryForm(initial={"item": selected_item_id}, user=request.user)
         featured_items = (
             BookableItem.objects.filter(is_active=True, is_featured=True)
             .prefetch_related("gallery_images", "review_themes")
         )
+        deposit_initial = {"item": selected_item_id} if selected_item_id else None
+        if deposit_inquiry:
+            deposit_initial = {
+                "inquiry_id": deposit_inquiry.id,
+                "item": deposit_inquiry.item_id,
+                "guest_name": deposit_inquiry.guest_name,
+                "email": deposit_inquiry.email,
+            }
         return {
             "booking_form": form or BookingInquiryForm(user=request.user),
-            "deposit_form": DamageDepositForm(initial={"item": selected_item_id} if selected_item_id else None),
+            "deposit_form": deposit_form or DamageDepositForm(initial=deposit_initial),
             "donation_form": DonationForm(),
             "deposit_amount": settings.DEPOSIT_AMOUNT_CENTS / 100,
             "deposit_currency": settings.DEPOSIT_CURRENCY.upper(),
+            "deposit_inquiry": deposit_inquiry,
+            "show_deposit": bool(deposit_inquiry or request.GET.get("deposit") == "1"),
+            "area_tiles": [
+                {
+                    "title": "Santo Domingo Norte",
+                    "caption": "City base near the Jacobo Majluta corridor.",
+                    "image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e3/SantoDomingoedit.JPG",
+                    "class_name": "is-city",
+                },
+                {
+                    "title": "Malls and restaurants",
+                    "caption": "Easy city plans near Embassy-area errands.",
+                    "image_url": "https://sambil.do/wp-content/uploads/2024/08/LY2A0949.jpg",
+                    "class_name": "is-mall",
+                },
+                {
+                    "title": "Juan Dolio beaches",
+                    "caption": "A calmer beach-day escape east of Santo Domingo.",
+                    "image_url": "https://upload.wikimedia.org/wikipedia/commons/6/62/Juan_Dolio_Beach_1.jpg",
+                    "class_name": "is-beach",
+                },
+                {
+                    "title": "Nightlife and family nights",
+                    "caption": "Food, music, and warm evenings close to the city.",
+                    "image_url": "https://sambil.do/wp-content/uploads/2024/08/LY2A0977.jpg",
+                    "class_name": "is-hosted",
+                },
+            ],
             "featured_items": featured_items,
             "hero_item": featured_items.filter(airbnb_listing_id="588632365342578374").first()
             or featured_items.first(),
@@ -177,9 +222,11 @@ class BookingInquiryCreateView(View):
             BookingEmailService().send_inquiry_notifications(inquiry, request=request)
             messages.success(
                 request,
-                f"Thanks, {inquiry.guest_name}. We received your request and will follow up soon.",
+                f"Thanks, {inquiry.guest_name}. Your booking is started.",
             )
-            return redirect(reverse("bookings:home") + "?submitted=1#booking")
+            if inquiry.is_admin_test:
+                return redirect(reverse("bookings:dashboard"))
+            return redirect(reverse("bookings:home") + f"?submitted=1&deposit_for={inquiry.id}#deposit")
 
         return render(
             request,
@@ -201,9 +248,11 @@ class SignUpView(CreateView):
             defaults={
                 "email": self.object.email,
                 "name": self.object.get_full_name() or self.object.username,
+                "phone": form.cleaned_data.get("phone", ""),
             },
         )
-        login(self.request, self.object)
+        AdminAccessService().apply_to_user(self.object)
+        login(self.request, self.object, backend="django.contrib.auth.backends.ModelBackend")
         return response
 
 
@@ -296,8 +345,8 @@ class DamageDepositCheckoutView(View):
         form = DamageDepositForm(request.POST)
         if not form.is_valid():
             messages.error(request, "Please add your name, email, and listing before starting the deposit hold.")
-            context = HomePageView.booking_context(request)
-            context["deposit_form"] = form
+            context = HomePageView.booking_context(request, deposit_form=form)
+            context["show_deposit"] = True
             return render(request, "bookings/home.html", context, status=400)
 
         deposit = form.save()
@@ -306,7 +355,8 @@ class DamageDepositCheckoutView(View):
             return redirect(result.checkout_url)
 
         messages.warning(request, result.message)
-        return redirect(reverse("bookings:home") + "#deposit")
+        deposit_for = f"?deposit_for={deposit.inquiry_id}" if deposit.inquiry_id else "?deposit=1"
+        return redirect(reverse("bookings:home") + f"{deposit_for}#deposit")
 
 
 class DonationCheckoutView(View):

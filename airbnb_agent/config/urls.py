@@ -12,6 +12,7 @@ def healthz(_request):
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("i18n/", include("django.conf.urls.i18n")),
+    path("oauth/", include("allauth.urls")),
     path("healthz", healthz, name="healthz"),
     path("", include("bookings.urls")),
 ]

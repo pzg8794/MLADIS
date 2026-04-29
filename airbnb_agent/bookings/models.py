@@ -216,6 +216,31 @@ class CustomerProfile(models.Model):
         return cls.objects.create(email=normalized, **defaults)
 
 
+class AdminAccess(models.Model):
+    name = models.CharField(max_length=160)
+    email = models.EmailField(unique=True)
+    phone = models.CharField(max_length=40, blank=True)
+    is_active = models.BooleanField(default=True)
+    grant_staff_access = models.BooleanField(default=True)
+    grant_superuser_access = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name", "email"]
+        verbose_name = "admin access"
+        verbose_name_plural = "admin access"
+
+    def __str__(self):
+        status = "active" if self.is_active else "inactive"
+        return f"{self.name} <{self.email}> ({status})"
+
+    def save(self, *args, **kwargs):
+        self.email = (self.email or "").strip().lower()
+        super().save(*args, **kwargs)
+
+
 class BookableItem(models.Model):
     name = models.CharField(max_length=160)
     slug = models.SlugField(unique=True)

@@ -36,12 +36,20 @@ Visit `http://localhost:8000`.
 The app currently returns an agent-ready setup/stub response. Replace
 `BookingAgentService` in `bookings/services.py` when the real booking logic is ready.
 
+## Admin Access And Social Login
+
+- Seeded owner/admin access: `Piter Garcia <garciapiterz@gmail.com>`, business phone `631-575-4841`.
+- Any password, Google, Facebook, Microsoft, or GitHub login with that email is promoted to staff/superuser by the `AdminAccess` table.
+- Local test user created for this workspace: username `piter`. Change the password in `/admin/` before sharing or deploying.
+- Social providers are scaffolded with django-allauth. Add provider credentials in `/admin/socialaccount/socialapp/` and attach them to Site `127.0.0.1:5050` locally or your production domain.
+
 ## Damage Deposit Flow
 
-The deposit flow uses Stripe Checkout with manual capture, so MLADIS can authorize
-the $200 damage deposit without capturing it immediately. Stripe displays eligible
-safe payment methods from the Stripe account configuration; methods that cannot
-support a hold may not appear.
+Guests start booking first, then the site opens the secure deposit step. The
+deposit flow uses Stripe Checkout with manual capture, so MLADIS can authorize the
+$200 damage deposit without capturing it immediately. Stripe displays eligible safe
+payment methods from the Stripe account configuration; methods that cannot support a
+hold may not appear.
 
 Webhook endpoint:
 
@@ -58,7 +66,7 @@ Webhook endpoint:
 ## Marketing Pages
 
 - `/` is the travel-forward homepage with stay cards, Airbnb-hosted images, review proof, booking, deposit, mission, and agent sections.
-- `/stays/<slug>/` gives every stay its own page with hero image, gallery, review summary, guest highlights, apartment rules, booking form, and deposit callout.
+- `/stays/<slug>/` gives every stay its own page with hero image, gallery, review summary, guest highlights, apartment rules in a book layout, and booking form with the agent on the left.
 - `/about/` sells the Dominican Republic/Santo Domingo Norte travel story and includes Stripe donation checkout plus an agent panel.
 - `/accounts/` lets customers see and manage their reservation requests and invoices.
 - `/ops/dashboard/` gives staff reservation, cancellation, inquiry, visit, and agent-question analytics.
@@ -68,7 +76,7 @@ Webhook endpoint:
 
 - Use `/admin/` to manage stays, galleries, guest highlights, rules, coupons,
   cancellation policies, customer profiles, invoices, extra bill templates,
-  promotions, donations, deposits, logo/site settings, and content blocks.
+  promotions, donations, deposits, admin access, logo/site settings, and content blocks.
 - Booking requests are emailed to `BOOKING_INQUIRY_RECIPIENTS` and stored in admin.
 - Admin-test reservations can be created by staff from the public booking form
   and are recorded with zero cost.

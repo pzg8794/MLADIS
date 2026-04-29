@@ -627,11 +627,15 @@ a {
 
 .booking-band {
   display: grid;
-  grid-template-columns: minmax(260px, 0.52fr) minmax(0, 1fr);
-  gap: clamp(28px, 5vw, 70px);
+  grid-template-columns: 1fr;
+  gap: clamp(22px, 4vw, 38px);
   background: #f4f7ef;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+}
+
+.booking-copy {
+  max-width: 1020px;
 }
 
 .booking-copy p {
@@ -645,6 +649,7 @@ a {
 
 .service-list {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-top: 28px;
 }
@@ -665,8 +670,8 @@ a {
 
 .booking-action-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 0.62fr) minmax(360px, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(300px, 0.58fr) minmax(400px, 1fr);
+  gap: clamp(18px, 3vw, 34px);
   align-items: start;
 }
 
@@ -895,7 +900,6 @@ a {
 }
 
 .review-highlight-grid,
-.rules-grid,
 .ops-metric-grid,
 .ops-columns,
 .account-grid {
@@ -908,7 +912,6 @@ a {
 }
 
 .review-highlight-card,
-.rules-grid article,
 .reservation-row,
 .invoice-sheet,
 .auth-panel {
@@ -920,13 +923,11 @@ a {
 }
 
 .review-highlight-card h3,
-.rules-grid h3,
 .reservation-row h3 {
   margin: 0 0 8px;
 }
 
 .review-highlight-card p,
-.rules-grid p,
 .reservation-row p {
   color: var(--muted);
 }
@@ -969,8 +970,69 @@ a {
   border-bottom: 1px solid var(--line);
 }
 
-.rules-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.rules-book {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
+  min-height: 460px;
+  padding: 12px;
+  background: linear-gradient(90deg, #b9874d, #8e5c32);
+  border: 1px solid #c28e54;
+  border-radius: 8px;
+  box-shadow: 0 26px 70px rgba(70, 44, 21, 0.2);
+}
+
+.rules-page {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: clamp(18px, 3vw, 32px);
+  background:
+    linear-gradient(90deg, rgba(83, 49, 20, 0.06), transparent 14%),
+    #fffdf4;
+  border: 1px solid #ead9b5;
+  border-radius: 6px 2px 2px 6px;
+}
+
+.rules-page.is-right {
+  background:
+    linear-gradient(270deg, rgba(83, 49, 20, 0.06), transparent 14%),
+    #fffdf4;
+  border-radius: 2px 6px 6px 2px;
+}
+
+.rules-spine {
+  background: linear-gradient(90deg, rgba(45, 28, 13, 0.18), rgba(255, 255, 255, 0.24), rgba(45, 28, 13, 0.18));
+}
+
+.rules-page article {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #eadfc8;
+}
+
+.rules-page article:last-child {
+  border-bottom: 0;
+}
+
+.rules-page h3 {
+  margin: 0 0 6px;
+  color: var(--ocean-dark);
+  font-size: 1rem;
+}
+
+.rules-page p {
+  margin: 0;
+  color: #675d4f;
+}
+
+.book-label {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 4px;
+  color: #9a5a24;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .about-agent-band {
@@ -1034,6 +1096,43 @@ a {
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(2.2rem, 5vw, 4.6rem);
   line-height: 1;
+}
+
+.social-auth-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 22px 0;
+}
+
+.button.social {
+  color: var(--ocean-dark);
+  background: #fff;
+  border-color: var(--line);
+}
+
+.button.social:hover {
+  border-color: var(--ocean);
+  background: #f5fbf8;
+}
+
+.auth-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: center;
+  margin: 16px 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  height: 1px;
+  background: var(--line);
+  content: "";
 }
 
 .account-grid {
@@ -1297,7 +1396,7 @@ a {
   .review-grid,
   .ops-grid,
   .review-highlight-grid,
-  .rules-grid,
+  .service-list,
   .ops-metric-grid,
   .reservation-facts {
     grid-template-columns: 1fr 1fr;
@@ -1340,9 +1439,10 @@ a {
   .listing-grid,
   .review-grid,
   .booking-form,
+  .social-auth-grid,
+  .service-list,
   .ops-grid,
   .review-highlight-grid,
-  .rules-grid,
   .ops-metric-grid,
   .reservation-facts,
   .mini-stay-row,
@@ -1364,6 +1464,20 @@ a {
   .about-gallery .demo-tile:first-child {
     grid-column: auto;
     grid-row: auto;
+  }
+
+  .rules-book {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .rules-spine {
+    height: 12px;
+  }
+
+  .rules-page,
+  .rules-page.is-right {
+    border-radius: 6px;
   }
 
   .booking-form .field-group:first-of-type,

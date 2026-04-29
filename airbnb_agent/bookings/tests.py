@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from .forms import BookingInquiryForm
 from .models import (
+    AdminAccess,
     AgentConversation,
     BookableItem,
     BookingCategory,
@@ -35,6 +36,7 @@ class BookingInquiryFormTests(TestCase):
             data={
                 "guest_name": "Alex",
                 "email": "alex@example.com",
+                "phone": "555-0100",
                 "check_in": today + timedelta(days=2),
                 "check_out": today + timedelta(days=1),
                 "guests": 2,
@@ -88,6 +90,7 @@ class BookingInquiryViewTests(TestCase):
                 "item": item.id,
                 "guest_name": "Casey",
                 "email": "casey@example.com",
+                "phone": "555-0101",
                 "check_in": today + timedelta(days=3),
                 "check_out": today + timedelta(days=6),
                 "guests": 2,
@@ -126,6 +129,7 @@ class BookingInquiryViewTests(TestCase):
                 "item": item.id,
                 "guest_name": "Blocked Guest",
                 "email": "blocked@example.com",
+                "phone": "555-0102",
                 "check_in": today + timedelta(days=3),
                 "check_out": today + timedelta(days=6),
                 "guests": 2,
@@ -162,6 +166,7 @@ class BookingInquiryViewTests(TestCase):
                 "item": item.id,
                 "guest_name": "Staff Test",
                 "email": "staff@example.com",
+                "phone": "555-0103",
                 "check_in": today + timedelta(days=3),
                 "check_out": today + timedelta(days=6),
                 "guests": 2,
@@ -174,6 +179,40 @@ class BookingInquiryViewTests(TestCase):
         self.assertTrue(inquiry.is_admin_test)
         self.assertEqual(inquiry.total_cents, 0)
         self.assertEqual(inquiry.deposit_cents, 0)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
+    )
+    def test_booking_redirects_to_deposit_hold_step(self):
+        item = BookableItem.objects.create(
+            name="Test Stay",
+            slug="test-stay",
+            category=BookingCategory.STAY,
+            short_description="A test booking item.",
+            is_active=True,
+        )
+        today = timezone.localdate()
+
+        response = self.client.post(
+            reverse("bookings:inquiry-create"),
+            data={
+                "item": item.id,
+                "guest_name": "Morgan",
+                "email": "morgan@example.com",
+                "phone": "555-0104",
+                "check_in": today + timedelta(days=3),
+                "check_out": today + timedelta(days=6),
+                "guests": 2,
+            },
+        )
+
+        inquiry = BookingInquiry.objects.get()
+        self.assertRedirects(
+            response,
+            f"{reverse('bookings:home')}?submitted=1&deposit_for={inquiry.id}#deposit",
+            fetch_redirect_response=False,
+        )
 
 
 class MarketingPageTests(TestCase):
@@ -196,6 +235,8 @@ class MarketingPageTests(TestCase):
         self.assertContains(response, "3 Bedrooms Vacation Home &amp; Pool G-101")
         self.assertContains(response, "Top guest highlights")
         self.assertContains(response, "Apartment rules")
+        self.assertContains(response, "rules-book")
+        self.assertContains(response, "Make secure deposit hold")
 
     def test_spanish_language_switches_public_copy(self):
         response = self.client.get(reverse("bookings:home"), HTTP_ACCEPT_LANGUAGE="es")
@@ -206,6 +247,35 @@ class MarketingPageTests(TestCase):
 
 
 class AccountReservationTests(TestCase):
+    def test_seeded_admin_email_gets_staff_access_after_signup(self):
+        response = self.client.post(
+            reverse("bookings:signup"),
+            data={
+                "username": "piter-owner",
+                "email": "garciapiterz@gmail.com",
+                "first_name": "Piter",
+                "last_name": "Garcia",
+                "phone": "631-575-4841",
+                "password1": "A-strong-pass-2026!",
+                "password2": "A-strong-pass-2026!",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        user = get_user_model().objects.get(username="piter-owner")
+        self.assertTrue(AdminAccess.objects.filter(email="garciapiterz@gmail.com", is_active=True).exists())
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
+
+    def test_login_page_renders_social_account_options(self):
+        response = self.client.get(reverse("bookings:login"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Google")
+        self.assertContains(response, "Facebook")
+        self.assertContains(response, "Microsoft")
+        self.assertContains(response, "GitHub")
+
     def test_account_dashboard_and_cancel_reservation(self):
         user = get_user_model().objects.create_user(
             username="guest",
