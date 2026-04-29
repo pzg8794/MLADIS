@@ -1,5 +1,7 @@
-flask
+Django>=5.0,<6.0
 gunicorn
 openai
 python-dotenv
 requests
+stripe
+whitenoise

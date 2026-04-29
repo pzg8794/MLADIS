@@ -1,0 +1,29 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}MLADIS Bookings{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'bookings/site.css' %}">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="{% url 'bookings:home' %}" aria-label="MLADIS home">
+        <span class="brand-mark">M</span>
+        <span>MLADIS</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#stays">Stays</a>
+        <a href="#booking">Book</a>
+        <a href="#deposit">Deposit</a>
+        <a href="#agent">Agent</a>
+      </nav>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <script src="{% static 'bookings/agent.js' %}" defer></script>
+    <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>
+  </body>
+</html>
