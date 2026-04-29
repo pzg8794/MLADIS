@@ -1,0 +1,57 @@
+{% extends "bookings/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% trans "Reporting" %} | MLADIS{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'bookings/ops_reports.css' %}">
+{% endblock %}
+
+{% block content %}
+<main>
+  <section class="ops-hero">
+    <div>
+      <h1>{% trans "Reporting" %}</h1>
+      <p>{% trans "Graphs for the booking platform signals we track: reservations, visits, agent questions, invoices, deposits, donations, coupons, promotions, listings, clients, and calendar setup." %}</p>
+      <div class="hero-actions">
+        <a class="button primary" href="{% url 'admin:index' %}">{% trans "Open admin" %}</a>
+        <a class="button secondary" href="{% url 'bookings:ops-dashboard' %}">{% trans "Dashboard" %}</a>
+        <a class="button secondary" href="{% url 'bookings:calendar-ops' %}">{% trans "Calendar setup" %}</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="ops-report-wrap">
+    <div class="ops-report-heading">
+      <h2>{% trans "Platform summary" %}</h2>
+      <p>{% trans "Rolling 30-day charts plus all-time totals where useful." %}</p>
+    </div>
+    <div class="ops-report-metrics">
+      {% for card in summary_cards %}
+        <article class="ops-report-metric">
+          <span>{{ card.value }}</span>
+          <strong>{{ card.label }}</strong>
+          <p>{{ card.caption }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="ops-report-grid">
+    {% include "bookings/partials/report_chart.html" with chart=reservation_status_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=booking_category_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=item_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=booking_timeline wide=True %}
+    {% include "bookings/partials/report_chart.html" with chart=visit_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=visit_timeline wide=True %}
+    {% include "bookings/partials/report_chart.html" with chart=agent_topic_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=client_segment_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=invoice_status_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=deposit_status_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=donation_status_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=coupon_status_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=promotion_status_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=calendar_chart %}
+  </section>
+</main>
+{% endblock %}
