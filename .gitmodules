@@ -1,0 +1,12 @@
+[submodule "sources/AIRBNB"]
+	path = sources/AIRBNB
+	url = https://github.com/pzg8794/MLADIS-AIRBNB.git
+[submodule "sources/SolOriens-Apts"]
+	path = sources/SolOriens-Apts
+	url = https://github.com/pzg8794/MLADIS-SolOriens-Apts.git
+[submodule "sources/SolOriensV"]
+	path = sources/SolOriensV
+	url = https://github.com/pzg8794/MLADIS-SolOriensV.git
+[submodule "sources/DR-Apartments"]
+	path = sources/DR-Apartments
+	url = https://github.com/pzg8794/MLADIS-DR-Apartments.git
