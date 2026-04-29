@@ -1,0 +1,55 @@
+{% extends "bookings/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Account" %} | MLADIS{% endblock %}
+
+{% block content %}
+<main>
+  <section class="ops-hero account-hero">
+    <div>
+      <h1>{% trans "Your reservations" %}</h1>
+      <p>{% trans "Track requests, invoices, cancellation windows, and updates from MLADIS." %}</p>
+      <div class="hero-actions">
+        <a class="button primary" href="{% url 'bookings:home' %}#booking">{% trans "Request new dates" %}</a>
+        <a class="button secondary" href="{% url 'bookings:home' %}#agent">{% trans "Ask the agent" %}</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="account-grid">
+    <div class="account-list">
+      <h2>{% trans "Reservation requests" %}</h2>
+      {% for reservation in reservations %}
+        <article class="reservation-row">
+          <div>
+            <h3>{{ reservation.item.name|default:"Flexible MLADIS stay" }}</h3>
+            <p>{{ reservation.guest_name }} · {{ reservation.check_in }} - {{ reservation.check_out }} · {{ reservation.guests }} guest{{ reservation.guests|pluralize }}</p>
+            <span class="status-chip">{{ reservation.get_status_display }}</span>
+            {% if reservation.coupon_code %}
+              <span class="status-chip muted">{% trans "Coupon" %}: {{ reservation.coupon_code }}</span>
+            {% endif %}
+          </div>
+          <a class="button compact" href="{% url 'bookings:reservation-detail' reservation.pk %}">{% trans "Manage" %}</a>
+        </article>
+      {% empty %}
+        <p class="empty-state">{% trans "No reservations yet." %}</p>
+      {% endfor %}
+    </div>
+
+    <aside class="account-list">
+      <h2>{% trans "Invoices" %}</h2>
+      {% for invoice in invoices %}
+        <article class="reservation-row">
+          <div>
+            <h3>{{ invoice.invoice_number }}</h3>
+            <p>{{ invoice.display_total }} · {{ invoice.get_status_display }}</p>
+          </div>
+          <a class="button compact" href="{% url 'bookings:invoice-print' invoice.public_token %}">{% trans "View" %}</a>
+        </article>
+      {% empty %}
+        <p class="empty-state">{% trans "No invoices yet." %}</p>
+      {% endfor %}
+    </aside>
+  </section>
+</main>
+{% endblock %}

@@ -1,4 +1,5 @@
 {% extends "bookings/base.html" %}
+{% load i18n %}
 
 {% block title %}{{ stay.name }} | MLADIS{% endblock %}
 
@@ -6,7 +7,7 @@
 <main>
   <section class="stay-hero">
     <div class="stay-hero-copy">
-      <a class="back-link" href="{% url 'bookings:home' %}#stays">All stays</a>
+      <a class="back-link" href="{% url 'bookings:home' %}#stays">{% trans "All stays" %}</a>
       <h1>{{ stay.name }}</h1>
       <p>{{ stay.marketing_headline|default:stay.short_description }}</p>
       <ul class="stat-row">
@@ -15,9 +16,9 @@
         {% endfor %}
       </ul>
       <div class="hero-actions">
-        <a class="button primary" href="#booking">Request this stay</a>
+        <a class="button primary" href="#booking">{% trans "Request this stay" %}</a>
         {% if stay.airbnb_embed_url %}
-          <a class="button secondary" href="{{ stay.airbnb_embed_url }}" rel="nofollow">Open Airbnb</a>
+          <a class="button secondary" href="{{ stay.airbnb_embed_url }}" rel="nofollow">{% trans "Open Airbnb" %}</a>
         {% endif %}
       </div>
     </div>
@@ -34,7 +35,7 @@
 
   <section class="section stay-gallery-section" aria-labelledby="gallery-title">
     <div class="section-heading">
-      <h2 id="gallery-title">Gallery</h2>
+      <h2 id="gallery-title">{% trans "Gallery" %}</h2>
       <p>Airbnb-hosted photos keep the visual story tied to the official listing. Demo slots can stay in place until more approved photos are added.</p>
     </div>
     <div class="gallery-grid">
@@ -61,7 +62,7 @@
 
   <section class="stay-story">
     <article>
-      <h2>Why guests choose it</h2>
+      <h2>{% trans "Why guests choose it" %}</h2>
       <p>{{ stay.marketing_description|default:stay.description }}</p>
       <div class="theme-row">
         {% for theme in stay.review_themes.all %}
@@ -70,7 +71,7 @@
       </div>
     </article>
     <aside class="ratings-panel" aria-labelledby="ratings-title">
-      <h2 id="ratings-title">Airbnb review snapshot</h2>
+      <h2 id="ratings-title">{% trans "Airbnb review snapshot" %}</h2>
       <p class="review-score">★ {{ stay.airbnb_rating }} <span>{{ stay.review_count }} reviews</span></p>
       <div class="rating-bars">
         {% for label, rating in stay.rating_breakdown %}
@@ -83,30 +84,82 @@
     </aside>
   </section>
 
+  <section class="section stay-proof-section" aria-labelledby="guest-highlights-title">
+    <div class="section-heading">
+      <h2 id="guest-highlights-title">{% trans "Top guest highlights." %}</h2>
+      <p>Short, admin-editable review highlights based on Airbnb public review signals. Exact guest quotes can be added later from Airbnb exports.</p>
+    </div>
+    <div class="review-highlight-grid">
+      {% for highlight in stay.guest_review_highlights.all %}
+        <article class="review-highlight-card">
+          <h3>{{ highlight.title }}</h3>
+          <p>{{ highlight.body }}</p>
+          <span>{{ highlight.source_label }}</span>
+        </article>
+      {% empty %}
+        {% for theme in stay.review_themes.all %}
+          <article class="review-highlight-card">
+            <h3>{{ theme.label }}</h3>
+            <p>{{ theme.description }}</p>
+            <span>Airbnb review theme</span>
+          </article>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="rules-band" aria-labelledby="rules-title">
+    <div>
+      <h2 id="rules-title">{% trans "Apartment rules" %}</h2>
+      <p>Guests can review the core stay rules before requesting dates. Admin can update these rules any time.</p>
+    </div>
+    <div class="rules-grid">
+      {% for rule in stay.house_rules.all %}
+        {% if rule.is_active %}
+          <article>
+            <h3>{{ rule.title }}</h3>
+            <p>{{ rule.description }}</p>
+            {% if rule.source_url %}
+              <a class="text-link" href="{{ rule.source_url }}" rel="nofollow">Source</a>
+            {% endif %}
+          </article>
+        {% endif %}
+      {% empty %}
+        <article>
+          <h3>Respect the home</h3>
+          <p>No parties, no smoking indoors, and keep guest count aligned with the reservation.</p>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
   <section class="booking-band detail-booking" id="booking" aria-labelledby="booking-title">
     <div class="booking-copy">
       <h2 id="booking-title">Request {{ stay.name }}.</h2>
       <p>Tell us the dates, number of guests, and anything special you need. We will follow up with availability and the best next step.</p>
       <p class="deposit-note">Damage deposit: {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization hold through Stripe Checkout.</p>
     </div>
-    <form class="booking-form" method="post" action="{% url 'bookings:inquiry-create' %}" novalidate>
-      {% csrf_token %}
-      {% for field in booking_form %}
-        <div class="field-group {% if field.errors %}has-error{% endif %}">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}
-            <p class="field-error">{{ field.errors|striptags }}</p>
-          {% endif %}
-        </div>
-      {% endfor %}
-      <button class="button primary full" type="submit">Send request</button>
-    </form>
+    <div class="booking-action-grid">
+      {% include "bookings/partials/agent_panel.html" with selected_item_id=stay.id panel_title="Ask about this stay" panel_intro="Ask while you request dates: rooms, rules, deposits, location, or fit for your group." %}
+      <form class="booking-form" method="post" action="{% url 'bookings:inquiry-create' %}" novalidate>
+        {% csrf_token %}
+        {% for field in booking_form %}
+          <div class="field-group {% if field.errors %}has-error{% endif %}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              <p class="field-error">{{ field.errors|striptags }}</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <button class="button primary full" type="submit">{% trans "Send request" %}</button>
+      </form>
+    </div>
   </section>
 
   <section class="deposit-band compact-band" id="deposit" aria-labelledby="deposit-title">
     <div>
-      <h2 id="deposit-title">Secure deposit hold</h2>
+      <h2 id="deposit-title">{% trans "Secure deposit hold" %}</h2>
       <p>Start a separate {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization hold for this stay. It is captured only if there is a valid damage claim.</p>
     </div>
     <form class="deposit-form" method="post" action="{% url 'bookings:deposit-checkout' %}">
@@ -120,14 +173,14 @@
           {% endif %}
         </div>
       {% endfor %}
-      <button class="button primary full" type="submit">Start secure deposit hold</button>
+      <button class="button primary full" type="submit">{% trans "Start secure deposit hold" %}</button>
     </form>
   </section>
 
   {% if other_stays %}
     <section class="section" aria-labelledby="other-stays-title">
       <div class="section-heading">
-        <h2 id="other-stays-title">Compare another stay.</h2>
+        <h2 id="other-stays-title">{% trans "Compare another stay." %}</h2>
         <p>Planning for a different group size? These stays share the same direct MLADIS support.</p>
       </div>
       <div class="mini-stay-row">

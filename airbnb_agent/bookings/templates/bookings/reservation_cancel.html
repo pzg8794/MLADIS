@@ -1,0 +1,29 @@
+{% extends "bookings/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Cancel reservation" %} | MLADIS{% endblock %}
+
+{% block content %}
+<main class="auth-page">
+  <section class="auth-panel wide">
+    <h1>{% trans "Cancel reservation request" %}</h1>
+    <p>{{ reservation.item.name|default:"MLADIS stay" }} · {{ reservation.check_in }} - {{ reservation.check_out }}</p>
+    {% if reservation.can_customer_cancel %}
+      <form method="post" class="booking-form">
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="field-group {% if field.errors %}has-error{% endif %}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<p class="field-error">{{ field.errors|striptags }}</p>{% endif %}
+          </div>
+        {% endfor %}
+        <button class="button primary full" type="submit">{% trans "Confirm cancellation" %}</button>
+      </form>
+    {% else %}
+      <p class="form-success">{% trans "This reservation is outside the current cancellation window. Contact MLADIS for help." %}</p>
+      <a class="button secondary" href="{% url 'bookings:reservation-detail' reservation.pk %}">{% trans "Back to reservation" %}</a>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

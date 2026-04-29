@@ -1,10 +1,30 @@
 from dataclasses import dataclass
 
 from django.conf import settings
+from django.core.mail import send_mail
+from django.db.models import F
 from django.urls import reverse
+from django.utils import timezone
 import stripe
 
-from .models import AgentConversation, BookableItem, DamageDeposit, DepositStatus, Donation, DonationStatus
+from .models import (
+    AgentConversation,
+    BookableItem,
+    BookingInquiry,
+    CancellationPolicy,
+    ClientSegment,
+    CustomerProfile,
+    DamageDeposit,
+    DepositStatus,
+    Donation,
+    DonationStatus,
+    EmailDeliveryStatus,
+    Invoice,
+    InvoiceStatus,
+    Promotion,
+    PromotionRecipient,
+    PromotionStatus,
+)
 
 
 @dataclass(frozen=True)
@@ -37,6 +57,7 @@ class BookingAgentService:
 
     def reply(self, request: AgentRequest) -> AgentResponse:
         item = self._get_item(request.item_id)
+        topic = QuestionAnalyticsService.classify(request.message)
 
         if not self.api_key:
             reply = self._setup_reply(item)
@@ -50,7 +71,8 @@ class BookingAgentService:
             visitor_email=request.visitor_email,
             last_user_message=request.message,
             last_agent_reply=reply,
-            metadata={"agent_mode": "stub"},
+            question_topic=topic,
+            metadata={"agent_mode": "stub", "topic": topic},
         )
         return AgentResponse(reply=reply, conversation_id=conversation.id)
 
@@ -72,6 +94,229 @@ class BookingAgentService:
             f"I am ready to help with {subject}. I received: \"{message}\". "
             "Next step: connect this service to live availability, pricing, and direct booking."
         )
+
+
+class QuestionAnalyticsService:
+    TOPIC_KEYWORDS = {
+        "pricing": {"price", "cost", "rate", "discount", "coupon", "deal", "deposit", "pago", "precio"},
+        "availability": {"available", "availability", "dates", "calendar", "book", "reserve", "fecha", "reservar"},
+        "location": {"location", "embassy", "embajada", "mall", "airport", "playa", "beach", "where", "address"},
+        "amenities": {"pool", "bed", "bedroom", "bath", "kitchen", "wifi", "parking", "amenity", "piscina"},
+        "rules": {"rules", "party", "smoking", "pet", "quiet", "cancel", "refund", "regla", "cancelar"},
+        "services": {"transport", "pickup", "cleaning", "tour", "restaurant", "service", "limpieza"},
+    }
+
+    @classmethod
+    def classify(cls, message):
+        lowered = (message or "").lower()
+        for topic, keywords in cls.TOPIC_KEYWORDS.items():
+            if any(keyword in lowered for keyword in keywords):
+                return topic
+        return "general"
+
+
+class ReservationRequestService:
+    def prepare(self, inquiry: BookingInquiry, coupon=None):
+        inquiry.customer_profile = CustomerProfile.find_or_create_for_email(
+            inquiry.email,
+            defaults={
+                "name": inquiry.guest_name,
+                "phone": inquiry.phone,
+            },
+        )
+        inquiry.is_blacklist_flagged = bool(
+            inquiry.customer_profile and inquiry.customer_profile.segment == ClientSegment.BLACKLISTED
+        )
+        inquiry.cancellation_policy = inquiry.cancellation_policy or CancellationPolicy.default()
+        inquiry.currency = settings.DEPOSIT_CURRENCY
+        inquiry.deposit_cents = settings.DEPOSIT_AMOUNT_CENTS
+
+        if coupon:
+            inquiry.coupon = coupon
+            inquiry.coupon_code = coupon.code
+            inquiry.discount_cents = coupon.discount_for(inquiry.subtotal_cents)
+            type(coupon).objects.filter(pk=coupon.pk).update(redemption_count=F("redemption_count") + 1)
+
+        if inquiry.is_admin_test:
+            inquiry.subtotal_cents = 0
+            inquiry.discount_cents = 0
+            inquiry.deposit_cents = 0
+            inquiry.total_cents = 0
+        else:
+            inquiry.total_cents = max(
+                inquiry.subtotal_cents - inquiry.discount_cents + inquiry.deposit_cents,
+                0,
+            )
+        return inquiry
+
+
+class BookingEmailService:
+    def send_inquiry_notifications(self, inquiry: BookingInquiry, request=None):
+        recipients = settings.BOOKING_INQUIRY_RECIPIENTS
+        if not recipients:
+            inquiry.email_delivery_status = EmailDeliveryStatus.FAILED
+            inquiry.email_error = "No BOOKING_INQUIRY_RECIPIENTS configured."
+            inquiry.save(update_fields=["email_delivery_status", "email_error", "updated_at"])
+            return False
+
+        subject = f"New MLADIS booking request: {inquiry.guest_name}"
+        body = self._admin_body(inquiry, request)
+        try:
+            send_mail(
+                subject,
+                body,
+                settings.DEFAULT_FROM_EMAIL,
+                recipients,
+                fail_silently=False,
+            )
+            send_mail(
+                "We received your MLADIS reservation request",
+                self._customer_body(inquiry),
+                settings.DEFAULT_FROM_EMAIL,
+                [inquiry.email],
+                fail_silently=False,
+            )
+        except Exception as error:  # SMTP providers raise a few different exception classes.
+            inquiry.email_delivery_status = EmailDeliveryStatus.FAILED
+            inquiry.email_error = str(error)
+            inquiry.save(update_fields=["email_delivery_status", "email_error", "updated_at"])
+            return False
+
+        inquiry.email_delivery_status = EmailDeliveryStatus.SENT
+        inquiry.email_sent_at = timezone.now()
+        inquiry.email_error = ""
+        inquiry.save(update_fields=["email_delivery_status", "email_sent_at", "email_error", "updated_at"])
+        return True
+
+    def _admin_body(self, inquiry, request=None):
+        item_name = inquiry.item.name if inquiry.item else "Flexible / help me choose"
+        admin_url = ""
+        if request:
+            admin_url = request.build_absolute_uri(f"/admin/bookings/bookinginquiry/{inquiry.id}/change/")
+        return "\n".join(
+            [
+                "New MLADIS booking request",
+                "",
+                f"Guest: {inquiry.guest_name}",
+                f"Email: {inquiry.email}",
+                f"Phone: {inquiry.phone or '-'}",
+                f"Stay: {item_name}",
+                f"Dates: {inquiry.check_in} to {inquiry.check_out} ({inquiry.nights} nights)",
+                f"Guests: {inquiry.guests}",
+                f"Coupon: {inquiry.coupon_code or '-'}",
+                f"Admin test: {'yes' if inquiry.is_admin_test else 'no'}",
+                f"Blacklisted flag: {'yes' if inquiry.is_blacklist_flagged else 'no'}",
+                "",
+                inquiry.message or "No extra message.",
+                "",
+                admin_url,
+            ]
+        )
+
+    def _customer_body(self, inquiry):
+        item_name = inquiry.item.name if inquiry.item else "your MLADIS stay"
+        return "\n".join(
+            [
+                f"Hi {inquiry.guest_name},",
+                "",
+                f"We received your request for {item_name}.",
+                f"Dates: {inquiry.check_in} to {inquiry.check_out}",
+                f"Guests: {inquiry.guests}",
+                "",
+                "This is an admin-confirmed request. We will review availability and follow up with the next step.",
+                "",
+                "MLADIS",
+            ]
+        )
+
+
+class InvoiceEmailService:
+    def send_invoice(self, invoice: Invoice, request=None):
+        invoice_url = ""
+        if request:
+            invoice_url = request.build_absolute_uri(reverse("bookings:invoice-print", kwargs={"token": invoice.public_token}))
+        body = "\n".join(
+            [
+                f"Hi {invoice.recipient_name},",
+                "",
+                f"Your MLADIS invoice {invoice.invoice_number} is ready.",
+                f"Total: {invoice.display_total}",
+                invoice_url,
+                "",
+                invoice.notes or "Thank you for booking with MLADIS.",
+            ]
+        )
+        try:
+            send_mail(
+                invoice.subject if hasattr(invoice, "subject") else f"MLADIS invoice {invoice.invoice_number}",
+                body,
+                settings.DEFAULT_FROM_EMAIL,
+                [invoice.recipient_email],
+                fail_silently=False,
+            )
+        except Exception as error:
+            invoice.email_status = EmailDeliveryStatus.FAILED
+            invoice.email_error = str(error)
+            invoice.save(update_fields=["email_status", "email_error", "updated_at"])
+            return False
+        invoice.status = InvoiceStatus.SENT
+        invoice.email_status = EmailDeliveryStatus.SENT
+        invoice.sent_at = timezone.now()
+        invoice.email_error = ""
+        invoice.save(update_fields=["status", "email_status", "sent_at", "email_error", "updated_at"])
+        return True
+
+
+class PromotionEmailService:
+    def build_recipients(self, promotion: Promotion):
+        profiles = CustomerProfile.objects.exclude(email="")
+        if promotion.target_segment != "all":
+            profiles = profiles.filter(segment=promotion.target_segment)
+        recipients = []
+        for profile in profiles:
+            recipient, _created = PromotionRecipient.objects.get_or_create(
+                promotion=promotion,
+                email=profile.email,
+                defaults={
+                    "customer_profile": profile,
+                    "name": profile.name,
+                },
+            )
+            recipients.append(recipient)
+        return recipients
+
+    def send_promotion(self, promotion: Promotion):
+        recipients = list(promotion.recipients.all()) or self.build_recipients(promotion)
+        sent = 0
+        for recipient in recipients:
+            body = promotion.message
+            if promotion.coupon:
+                body += f"\n\nCoupon code: {promotion.coupon.code}"
+            if promotion.discount_percent:
+                body += f"\n\nPromotion discount: {promotion.discount_percent}%"
+            try:
+                send_mail(
+                    promotion.subject,
+                    body,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [recipient.email],
+                    fail_silently=False,
+                )
+            except Exception as error:
+                recipient.status = EmailDeliveryStatus.FAILED
+                recipient.error = str(error)
+                recipient.save(update_fields=["status", "error"])
+                continue
+            recipient.status = EmailDeliveryStatus.SENT
+            recipient.sent_at = timezone.now()
+            recipient.error = ""
+            recipient.save(update_fields=["status", "sent_at", "error"])
+            sent += 1
+
+        promotion.status = PromotionStatus.SENT if sent else PromotionStatus.FAILED
+        promotion.sent_at = timezone.now() if sent else None
+        promotion.save(update_fields=["status", "sent_at", "updated_at"])
+        return sent
 
 
 class DamageDepositService:

@@ -1,0 +1,61 @@
+{% extends "bookings/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ invoice.invoice_number }} | MLADIS{% endblock %}
+
+{% block content %}
+<main class="invoice-page">
+  <section class="invoice-sheet">
+    <header class="invoice-header">
+      <div>
+        {% if site_settings.logo_display_url %}
+          <img class="invoice-logo" src="{{ site_settings.logo_display_url }}" alt="MLADIS">
+        {% endif %}
+        <h1>{% trans "Invoice" %}</h1>
+        <p>{{ invoice.invoice_number }}</p>
+      </div>
+      <div>
+        <strong>{{ site_settings.site_name|default:"MLADIS" }}</strong>
+        <p>{{ site_settings.contact_email|default:"bookings@mladis.local" }}</p>
+        <p>{{ site_settings.public_address_label }}</p>
+      </div>
+    </header>
+
+    <div class="invoice-meta">
+      <div><strong>{% trans "Bill to" %}</strong><p>{{ invoice.recipient_name }}<br>{{ invoice.recipient_email }}</p></div>
+      <div><strong>{% trans "Issue date" %}</strong><p>{{ invoice.issue_date }}</p></div>
+      <div><strong>{% trans "Due date" %}</strong><p>{{ invoice.due_date|default:"On receipt" }}</p></div>
+      <div><strong>{% trans "Status" %}</strong><p>{{ invoice.get_status_display }}</p></div>
+    </div>
+
+    <table class="invoice-table">
+      <thead>
+        <tr>
+          <th>{% trans "Description" %}</th>
+          <th>{% trans "Qty" %}</th>
+          <th>{% trans "Amount" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in invoice.line_items.all %}
+          <tr>
+            <td>{{ line.description }}</td>
+            <td>{{ line.quantity }}</td>
+            <td>{{ line.display_amount }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3">{% trans "No line items yet." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <dl class="invoice-totals">
+      <div><dt>{% trans "Subtotal" %}</dt><dd>{{ invoice.display_subtotal }}</dd></div>
+      <div><dt>{% trans "Discount" %}</dt><dd>{{ invoice.display_discount }}</dd></div>
+      <div><dt>{% trans "Deposit" %}</dt><dd>{{ invoice.display_deposit }}</dd></div>
+      <div class="total"><dt>{% trans "Total" %}</dt><dd>{{ invoice.display_total }}</dd></div>
+    </dl>
+    {% if invoice.notes %}<p class="invoice-notes">{{ invoice.notes }}</p>{% endif %}
+  </section>
+</main>
+{% endblock %}

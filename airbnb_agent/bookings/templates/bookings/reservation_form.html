@@ -1,0 +1,24 @@
+{% extends "bookings/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Edit reservation" %} | MLADIS{% endblock %}
+
+{% block content %}
+<main class="auth-page">
+  <section class="auth-panel wide">
+    <h1>{% trans "Edit reservation request" %}</h1>
+    <p>{% trans "Update details while the request is still under review." %}</p>
+    <form method="post" class="booking-form">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="field-group {% if field.errors %}has-error{% endif %}">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<p class="field-error">{{ field.errors|striptags }}</p>{% endif %}
+        </div>
+      {% endfor %}
+      <button class="button primary full" type="submit">{% trans "Save changes" %}</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

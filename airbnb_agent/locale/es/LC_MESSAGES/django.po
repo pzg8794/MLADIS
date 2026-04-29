@@ -1,0 +1,652 @@
+# MLADIS Spanish translations.
+# Copyright (C) 2026 MLADIS
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: MLADIS Booking Platform\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-04-29 16:21-0400\n"
+"PO-Revision-Date: 2026-04-29 16:21-0400\n"
+"Last-Translator: MLADIS\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
+
+#: bookings/forms.py:28 bookings/forms.py:86
+msgid "Booking"
+msgstr "Reserva"
+
+#: bookings/forms.py:29 bookings/forms.py:87 bookings/forms.py:122
+msgid "Name"
+msgstr "Nombre"
+
+#: bookings/forms.py:30 bookings/forms.py:171
+msgid "Start date"
+msgstr "Fecha de inicio"
+
+#: bookings/forms.py:31 bookings/forms.py:172
+msgid "End date"
+msgstr "Fecha de salida"
+
+#: bookings/forms.py:32
+msgid "Coupon code"
+msgstr "Código de cupón"
+
+#: bookings/forms.py:33 bookings/templates/bookings/reservation_detail.html:14
+msgid "Admin test reservation"
+msgstr "Reserva de prueba admin"
+
+#: bookings/forms.py:46
+msgid "Flexible / help me choose"
+msgstr "Flexible / ayúdame a escoger"
+
+#: bookings/forms.py:65
+msgid "Choose a future date."
+msgstr "Elige una fecha futura."
+
+#: bookings/forms.py:67 bookings/forms.py:195
+msgid "End date must be after start date."
+msgstr "La fecha de salida debe ser posterior a la fecha de inicio."
+
+#: bookings/forms.py:73
+msgid "This coupon is not active or has expired."
+msgstr "Este cupón no está activo o ha expirado."
+
+#: bookings/forms.py:93
+msgid "Flexible / not sure yet"
+msgstr "Flexible / todavía no estoy seguro"
+
+#: bookings/forms.py:110
+msgid "Donation amount"
+msgstr "Monto de donación"
+
+#: bookings/forms.py:115
+msgid "Minimum donation is $5."
+msgstr "La donación mínima es $5."
+
+#: bookings/forms.py:123 bookings/forms.py:151
+#: bookings/templates/bookings/reservation_detail.html:19
+msgid "Email"
+msgstr "Correo electrónico"
+
+#: bookings/forms.py:129
+msgid "MLADIS mission fund"
+msgstr "Fondo de misión MLADIS"
+
+#: bookings/forms.py:152
+msgid "First name"
+msgstr "Nombre"
+
+#: bookings/forms.py:153
+msgid "Last name"
+msgstr "Apellido"
+
+#: bookings/forms.py:201
+msgid "Cancellation reason"
+msgstr "Motivo de cancelación"
+
+#: bookings/templates/bookings/about.html:10
+msgid "Vacation in the Dominican Republic with people who care."
+msgstr "Vacaciona en la República Dominicana con personas que se preocupan por ti."
+
+#: bookings/templates/bookings/about.html:11
+msgid ""
+"MLADIS is rooted in Santo Domingo and built for travelers who want comfort, "
+"clarity, and a warmer connection to the island."
+msgstr "MLADIS nace en Santo Domingo y está hecho para viajeros que quieren comodidad, claridad y una conexión más cálida con la isla."
+
+#: bookings/templates/bookings/about.html:13
+#: bookings/templates/bookings/home.html:13
+msgid "Explore stays"
+msgstr "Explorar alojamientos"
+
+#: bookings/templates/bookings/about.html:14
+msgid "Support the mission"
+msgstr "Apoyar la misión"
+
+#: bookings/templates/bookings/about.html:34
+msgid "Santo Domingo as your home base."
+msgstr "Santo Domingo como tu base."
+
+#: bookings/templates/bookings/about.html:39
+msgid "Island rhythm"
+msgstr "Ritmo de isla"
+
+#: bookings/templates/bookings/about.html:43
+msgid "Family-ready stays"
+msgstr "Alojamientos para familias"
+
+#: bookings/templates/bookings/about.html:47
+msgid "Human support"
+msgstr "Apoyo humano"
+
+#: bookings/templates/bookings/about.html:55
+#, fuzzy
+#| msgid "MLADIS mission fund"
+msgid "Donate to the MLADIS mission fund."
+msgstr "Fondo de misión MLADIS"
+
+#: bookings/templates/bookings/about.html:89
+msgid "Donate securely"
+msgstr "Donar de forma segura"
+
+#: bookings/templates/bookings/about.html:105
+msgid "Ask the agent before you travel."
+msgstr "Pregunta al agente antes de viajar."
+
+#: bookings/templates/bookings/account_dashboard.html:4
+#: bookings/templates/bookings/base.html:30
+msgid "Account"
+msgstr "Cuenta"
+
+#: bookings/templates/bookings/account_dashboard.html:10
+msgid "Your reservations"
+msgstr "Tus reservas"
+
+#: bookings/templates/bookings/account_dashboard.html:11
+msgid ""
+"Track requests, invoices, cancellation windows, and updates from MLADIS."
+msgstr "Consulta solicitudes, facturas, ventanas de cancelación y novedades de MLADIS."
+
+#: bookings/templates/bookings/account_dashboard.html:13
+msgid "Request new dates"
+msgstr "Solicitar nuevas fechas"
+
+#: bookings/templates/bookings/account_dashboard.html:14
+msgid "Ask the agent"
+msgstr "Preguntar al agente"
+
+#: bookings/templates/bookings/account_dashboard.html:21
+msgid "Reservation requests"
+msgstr "Solicitudes de reserva"
+
+#: bookings/templates/bookings/account_dashboard.html:29
+#: bookings/templates/bookings/reservation_detail.html:15
+msgid "Coupon"
+msgstr "Cupón"
+
+#: bookings/templates/bookings/account_dashboard.html:32
+msgid "Manage"
+msgstr "Administrar"
+
+#: bookings/templates/bookings/account_dashboard.html:35
+#: bookings/templates/bookings/ops_dashboard.html:48
+msgid "No reservations yet."
+msgstr "Aún no hay reservas."
+
+#: bookings/templates/bookings/account_dashboard.html:40
+msgid "Invoices"
+msgstr "Facturas"
+
+#: bookings/templates/bookings/account_dashboard.html:47
+msgid "View"
+msgstr "Ver"
+
+#: bookings/templates/bookings/account_dashboard.html:50
+msgid "No invoices yet."
+msgstr "Aún no hay facturas."
+
+#: bookings/templates/bookings/base.html:24
+#: bookings/templates/bookings/base.html:73
+msgid "Stays"
+msgstr "Alojamientos"
+
+#: bookings/templates/bookings/base.html:25
+#: bookings/templates/bookings/base.html:74
+msgid "About"
+msgstr "Nosotros"
+
+#: bookings/templates/bookings/base.html:26
+msgid "Mission"
+msgstr "Misión"
+
+#: bookings/templates/bookings/base.html:27
+msgid "Reviews"
+msgstr "Reseñas"
+
+#: bookings/templates/bookings/base.html:28
+msgid "Book"
+msgstr "Reservar"
+
+#: bookings/templates/bookings/base.html:33
+msgid "Log out"
+msgstr "Salir"
+
+#: bookings/templates/bookings/base.html:36
+#: bookings/templates/registration/login.html:4
+#: bookings/templates/registration/login.html:22
+msgid "Log in"
+msgstr "Entrar"
+
+#: bookings/templates/bookings/base.html:39
+msgid "Admin"
+msgstr "Admin"
+
+#: bookings/templates/bookings/base.html:40
+msgid "Dashboard"
+msgstr "Panel"
+
+#: bookings/templates/bookings/base.html:41
+msgid "Calendar"
+msgstr "Calendario"
+
+#: bookings/templates/bookings/base.html:46
+msgid "Language"
+msgstr "Idioma"
+
+#: bookings/templates/bookings/base.html:70
+msgid ""
+"Santo Domingo stays, direct host support, and a mission-driven travel "
+"experience."
+msgstr "Alojamientos en Santo Domingo, apoyo directo del anfitrión y una experiencia de viaje con propósito."
+
+#: bookings/templates/bookings/base.html:75
+msgid "Donate"
+msgstr "Donar"
+
+#: bookings/templates/bookings/base.html:76
+msgid "Agent"
+msgstr "Agente"
+
+#: bookings/templates/bookings/base.html:77
+msgid "Owner login"
+msgstr "Acceso propietario"
+
+#: bookings/templates/bookings/home.html:10
+msgid "Stay close to Santo Domingo, vacation like you belong here."
+msgstr "Quédate cerca de Santo Domingo y vacaciona como si pertenecieras aquí."
+
+#: bookings/templates/bookings/home.html:11
+msgid ""
+"Comfortable Airbnb-listed homes with direct host support, tropical Dominican "
+"energy, and room for family trips, celebrations, and longer stays."
+msgstr "Hogares publicados en Airbnb con apoyo directo del anfitrión, energía tropical dominicana y espacio para viajes familiares, celebraciones y estadías largas."
+
+#: bookings/templates/bookings/home.html:14
+#, fuzzy
+#| msgid "Request new dates"
+msgid "Request dates"
+msgstr "Solicitar nuevas fechas"
+
+#: bookings/templates/bookings/home.html:47
+#, fuzzy
+#| msgid "Choose a future date."
+msgid "Choose your stay."
+msgstr "Elige una fecha futura."
+
+#: bookings/templates/bookings/home.html:48
+msgid ""
+"Each stay links back to the official Airbnb listing for trust, while MLADIS "
+"adds direct support, deposit handling, and future agent-assisted booking."
+msgstr "Cada alojamiento enlaza al anuncio oficial de Airbnb para dar confianza, mientras MLADIS añade apoyo directo, manejo de depósito y futuras reservas asistidas por agente."
+
+#: bookings/templates/bookings/home.html:79
+#, fuzzy
+#| msgid "View"
+msgid "View stay"
+msgstr "Ver"
+
+#: bookings/templates/bookings/home.html:81
+#: bookings/templates/bookings/stay_detail.html:21
+#, fuzzy
+#| msgid "Open admin"
+msgid "Open Airbnb"
+msgstr "Abrir admin"
+
+#: bookings/templates/bookings/home.html:92
+msgid "Guest proof, made easy to scan."
+msgstr "Prueba social fácil de revisar."
+
+#: bookings/templates/bookings/home.html:93
+msgid ""
+"Airbnb aggregate ratings help visitors trust the stay quickly, while review "
+"themes highlight what guests usually care about before booking."
+msgstr "Las calificaciones agregadas de Airbnb ayudan a confiar rápido, y los temas de reseñas muestran lo que más importa antes de reservar."
+
+#: bookings/templates/bookings/home.html:131
+msgid "More than a place to sleep."
+msgstr "Más que un lugar para dormir."
+
+#: bookings/templates/bookings/home.html:132
+msgid ""
+"MLADIS is building a warmer way to host from Santo Domingo Norte: practical "
+"stays near Colinas del Arroyo II, the Jacobo Majluta corridor, malls, "
+"restaurants, and Embassy-area errands, with a mission that gives travel a "
+"little more heart."
+msgstr "MLADIS está creando una forma más cálida de hospedar desde Santo Domingo Norte: alojamientos prácticos cerca de Colinas del Arroyo II, el corredor Jacobo Majluta, centros comerciales, restaurantes y diligencias cerca de la Embajada, con una misión que le da más corazón al viaje."
+
+#: bookings/templates/bookings/home.html:133
+msgid "Read about MLADIS"
+msgstr "Leer sobre MLADIS"
+
+#: bookings/templates/bookings/home.html:139
+msgid "Request dates, then let us help."
+msgstr "Solicita fechas y déjanos ayudarte."
+
+#: bookings/templates/bookings/home.html:140
+msgid ""
+"Send your dates, guest count, and the stay you prefer. This same flow is "
+"ready to become the direct booking path once live availability and pricing "
+"are connected."
+msgstr "Envía tus fechas, cantidad de huéspedes y alojamiento preferido. Este mismo flujo está listo para convertirse en reserva directa cuando conectemos disponibilidad y precios en vivo."
+
+#: bookings/templates/bookings/home.html:167
+msgid "We received your request and will follow up soon."
+msgstr "Recibimos tu solicitud y te contactaremos pronto."
+
+#: bookings/templates/bookings/home.html:180
+#: bookings/templates/bookings/stay_detail.html:155
+#, fuzzy
+#| msgid "Edit request"
+msgid "Send request"
+msgstr "Editar solicitud"
+
+#: bookings/templates/bookings/home.html:187
+msgid "Hold the damage deposit securely."
+msgstr "Retén el depósito de daños de forma segura."
+
+#: bookings/templates/bookings/home.html:208
+#: bookings/templates/bookings/stay_detail.html:176
+msgid "Start secure deposit hold"
+msgstr "Iniciar retención segura del depósito"
+
+#: bookings/templates/bookings/home.html:214
+msgid "Travel can support something bigger."
+msgstr "Viajar puede apoyar algo más grande."
+
+#: bookings/templates/bookings/home.html:217
+msgid "Donate to the mission"
+msgstr "Donar a la misión"
+
+#: bookings/templates/bookings/home.html:222
+#, fuzzy
+#| msgid "Any booking"
+msgid "Ask before booking."
+msgstr "Cualquier reserva"
+
+#: bookings/templates/bookings/invoice_print.html:14
+msgid "Invoice"
+msgstr "Factura"
+
+#: bookings/templates/bookings/invoice_print.html:25
+msgid "Bill to"
+msgstr "Facturar a"
+
+#: bookings/templates/bookings/invoice_print.html:26
+msgid "Issue date"
+msgstr "Fecha de emisión"
+
+#: bookings/templates/bookings/invoice_print.html:27
+msgid "Due date"
+msgstr "Fecha de vencimiento"
+
+#: bookings/templates/bookings/invoice_print.html:28
+msgid "Status"
+msgstr "Estado"
+
+#: bookings/templates/bookings/invoice_print.html:34
+msgid "Description"
+msgstr "Descripción"
+
+#: bookings/templates/bookings/invoice_print.html:35
+msgid "Qty"
+msgstr "Cant."
+
+#: bookings/templates/bookings/invoice_print.html:36
+msgid "Amount"
+msgstr "Monto"
+
+#: bookings/templates/bookings/invoice_print.html:47
+msgid "No line items yet."
+msgstr "Aún no hay partidas."
+
+#: bookings/templates/bookings/invoice_print.html:53
+msgid "Subtotal"
+msgstr "Subtotal"
+
+#: bookings/templates/bookings/invoice_print.html:54
+msgid "Discount"
+msgstr "Descuento"
+
+#: bookings/templates/bookings/invoice_print.html:55
+msgid "Deposit"
+msgstr "Depósito"
+
+#: bookings/templates/bookings/invoice_print.html:56
+#: bookings/templates/bookings/reservation_detail.html:20
+msgid "Total"
+msgstr "Total"
+
+#: bookings/templates/bookings/ops_dashboard.html:4
+#: bookings/templates/bookings/ops_dashboard.html:10
+msgid "Owner dashboard"
+msgstr "Panel del propietario"
+
+#: bookings/templates/bookings/ops_dashboard.html:11
+msgid ""
+"Reservations, cancellations, visits, inquiries, and the questions guests ask "
+"most."
+msgstr "Reservas, cancelaciones, visitas, consultas y las preguntas más frecuentes de los huéspedes."
+
+#: bookings/templates/bookings/ops_dashboard.html:13
+msgid "Open admin"
+msgstr "Abrir admin"
+
+#: bookings/templates/bookings/ops_dashboard.html:14
+msgid "Calendar setup"
+msgstr "Configurar calendario"
+
+#: bookings/templates/bookings/ops_dashboard.html:20
+msgid "Reservations"
+msgstr "Reservas"
+
+#: bookings/templates/bookings/ops_dashboard.html:21
+msgid "Cancellations"
+msgstr "Cancelaciones"
+
+#: bookings/templates/bookings/ops_dashboard.html:22
+msgid "New inquiries"
+msgstr "Nuevas consultas"
+
+#: bookings/templates/bookings/ops_dashboard.html:23
+msgid "Visits in 30 days"
+msgstr "Visitas en 30 días"
+
+#: bookings/templates/bookings/ops_dashboard.html:28
+msgid "Top agent question topics"
+msgstr "Temas más preguntados al agente"
+
+#: bookings/templates/bookings/ops_dashboard.html:32
+msgid "No agent questions yet."
+msgstr "Aún no hay preguntas al agente."
+
+#: bookings/templates/bookings/ops_dashboard.html:36
+msgid "Popular pages"
+msgstr "Páginas populares"
+
+#: bookings/templates/bookings/ops_dashboard.html:40
+msgid "No visits recorded yet."
+msgstr "Aún no hay visitas registradas."
+
+#: bookings/templates/bookings/ops_dashboard.html:44
+msgid "Recent reservations"
+msgstr "Reservas recientes"
+
+#: bookings/templates/bookings/partials/agent_panel.html:4
+msgid "Ask the MLADIS agent"
+msgstr "Pregunta al agente MLADIS"
+
+#: bookings/templates/bookings/partials/agent_panel.html:5
+msgid ""
+"Ask about dates, fit, amenities, airport pickup, rules, deposits, or which "
+"stay works best."
+msgstr "Pregunta sobre fechas, capacidad, servicios, recogida en el aeropuerto, reglas, depósitos o cuál alojamiento conviene más."
+
+#: bookings/templates/bookings/partials/agent_panel.html:8
+msgid "Start with your travel dates, group size, or a question before booking."
+msgstr ""
+"Empieza con tus fechas de viaje, tamaño del grupo o una pregunta antes de "
+"reservar."
+
+#: bookings/templates/bookings/partials/agent_panel.html:11
+msgid "Booking to ask about"
+msgstr "Reserva sobre la que quieres preguntar"
+
+#: bookings/templates/bookings/partials/agent_panel.html:12
+msgid "Any booking"
+msgstr "Cualquier reserva"
+
+#: bookings/templates/bookings/partials/agent_panel.html:17
+msgid "Ask about dates, guests, amenities, rules, or services"
+msgstr "Pregunta sobre fechas, huéspedes, servicios, reglas o extras"
+
+#: bookings/templates/bookings/partials/agent_panel.html:18
+msgid "Ask agent"
+msgstr "Preguntar al agente"
+
+#: bookings/templates/bookings/reservation_cancel.html:4
+msgid "Cancel reservation"
+msgstr "Cancelar reserva"
+
+#: bookings/templates/bookings/reservation_cancel.html:9
+msgid "Cancel reservation request"
+msgstr "Cancelar solicitud de reserva"
+
+#: bookings/templates/bookings/reservation_cancel.html:21
+msgid "Confirm cancellation"
+msgstr "Confirmar cancelación"
+
+#: bookings/templates/bookings/reservation_cancel.html:24
+msgid ""
+"This reservation is outside the current cancellation window. Contact MLADIS "
+"for help."
+msgstr "Esta reserva está fuera de la ventana de cancelación actual. Contacta a MLADIS para ayuda."
+
+#: bookings/templates/bookings/reservation_cancel.html:25
+msgid "Back to reservation"
+msgstr "Volver a la reserva"
+
+#: bookings/templates/bookings/reservation_detail.html:4
+msgid "Reservation"
+msgstr "Reserva"
+
+#: bookings/templates/bookings/reservation_detail.html:9
+msgid "Back to account"
+msgstr "Volver a la cuenta"
+
+#: bookings/templates/bookings/reservation_detail.html:18
+msgid "Guest"
+msgstr "Huésped"
+
+#: bookings/templates/bookings/reservation_detail.html:21
+msgid "Cancellation"
+msgstr "Cancelación"
+
+#: bookings/templates/bookings/reservation_detail.html:21
+msgid "Currently allowed"
+msgstr "Permitida actualmente"
+
+#: bookings/templates/bookings/reservation_detail.html:21
+msgid "Contact MLADIS"
+msgstr "Contactar a MLADIS"
+
+#: bookings/templates/bookings/reservation_detail.html:25
+msgid "Your note"
+msgstr "Tu nota"
+
+#: bookings/templates/bookings/reservation_detail.html:30
+msgid "Edit request"
+msgstr "Editar solicitud"
+
+#: bookings/templates/bookings/reservation_detail.html:31
+msgid "Cancel request"
+msgstr "Cancelar solicitud"
+
+#: bookings/templates/bookings/reservation_form.html:4
+msgid "Edit reservation"
+msgstr "Editar reserva"
+
+#: bookings/templates/bookings/reservation_form.html:9
+msgid "Edit reservation request"
+msgstr "Editar solicitud de reserva"
+
+#: bookings/templates/bookings/reservation_form.html:10
+msgid "Update details while the request is still under review."
+msgstr "Actualiza los detalles mientras la solicitud sigue en revisión."
+
+#: bookings/templates/bookings/reservation_form.html:20
+msgid "Save changes"
+msgstr "Guardar cambios"
+
+#: bookings/templates/bookings/stay_detail.html:10
+msgid "All stays"
+msgstr "Todos los alojamientos"
+
+#: bookings/templates/bookings/stay_detail.html:19
+msgid "Request this stay"
+msgstr "Solicitar este alojamiento"
+
+#: bookings/templates/bookings/stay_detail.html:38
+msgid "Gallery"
+msgstr "Galería"
+
+#: bookings/templates/bookings/stay_detail.html:65
+msgid "Why guests choose it"
+msgstr "Por qué los huéspedes lo eligen"
+
+#: bookings/templates/bookings/stay_detail.html:74
+msgid "Airbnb review snapshot"
+msgstr "Resumen de reseñas de Airbnb"
+
+#: bookings/templates/bookings/stay_detail.html:89
+msgid "Top guest highlights."
+msgstr "Puntos destacados de huéspedes."
+
+#: bookings/templates/bookings/stay_detail.html:113
+msgid "Apartment rules"
+msgstr "Reglas del apartamento"
+
+#: bookings/templates/bookings/stay_detail.html:162
+msgid "Secure deposit hold"
+msgstr "Retención segura del depósito"
+
+#: bookings/templates/bookings/stay_detail.html:183
+msgid "Compare another stay."
+msgstr "Comparar otro alojamiento."
+
+#: bookings/templates/registration/login.html:9
+msgid "Log in to MLADIS"
+msgstr "Entrar a MLADIS"
+
+#: bookings/templates/registration/login.html:10
+msgid "See your reservations, invoices, and booking updates."
+msgstr "Consulta tus reservas, facturas y novedades de reserva."
+
+#: bookings/templates/registration/login.html:24
+msgid "Create an account"
+msgstr "Crear una cuenta"
+
+#: bookings/templates/registration/signup.html:4
+#: bookings/templates/registration/signup.html:25
+msgid "Create account"
+msgstr "Crear cuenta"
+
+#: bookings/templates/registration/signup.html:9
+msgid "Create your MLADIS account"
+msgstr "Crea tu cuenta MLADIS"
+
+#: bookings/templates/registration/signup.html:10
+msgid ""
+"Track reservations, invoices, cancellation windows, and future booking "
+"updates."
+msgstr "Consulta reservas, facturas, ventanas de cancelación y futuras novedades."
+
+#: bookings/templates/registration/signup.html:27
+msgid "Already have an account?"
+msgstr "¿Ya tienes una cuenta?"

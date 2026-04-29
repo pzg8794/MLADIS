@@ -1,33 +1,35 @@
-const agentForm = document.getElementById("agent-form");
-const agentLog = document.getElementById("agent-log");
-const agentMessage = document.getElementById("agent-message");
-const agentItem = document.getElementById("agent-item");
-
 function csrfToken() {
   const input = document.querySelector("[name=csrfmiddlewaretoken]");
   return input ? input.value : "";
 }
 
-function appendAgentMessage(text, role) {
-  const empty = agentLog.querySelector(".agent-empty");
+function appendAgentMessage(log, text, role) {
+  const empty = log.querySelector(".agent-empty");
   if (empty) empty.remove();
   const entry = document.createElement("div");
   entry.className = `agent-message ${role}`;
   entry.textContent = text;
-  agentLog.appendChild(entry);
-  agentLog.scrollTop = agentLog.scrollHeight;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
   return entry;
 }
 
-if (agentForm) {
-  agentForm.addEventListener("submit", async (event) => {
+document.querySelectorAll("[data-agent-panel]").forEach((panel) => {
+  const form = panel.querySelector(".agent-form");
+  const log = panel.querySelector(".agent-log");
+  const messageInput = panel.querySelector(".agent-message");
+  const itemSelect = panel.querySelector(".agent-item");
+
+  if (!form || !log || !messageInput) return;
+
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const message = agentMessage.value.trim();
+    const message = messageInput.value.trim();
     if (!message) return;
 
-    appendAgentMessage(message, "visitor");
-    agentMessage.value = "";
-    const pending = appendAgentMessage("Thinking...", "agent");
+    appendAgentMessage(log, message, "visitor");
+    messageInput.value = "";
+    const pending = appendAgentMessage(log, "Thinking...", "agent");
 
     try {
       const response = await fetch("/api/agent/", {
@@ -38,7 +40,7 @@ if (agentForm) {
         },
         body: JSON.stringify({
           message,
-          item_id: agentItem.value || null,
+          item_id: itemSelect && itemSelect.value ? itemSelect.value : null,
           session_id: window.localStorage.getItem("mladisAgentSession") || undefined,
         }),
       });
@@ -48,10 +50,10 @@ if (agentForm) {
       if (json.session_id) {
         window.localStorage.setItem("mladisAgentSession", json.session_id);
       }
-      appendAgentMessage(json.reply || json.error || "No reply yet.", "agent");
+      appendAgentMessage(log, json.reply || json.error || "No reply yet.", "agent");
     } catch (_error) {
       pending.remove();
-      appendAgentMessage("The agent endpoint is not reachable right now.", "agent");
+      appendAgentMessage(log, "The agent endpoint is not reachable right now.", "agent");
     }
   });
-}
+});

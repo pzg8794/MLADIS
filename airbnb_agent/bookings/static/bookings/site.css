@@ -73,6 +73,13 @@ a {
   border-radius: 6px;
 }
 
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
 .nav-links,
 .site-footer nav {
   display: flex;
@@ -81,6 +88,30 @@ a {
   color: var(--muted);
   font-size: 0.94rem;
   font-weight: 800;
+}
+
+.nav-form,
+.language-form {
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-form button,
+.language-form select {
+  border: 1px solid transparent;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.language-form select {
+  border-color: var(--line);
+  border-radius: 7px;
+  padding: 7px 9px;
+  background: #fff;
 }
 
 .nav-links a,
@@ -596,7 +627,7 @@ a {
 
 .booking-band {
   display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(340px, 0.65fr);
+  grid-template-columns: minmax(260px, 0.52fr) minmax(0, 1fr);
   gap: clamp(28px, 5vw, 70px);
   background: #f4f7ef;
   border-top: 1px solid var(--line);
@@ -630,6 +661,13 @@ a {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.booking-action-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.62fr) minmax(360px, 1fr);
+  gap: 18px;
+  align-items: start;
 }
 
 .booking-form .field-group:first-of-type,
@@ -774,6 +812,17 @@ a {
   margin-top: 14px;
 }
 
+.agent-panel-heading h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+}
+
+.agent-panel-heading p {
+  margin: 8px 0 16px;
+  color: var(--muted);
+}
+
 .stay-hero {
   grid-template-columns: minmax(0, 0.72fr) minmax(360px, 0.85fr);
   background: var(--sky);
@@ -843,6 +892,284 @@ a {
 
 .detail-booking {
   border-top: 1px solid var(--line);
+}
+
+.review-highlight-grid,
+.rules-grid,
+.ops-metric-grid,
+.ops-columns,
+.account-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.review-highlight-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.review-highlight-card,
+.rules-grid article,
+.reservation-row,
+.invoice-sheet,
+.auth-panel {
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(23, 35, 33, 0.07);
+}
+
+.review-highlight-card h3,
+.rules-grid h3,
+.reservation-row h3 {
+  margin: 0 0 8px;
+}
+
+.review-highlight-card p,
+.rules-grid p,
+.reservation-row p {
+  color: var(--muted);
+}
+
+.review-highlight-card span,
+.status-chip {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: var(--ocean-dark);
+  background: #e8f5ec;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.status-chip.muted {
+  color: var(--muted);
+  background: #f2f3ed;
+}
+
+.rules-band,
+.about-agent-band,
+.account-grid,
+.reservation-detail,
+.invoice-page,
+.auth-page,
+.ops-metric-grid,
+.ops-columns {
+  padding: clamp(44px, 6vw, 90px) clamp(18px, 4vw, 58px);
+}
+
+.rules-band {
+  display: grid;
+  grid-template-columns: minmax(0, 0.48fr) minmax(0, 1fr);
+  gap: clamp(24px, 5vw, 64px);
+  background: #fff8ed;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.rules-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.about-agent-band {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.62fr) minmax(0, 0.8fr);
+  gap: clamp(24px, 5vw, 64px);
+  align-items: start;
+  background: #fff;
+}
+
+.about-agent-gallery {
+  display: grid;
+  gap: 12px;
+}
+
+.about-agent-gallery figure {
+  position: relative;
+  min-height: 260px;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.about-agent-gallery img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.about-agent-gallery figcaption {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  padding: 10px 12px;
+  color: #fff;
+  background: rgba(7, 63, 58, 0.78);
+  border-radius: 7px;
+  font-weight: 900;
+}
+
+.auth-page {
+  display: grid;
+  min-height: calc(100vh - 220px);
+  place-items: start center;
+  background: linear-gradient(135deg, #fff8ed, #e8f5f2);
+}
+
+.auth-panel {
+  width: min(560px, 100%);
+}
+
+.auth-panel.wide {
+  width: min(760px, 100%);
+}
+
+.auth-panel h1,
+.reservation-detail h1,
+.invoice-sheet h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.2rem, 5vw, 4.6rem);
+  line-height: 1;
+}
+
+.account-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.48fr);
+  align-items: start;
+}
+
+.account-list {
+  display: grid;
+  gap: 12px;
+}
+
+.reservation-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+}
+
+.detail-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.reservation-facts,
+.invoice-meta,
+.invoice-totals {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.reservation-facts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.reservation-facts div,
+.invoice-meta div,
+.invoice-totals div {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.reservation-facts dt,
+.invoice-totals dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.reservation-facts dd,
+.invoice-totals dd {
+  margin: 4px 0 0;
+  font-weight: 900;
+}
+
+.message-panel {
+  max-width: 760px;
+  margin: 24px 0;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.invoice-page {
+  background: #f3f5ee;
+}
+
+.invoice-sheet {
+  width: min(920px, 100%);
+  margin: 0 auto;
+}
+
+.invoice-header,
+.invoice-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.invoice-logo {
+  max-width: 96px;
+  max-height: 96px;
+  object-fit: contain;
+}
+
+.invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 24px;
+}
+
+.invoice-table th,
+.invoice-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.invoice-totals {
+  margin-left: auto;
+  width: min(420px, 100%);
+}
+
+.invoice-totals .total {
+  color: var(--ocean-dark);
+  font-size: 1.2rem;
+}
+
+.ops-metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ops-metric-grid article {
+  padding: 20px;
+  color: #fff;
+  background: var(--ocean);
+  border-radius: 8px;
+}
+
+.ops-metric-grid span {
+  font-size: 2rem;
+  font-weight: 950;
+}
+
+.ops-metric-grid p {
+  margin: 6px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.ops-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-top: 0;
 }
 
 .compact-band {
@@ -950,7 +1277,14 @@ a {
   .deposit-band,
   .agent-band,
   .mission-strip,
-  .stay-story {
+  .stay-story,
+  .booking-action-grid,
+  .rules-band,
+  .about-agent-band,
+  .account-grid,
+  .invoice-header,
+  .invoice-meta,
+  .ops-columns {
     grid-template-columns: 1fr;
   }
 
@@ -961,7 +1295,11 @@ a {
 
   .listing-grid,
   .review-grid,
-  .ops-grid {
+  .ops-grid,
+  .review-highlight-grid,
+  .rules-grid,
+  .ops-metric-grid,
+  .reservation-facts {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -1003,6 +1341,10 @@ a {
   .review-grid,
   .booking-form,
   .ops-grid,
+  .review-highlight-grid,
+  .rules-grid,
+  .ops-metric-grid,
+  .reservation-facts,
   .mini-stay-row,
   .about-gallery,
   .gallery-grid {
@@ -1032,7 +1374,8 @@ a {
   }
 
   .hero-photo-caption,
-  .listing-actions {
+  .listing-actions,
+  .reservation-row {
     align-items: flex-start;
     flex-direction: column;
   }

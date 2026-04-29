@@ -1,4 +1,5 @@
 {% extends "bookings/base.html" %}
+{% load i18n %}
 
 {% block title %}About MLADIS | Santo Domingo Travel{% endblock %}
 
@@ -6,11 +7,11 @@
 <main>
   <section class="about-hero">
     <div>
-      <h1>Vacation in the Dominican Republic with people who care.</h1>
-      <p>MLADIS is rooted in Santo Domingo and built for travelers who want comfort, clarity, and a warmer connection to the island.</p>
+      <h1>{% trans "Vacation in the Dominican Republic with people who care." %}</h1>
+      <p>{% trans "MLADIS is rooted in Santo Domingo and built for travelers who want comfort, clarity, and a warmer connection to the island." %}</p>
       <div class="hero-actions">
-        <a class="button primary" href="{% url 'bookings:home' %}#stays">Explore stays</a>
-        <a class="button secondary" href="#mission">Support the mission</a>
+        <a class="button primary" href="{% url 'bookings:home' %}#stays">{% trans "Explore stays" %}</a>
+        <a class="button secondary" href="#mission">{% trans "Support the mission" %}</a>
       </div>
     </div>
     <div class="about-gallery">
@@ -30,20 +31,20 @@
 
   <section class="story-band" aria-labelledby="story-title">
     <div>
-      <h2 id="story-title">Santo Domingo as your home base.</h2>
-      <p>The Dominican Republic is more than a beach postcard. From Santo Domingo, guests can enjoy food, music, history, day trips, family visits, and warm tropical days while staying somewhere practical and hosted with care.</p>
+      <h2 id="story-title">{% trans "Santo Domingo as your home base." %}</h2>
+      <p>The Dominican Republic is more than a beach postcard. From Santo Domingo Norte, guests can move between family visits, Embassy-area errands, shopping, restaurants, city plans, and beach day trips while staying somewhere practical and hosted with care.</p>
     </div>
     <div class="story-points">
       <article>
-        <h3>Island rhythm</h3>
+        <h3>{% trans "Island rhythm" %}</h3>
         <p>Warm days, local flavor, and easy movement between city plans and vacation time.</p>
       </article>
       <article>
-        <h3>Family-ready stays</h3>
+        <h3>{% trans "Family-ready stays" %}</h3>
         <p>Homes with space for groups, privacy, and direct coordination before arrival.</p>
       </article>
       <article>
-        <h3>Human support</h3>
+        <h3>{% trans "Human support" %}</h3>
         <p>Direct host follow-up today, and an AI booking agent ready to grow into guided booking later.</p>
       </article>
     </div>
@@ -51,7 +52,7 @@
 
   <section class="mission-section" id="mission" aria-labelledby="mission-title">
     <div class="mission-copy">
-      <h2 id="mission-title">Donate to the MLADIS mission fund.</h2>
+      <h2 id="mission-title">{% trans "Donate to the MLADIS mission fund." %}</h2>
       <p>Guests and supporters can contribute to community work for children with cancer, school support, and practical local care. Donations are processed through Stripe and are not presented as tax-deductible unless formal nonprofit status is added later.</p>
       <div class="cause-grid">
         {% for cause in mission_causes %}
@@ -85,8 +86,26 @@
         </div>
       {% endfor %}
       <p class="payment-copy">Stripe Checkout will show eligible secure payment methods for your location and account settings.</p>
-      <button class="button primary full" type="submit">Donate securely</button>
+      <button class="button primary full" type="submit">{% trans "Donate securely" %}</button>
     </form>
+  </section>
+
+  <section class="about-agent-band" id="agent" aria-labelledby="about-agent-title">
+    <div class="about-agent-gallery" aria-label="Santo Domingo travel ideas">
+      <figure>
+        <img src="https://upload.wikimedia.org/wikipedia/commons/e/e3/SantoDomingoedit.JPG" alt="Santo Domingo city view" loading="lazy">
+        <figcaption>Santo Domingo city plans</figcaption>
+      </figure>
+      <figure>
+        <img src="https://upload.wikimedia.org/wikipedia/commons/6/62/Juan_Dolio_Beach_1.jpg" alt="Juan Dolio beach" loading="lazy">
+        <figcaption>Juan Dolio beach days</figcaption>
+      </figure>
+    </div>
+    <div>
+      <h2 id="about-agent-title">{% trans "Ask the agent before you travel." %}</h2>
+      <p>Use the agent to ask about stays, rules, Embassy-area errands, malls, beach day trips, restaurants, donations, or special requests.</p>
+      {% include "bookings/partials/agent_panel.html" with panel_title="Plan with MLADIS" panel_intro="Ask practical travel questions before booking or while comparing stays." %}
+    </div>
   </section>
 </main>
 {% endblock %}

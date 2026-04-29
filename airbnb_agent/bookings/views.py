@@ -1,21 +1,51 @@
 import json
+from datetime import timedelta
 from uuid import uuid4
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import login
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.conf import settings
+from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import redirect, render
-from django.urls import reverse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse, reverse_lazy
 from django.views import View
-from django.views.generic import DetailView, TemplateView
+from django.views.generic import CreateView, DetailView, TemplateView, UpdateView
 import stripe
 
-from .forms import BookingInquiryForm, DamageDepositForm, DonationForm
-from .models import BookableItem, BookingCategory, CalendarFeed, MissionCause
-from .services import AgentRequest, BookingAgentService, DamageDepositService, DonationService
+from .forms import (
+    BookingInquiryForm,
+    DamageDepositForm,
+    DonationForm,
+    ReservationCancelForm,
+    ReservationManageForm,
+    SignUpForm,
+)
+from .models import (
+    AgentConversation,
+    BookableItem,
+    BookingCategory,
+    BookingInquiry,
+    BookingStatus,
+    CalendarFeed,
+    CustomerProfile,
+    Invoice,
+    MissionCause,
+    PageVisit,
+)
+from .services import (
+    AgentRequest,
+    BookingAgentService,
+    BookingEmailService,
+    DamageDepositService,
+    DonationService,
+    ReservationRequestService,
+)
 
 
 class HomePageView(TemplateView):
@@ -31,7 +61,7 @@ class HomePageView(TemplateView):
             .prefetch_related("gallery_images", "review_themes")
         )
         return {
-            "booking_form": form or BookingInquiryForm(),
+            "booking_form": form or BookingInquiryForm(user=request.user),
             "deposit_form": DamageDepositForm(initial={"item": selected_item_id} if selected_item_id else None),
             "donation_form": DonationForm(),
             "deposit_amount": settings.DEPOSIT_AMOUNT_CENTS / 100,
@@ -69,14 +99,14 @@ class StayDetailView(DetailView):
     def get_queryset(self):
         return (
             BookableItem.objects.filter(is_active=True, category=BookingCategory.STAY)
-            .prefetch_related("gallery_images", "review_themes")
+            .prefetch_related("gallery_images", "review_themes", "guest_review_highlights", "house_rules")
         )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(
             {
-                "booking_form": BookingInquiryForm(initial={"item": self.object.id}),
+                "booking_form": BookingInquiryForm(initial={"item": self.object.id}, user=self.request.user),
                 "deposit_form": DamageDepositForm(initial={"item": self.object.id}),
                 "deposit_amount": settings.DEPOSIT_AMOUNT_CENTS / 100,
                 "deposit_currency": settings.DEPOSIT_CURRENCY.upper(),
@@ -87,6 +117,7 @@ class StayDetailView(DetailView):
                 )
                 .exclude(id=self.object.id)
                 .prefetch_related("gallery_images"),
+                "active_items": BookableItem.objects.filter(is_active=True),
             }
         )
         return context
@@ -102,18 +133,25 @@ class AboutPageView(TemplateView):
                 "donation_form": DonationForm(),
                 "mission_causes": MissionCause.objects.filter(is_active=True),
                 "featured_items": BookableItem.objects.filter(is_active=True, is_featured=True),
+                "active_items": BookableItem.objects.filter(is_active=True),
                 "gallery_tiles": [
                     {
-                        "title": "Santo Domingo",
-                        "text": "Colonial streets, modern restaurants, and easy local access.",
+                        "title": "Santo Domingo Norte",
+                        "text": "A practical home base near Colinas del Arroyo II, Los Guaricanos, and the Jacobo Majluta corridor.",
                         "class_name": "is-city",
                         "image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e3/SantoDomingoedit.JPG",
                     },
                     {
-                        "title": "Tropical days",
-                        "text": "Beach energy, warm weather, and room for family memories.",
+                        "title": "Embassy and malls corridor",
+                        "text": "Easy positioning for Embassy-area errands, shopping, restaurants, and family plans in the city.",
+                        "class_name": "is-mall",
+                        "image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e3/SantoDomingoedit.JPG",
+                    },
+                    {
+                        "title": "Juan Dolio day trips",
+                        "text": "A beach-day option east of Santo Domingo for guests who want more island in the itinerary.",
                         "class_name": "is-beach",
-                        "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/78/Bavaro.jpg",
+                        "image_url": "https://upload.wikimedia.org/wikipedia/commons/6/62/Juan_Dolio_Beach_1.jpg",
                     },
                     {
                         "title": "Hosted with care",
@@ -129,9 +167,14 @@ class AboutPageView(TemplateView):
 
 class BookingInquiryCreateView(View):
     def post(self, request):
-        form = BookingInquiryForm(request.POST)
+        form = BookingInquiryForm(request.POST, user=request.user)
         if form.is_valid():
-            inquiry = form.save()
+            inquiry = form.save(commit=False)
+            if request.user.is_authenticated:
+                inquiry.user = request.user
+            ReservationRequestService().prepare(inquiry, coupon=form.coupon)
+            inquiry.save()
+            BookingEmailService().send_inquiry_notifications(inquiry, request=request)
             messages.success(
                 request,
                 f"Thanks, {inquiry.guest_name}. We received your request and will follow up soon.",
@@ -144,6 +187,106 @@ class BookingInquiryCreateView(View):
             HomePageView.booking_context(request, form=form),
             status=400,
         )
+
+
+class SignUpView(CreateView):
+    form_class = SignUpForm
+    template_name = "registration/signup.html"
+    success_url = reverse_lazy("bookings:dashboard")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        CustomerProfile.objects.get_or_create(
+            user=self.object,
+            defaults={
+                "email": self.object.email,
+                "name": self.object.get_full_name() or self.object.username,
+            },
+        )
+        login(self.request, self.object)
+        return response
+
+
+class CustomerDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = "bookings/account_dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "reservations": self._reservation_queryset(),
+                "invoices": Invoice.objects.filter(
+                    Q(recipient_email__iexact=self.request.user.email)
+                    | Q(customer_profile__user=self.request.user)
+                ).select_related("inquiry", "customer_profile"),
+            }
+        )
+        return context
+
+    def _reservation_queryset(self):
+        return BookingInquiry.objects.filter(
+            Q(user=self.request.user) | Q(email__iexact=self.request.user.email)
+        ).select_related("item", "coupon", "cancellation_policy")
+
+
+class OwnedReservationMixin(LoginRequiredMixin):
+    model = BookingInquiry
+    context_object_name = "reservation"
+
+    def get_queryset(self):
+        return BookingInquiry.objects.filter(
+            Q(user=self.request.user) | Q(email__iexact=self.request.user.email)
+        ).select_related("item", "coupon", "cancellation_policy")
+
+
+class ReservationDetailView(OwnedReservationMixin, DetailView):
+    template_name = "bookings/reservation_detail.html"
+
+
+class ReservationUpdateView(OwnedReservationMixin, UpdateView):
+    form_class = ReservationManageForm
+    template_name = "bookings/reservation_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        reservation = self.get_object()
+        if reservation.status not in {BookingStatus.NEW, BookingStatus.REVIEWING, BookingStatus.QUOTED}:
+            messages.warning(request, "This reservation can no longer be edited. Please contact MLADIS.")
+            return redirect(reverse("bookings:reservation-detail", kwargs={"pk": reservation.pk}))
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse("bookings:reservation-detail", kwargs={"pk": self.object.pk})
+
+
+class ReservationCancelView(OwnedReservationMixin, View):
+    template_name = "bookings/reservation_cancel.html"
+
+    def get(self, request, pk):
+        reservation = get_object_or_404(self.get_queryset(), pk=pk)
+        return render(request, self.template_name, {"reservation": reservation, "form": ReservationCancelForm()})
+
+    def post(self, request, pk):
+        reservation = get_object_or_404(self.get_queryset(), pk=pk)
+        form = ReservationCancelForm(request.POST)
+        if not reservation.can_customer_cancel:
+            messages.error(request, "This reservation is outside the current cancellation window.")
+            return redirect(reverse("bookings:reservation-detail", kwargs={"pk": reservation.pk}))
+        if form.is_valid():
+            reservation.cancel(reason=form.cleaned_data.get("reason", ""), by_user=request.user)
+            messages.success(request, "Your cancellation request was recorded.")
+            return redirect(reverse("bookings:dashboard"))
+        return render(request, self.template_name, {"reservation": reservation, "form": form}, status=400)
+
+
+class InvoicePrintView(DetailView):
+    model = Invoice
+    template_name = "bookings/invoice_print.html"
+    context_object_name = "invoice"
+    slug_field = "public_token"
+    slug_url_kwarg = "token"
+
+    def get_queryset(self):
+        return Invoice.objects.prefetch_related("line_items").select_related("inquiry", "customer_profile")
 
 
 class DamageDepositCheckoutView(View):
@@ -265,6 +408,31 @@ class CalendarOpsView(TemplateView):
                     is_active=True,
                     category=BookingCategory.STAY,
                 ).select_related("calendar_feed"),
+            }
+        )
+        return context
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class OpsDashboardView(TemplateView):
+    template_name = "bookings/ops_dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        reservations = BookingInquiry.objects.all()
+        visits = PageVisit.objects.filter(created_at__gte=thirty_days_ago)
+        context.update(
+            {
+                "reservation_count": reservations.count(),
+                "cancellation_count": reservations.filter(status=BookingStatus.CANCELED).count(),
+                "inquiry_count": reservations.filter(status=BookingStatus.NEW).count(),
+                "visit_count": visits.count(),
+                "recent_reservations": reservations.select_related("item", "customer_profile")[:8],
+                "top_questions": AgentConversation.objects.values("question_topic")
+                .annotate(total=Count("id"))
+                .order_by("-total", "question_topic")[:8],
+                "popular_pages": visits.values("path").annotate(total=Count("id")).order_by("-total", "path")[:8],
             }
         )
         return context

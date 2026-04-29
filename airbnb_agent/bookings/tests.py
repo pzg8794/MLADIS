@@ -2,7 +2,8 @@ import json
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.core import mail
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -12,10 +13,18 @@ from .models import (
     BookableItem,
     BookingCategory,
     BookingInquiry,
+    BookingStatus,
+    CancellationPolicy,
+    ClientSegment,
+    Coupon,
+    CustomerProfile,
     Donation,
     DonationStatus,
     DamageDeposit,
     DepositStatus,
+    Invoice,
+    InvoiceLineItem,
+    PageVisit,
 )
 
 
@@ -59,6 +68,10 @@ class AgentAPITests(TestCase):
 
 
 class BookingInquiryViewTests(TestCase):
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
+    )
     def test_booking_inquiry_creates_record(self):
         item = BookableItem.objects.create(
             name="Test Stay",
@@ -83,6 +96,84 @@ class BookingInquiryViewTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(BookingInquiry.objects.count(), 1)
+        inquiry = BookingInquiry.objects.get()
+        self.assertEqual(inquiry.email_delivery_status, "sent")
+        self.assertEqual(len(mail.outbox), 2)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
+    )
+    def test_booking_inquiry_records_coupon_and_blacklist_flag(self):
+        item = BookableItem.objects.create(
+            name="Test Stay",
+            slug="test-stay",
+            category=BookingCategory.STAY,
+            short_description="A test booking item.",
+            is_active=True,
+        )
+        CustomerProfile.objects.create(
+            name="Blocked Guest",
+            email="blocked@example.com",
+            segment=ClientSegment.BLACKLISTED,
+        )
+        coupon = Coupon.objects.get(code="WELCOME25")
+        today = timezone.localdate()
+
+        response = self.client.post(
+            reverse("bookings:inquiry-create"),
+            data={
+                "item": item.id,
+                "guest_name": "Blocked Guest",
+                "email": "blocked@example.com",
+                "check_in": today + timedelta(days=3),
+                "check_out": today + timedelta(days=6),
+                "guests": 2,
+                "coupon_code": "welcome25",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        inquiry = BookingInquiry.objects.get()
+        coupon.refresh_from_db()
+        self.assertEqual(inquiry.coupon_code, "WELCOME25")
+        self.assertTrue(inquiry.is_blacklist_flagged)
+        self.assertEqual(coupon.redemption_count, 1)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
+    )
+    def test_staff_can_submit_admin_test_reservation(self):
+        user = get_user_model().objects.create_user("staff", "staff@example.com", "secret", is_staff=True)
+        self.client.force_login(user)
+        item = BookableItem.objects.create(
+            name="Test Stay",
+            slug="test-stay",
+            category=BookingCategory.STAY,
+            short_description="A test booking item.",
+            is_active=True,
+        )
+        today = timezone.localdate()
+
+        response = self.client.post(
+            reverse("bookings:inquiry-create"),
+            data={
+                "item": item.id,
+                "guest_name": "Staff Test",
+                "email": "staff@example.com",
+                "check_in": today + timedelta(days=3),
+                "check_out": today + timedelta(days=6),
+                "guests": 2,
+                "is_admin_test": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        inquiry = BookingInquiry.objects.get()
+        self.assertTrue(inquiry.is_admin_test)
+        self.assertEqual(inquiry.total_cents, 0)
+        self.assertEqual(inquiry.deposit_cents, 0)
 
 
 class MarketingPageTests(TestCase):
@@ -103,6 +194,91 @@ class MarketingPageTests(TestCase):
         self.assertContains(response, "Gallery")
         self.assertContains(response, "Airbnb review snapshot")
         self.assertContains(response, "3 Bedrooms Vacation Home &amp; Pool G-101")
+        self.assertContains(response, "Top guest highlights")
+        self.assertContains(response, "Apartment rules")
+
+    def test_spanish_language_switches_public_copy(self):
+        response = self.client.get(reverse("bookings:home"), HTTP_ACCEPT_LANGUAGE="es")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Quédate cerca de Santo Domingo")
+        self.assertContains(response, "Explorar alojamientos")
+
+
+class AccountReservationTests(TestCase):
+    def test_account_dashboard_and_cancel_reservation(self):
+        user = get_user_model().objects.create_user(
+            username="guest",
+            email="guest@example.com",
+            password="secret",
+        )
+        policy = CancellationPolicy.objects.get(slug="standard-24-hour")
+        item = BookableItem.objects.get(slug="mladis-santo-domingo-guest-home")
+        reservation = BookingInquiry.objects.create(
+            user=user,
+            item=item,
+            guest_name="Guest User",
+            email="guest@example.com",
+            check_in=timezone.localdate() + timedelta(days=5),
+            check_out=timezone.localdate() + timedelta(days=7),
+            guests=2,
+            cancellation_policy=policy,
+        )
+        self.client.force_login(user)
+
+        dashboard = self.client.get(reverse("bookings:dashboard"))
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertContains(dashboard, "Guest User")
+
+        response = self.client.post(
+            reverse("bookings:reservation-cancel", kwargs={"pk": reservation.pk}),
+            data={"reason": "Plans changed"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, BookingStatus.CANCELED)
+
+
+class InvoicePageTests(TestCase):
+    def test_invoice_print_page_renders_logo_ready_invoice(self):
+        invoice = Invoice.objects.create(
+            recipient_name="Guest User",
+            recipient_email="guest@example.com",
+            subtotal_cents=50000,
+            total_cents=50000,
+        )
+        InvoiceLineItem.objects.create(
+            invoice=invoice,
+            description="Test reservation",
+            quantity=1,
+            amount_cents=50000,
+        )
+
+        response = self.client.get(reverse("bookings:invoice-print", kwargs={"token": invoice.public_token}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, invoice.invoice_number)
+        self.assertContains(response, "$500.00 USD")
+
+
+class OpsDashboardTests(TestCase):
+    def test_ops_dashboard_shows_metrics_for_staff(self):
+        staff = get_user_model().objects.create_user("ops", "ops@example.com", "secret", is_staff=True)
+        self.client.force_login(staff)
+        PageVisit.objects.create(path="/")
+        AgentConversation.objects.create(
+            session_id="abc",
+            last_user_message="What is the price?",
+            last_agent_reply="Setup mode.",
+            question_topic="pricing",
+        )
+
+        response = self.client.get(reverse("bookings:ops-dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Owner dashboard")
+        self.assertContains(response, "Pricing")
 
 
 class DamageDepositTests(TestCase):

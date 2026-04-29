@@ -1,6 +1,7 @@
-{% load static %}
+{% load i18n static %}
 <!doctype html>
-<html lang="en">
+{% get_current_language as LANGUAGE_CODE %}
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,18 +11,45 @@
   <body>
     <header class="site-header">
       <a class="brand" href="{% url 'bookings:home' %}" aria-label="MLADIS home">
-        <span class="brand-mark">M</span>
-        <span>MLADIS</span>
+        <span class="brand-mark">
+          {% if site_settings.logo_display_url %}
+            <img src="{{ site_settings.logo_display_url }}" alt="MLADIS">
+          {% else %}
+            M
+          {% endif %}
+        </span>
+        <span>{{ site_settings.site_name|default:"MLADIS" }}</span>
       </a>
       <nav class="nav-links" aria-label="Primary">
-        <a href="{% url 'bookings:home' %}#stays">Stays</a>
-        <a href="{% url 'bookings:about' %}">About</a>
-        <a href="{% url 'bookings:about' %}#mission">Mission</a>
-        <a href="{% url 'bookings:home' %}#reviews">Reviews</a>
-        <a href="{% url 'bookings:home' %}#booking">Book</a>
-        {% if request.user.is_staff %}
-          <a href="{% url 'bookings:calendar-ops' %}">Calendar</a>
+        <a href="{% url 'bookings:home' %}#stays">{% trans "Stays" %}</a>
+        <a href="{% url 'bookings:about' %}">{% trans "About" %}</a>
+        <a href="{% url 'bookings:about' %}#mission">{% trans "Mission" %}</a>
+        <a href="{% url 'bookings:home' %}#reviews">{% trans "Reviews" %}</a>
+        <a href="{% url 'bookings:home' %}#booking">{% trans "Book" %}</a>
+        {% if request.user.is_authenticated %}
+          <a href="{% url 'bookings:dashboard' %}">{% trans "Account" %}</a>
+          <form class="nav-form" method="post" action="{% url 'bookings:logout' %}">
+            {% csrf_token %}
+            <button type="submit">{% trans "Log out" %}</button>
+          </form>
+        {% else %}
+          <a href="{% url 'bookings:login' %}">{% trans "Log in" %}</a>
         {% endif %}
+        {% if request.user.is_staff %}
+          <a href="{% url 'admin:index' %}">{% trans "Admin" %}</a>
+          <a href="{% url 'bookings:ops-dashboard' %}">{% trans "Dashboard" %}</a>
+          <a href="{% url 'bookings:calendar-ops' %}">{% trans "Calendar" %}</a>
+        {% endif %}
+        <form class="language-form" action="{% url 'set_language' %}" method="post">
+          {% csrf_token %}
+          <input name="next" type="hidden" value="{{ request.get_full_path }}">
+          <select name="language" aria-label="{% trans 'Language' %}" onchange="this.form.submit()">
+            {% get_available_languages as LANGUAGES %}
+            {% for code, name in LANGUAGES %}
+              <option value="{{ code }}" {% if code == LANGUAGE_CODE %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </form>
       </nav>
     </header>
 
@@ -30,16 +58,23 @@
     <footer class="site-footer">
       <div>
         <a class="brand footer-brand" href="{% url 'bookings:home' %}" aria-label="MLADIS home">
-          <span class="brand-mark">M</span>
-          <span>MLADIS</span>
+          <span class="brand-mark">
+            {% if site_settings.logo_display_url %}
+              <img src="{{ site_settings.logo_display_url }}" alt="MLADIS">
+            {% else %}
+              M
+            {% endif %}
+          </span>
+          <span>{{ site_settings.site_name|default:"MLADIS" }}</span>
         </a>
-        <p>Santo Domingo stays, direct host support, and a mission-driven travel experience.</p>
+        <p>{% trans "Santo Domingo stays, direct host support, and a mission-driven travel experience." %}</p>
       </div>
       <nav aria-label="Footer">
-        <a href="{% url 'bookings:home' %}#stays">Stays</a>
-        <a href="{% url 'bookings:about' %}">About</a>
-        <a href="{% url 'bookings:about' %}#mission">Donate</a>
-        <a href="{% url 'bookings:home' %}#agent">Agent</a>
+        <a href="{% url 'bookings:home' %}#stays">{% trans "Stays" %}</a>
+        <a href="{% url 'bookings:about' %}">{% trans "About" %}</a>
+        <a href="{% url 'bookings:about' %}#mission">{% trans "Donate" %}</a>
+        <a href="{% url 'bookings:home' %}#agent">{% trans "Agent" %}</a>
+        <a href="{% url 'admin:index' %}">{% trans "Owner login" %}</a>
       </nav>
     </footer>
 

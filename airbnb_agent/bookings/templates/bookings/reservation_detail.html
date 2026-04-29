@@ -1,0 +1,35 @@
+{% extends "bookings/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Reservation" %} | MLADIS{% endblock %}
+
+{% block content %}
+<main>
+  <section class="reservation-detail">
+    <a class="back-link" href="{% url 'bookings:dashboard' %}">{% trans "Back to account" %}</a>
+    <h1>{{ reservation.item.name|default:"Flexible MLADIS stay" }}</h1>
+    <p>{{ reservation.check_in }} - {{ reservation.check_out }} · {{ reservation.nights }} night{{ reservation.nights|pluralize }} · {{ reservation.guests }} guest{{ reservation.guests|pluralize }}</p>
+    <div class="detail-chip-row">
+      <span class="status-chip">{{ reservation.get_status_display }}</span>
+      {% if reservation.is_admin_test %}<span class="status-chip muted">{% trans "Admin test reservation" %}</span>{% endif %}
+      {% if reservation.coupon_code %}<span class="status-chip muted">{% trans "Coupon" %}: {{ reservation.coupon_code }}</span>{% endif %}
+    </div>
+    <dl class="reservation-facts">
+      <div><dt>{% trans "Guest" %}</dt><dd>{{ reservation.guest_name }}</dd></div>
+      <div><dt>{% trans "Email" %}</dt><dd>{{ reservation.email }}</dd></div>
+      <div><dt>{% trans "Total" %}</dt><dd>{{ reservation.display_total }}</dd></div>
+      <div><dt>{% trans "Cancellation" %}</dt><dd>{% if reservation.can_customer_cancel %}{% trans "Currently allowed" %}{% else %}{% trans "Contact MLADIS" %}{% endif %}</dd></div>
+    </dl>
+    {% if reservation.message %}
+      <article class="message-panel">
+        <h2>{% trans "Your note" %}</h2>
+        <p>{{ reservation.message }}</p>
+      </article>
+    {% endif %}
+    <div class="hero-actions">
+      <a class="button secondary" href="{% url 'bookings:reservation-edit' reservation.pk %}">{% trans "Edit request" %}</a>
+      <a class="button primary" href="{% url 'bookings:reservation-cancel' reservation.pk %}">{% trans "Cancel request" %}</a>
+    </div>
+  </section>
+</main>
+{% endblock %}

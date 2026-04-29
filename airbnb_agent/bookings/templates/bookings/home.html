@@ -1,4 +1,5 @@
 {% extends "bookings/base.html" %}
+{% load i18n %}
 
 {% block title %}MLADIS Santo Domingo Vacation Stays{% endblock %}
 
@@ -6,11 +7,11 @@
 <main>
   <section class="hero travel-hero" aria-labelledby="hero-title">
     <div class="hero-content">
-      <h1 id="hero-title">Stay close to Santo Domingo, vacation like you belong here.</h1>
-      <p>Comfortable Airbnb-listed homes with direct host support, tropical Dominican energy, and room for family trips, celebrations, and longer stays.</p>
+      <h1 id="hero-title">{% trans "Stay close to Santo Domingo, vacation like you belong here." %}</h1>
+      <p>{% trans "Comfortable Airbnb-listed homes with direct host support, tropical Dominican energy, and room for family trips, celebrations, and longer stays." %}</p>
       <div class="hero-actions">
-        <a class="button primary" href="#stays">Explore stays</a>
-        <a class="button secondary" href="#booking">Request dates</a>
+        <a class="button primary" href="#stays">{% trans "Explore stays" %}</a>
+        <a class="button secondary" href="#booking">{% trans "Request dates" %}</a>
       </div>
       <dl class="hero-stats">
         <div>
@@ -43,8 +44,8 @@
 
   <section class="section stays-section" id="stays" aria-labelledby="stays-title">
     <div class="section-heading">
-      <h2 id="stays-title">Choose your stay.</h2>
-      <p>Each stay links back to the official Airbnb listing for trust, while MLADIS adds direct support, deposit handling, and future agent-assisted booking.</p>
+      <h2 id="stays-title">{% trans "Choose your stay." %}</h2>
+      <p>{% trans "Each stay links back to the official Airbnb listing for trust, while MLADIS adds direct support, deposit handling, and future agent-assisted booking." %}</p>
     </div>
 
     <div class="listing-grid">
@@ -75,9 +76,9 @@
               {% endfor %}
             </div>
             <div class="listing-actions">
-              <a class="button compact" href="{{ item.get_absolute_url }}">View stay</a>
+              <a class="button compact" href="{{ item.get_absolute_url }}">{% trans "View stay" %}</a>
               {% if item.airbnb_embed_url %}
-                <a class="text-link" href="{{ item.airbnb_embed_url }}" rel="nofollow">Open Airbnb</a>
+                <a class="text-link" href="{{ item.airbnb_embed_url }}" rel="nofollow">{% trans "Open Airbnb" %}</a>
               {% endif %}
             </div>
           </div>
@@ -88,8 +89,8 @@
 
   <section class="reviews-band" id="reviews" aria-labelledby="reviews-title">
     <div>
-      <h2 id="reviews-title">Guest proof, made easy to scan.</h2>
-      <p>Airbnb aggregate ratings help visitors trust the stay quickly, while review themes highlight what guests usually care about before booking.</p>
+      <h2 id="reviews-title">{% trans "Guest proof, made easy to scan." %}</h2>
+      <p>{% trans "Airbnb aggregate ratings help visitors trust the stay quickly, while review themes highlight what guests usually care about before booking." %}</p>
     </div>
     <div class="review-grid">
       {% for item in featured_items %}
@@ -127,16 +128,16 @@
       </figure>
     </div>
     <div>
-      <h2 id="about-teaser-title">More than a place to sleep.</h2>
-      <p>MLADIS is building a warmer way to host: practical stays near Santo Domingo, real local context, and a mission that gives travel a little more heart.</p>
-      <a class="button secondary" href="{% url 'bookings:about' %}">Read about MLADIS</a>
+      <h2 id="about-teaser-title">{% trans "More than a place to sleep." %}</h2>
+      <p>{% trans "MLADIS is building a warmer way to host from Santo Domingo Norte: practical stays near Colinas del Arroyo II, the Jacobo Majluta corridor, malls, restaurants, and Embassy-area errands, with a mission that gives travel a little more heart." %}</p>
+      <a class="button secondary" href="{% url 'bookings:about' %}">{% trans "Read about MLADIS" %}</a>
     </div>
   </section>
 
   <section class="booking-band" id="booking" aria-labelledby="booking-title">
     <div class="booking-copy">
-      <h2 id="booking-title">Request dates, then let us help.</h2>
-      <p>Send your dates, guest count, and the stay you prefer. This same flow is ready to become the direct booking path once live availability and pricing are connected.</p>
+      <h2 id="booking-title">{% trans "Request dates, then let us help." %}</h2>
+      <p>{% trans "Send your dates, guest count, and the stay you prefer. This same flow is ready to become the direct booking path once live availability and pricing are connected." %}</p>
       <p class="deposit-note">Damage deposit: {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization hold through Stripe Checkout.</p>
       {% if service_items %}
         <div class="service-list">
@@ -150,36 +151,40 @@
       {% endif %}
     </div>
 
-    <form class="booking-form" method="post" action="{% url 'bookings:inquiry-create' %}" novalidate>
-      {% csrf_token %}
-      {% if messages %}
-        <div class="form-success" role="status">
-          {% for message in messages %}
-            <p>{{ message }}</p>
-          {% endfor %}
-        </div>
-      {% elif submitted %}
-        <div class="form-success" role="status">
-          <p>We received your request and will follow up soon.</p>
-        </div>
-      {% endif %}
+    <div class="booking-action-grid">
+      {% include "bookings/partials/agent_panel.html" with panel_title="Ask before booking" panel_intro="Tell the agent your dates, group size, and priorities while you fill out the request." %}
 
-      {% for field in booking_form %}
-        <div class="field-group {% if field.errors %}has-error{% endif %}">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}
-            <p class="field-error">{{ field.errors|striptags }}</p>
-          {% endif %}
-        </div>
-      {% endfor %}
-      <button class="button primary full" type="submit">Send request</button>
-    </form>
+      <form class="booking-form" method="post" action="{% url 'bookings:inquiry-create' %}" novalidate>
+        {% csrf_token %}
+        {% if messages %}
+          <div class="form-success" role="status">
+            {% for message in messages %}
+              <p>{{ message }}</p>
+            {% endfor %}
+          </div>
+        {% elif submitted %}
+          <div class="form-success" role="status">
+              <p>{% trans "We received your request and will follow up soon." %}</p>
+          </div>
+        {% endif %}
+
+        {% for field in booking_form %}
+          <div class="field-group {% if field.errors %}has-error{% endif %}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              <p class="field-error">{{ field.errors|striptags }}</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <button class="button primary full" type="submit">{% trans "Send request" %}</button>
+      </form>
+    </div>
   </section>
 
   <section class="deposit-band" id="deposit" aria-labelledby="deposit-title">
     <div>
-      <h2 id="deposit-title">Hold the damage deposit securely.</h2>
+      <h2 id="deposit-title">{% trans "Hold the damage deposit securely." %}</h2>
       <p>Airbnb does not hold the extra damage deposit for this setup, so MLADIS can collect a separate {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization. The hold is captured only if there is a valid damage claim; otherwise it is released.</p>
       <div class="deposit-facts" aria-label="Deposit details">
         <span>{{ deposit_amount|floatformat:0 }} {{ deposit_currency }}</span>
@@ -200,38 +205,24 @@
         </div>
       {% endfor %}
       <p class="payment-copy">Stripe will show safe eligible payment methods for an authorization hold. Some payment methods cannot be held and may not appear.</p>
-      <button class="button primary full" type="submit">Start secure deposit hold</button>
+      <button class="button primary full" type="submit">{% trans "Start secure deposit hold" %}</button>
     </form>
   </section>
 
   <section class="mission-strip" id="mission" aria-labelledby="mission-strip-title">
     <div>
-      <h2 id="mission-strip-title">Travel can support something bigger.</h2>
+      <h2 id="mission-strip-title">{% trans "Travel can support something bigger." %}</h2>
       <p>Guests can donate to the MLADIS mission fund for children with cancer, school support, and community care. Donations are processed through Stripe.</p>
     </div>
-    <a class="button primary" href="{% url 'bookings:about' %}#mission">Donate to the mission</a>
+    <a class="button primary" href="{% url 'bookings:about' %}#mission">{% trans "Donate to the mission" %}</a>
   </section>
 
   <section class="agent-band" id="agent" aria-labelledby="agent-title">
     <div>
-      <h2 id="agent-title">Ask before booking.</h2>
+      <h2 id="agent-title">{% trans "Ask before booking." %}</h2>
       <p>Start with dates, fit, services, or special requests. The current agent stores conversations and is ready for the real intelligence layer.</p>
     </div>
-    <div class="agent-panel">
-      <div class="agent-log" id="agent-log" aria-live="polite">
-        <p class="agent-empty">Ask about dates, guests, amenities, airport pickup, or which stay fits your group.</p>
-      </div>
-      <form class="agent-form" id="agent-form">
-        <select id="agent-item" aria-label="Booking to ask about">
-          <option value="">Any booking</option>
-          {% for item in active_items %}
-            <option value="{{ item.id }}">{{ item.name }}</option>
-          {% endfor %}
-        </select>
-        <textarea id="agent-message" rows="3" placeholder="Ask about dates, guests, amenities, or add-on services"></textarea>
-        <button class="button secondary full" type="submit">Ask agent</button>
-      </form>
-    </div>
+    {% include "bookings/partials/agent_panel.html" with panel_title="Ask the travel agent" panel_intro="Ask about dates, amenities, rules, deposits, airport pickup, or which stay fits your group." %}
   </section>
 </main>
 {% endblock %}
