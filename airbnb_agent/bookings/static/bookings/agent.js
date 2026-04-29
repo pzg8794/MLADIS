@@ -9,6 +9,8 @@ function csrfToken() {
 }
 
 function appendAgentMessage(text, role) {
+  const empty = agentLog.querySelector(".agent-empty");
+  if (empty) empty.remove();
   const entry = document.createElement("div");
   entry.className = `agent-message ${role}`;
   entry.textContent = text;

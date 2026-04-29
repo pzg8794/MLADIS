@@ -1,0 +1,50 @@
+{% extends "bookings/base.html" %}
+
+{% block title %}Calendar Setup | MLADIS{% endblock %}
+
+{% block content %}
+<main>
+  <section class="ops-hero">
+    <div>
+      <h1>Calendar setup</h1>
+      <p>Manual Airbnb iCal first: paste each Airbnb export URL in the admin, then subscribe/import it into Google Calendar. Gmail reservation parsing can be added after this foundation is stable.</p>
+    </div>
+    <a class="button primary" href="/admin/bookings/calendarfeed/">Manage feeds</a>
+  </section>
+
+  <section class="section" aria-labelledby="calendar-feeds-title">
+    <div class="section-heading">
+      <h2 id="calendar-feeds-title">Stay feeds</h2>
+      <p>Configured feeds should match one Airbnb listing per MLADIS stay so Google Calendar can track blocked/reserved dates.</p>
+    </div>
+    <div class="ops-grid">
+      {% for stay in stays %}
+        <article class="ops-card">
+          <h3>{{ stay.name }}</h3>
+          <p>{{ stay.airbnb_listing_id }}</p>
+          {% if stay.calendar_feed.is_configured %}
+            <span class="ops-status is-ready">iCal URL saved</span>
+            <p>{{ stay.calendar_feed.google_calendar_name|default:"Google Calendar name not set" }}</p>
+          {% else %}
+            <span class="ops-status">Needs iCal URL</span>
+            <p>Add the Airbnb export URL in the CalendarFeed admin, then subscribe from Google Calendar.</p>
+          {% endif %}
+          <div class="listing-actions">
+            {% if stay.airbnb_embed_url %}
+              <a class="button compact" href="{{ stay.airbnb_embed_url }}" rel="nofollow">Open Airbnb</a>
+            {% endif %}
+            <a class="text-link" href="https://calendar.google.com/calendar/u/0/r/settings/addbyurl" rel="nofollow">Open Google Calendar</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="story-band">
+    <div>
+      <h2>Next sync phase</h2>
+      <p>After iCal subscriptions are configured, the next implementation can add a staff-only Gmail parser that reads Airbnb reservation messages, extracts listing, check-in, check-out, and guest counts, then upserts private Google Calendar events.</p>
+    </div>
+  </section>
+</main>
+{% endblock %}

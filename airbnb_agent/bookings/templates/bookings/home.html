@@ -1,58 +1,61 @@
 {% extends "bookings/base.html" %}
-{% load static %}
 
-{% block title %}MLADIS Santo Domingo Bookings{% endblock %}
+{% block title %}MLADIS Santo Domingo Vacation Stays{% endblock %}
 
 {% block content %}
 <main>
-  <section class="hero" aria-labelledby="hero-title">
-    <div class="hero-media airbnb-hero-media">
-      {% if hero_item and hero_item.airbnb_listing_id %}
-        <div
-          class="airbnb-embed-frame hero-embed"
-          data-id="{{ hero_item.airbnb_listing_id }}"
-          data-view="home"
-          data-hide-price="true"
-          style="width: 450px; height: 300px; margin: auto;"
-        >
-          <a href="{{ hero_item.airbnb_embed_url }}">View On Airbnb</a>
-          <a href="{{ hero_item.airbnb_embed_url }}" rel="nofollow">{{ hero_item.airbnb_embed_summary }}</a>
-        </div>
-      {% endif %}
-    </div>
+  <section class="hero travel-hero" aria-labelledby="hero-title">
     <div class="hero-content">
-      <h1 id="hero-title">Santo Domingo stays with direct booking support.</h1>
-      <p>Choose an apartment, request dates, and keep the conversation in one place while MLADIS grows into a full booking agent.</p>
+      <h1 id="hero-title">Stay close to Santo Domingo, vacation like you belong here.</h1>
+      <p>Comfortable Airbnb-listed homes with direct host support, tropical Dominican energy, and room for family trips, celebrations, and longer stays.</p>
       <div class="hero-actions">
-        <a class="button primary" href="#booking">Request dates</a>
-        <a class="button secondary" href="#agent">Ask first</a>
+        <a class="button primary" href="#stays">Explore stays</a>
+        <a class="button secondary" href="#booking">Request dates</a>
       </div>
       <dl class="hero-stats">
         <div>
           <dt>3</dt>
-          <dd>Airbnb listings</dd>
+          <dd>Featured stays</dd>
         </div>
         <div>
-          <dt>4.69+</dt>
-          <dd>Guest rating</dd>
+          <dt>4.93</dt>
+          <dd>Top Airbnb rating</dd>
         </div>
         <div>
-          <dt>Direct</dt>
-          <dd>Host follow-up</dd>
+          <dt>$200</dt>
+          <dd>Damage hold option</dd>
         </div>
       </dl>
     </div>
+
+    {% if hero_item %}
+      <a class="hero-photo" href="{{ hero_item.get_absolute_url }}" aria-label="View {{ hero_item.name }}">
+        {% if hero_item.image %}
+          <img src="{{ hero_item.image }}" alt="{{ hero_item.image_alt|default:hero_item.name }}">
+        {% endif %}
+        <div class="hero-photo-caption">
+          <strong>{{ hero_item.name }}</strong>
+          <span>{{ hero_item.review_label }}</span>
+        </div>
+      </a>
+    {% endif %}
   </section>
 
-  <section class="section" id="stays" aria-labelledby="stays-title">
+  <section class="section stays-section" id="stays" aria-labelledby="stays-title">
     <div class="section-heading">
-      <h2 id="stays-title">Available Stays</h2>
-      <p>Official Airbnb listings are embedded for trust, with direct MLADIS inquiries ready underneath.</p>
+      <h2 id="stays-title">Choose your stay.</h2>
+      <p>Each stay links back to the official Airbnb listing for trust, while MLADIS adds direct support, deposit handling, and future agent-assisted booking.</p>
     </div>
 
     <div class="listing-grid">
       {% for item in featured_items %}
-        <article class="listing-card" id="item-{{ item.slug }}">
+        <article class="listing-card image-card" id="item-{{ item.slug }}">
+          <a class="listing-image" href="{{ item.get_absolute_url }}" aria-label="View {{ item.name }}">
+            {% if item.image %}
+              <img src="{{ item.image }}" alt="{{ item.image_alt|default:item.name }}" loading="lazy">
+            {% endif %}
+            <span>{{ item.review_label }}</span>
+          </a>
           <div class="listing-body">
             <div class="listing-title-row">
               <h3>{{ item.name }}</h3>
@@ -66,23 +69,13 @@
                 <li>{{ stat }}</li>
               {% endfor %}
             </ul>
-            {% if item.airbnb_listing_id %}
-              <details class="embed-toggle">
-                <summary>Official Airbnb preview</summary>
-                <div
-                  class="airbnb-embed-frame listing-embed"
-                  data-id="{{ item.airbnb_listing_id }}"
-                  data-view="home"
-                  data-hide-price="true"
-                  style="width: 100%; max-width: 450px; height: 300px; margin: auto;"
-                >
-                  <a href="{{ item.airbnb_embed_url }}">View On Airbnb</a>
-                  <a href="{{ item.airbnb_embed_url }}" rel="nofollow">{{ item.airbnb_embed_summary }}</a>
-                </div>
-              </details>
-            {% endif %}
+            <div class="theme-row" aria-label="Review themes">
+              {% for theme in item.review_themes.all|slice:":3" %}
+                <span>{{ theme.label }}</span>
+              {% endfor %}
+            </div>
             <div class="listing-actions">
-              <a class="button compact" href="{% url 'bookings:home' %}?item={{ item.id }}#booking">Request this stay</a>
+              <a class="button compact" href="{{ item.get_absolute_url }}">View stay</a>
               {% if item.airbnb_embed_url %}
                 <a class="text-link" href="{{ item.airbnb_embed_url }}" rel="nofollow">Open Airbnb</a>
               {% endif %}
@@ -93,10 +86,57 @@
     </div>
   </section>
 
+  <section class="reviews-band" id="reviews" aria-labelledby="reviews-title">
+    <div>
+      <h2 id="reviews-title">Guest proof, made easy to scan.</h2>
+      <p>Airbnb aggregate ratings help visitors trust the stay quickly, while review themes highlight what guests usually care about before booking.</p>
+    </div>
+    <div class="review-grid">
+      {% for item in featured_items %}
+        <article class="review-card">
+          <h3>{{ item.name }}</h3>
+          <p class="review-score">★ {{ item.airbnb_rating }} <span>{{ item.review_count }} reviews</span></p>
+          <div class="rating-bars">
+            {% for label, rating in item.rating_breakdown|slice:":4" %}
+              <div>
+                <span>{{ label }}</span>
+                <strong>{{ rating }}</strong>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="theme-row">
+            {% for theme in item.review_themes.all %}
+              <span>{{ theme.label }}</span>
+            {% endfor %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="about-teaser" aria-labelledby="about-teaser-title">
+    <div class="about-gallery" aria-label="Dominican Republic travel gallery preview">
+      <figure class="demo-tile is-city">
+        <figcaption>Santo Domingo nights</figcaption>
+      </figure>
+      <figure class="demo-tile is-beach">
+        <figcaption>Island day trips</figcaption>
+      </figure>
+      <figure class="demo-tile is-hosted">
+        <figcaption>Hosted with care</figcaption>
+      </figure>
+    </div>
+    <div>
+      <h2 id="about-teaser-title">More than a place to sleep.</h2>
+      <p>MLADIS is building a warmer way to host: practical stays near Santo Domingo, real local context, and a mission that gives travel a little more heart.</p>
+      <a class="button secondary" href="{% url 'bookings:about' %}">Read about MLADIS</a>
+    </div>
+  </section>
+
   <section class="booking-band" id="booking" aria-labelledby="booking-title">
     <div class="booking-copy">
-      <h2 id="booking-title">Request a booking.</h2>
-      <p>Send the dates and guest count now. Later, this same flow can confirm availability, quote services, and let the agent complete the booking directly.</p>
+      <h2 id="booking-title">Request dates, then let us help.</h2>
+      <p>Send your dates, guest count, and the stay you prefer. This same flow is ready to become the direct booking path once live availability and pricing are connected.</p>
       <p class="deposit-note">Damage deposit: {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization hold through Stripe Checkout.</p>
       {% if service_items %}
         <div class="service-list">
@@ -139,7 +179,7 @@
 
   <section class="deposit-band" id="deposit" aria-labelledby="deposit-title">
     <div>
-      <h2 id="deposit-title">Authorize the damage deposit.</h2>
+      <h2 id="deposit-title">Hold the damage deposit securely.</h2>
       <p>Airbnb does not hold the extra damage deposit for this setup, so MLADIS can collect a separate {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization. The hold is captured only if there is a valid damage claim; otherwise it is released.</p>
       <div class="deposit-facts" aria-label="Deposit details">
         <span>{{ deposit_amount|floatformat:0 }} {{ deposit_currency }}</span>
@@ -164,13 +204,23 @@
     </form>
   </section>
 
+  <section class="mission-strip" id="mission" aria-labelledby="mission-strip-title">
+    <div>
+      <h2 id="mission-strip-title">Travel can support something bigger.</h2>
+      <p>Guests can donate to the MLADIS mission fund for children with cancer, school support, and community care. Donations are processed through Stripe.</p>
+    </div>
+    <a class="button primary" href="{% url 'bookings:about' %}#mission">Donate to the mission</a>
+  </section>
+
   <section class="agent-band" id="agent" aria-labelledby="agent-title">
     <div>
       <h2 id="agent-title">Ask before booking.</h2>
       <p>Start with dates, fit, services, or special requests. The current agent stores conversations and is ready for the real intelligence layer.</p>
     </div>
     <div class="agent-panel">
-      <div class="agent-log" id="agent-log" aria-live="polite"></div>
+      <div class="agent-log" id="agent-log" aria-live="polite">
+        <p class="agent-empty">Ask about dates, guests, amenities, airport pickup, or which stay fits your group.</p>
+      </div>
       <form class="agent-form" id="agent-form">
         <select id="agent-item" aria-label="Booking to ask about">
           <option value="">Any booking</option>

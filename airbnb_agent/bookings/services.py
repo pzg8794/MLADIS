@@ -4,7 +4,7 @@ from django.conf import settings
 from django.urls import reverse
 import stripe
 
-from .models import AgentConversation, BookableItem, DamageDeposit, DepositStatus
+from .models import AgentConversation, BookableItem, DamageDeposit, DepositStatus, Donation, DonationStatus
 
 
 @dataclass(frozen=True)
@@ -197,4 +197,129 @@ class DamageDepositService:
             "damage_deposit_id": str(deposit.id),
             "bookable_item_id": str(deposit.item_id or ""),
             "booking_inquiry_id": str(deposit.inquiry_id or ""),
+        }
+
+
+class DonationService:
+    def __init__(self, api_key=None):
+        self.api_key = api_key if api_key is not None else settings.STRIPE_SECRET_KEY
+        stripe.api_key = self.api_key
+        stripe.api_version = settings.STRIPE_API_VERSION
+
+    @property
+    def is_configured(self):
+        return bool(self.api_key)
+
+    def create_checkout_session(self, donation: Donation, request) -> DepositCheckoutResult:
+        if not self.is_configured:
+            donation.status = DonationStatus.REQUIRES_CONFIGURATION
+            donation.notes = "Stripe is not configured. Set STRIPE_SECRET_KEY before accepting donations."
+            donation.save(update_fields=["status", "notes", "updated_at"])
+            return DepositCheckoutResult(
+                success=False,
+                message="Stripe is not configured yet, so no donation checkout was created.",
+            )
+
+        cause_name = donation.cause.name if donation.cause else "MLADIS mission fund"
+        checkout_kwargs = {
+            "mode": "payment",
+            "line_items": [
+                {
+                    "price_data": {
+                        "currency": donation.currency,
+                        "product_data": {
+                            "name": f"Donation to {cause_name}",
+                            "description": "MLADIS mission donation for community support.",
+                        },
+                        "unit_amount": donation.amount_cents,
+                    },
+                    "quantity": 1,
+                }
+            ],
+            "payment_intent_data": {
+                "description": f"MLADIS donation to {cause_name}",
+                "metadata": self._metadata(donation),
+            },
+            "metadata": self._metadata(donation),
+            "success_url": request.build_absolute_uri(reverse("bookings:donation-success"))
+            + "?session_id={CHECKOUT_SESSION_ID}",
+            "cancel_url": request.build_absolute_uri(reverse("bookings:about")) + "#mission",
+        }
+        if donation.email:
+            checkout_kwargs["customer_email"] = donation.email
+
+        try:
+            session = stripe.checkout.Session.create(**checkout_kwargs)
+        except stripe.StripeError as error:
+            donation.status = DonationStatus.FAILED
+            donation.notes = str(error)
+            donation.save(update_fields=["status", "notes", "updated_at"])
+            return DepositCheckoutResult(success=False, message=str(error))
+
+        donation.status = DonationStatus.CHECKOUT_CREATED
+        donation.stripe_checkout_session_id = session.id
+        donation.checkout_url = session.url or ""
+        if session.payment_intent:
+            donation.stripe_payment_intent_id = session.payment_intent
+        donation.save(
+            update_fields=[
+                "status",
+                "stripe_checkout_session_id",
+                "stripe_payment_intent_id",
+                "checkout_url",
+                "updated_at",
+            ]
+        )
+        return DepositCheckoutResult(
+            success=True,
+            message="Donation checkout created.",
+            checkout_url=donation.checkout_url,
+        )
+
+    def sync_checkout_session(self, session_id):
+        if not self.is_configured:
+            return None
+        session = stripe.checkout.Session.retrieve(session_id)
+        donation = Donation.objects.filter(stripe_checkout_session_id=session.id).first()
+        if not donation:
+            return None
+        if session.payment_intent:
+            donation.stripe_payment_intent_id = session.payment_intent
+        if session.payment_status == "paid":
+            donation.status = DonationStatus.PAID
+        donation.save(update_fields=["status", "stripe_payment_intent_id", "updated_at"])
+        return donation
+
+    def handle_event(self, event):
+        event_type = event.get("type")
+        payload = event.get("data", {}).get("object", {})
+
+        if event_type == "checkout.session.completed":
+            donation = Donation.objects.filter(stripe_checkout_session_id=payload.get("id")).first()
+            if donation:
+                donation.stripe_payment_intent_id = payload.get("payment_intent") or ""
+                donation.status = DonationStatus.PAID
+                donation.save(update_fields=["stripe_payment_intent_id", "status", "updated_at"])
+            return donation
+
+        if event_type == "payment_intent.succeeded":
+            donation = Donation.objects.filter(stripe_payment_intent_id=payload.get("id")).first()
+            if donation:
+                donation.status = DonationStatus.PAID
+                donation.save(update_fields=["status", "updated_at"])
+            return donation
+
+        if event_type == "payment_intent.canceled":
+            donation = Donation.objects.filter(stripe_payment_intent_id=payload.get("id")).first()
+            if donation:
+                donation.status = DonationStatus.CANCELED
+                donation.save(update_fields=["status", "updated_at"])
+            return donation
+
+        return None
+
+    def _metadata(self, donation):
+        return {
+            "donation_id": str(donation.id),
+            "mission_cause_id": str(donation.cause_id or ""),
         }

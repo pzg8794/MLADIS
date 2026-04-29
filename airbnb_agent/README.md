@@ -5,7 +5,8 @@ Django scaffold for the MLADIS booking website and future customer agent.
 The app starts with three Santo Domingo Airbnb listings, direct booking inquiries,
 an admin-managed `BookableItem` model for stays/services/transport/experiences,
 an admin-managed `DamageDeposit` model for a $200 Stripe authorization hold,
-and an agent API boundary that can later connect to live booking logic.
+mission donations, Airbnb image galleries, review summaries, admin-only calendar
+setup, and an agent API boundary that can later connect to live booking logic.
 
 ## Local Run
 
@@ -27,6 +28,7 @@ Visit `http://localhost:8000`.
 - Required environment variables: `SECRET_KEY`, `ALLOWED_HOSTS`
 - Optional environment variables: `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 - Deposit settings: `DEPOSIT_AMOUNT_CENTS=20000`, `DEPOSIT_CURRENCY=usd`
+- Donation setting: `DONATION_CURRENCY=usd`
 - Health check path: `/healthz`
 
 The app currently returns an agent-ready setup/stub response. Replace
@@ -47,6 +49,13 @@ Webhook endpoint:
 
 ## Initial Airbnb Listings
 
-- `588632365342578374`: Vacation home in Santo Domingo, 4.69 rating, 6 bedrooms, 8 beds, 4 private baths
-- `587194328968598250`: Vacation home in Santo Domingo, 4.88 rating, 3 bedrooms, 4 beds, 2 private baths
-- `582161420407543691`: Vacation home in Santo Domingo, 4.93 rating, 3 bedrooms, 4 beds, 2 private baths
+- `588632365342578374`: 6 Bedrooms Vacation Home & Pool, 4.69 rating, 26 reviews, 6 bedrooms, 8 beds, 4 private baths
+- `587194328968598250`: 3 Bedrooms Vacation Home & Pool G-102, 4.88 rating, 24 reviews, 3 bedrooms, 4 beds, 2 private baths
+- `582161420407543691`: 3 Bedrooms Vacation Home & Pool G-101, 4.93 rating, 42 reviews, 3 bedrooms, 4 beds, 2 private baths
+
+## Marketing Pages
+
+- `/` is the travel-forward homepage with stay cards, Airbnb-hosted images, review proof, booking, deposit, mission, and agent sections.
+- `/stays/<slug>/` gives every stay its own page with hero image, gallery, review summary, booking form, and deposit callout.
+- `/about/` sells the Dominican Republic/Santo Domingo travel story and includes Stripe donation checkout for mission causes.
+- `/ops/calendar/` is staff-only and supports the v1 manual Airbnb iCal setup path for Google Calendar.

@@ -14,14 +14,34 @@
         <span>MLADIS</span>
       </a>
       <nav class="nav-links" aria-label="Primary">
-        <a href="#stays">Stays</a>
-        <a href="#booking">Book</a>
-        <a href="#deposit">Deposit</a>
-        <a href="#agent">Agent</a>
+        <a href="{% url 'bookings:home' %}#stays">Stays</a>
+        <a href="{% url 'bookings:about' %}">About</a>
+        <a href="{% url 'bookings:about' %}#mission">Mission</a>
+        <a href="{% url 'bookings:home' %}#reviews">Reviews</a>
+        <a href="{% url 'bookings:home' %}#booking">Book</a>
+        {% if request.user.is_staff %}
+          <a href="{% url 'bookings:calendar-ops' %}">Calendar</a>
+        {% endif %}
       </nav>
     </header>
 
     {% block content %}{% endblock %}
+
+    <footer class="site-footer">
+      <div>
+        <a class="brand footer-brand" href="{% url 'bookings:home' %}" aria-label="MLADIS home">
+          <span class="brand-mark">M</span>
+          <span>MLADIS</span>
+        </a>
+        <p>Santo Domingo stays, direct host support, and a mission-driven travel experience.</p>
+      </div>
+      <nav aria-label="Footer">
+        <a href="{% url 'bookings:home' %}#stays">Stays</a>
+        <a href="{% url 'bookings:about' %}">About</a>
+        <a href="{% url 'bookings:about' %}#mission">Donate</a>
+        <a href="{% url 'bookings:home' %}#agent">Agent</a>
+      </nav>
+    </footer>
 
     <script src="{% static 'bookings/agent.js' %}" defer></script>
     <script async src="https://www.airbnb.com/embeddable/airbnb_jssdk"></script>

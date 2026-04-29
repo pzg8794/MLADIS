@@ -1,0 +1,146 @@
+{% extends "bookings/base.html" %}
+
+{% block title %}{{ stay.name }} | MLADIS{% endblock %}
+
+{% block content %}
+<main>
+  <section class="stay-hero">
+    <div class="stay-hero-copy">
+      <a class="back-link" href="{% url 'bookings:home' %}#stays">All stays</a>
+      <h1>{{ stay.name }}</h1>
+      <p>{{ stay.marketing_headline|default:stay.short_description }}</p>
+      <ul class="stat-row">
+        {% for stat in stay.stat_list %}
+          <li>{{ stat }}</li>
+        {% endfor %}
+      </ul>
+      <div class="hero-actions">
+        <a class="button primary" href="#booking">Request this stay</a>
+        {% if stay.airbnb_embed_url %}
+          <a class="button secondary" href="{{ stay.airbnb_embed_url }}" rel="nofollow">Open Airbnb</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="stay-hero-image">
+      {% if stay.image %}
+        <img src="{{ stay.image }}" alt="{{ stay.image_alt|default:stay.name }}">
+      {% endif %}
+      <div class="hero-photo-caption">
+        <strong>★ {{ stay.airbnb_rating }}</strong>
+        <span>{{ stay.review_count }} Airbnb reviews</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section stay-gallery-section" aria-labelledby="gallery-title">
+    <div class="section-heading">
+      <h2 id="gallery-title">Gallery</h2>
+      <p>Airbnb-hosted photos keep the visual story tied to the official listing. Demo slots can stay in place until more approved photos are added.</p>
+    </div>
+    <div class="gallery-grid">
+      {% for image in stay.gallery_images.all %}
+        <figure class="{% if forloop.first %}is-featured{% endif %}">
+          <img src="{{ image.image_url }}" alt="{{ image.alt_text }}" loading="lazy">
+          {% if image.caption %}
+            <figcaption>{{ image.caption }}</figcaption>
+          {% endif %}
+        </figure>
+      {% empty %}
+        <figure class="demo-tile is-hosted is-featured">
+          <figcaption>Gallery coming soon</figcaption>
+        </figure>
+        <figure class="demo-tile is-city">
+          <figcaption>Santo Domingo</figcaption>
+        </figure>
+        <figure class="demo-tile is-beach">
+          <figcaption>Tropical stay</figcaption>
+        </figure>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="stay-story">
+    <article>
+      <h2>Why guests choose it</h2>
+      <p>{{ stay.marketing_description|default:stay.description }}</p>
+      <div class="theme-row">
+        {% for theme in stay.review_themes.all %}
+          <span>{{ theme.label }}</span>
+        {% endfor %}
+      </div>
+    </article>
+    <aside class="ratings-panel" aria-labelledby="ratings-title">
+      <h2 id="ratings-title">Airbnb review snapshot</h2>
+      <p class="review-score">★ {{ stay.airbnb_rating }} <span>{{ stay.review_count }} reviews</span></p>
+      <div class="rating-bars">
+        {% for label, rating in stay.rating_breakdown %}
+          <div>
+            <span>{{ label }}</span>
+            <strong>{{ rating }}</strong>
+          </div>
+        {% endfor %}
+      </div>
+    </aside>
+  </section>
+
+  <section class="booking-band detail-booking" id="booking" aria-labelledby="booking-title">
+    <div class="booking-copy">
+      <h2 id="booking-title">Request {{ stay.name }}.</h2>
+      <p>Tell us the dates, number of guests, and anything special you need. We will follow up with availability and the best next step.</p>
+      <p class="deposit-note">Damage deposit: {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization hold through Stripe Checkout.</p>
+    </div>
+    <form class="booking-form" method="post" action="{% url 'bookings:inquiry-create' %}" novalidate>
+      {% csrf_token %}
+      {% for field in booking_form %}
+        <div class="field-group {% if field.errors %}has-error{% endif %}">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <p class="field-error">{{ field.errors|striptags }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button class="button primary full" type="submit">Send request</button>
+    </form>
+  </section>
+
+  <section class="deposit-band compact-band" id="deposit" aria-labelledby="deposit-title">
+    <div>
+      <h2 id="deposit-title">Secure deposit hold</h2>
+      <p>Start a separate {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization hold for this stay. It is captured only if there is a valid damage claim.</p>
+    </div>
+    <form class="deposit-form" method="post" action="{% url 'bookings:deposit-checkout' %}">
+      {% csrf_token %}
+      {% for field in deposit_form %}
+        <div class="field-group {% if field.errors %}has-error{% endif %}">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <p class="field-error">{{ field.errors|striptags }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button class="button primary full" type="submit">Start secure deposit hold</button>
+    </form>
+  </section>
+
+  {% if other_stays %}
+    <section class="section" aria-labelledby="other-stays-title">
+      <div class="section-heading">
+        <h2 id="other-stays-title">Compare another stay.</h2>
+        <p>Planning for a different group size? These stays share the same direct MLADIS support.</p>
+      </div>
+      <div class="mini-stay-row">
+        {% for item in other_stays %}
+          <a class="mini-stay" href="{{ item.get_absolute_url }}">
+            {% if item.image %}
+              <img src="{{ item.image }}" alt="{{ item.image_alt|default:item.name }}" loading="lazy">
+            {% endif %}
+            <span>{{ item.name }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+</main>
+{% endblock %}

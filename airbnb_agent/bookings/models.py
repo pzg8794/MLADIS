@@ -27,6 +27,15 @@ class DepositStatus(models.TextChoices):
     FAILED = "failed", "Failed"
 
 
+class DonationStatus(models.TextChoices):
+    NEW = "new", "New"
+    REQUIRES_CONFIGURATION = "requires_configuration", "Requires Stripe configuration"
+    CHECKOUT_CREATED = "checkout_created", "Checkout created"
+    PAID = "paid", "Paid"
+    CANCELED = "canceled", "Canceled"
+    FAILED = "failed", "Failed"
+
+
 class BookableItem(models.Model):
     name = models.CharField(max_length=160)
     slug = models.SlugField(unique=True)
@@ -37,8 +46,11 @@ class BookableItem(models.Model):
     )
     short_description = models.CharField(max_length=220)
     description = models.TextField(blank=True)
+    marketing_headline = models.CharField(max_length=180, blank=True)
+    marketing_description = models.TextField(blank=True)
     location_label = models.CharField(max_length=160, blank=True)
     image = models.CharField(max_length=240, blank=True)
+    image_alt = models.CharField(max_length=180, blank=True)
     starting_price = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     price_unit = models.CharField(max_length=40, default="night")
     max_guests = models.PositiveSmallIntegerField(null=True, blank=True)
@@ -49,6 +61,13 @@ class BookableItem(models.Model):
     airbnb_listing_id = models.CharField(max_length=40, blank=True)
     airbnb_url = models.URLField(blank=True)
     airbnb_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    review_count = models.PositiveSmallIntegerField(null=True, blank=True)
+    rating_accuracy = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    rating_checkin = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    rating_cleanliness = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    rating_communication = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    rating_location = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    rating_value = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
     is_featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -61,6 +80,8 @@ class BookableItem(models.Model):
         return self.name
 
     def get_absolute_url(self):
+        if self.category == BookingCategory.STAY:
+            return reverse("bookings:stay-detail", kwargs={"slug": self.slug})
         return reverse("bookings:home") + f"#item-{self.slug}"
 
     @property
@@ -106,6 +127,54 @@ class BookableItem(models.Model):
         elif self.bathrooms:
             stats.append(f"{self.bathrooms:g} baths")
         return stats
+
+    @property
+    def review_label(self):
+        if self.airbnb_rating and self.review_count:
+            return f"{self.airbnb_rating} from {self.review_count} Airbnb reviews"
+        if self.airbnb_rating:
+            return f"{self.airbnb_rating} Airbnb rating"
+        return "Airbnb listing"
+
+    @property
+    def rating_breakdown(self):
+        ratings = [
+            ("Accuracy", self.rating_accuracy),
+            ("Check-in", self.rating_checkin),
+            ("Cleanliness", self.rating_cleanliness),
+            ("Communication", self.rating_communication),
+            ("Location", self.rating_location),
+            ("Value", self.rating_value),
+        ]
+        return [(label, rating) for label, rating in ratings if rating is not None]
+
+
+class StayGalleryImage(models.Model):
+    item = models.ForeignKey(BookableItem, on_delete=models.CASCADE, related_name="gallery_images")
+    image_url = models.URLField(max_length=1000)
+    alt_text = models.CharField(max_length=180)
+    caption = models.CharField(max_length=160, blank=True)
+    is_demo = models.BooleanField(default=False)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["item", "sort_order", "id"]
+
+    def __str__(self):
+        return f"{self.item.name} image {self.sort_order}"
+
+
+class ReviewTheme(models.Model):
+    item = models.ForeignKey(BookableItem, on_delete=models.CASCADE, related_name="review_themes")
+    label = models.CharField(max_length=80)
+    description = models.CharField(max_length=180)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["item", "sort_order", "label"]
+
+    def __str__(self):
+        return f"{self.item.name}: {self.label}"
 
 
 class BookingInquiry(models.Model):
@@ -188,6 +257,81 @@ class DamageDeposit(models.Model):
     @property
     def display_amount(self):
         return f"${self.amount:,.0f} {self.currency.upper()}"
+
+
+class MissionCause(models.Model):
+    name = models.CharField(max_length=120)
+    slug = models.SlugField(unique=True)
+    description = models.TextField()
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Donation(models.Model):
+    cause = models.ForeignKey(
+        MissionCause,
+        on_delete=models.SET_NULL,
+        related_name="donations",
+        null=True,
+        blank=True,
+    )
+    donor_name = models.CharField(max_length=160, blank=True)
+    email = models.EmailField(blank=True)
+    amount_cents = models.PositiveIntegerField()
+    currency = models.CharField(max_length=3, default="usd")
+    status = models.CharField(
+        max_length=32,
+        choices=DonationStatus.choices,
+        default=DonationStatus.NEW,
+    )
+    stripe_checkout_session_id = models.CharField(max_length=255, blank=True)
+    stripe_payment_intent_id = models.CharField(max_length=255, blank=True)
+    checkout_url = models.URLField(blank=True, max_length=1000)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        cause_name = self.cause.name if self.cause else "MLADIS mission"
+        return f"{self.display_amount} donation to {cause_name}"
+
+    @property
+    def amount(self):
+        return self.amount_cents / 100
+
+    @property
+    def display_amount(self):
+        return f"${self.amount:,.0f} {self.currency.upper()}"
+
+
+class CalendarFeed(models.Model):
+    item = models.OneToOneField(BookableItem, on_delete=models.CASCADE, related_name="calendar_feed")
+    airbnb_ical_url = models.URLField(blank=True, max_length=1000)
+    google_calendar_name = models.CharField(max_length=160, blank=True)
+    notes = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    last_checked_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["item__name"]
+
+    def __str__(self):
+        return f"Calendar feed for {self.item.name}"
+
+    @property
+    def is_configured(self):
+        return bool(self.airbnb_ical_url)
 
 
 class AgentConversation(models.Model):

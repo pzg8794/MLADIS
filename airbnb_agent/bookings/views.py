@@ -2,6 +2,7 @@ import json
 from uuid import uuid4
 
 from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
@@ -9,12 +10,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views import View
-from django.views.generic import TemplateView
+from django.views.generic import DetailView, TemplateView
 import stripe
 
-from .forms import BookingInquiryForm, DamageDepositForm
-from .models import BookableItem, BookingCategory
-from .services import AgentRequest, BookingAgentService, DamageDepositService
+from .forms import BookingInquiryForm, DamageDepositForm, DonationForm
+from .models import BookableItem, BookingCategory, CalendarFeed, MissionCause
+from .services import AgentRequest, BookingAgentService, DamageDepositService, DonationService
 
 
 class HomePageView(TemplateView):
@@ -25,10 +26,14 @@ class HomePageView(TemplateView):
         selected_item_id = request.GET.get("item", "")
         if form is None and selected_item_id:
             form = BookingInquiryForm(initial={"item": selected_item_id})
-        featured_items = BookableItem.objects.filter(is_active=True, is_featured=True)
+        featured_items = (
+            BookableItem.objects.filter(is_active=True, is_featured=True)
+            .prefetch_related("gallery_images", "review_themes")
+        )
         return {
             "booking_form": form or BookingInquiryForm(),
             "deposit_form": DamageDepositForm(initial={"item": selected_item_id} if selected_item_id else None),
+            "donation_form": DonationForm(),
             "deposit_amount": settings.DEPOSIT_AMOUNT_CENTS / 100,
             "deposit_currency": settings.DEPOSIT_CURRENCY.upper(),
             "featured_items": featured_items,
@@ -43,6 +48,7 @@ class HomePageView(TemplateView):
                 ],
             ),
             "active_items": BookableItem.objects.filter(is_active=True),
+            "mission_causes": MissionCause.objects.filter(is_active=True),
             "selected_item_id": selected_item_id,
             "submitted": request.GET.get("submitted") == "1",
         }
@@ -50,6 +56,74 @@ class HomePageView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(self.booking_context(self.request))
+        return context
+
+
+class StayDetailView(DetailView):
+    model = BookableItem
+    template_name = "bookings/stay_detail.html"
+    context_object_name = "stay"
+    slug_field = "slug"
+    slug_url_kwarg = "slug"
+
+    def get_queryset(self):
+        return (
+            BookableItem.objects.filter(is_active=True, category=BookingCategory.STAY)
+            .prefetch_related("gallery_images", "review_themes")
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "booking_form": BookingInquiryForm(initial={"item": self.object.id}),
+                "deposit_form": DamageDepositForm(initial={"item": self.object.id}),
+                "deposit_amount": settings.DEPOSIT_AMOUNT_CENTS / 100,
+                "deposit_currency": settings.DEPOSIT_CURRENCY.upper(),
+                "other_stays": BookableItem.objects.filter(
+                    is_active=True,
+                    is_featured=True,
+                    category=BookingCategory.STAY,
+                )
+                .exclude(id=self.object.id)
+                .prefetch_related("gallery_images"),
+            }
+        )
+        return context
+
+
+class AboutPageView(TemplateView):
+    template_name = "bookings/about.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "donation_form": DonationForm(),
+                "mission_causes": MissionCause.objects.filter(is_active=True),
+                "featured_items": BookableItem.objects.filter(is_active=True, is_featured=True),
+                "gallery_tiles": [
+                    {
+                        "title": "Santo Domingo",
+                        "text": "Colonial streets, modern restaurants, and easy local access.",
+                        "class_name": "is-city",
+                        "image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e3/SantoDomingoedit.JPG",
+                    },
+                    {
+                        "title": "Tropical days",
+                        "text": "Beach energy, warm weather, and room for family memories.",
+                        "class_name": "is-beach",
+                        "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/78/Bavaro.jpg",
+                    },
+                    {
+                        "title": "Hosted with care",
+                        "text": "Direct support before, during, and after your stay.",
+                        "class_name": "is-hosted",
+                        "image_url": "https://a0.muscache.com/im/pictures/miso/Hosting-582161420407543691/original/c097c0de-d8eb-45da-be8a-644065f20ab8.jpeg?im_w=1200&quality=80&auto=webp",
+                    },
+                ],
+            }
+        )
         return context
 
 
@@ -90,6 +164,45 @@ class DamageDepositCheckoutView(View):
 
         messages.warning(request, result.message)
         return redirect(reverse("bookings:home") + "#deposit")
+
+
+class DonationCheckoutView(View):
+    service_class = DonationService
+
+    def post(self, request):
+        form = DonationForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Please choose a valid donation amount and mission cause.")
+            context = AboutPageView().get_context_data()
+            context["donation_form"] = form
+            return render(request, "bookings/about.html", context, status=400)
+
+        donation = form.save()
+        result = self.service_class().create_checkout_session(donation, request)
+        if result.success:
+            return redirect(result.checkout_url)
+
+        messages.warning(request, result.message)
+        return redirect(reverse("bookings:about") + "#mission")
+
+
+class DonationSuccessView(View):
+    service_class = DonationService
+
+    def get(self, request):
+        session_id = request.GET.get("session_id", "")
+        donation = None
+        if session_id:
+            try:
+                donation = self.service_class().sync_checkout_session(session_id)
+            except stripe.StripeError:
+                donation = None
+
+        if donation:
+            messages.success(request, f"Thank you for your {donation.display_amount} donation.")
+        else:
+            messages.success(request, "Thank you. Your donation checkout was completed.")
+        return redirect(reverse("bookings:about") + "#mission")
 
 
 class DamageDepositSuccessView(View):
@@ -135,7 +248,26 @@ class StripeWebhookView(View):
             return HttpResponse(status=400)
 
         self.service_class().handle_event(event)
+        DonationService().handle_event(event)
         return HttpResponse(status=200)
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class CalendarOpsView(TemplateView):
+    template_name = "bookings/ops_calendar.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "calendar_feeds": CalendarFeed.objects.select_related("item"),
+                "stays": BookableItem.objects.filter(
+                    is_active=True,
+                    category=BookingCategory.STAY,
+                ).select_related("calendar_feed"),
+            }
+        )
+        return context
 
 
 class AgentAPIView(View):
