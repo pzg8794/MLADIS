@@ -275,6 +275,14 @@ class AccountReservationTests(TestCase):
         self.assertContains(response, "Facebook")
         self.assertContains(response, "Microsoft")
         self.assertContains(response, "GitHub")
+        self.assertContains(response, "setup needed")
+        self.assertNotContains(response, 'action="/oauth/google/login/"')
+
+    def test_unconfigured_google_login_redirects_instead_of_erroring(self):
+        response = self.client.post(reverse("google_login"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("bookings:login"))
 
     def test_account_dashboard_and_cancel_reservation(self):
         user = get_user_model().objects.create_user(

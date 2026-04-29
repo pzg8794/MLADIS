@@ -1,5 +1,10 @@
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.core.exceptions import ImmediateHttpResponse
+from allauth.socialaccount.models import SocialApp
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.utils.translation import gettext_lazy as _
 
 from .models import CustomerProfile
 from .services import AdminAccessService
@@ -25,6 +30,18 @@ class MLADISAccountAdapter(DefaultAccountAdapter):
 
 
 class MLADISSocialAccountAdapter(DefaultSocialAccountAdapter):
+    def get_app(self, request, provider, client_id=None):
+        try:
+            return super().get_app(request, provider, client_id=client_id)
+        except SocialApp.DoesNotExist:
+            provider_name = getattr(provider, "name", None) or str(provider).title()
+            messages.warning(
+                request,
+                _("%(provider)s sign-in is not configured yet. Use email login for now.")
+                % {"provider": provider_name},
+            )
+            raise ImmediateHttpResponse(redirect("bookings:login"))
+
     def populate_user(self, request, sociallogin, data):
         user = super().populate_user(request, sociallogin, data)
         extra_data = getattr(sociallogin.account, "extra_data", {}) or {}

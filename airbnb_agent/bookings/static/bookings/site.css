@@ -1116,6 +1116,27 @@ a {
   background: #f5fbf8;
 }
 
+.button.social.is-disabled {
+  color: #7d8881;
+  background: #f4f6f1;
+  border-style: dashed;
+  cursor: not-allowed;
+  opacity: 0.88;
+}
+
+.button.social span {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.auth-note {
+  margin: -8px 0 18px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .auth-divider {
   display: grid;
   grid-template-columns: 1fr auto 1fr;

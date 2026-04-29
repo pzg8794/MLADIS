@@ -1,5 +1,5 @@
 {% extends "bookings/base.html" %}
-{% load i18n socialaccount %}
+{% load i18n %}
 
 {% block title %}{% trans "Create account" %} | MLADIS{% endblock %}
 
@@ -8,24 +8,26 @@
   <section class="auth-panel">
     <h1>{% trans "Create your MLADIS account" %}</h1>
     <p>{% trans "Track reservations, invoices, cancellation windows, and future booking updates." %}</p>
+    {% if messages %}
+      <div class="form-success" role="status">
+        {% for message in messages %}
+          <p>{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
     <div class="social-auth-grid" aria-label="{% trans 'Social signup options' %}">
-      <form method="post" action="{% url 'google_login' %}">
-        {% csrf_token %}
-        <button class="button social full" type="submit">Google</button>
-      </form>
-      <form method="post" action="{% url 'facebook_login' %}">
-        {% csrf_token %}
-        <button class="button social full" type="submit">Facebook</button>
-      </form>
-      <form method="post" action="{% url 'microsoft_login' %}">
-        {% csrf_token %}
-        <button class="button social full" type="submit">Microsoft</button>
-      </form>
-      <form method="post" action="{% url 'github_login' %}">
-        {% csrf_token %}
-        <button class="button social full" type="submit">GitHub</button>
-      </form>
+      {% for provider in social_login_providers %}
+        {% if provider.is_configured %}
+          <form method="post" action="{{ provider.login_url }}">
+            {% csrf_token %}
+            <button class="button social full" type="submit">{{ provider.label }}</button>
+          </form>
+        {% else %}
+          <button class="button social full is-disabled" type="button" disabled>{{ provider.label }} <span>{% trans "setup needed" %}</span></button>
+        {% endif %}
+      {% endfor %}
     </div>
+    <p class="auth-note">{% trans "Social signup will turn on after OAuth credentials are added in admin. Use email signup for now." %}</p>
     <div class="auth-divider"><span>{% trans "or create with email" %}</span></div>
     <form method="post" class="booking-form">
       {% csrf_token %}
