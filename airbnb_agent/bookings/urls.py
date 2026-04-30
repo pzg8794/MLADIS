@@ -1,6 +1,7 @@
 from django.urls import path
 from django.contrib.auth.views import LoginView, LogoutView
 
+from .reports import OpsReportsView
 from .views import (
     AgentAPIView,
     AboutPageView,
@@ -43,6 +44,7 @@ urlpatterns = [
     path("donations/checkout/", DonationCheckoutView.as_view(), name="donation-checkout"),
     path("donations/success/", DonationSuccessView.as_view(), name="donation-success"),
     path("ops/dashboard/", OpsDashboardView.as_view(), name="ops-dashboard"),
+    path("ops/reports/", OpsReportsView.as_view(), name="ops-reports"),
     path("ops/calendar/", CalendarOpsView.as_view(), name="calendar-ops"),
     path("stripe/webhook/", StripeWebhookView.as_view(), name="stripe-webhook"),
     path("api/agent/", AgentAPIView.as_view(), name="agent-api"),

@@ -1,0 +1,23 @@
+<article class="ops-report-card{% if wide %} is-wide{% endif %}">
+  <header>
+    <h2>{{ chart.title }}</h2>
+    {% if chart.max_total %}
+      <span>{{ chart.max_total }} max</span>
+    {% endif %}
+  </header>
+  <div class="ops-bar-chart" role="list" aria-label="{{ chart.title }}">
+    {% for row in chart.rows %}
+      <div class="ops-bar-row" role="listitem">
+        <div class="ops-bar-label">
+          <strong>{{ row.label }}</strong>
+          <span>{{ row.total }}</span>
+        </div>
+        <div class="ops-bar-track" aria-hidden="true">
+          <span style="width: {{ row.width }}%"></span>
+        </div>
+      </div>
+    {% empty %}
+      <p class="ops-empty">No data yet.</p>
+    {% endfor %}
+  </div>
+</article>
