@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
 from .models import (
     AdminAccess,
@@ -270,7 +271,28 @@ class PageVisitAdmin(admin.ModelAdmin):
 
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
-    list_display = ("site_name", "contact_email", "public_address_label", "updated_at")
+    list_display = ("site_name", "logo_status", "contact_email", "public_address_label", "updated_at")
+    readonly_fields = ("logo_preview", "updated_at")
+    fieldsets = (
+        ("Branding", {"fields": ("site_name", "logo", "logo_url", "logo_preview")}),
+        ("Contact", {"fields": ("contact_email", "public_address_label", "updated_at")}),
+    )
+
+    @admin.display(description="Logo")
+    def logo_status(self, obj):
+        return "Uploaded" if obj.logo_display_url else "Using M fallback"
+
+    @admin.display(description="Current logo preview")
+    def logo_preview(self, obj):
+        if not obj.logo_display_url:
+            return format_html(
+                '<div style="display:grid;place-items:center;width:72px;height:72px;color:#fff;background:#10665f;border-radius:10px;font-weight:900;font-size:2rem;">M</div>'
+            )
+        return format_html(
+            '<img src="{}" alt="{} logo" style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid #dbe4dc;">',
+            obj.logo_display_url,
+            obj.site_name,
+        )
 
 
 @admin.register(SiteContentBlock)
