@@ -1343,6 +1343,69 @@ a {
   border-top: 1px solid var(--line);
 }
 
+.policy-page {
+  align-items: start;
+  background: #fff;
+}
+
+.policy-copy {
+  display: grid;
+  gap: 16px;
+}
+
+.policy-kicker {
+  margin: 0;
+  color: var(--forest);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.policy-page h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 4.4vw, 4rem);
+  line-height: 1;
+}
+
+.policy-lead {
+  max-width: 60ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.policy-grid {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.policy-card {
+  padding: 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(23, 35, 33, 0.06);
+}
+
+.policy-card h2 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+
+.policy-card ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.policy-card li + li {
+  margin-top: 10px;
+}
+
 .cause-grid {
   margin-top: 24px;
 }
@@ -1416,6 +1479,7 @@ a {
   .listing-grid,
   .review-grid,
   .ops-grid,
+  .policy-grid,
   .review-highlight-grid,
   .service-list,
   .ops-metric-grid,
@@ -1439,6 +1503,10 @@ a {
   .site-footer nav {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .policy-grid {
+    grid-template-columns: 1fr;
   }
 
   .section-heading {

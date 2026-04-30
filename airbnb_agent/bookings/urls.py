@@ -8,6 +8,7 @@ from .views import (
     BookingInquiryCreateView,
     CalendarOpsView,
     CustomerDashboardView,
+    DataDeletionPageView,
     DamageDepositCheckoutView,
     DamageDepositSuccessView,
     DonationCheckoutView,
@@ -15,12 +16,14 @@ from .views import (
     HomePageView,
     InvoicePrintView,
     OpsDashboardView,
+    PrivacyPolicyPageView,
     ReservationCancelView,
     ReservationDetailView,
     ReservationUpdateView,
     SignUpView,
     StayDetailView,
     StripeWebhookView,
+    TermsPageView,
 )
 
 
@@ -29,6 +32,9 @@ app_name = "bookings"
 urlpatterns = [
     path("", HomePageView.as_view(), name="home"),
     path("about/", AboutPageView.as_view(), name="about"),
+    path("privacy/", PrivacyPolicyPageView.as_view(), name="privacy-policy"),
+    path("terms/", TermsPageView.as_view(), name="terms"),
+    path("data-deletion/", DataDeletionPageView.as_view(), name="data-deletion"),
     path("accounts/signup/", SignUpView.as_view(), name="signup"),
     path("accounts/login/", LoginView.as_view(template_name="registration/login.html"), name="login"),
     path("accounts/logout/", LogoutView.as_view(), name="logout"),

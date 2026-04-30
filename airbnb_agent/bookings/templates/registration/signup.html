@@ -20,14 +20,18 @@
         {% if provider.is_configured %}
           <form method="post" action="{{ provider.login_url }}">
             {% csrf_token %}
-            <button class="button social full" type="submit">{{ provider.label }}</button>
+            <button class="button social full" type="submit">{{ provider.button_label }}</button>
           </form>
         {% else %}
-          <button class="button social full is-disabled" type="button" disabled>{{ provider.label }} <span>{% trans "setup needed" %}</span></button>
+          <button class="button social full is-disabled" type="button" disabled>{{ provider.button_label }} <span>{% trans "setup needed" %}</span></button>
         {% endif %}
       {% endfor %}
     </div>
-    <p class="auth-note">{% trans "Social signup will turn on after OAuth credentials are added in admin. Use email signup for now." %}</p>
+    {% if social_login_provider_count %}
+      <p class="auth-note">{% trans "Create your account with a social provider, or finish with email below." %}</p>
+    {% else %}
+      <p class="auth-note">{% trans "Social signup turns on automatically after OAuth credentials are added in the environment or admin. Use email signup for now." %}</p>
+    {% endif %}
     <div class="auth-divider"><span>{% trans "or create with email" %}</span></div>
     <form method="post" class="booking-form">
       {% csrf_token %}

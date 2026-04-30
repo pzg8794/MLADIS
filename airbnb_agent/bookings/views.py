@@ -210,6 +210,18 @@ class AboutPageView(TemplateView):
         return context
 
 
+class PrivacyPolicyPageView(TemplateView):
+    template_name = "bookings/privacy_policy.html"
+
+
+class TermsPageView(TemplateView):
+    template_name = "bookings/terms.html"
+
+
+class DataDeletionPageView(TemplateView):
+    template_name = "bookings/data_deletion.html"
+
+
 class BookingInquiryCreateView(View):
     def post(self, request):
         form = BookingInquiryForm(request.POST, user=request.user)

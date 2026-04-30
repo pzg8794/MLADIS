@@ -1,0 +1,53 @@
+{% extends "bookings/base.html" %}
+
+{% block title %}Privacy Policy | MLADIS{% endblock %}
+
+{% block content %}
+<main>
+  <section class="story-band policy-page" aria-labelledby="privacy-title">
+    <div class="policy-copy">
+      <p class="policy-kicker">MLADIS policy</p>
+      <h1 id="privacy-title">Privacy policy</h1>
+      <p class="policy-lead">MLADIS uses this site to respond to booking inquiries, manage guest accounts, support payment flows, and provide direct host communication for stays and related services in the Dominican Republic.</p>
+      <p>If you have questions about this policy, contact <a href="mailto:{{ site_settings.contact_email|default:'garciapiterz@gmail.com' }}">{{ site_settings.contact_email|default:"garciapiterz@gmail.com" }}</a>.</p>
+    </div>
+    <div class="policy-grid">
+      <article class="policy-card">
+        <h2>Information we collect</h2>
+        <ul>
+          <li>Booking and account details such as your name, email address, phone number, stay dates, guest count, and messages you send through the site.</li>
+          <li>Operational records such as reservation status, invoices, page visits, and support activity needed to run the booking service securely.</li>
+          <li>Social login details supplied by Google, Facebook, Microsoft, or GitHub when you choose those sign-in options.</li>
+          <li>Payment-related metadata from Stripe. MLADIS does not store full card numbers on this site.</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>How we use it</h2>
+        <ul>
+          <li>To create and manage your booking or account.</li>
+          <li>To communicate about inquiries, payments, reservations, and support requests.</li>
+          <li>To operate login, fraud-prevention, analytics, and administrative tooling for the site.</li>
+          <li>To comply with legal obligations and resolve disputes when necessary.</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>Sharing and retention</h2>
+        <ul>
+          <li>MLADIS shares data only with service providers needed to run the booking experience, such as Stripe for payments and email infrastructure for notifications.</li>
+          <li>Information may also be disclosed when required by law or to protect the safety, rights, or property of guests, hosts, or the service.</li>
+          <li>Reservation, invoice, payment-status, and support records are retained while needed for active bookings, guest support, security, accounting, tax, dispute, or legal requirements.</li>
+          <li>Social login profile data is retained only while the connected account is active or while needed to identify booking records. If Facebook/Meta does not provide an email address, MLADIS stores a non-deliverable account identifier until you add or request an email update.</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>Your choices</h2>
+        <ul>
+          <li>You can contact MLADIS to update or correct your account and reservation details.</li>
+          <li>You can request deletion instructions at <a href="{% url 'bookings:data-deletion' %}">{% url 'bookings:data-deletion' %}</a>.</li>
+          <li>If you signed in with a social provider, you can also remove MLADIS access from that provider's app settings.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+</main>
+{% endblock %}

@@ -1,12 +1,20 @@
+import os
 import json
 from datetime import timedelta
+from unittest.mock import patch
 
+from allauth.account.models import EmailAddress
+from allauth.socialaccount.internal.flows.signup import process_auto_signup
+from allauth.socialaccount.models import SocialApp
+from allauth.socialaccount.models import SocialAccount, SocialLogin
 from django.contrib.auth import get_user_model
+from django.contrib.sites.models import Site
 from django.core import mail
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from .adapters import MLADISAccountAdapter, MLADISSocialAccountAdapter
 from .forms import BookingInquiryForm
 from .models import (
     AdminAccess,
@@ -26,6 +34,7 @@ from .models import (
     Invoice,
     InvoiceLineItem,
     PageVisit,
+    SiteSettings,
 )
 
 
@@ -246,6 +255,36 @@ class MarketingPageTests(TestCase):
         self.assertContains(response, "Explorar alojamientos")
 
 
+class LegalPageTests(TestCase):
+    def setUp(self):
+        site_settings = SiteSettings.current()
+        site_settings.contact_email = "privacy@example.com"
+        site_settings.save(update_fields=["contact_email", "updated_at"])
+
+    def test_privacy_policy_page_renders_contact_details(self):
+        response = self.client.get(reverse("bookings:privacy-policy"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Privacy policy")
+        self.assertContains(response, "privacy@example.com")
+        self.assertContains(response, "Social login details")
+
+    def test_terms_page_renders_booking_rules_summary(self):
+        response = self.client.get(reverse("bookings:terms"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Terms of service")
+        self.assertContains(response, "Payments are processed through Stripe")
+
+    def test_data_deletion_page_renders_request_instructions(self):
+        response = self.client.get(reverse("bookings:data-deletion"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Data deletion instructions")
+        self.assertContains(response, "Data deletion request")
+        self.assertContains(response, "privacy@example.com")
+
+
 class AccountReservationTests(TestCase):
     def test_seeded_admin_email_gets_staff_access_after_signup(self):
         response = self.client.post(
@@ -268,21 +307,172 @@ class AccountReservationTests(TestCase):
         self.assertTrue(user.is_superuser)
 
     def test_login_page_renders_social_account_options(self):
-        response = self.client.get(reverse("bookings:login"))
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_OAUTH_CLIENT_ID": "",
+                "GOOGLE_OAUTH_CLIENT_SECRET": "",
+                "FACEBOOK_OAUTH_CLIENT_ID": "",
+                "FACEBOOK_OAUTH_CLIENT_SECRET": "",
+                "MICROSOFT_OAUTH_CLIENT_ID": "",
+                "MICROSOFT_OAUTH_CLIENT_SECRET": "",
+                "GITHUB_OAUTH_CLIENT_ID": "",
+                "GITHUB_OAUTH_CLIENT_SECRET": "",
+                "SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK": "",
+            },
+            clear=False,
+        ):
+            response = self.client.get(reverse("bookings:login"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Google")
-        self.assertContains(response, "Facebook")
-        self.assertContains(response, "Microsoft")
-        self.assertContains(response, "GitHub")
+        self.assertContains(response, "Continue with Google")
+        self.assertContains(response, "Continue with Facebook")
+        self.assertContains(response, "Continue with Microsoft")
+        self.assertContains(response, "Continue with GitHub")
         self.assertContains(response, "setup needed")
         self.assertNotContains(response, 'action="/oauth/google/login/"')
 
+    def test_login_page_auto_configures_google_from_environment(self):
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_OAUTH_CLIENT_ID": "google-client-id",
+                "GOOGLE_OAUTH_CLIENT_SECRET": "google-client-secret",
+                "SITE_DOMAIN": "127.0.0.1:8000",
+                "SITE_NAME": "MLADIS Local",
+            },
+            clear=False,
+        ):
+            response = self.client.get(reverse("bookings:login"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'action="{reverse("google_login")}"')
+        self.assertContains(response, "Choose a social provider for a faster sign-in")
+        app = SocialApp.objects.get(provider="google")
+        self.assertEqual(app.client_id, "google-client-id")
+        self.assertEqual(app.secret, "google-client-secret")
+        self.assertTrue(app.sites.filter(id=1).exists())
+        site = Site.objects.get(id=1)
+        self.assertEqual(site.domain, "127.0.0.1:8000")
+        self.assertEqual(site.name, "MLADIS Local")
+
+    def test_stale_microsoft_social_app_is_ignored_when_env_is_empty(self):
+        stale_app = SocialApp.objects.create(
+            provider="microsoft",
+            name="Microsoft OAuth",
+            client_id="demo-microsoft-client",
+            secret="demo-microsoft-secret",
+        )
+        stale_app.sites.add(Site.objects.get(id=1))
+
+        with patch.dict(
+            os.environ,
+            {
+                "MICROSOFT_OAUTH_CLIENT_ID": "",
+                "MICROSOFT_OAUTH_CLIENT_SECRET": "",
+                "SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK": "",
+            },
+            clear=False,
+        ):
+            response = self.client.get(reverse("bookings:login"))
+            launch_response = self.client.post(reverse("microsoft_login"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Continue with Microsoft")
+        self.assertContains(response, "setup needed")
+        self.assertNotContains(response, f'action="{reverse("microsoft_login")}"')
+        self.assertEqual(launch_response.status_code, 302)
+        self.assertEqual(launch_response["Location"], reverse("bookings:login"))
+
+    def test_login_page_auto_configures_microsoft_from_environment(self):
+        with patch.dict(
+            os.environ,
+            {
+                "MICROSOFT_OAUTH_CLIENT_ID": "microsoft-client-id",
+                "MICROSOFT_OAUTH_CLIENT_SECRET": "microsoft-client-secret",
+                "MICROSOFT_OAUTH_TENANT": "organizations",
+                "MICROSOFT_OAUTH_LOGIN_URL": "https://login.microsoftonline.com",
+                "MICROSOFT_GRAPH_URL": "https://graph.microsoft.com",
+                "SITE_DOMAIN": "127.0.0.1:8000",
+                "SITE_NAME": "MLADIS Local",
+            },
+            clear=False,
+        ):
+            response = self.client.get(reverse("bookings:login"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'action="{reverse("microsoft_login")}"')
+        app = SocialApp.objects.get(provider="microsoft")
+        self.assertEqual(app.client_id, "microsoft-client-id")
+        self.assertEqual(app.secret, "microsoft-client-secret")
+        self.assertEqual(app.settings["tenant"], "organizations")
+        self.assertEqual(app.settings["login_url"], "https://login.microsoftonline.com")
+        self.assertEqual(app.settings["graph_url"], "https://graph.microsoft.com")
+
     def test_unconfigured_google_login_redirects_instead_of_erroring(self):
-        response = self.client.post(reverse("google_login"))
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_OAUTH_CLIENT_ID": "",
+                "GOOGLE_OAUTH_CLIENT_SECRET": "",
+                "SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK": "",
+            },
+            clear=False,
+        ):
+            response = self.client.post(reverse("google_login"))
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], reverse("bookings:login"))
+
+
+class SocialAccountAdapterTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def test_facebook_without_email_auto_signs_up_using_generated_email(self):
+        request = self.factory.get("/accounts/login/")
+        sociallogin = SocialLogin(
+            user=get_user_model()(),
+            account=SocialAccount(
+                provider="facebook",
+                uid="123456789",
+                extra_data={"id": "123456789", "name": "Peter Zac"},
+            ),
+        )
+
+        adapter = MLADISSocialAccountAdapter()
+        adapter.populate_user(request, sociallogin, {"name": "Peter Zac"})
+        auto_signup, response = process_auto_signup(request, sociallogin)
+
+        self.assertTrue(auto_signup)
+        self.assertIsNone(response)
+        self.assertEqual(
+            sociallogin.user.email,
+            "facebook-123456789@users.mladis.invalid",
+        )
+        self.assertEqual(
+            sociallogin.email_addresses[0].email,
+            "facebook-123456789@users.mladis.invalid",
+        )
+        self.assertFalse(sociallogin.email_addresses[0].verified)
+
+    def test_generated_social_email_skips_confirmation_mail(self):
+        request = self.factory.get("/accounts/login/")
+        user = get_user_model()(username="peter")
+        email_address = EmailAddress(
+            user=user,
+            email="facebook-123456789@users.mladis.invalid",
+            verified=False,
+            primary=True,
+        )
+
+        should_send = MLADISAccountAdapter().should_send_confirmation_mail(
+            request,
+            email_address,
+            signup=True,
+        )
+
+        self.assertFalse(should_send)
 
     def test_account_dashboard_and_cancel_reservation(self):
         user = get_user_model().objects.create_user(
@@ -357,6 +547,32 @@ class OpsDashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Owner dashboard")
         self.assertContains(response, "Pricing")
+
+    def test_ops_reports_show_graphs_for_staff(self):
+        staff = get_user_model().objects.create_user("reports", "reports@example.com", "secret", is_staff=True)
+        self.client.force_login(staff)
+        PageVisit.objects.create(path="/stays/test/")
+        AgentConversation.objects.create(
+            session_id="report-abc",
+            last_user_message="Is there parking?",
+            last_agent_reply="Setup mode.",
+            question_topic="amenities",
+        )
+        BookingInquiry.objects.create(
+            guest_name="Graph Guest",
+            email="graph@example.com",
+            check_in=timezone.localdate() + timedelta(days=5),
+            check_out=timezone.localdate() + timedelta(days=7),
+            guests=2,
+        )
+
+        response = self.client.get(reverse("bookings:ops-reports"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Reporting")
+        self.assertContains(response, "Reservations by status")
+        self.assertContains(response, "Agent question topics")
+        self.assertContains(response, "Visits by day")
 
 
 class DamageDepositTests(TestCase):

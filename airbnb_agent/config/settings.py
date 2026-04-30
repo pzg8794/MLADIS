@@ -25,6 +25,13 @@ def env_list(name, default):
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-local-dev-key-change-me")
 DEBUG = env_bool("DEBUG", default=True)
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1", "[::1]"])
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", [])
+USE_X_FORWARDED_HOST = env_bool("USE_X_FORWARDED_HOST", default=False)
+SECURE_PROXY_SSL_HEADER = (
+    ("HTTP_X_FORWARDED_PROTO", "https")
+    if env_bool("USE_X_FORWARDED_PROTO", default=False)
+    else None
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -118,12 +125,14 @@ AUTHENTICATION_BACKENDS = [
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = os.getenv("ACCOUNT_EMAIL_VERIFICATION", "optional")
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = os.getenv("ACCOUNT_DEFAULT_HTTP_PROTOCOL", "http").strip().lower() or "http"
 ACCOUNT_ADAPTER = "bookings.adapters.MLADISAccountAdapter"
 SOCIALACCOUNT_ADAPTER = "bookings.adapters.MLADISSocialAccountAdapter"
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 SOCIALACCOUNT_LOGIN_ON_GET = False
+SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK = env_bool("SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK", default=False)
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "SCOPE": ["profile", "email"],
@@ -131,10 +140,11 @@ SOCIALACCOUNT_PROVIDERS = {
     },
     "facebook": {
         "METHOD": "oauth2",
-        "SCOPE": ["email", "public_profile"],
+        "SCOPE": env_list("FACEBOOK_OAUTH_SCOPE", ["public_profile"]),
     },
     "microsoft": {
         "SCOPE": ["User.Read"],
+        "TENANT": os.getenv("MICROSOFT_OAUTH_TENANT", "common").strip() or "common",
     },
     "github": {
         "SCOPE": ["user:email"],

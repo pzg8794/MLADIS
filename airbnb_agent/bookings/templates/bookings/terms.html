@@ -1,0 +1,50 @@
+{% extends "bookings/base.html" %}
+
+{% block title %}Terms Of Service | MLADIS{% endblock %}
+
+{% block content %}
+<main>
+  <section class="story-band policy-page" aria-labelledby="terms-title">
+    <div class="policy-copy">
+      <p class="policy-kicker">MLADIS policy</p>
+      <h1 id="terms-title">Terms of service</h1>
+      <p class="policy-lead">These terms govern the use of the MLADIS booking site, direct host communication, donation checkout, and related guest services.</p>
+      <p>For questions, email <a href="mailto:{{ site_settings.contact_email|default:'garciapiterz@gmail.com' }}">{{ site_settings.contact_email|default:"garciapiterz@gmail.com" }}</a>.</p>
+    </div>
+    <div class="policy-grid">
+      <article class="policy-card">
+        <h2>Bookings</h2>
+        <ul>
+          <li>Submitting an inquiry or deposit request does not guarantee a reservation until MLADIS confirms availability and booking terms.</li>
+          <li>Rates, deposit requirements, and stay rules may vary by property, date range, and service type.</li>
+          <li>Guests must provide accurate contact and stay information when using the site.</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>Payments and cancellations</h2>
+        <ul>
+          <li>Payments are processed through Stripe or another disclosed payment provider.</li>
+          <li>Damage deposits may be authorized, captured, released, or refunded based on the reservation terms and property condition.</li>
+          <li>Cancellation handling follows the reservation's stated cancellation policy and any written host approval.</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>Guest responsibilities</h2>
+        <ul>
+          <li>Guests must follow posted house rules, occupancy limits, safety guidance, and any additional booking instructions supplied by MLADIS.</li>
+          <li>Guests are responsible for damage, prohibited use, chargebacks made in bad faith, or losses caused by inaccurate booking details.</li>
+          <li>MLADIS may suspend or deny service for abuse, fraud, repeated no-shows, or misuse of the platform.</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>Platform use</h2>
+        <ul>
+          <li>The site, branding, and booking materials are provided for lawful guest and support use only.</li>
+          <li>MLADIS may update the site, pricing, availability, or these terms as operations change.</li>
+          <li>Continued use of the site after updates means you accept the revised terms.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+</main>
+{% endblock %}

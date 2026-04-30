@@ -1,0 +1,47 @@
+{% extends "bookings/base.html" %}
+
+{% block title %}Data Deletion Instructions | MLADIS{% endblock %}
+
+{% block content %}
+<main>
+  <section class="story-band policy-page" aria-labelledby="data-deletion-title">
+    <div class="policy-copy">
+      <p class="policy-kicker">MLADIS policy</p>
+      <h1 id="data-deletion-title">Data deletion instructions</h1>
+      <p class="policy-lead">If you want MLADIS to delete personal information associated with your booking account or social login, send a deletion request to <a href="mailto:{{ site_settings.contact_email|default:'garciapiterz@gmail.com' }}">{{ site_settings.contact_email|default:"garciapiterz@gmail.com" }}</a>.</p>
+    </div>
+    <div class="policy-grid">
+      <article class="policy-card">
+        <h2>How to request deletion</h2>
+        <ul>
+          <li>Email MLADIS with the subject line <strong>Data deletion request</strong>.</li>
+          <li>Include the name and email address used for your booking or social login.</li>
+          <li>If your request is related to Facebook Login, mention that in the message so MLADIS can locate the connected account quickly.</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>What happens next</h2>
+        <ul>
+          <li>MLADIS may ask for limited verification information to confirm the request belongs to you.</li>
+          <li>After verification, account records that are no longer needed for active bookings, security, accounting, or legal compliance will be deleted or anonymized.</li>
+          <li>If some records must be retained, MLADIS will keep only the minimum information required for those obligations.</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>Expected timing</h2>
+        <ul>
+          <li>MLADIS aims to acknowledge deletion requests within 7 days.</li>
+          <li>Completed deletions or follow-up explanations are typically sent within 30 days.</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>Related pages</h2>
+        <ul>
+          <li><a href="{% url 'bookings:privacy-policy' %}">Privacy policy</a></li>
+          <li><a href="{% url 'bookings:terms' %}">Terms of service</a></li>
+        </ul>
+      </article>
+    </div>
+  </section>
+</main>
+{% endblock %}

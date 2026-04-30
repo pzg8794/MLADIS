@@ -41,7 +41,14 @@ The app currently returns an agent-ready setup/stub response. Replace
 - Seeded owner/admin access: `Piter Garcia <garciapiterz@gmail.com>`, business phone `631-575-4841`.
 - Any password, Google, Facebook, Microsoft, or GitHub login with that email is promoted to staff/superuser by the `AdminAccess` table.
 - Local test user created for this workspace: username `piter`. Change the password in `/admin/` before sharing or deploying.
-- Social providers are scaffolded with django-allauth. Add provider credentials in `/admin/socialaccount/socialapp/` and attach them to Site `127.0.0.1:5050` locally or your production domain.
+- Social providers are scaffolded with django-allauth. By default, `.env` is the source of truth for Google, Facebook, Microsoft, and GitHub credentials; set `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK=True` only if you intentionally want `/admin/socialaccount/socialapp/` rows to enable providers without matching env vars.
+- Environment-based setup auto-syncs `SocialApp` records for the current `SITE_ID` when the login/signup page loads or a provider login starts.
+- Local env variables: `SITE_DOMAIN`, `SITE_NAME`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `USE_X_FORWARDED_PROTO`, `ACCOUNT_DEFAULT_HTTP_PROTOCOL`, `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_CLIENT_ID`, `FACEBOOK_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_SCOPE`, `MICROSOFT_OAUTH_CLIENT_ID`, `MICROSOFT_OAUTH_CLIENT_SECRET`, `MICROSOFT_OAUTH_TENANT`, `MICROSOFT_OAUTH_LOGIN_URL`, `MICROSOFT_GRAPH_URL`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`.
+- Keep the provider callback URLs aligned with the host in `SITE_DOMAIN`, for example `http://127.0.0.1:8000` locally or your production domain.
+- Microsoft local callback URL for Azure App Registration: `http://127.0.0.1:8000/oauth/microsoft/login/callback/`. Use `MICROSOFT_OAUTH_TENANT=common` for consumer + work accounts, `organizations` for work/school accounts, or the tenant ID if your Azure app is single-tenant.
+- Facebook local development needs an HTTPS callback. A quick tunnel such as Cloudflare Tunnel works with `ALLOWED_HOSTS=localhost,127.0.0.1,.trycloudflare.com`, `CSRF_TRUSTED_ORIGINS=https://*.trycloudflare.com`, `USE_X_FORWARDED_PROTO=True`, and `ACCOUNT_DEFAULT_HTTP_PROTOCOL=https`.
+- For the current Meta app, `FACEBOOK_OAUTH_SCOPE=public_profile` is the working local default. If Meta later approves `email`, update the scope to `public_profile,email` and re-save the active tunnel callback URL plus app domain in Meta.
+- Meta basic settings can use the new public policy pages in this app: `https://<current-host>/privacy/`, `https://<current-host>/terms/`, and `https://<current-host>/data-deletion/`. For the current Cloudflare tunnel, replace `<current-host>` with the active `.trycloudflare.com` hostname before saving the fields in Meta.
 
 ## Damage Deposit Flow
 
