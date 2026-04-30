@@ -10,9 +10,11 @@ from django.views.generic import TemplateView
 from .models import (
     AgentConversation,
     BookableItem,
+    BookingCategory,
     BookingInquiry,
     BookingStatus,
     CalendarFeed,
+    ClientSegment,
     Coupon,
     CustomerProfile,
     DamageDeposit,
@@ -38,6 +40,10 @@ class OpsReportsView(TemplateView):
         deposits = DamageDeposit.objects.all()
         visits = PageVisit.objects.filter(created_at__gte=since)
         conversations = AgentConversation.objects.filter(created_at__gte=since)
+        clients = CustomerProfile.objects.all()
+        listings = BookableItem.objects.all()
+        coupons = Coupon.objects.all()
+        promotions = Promotion.objects.all()
 
         context.update(
             {
@@ -48,10 +54,10 @@ class OpsReportsView(TemplateView):
                     self._card("30-day inquiries", recent_reservations.count(), "New demand in the last 30 days."),
                     self._card("Visits", visits.count(), "Tracked page visits in the last 30 days."),
                     self._card("Agent chats", conversations.count(), "Guest questions answered by the booking agent."),
-                    self._card("Clients", CustomerProfile.objects.count(), "Customer profiles and segments."),
-                    self._card("Active listings", BookableItem.objects.filter(is_active=True).count(), "Bookable stays, services, experiences, and transport."),
-                    self._card("Coupons", Coupon.objects.count(), "Discount codes managed by admins."),
-                    self._card("Promotions", Promotion.objects.count(), "Campaigns created from the admin."),
+                    self._card("Clients", clients.count(), "Customer profiles and segments."),
+                    self._card("Active listings", listings.filter(is_active=True).count(), "Bookable stays, services, experiences, and transport."),
+                    self._card("Coupons", coupons.count(), "Discount codes managed by admins."),
+                    self._card("Promotions", promotions.count(), "Campaigns created from the admin."),
                     self._card("Invoices", invoices.count(), "Draft, sent, paid, and canceled invoices."),
                     self._card("Invoice value", self._money(invoices.aggregate(total=Sum("total_cents"))["total"]), "Total invoice value tracked."),
                     self._card("Deposits", deposits.count(), "Damage deposit checkout records."),
@@ -62,6 +68,12 @@ class OpsReportsView(TemplateView):
                     "status",
                     BookingStatus.choices,
                     "Reservations by status",
+                ),
+                "booking_category_chart": self._choice_chart(
+                    listings,
+                    "category",
+                    BookingCategory.choices,
+                    "Bookable inventory by category",
                 ),
                 "item_chart": self._query_chart(
                     reservations.values("item__name").annotate(total=Count("id")).order_by("-total", "item__name")[:10],
@@ -80,6 +92,12 @@ class OpsReportsView(TemplateView):
                     "Agent question topics",
                     transform=str.title,
                 ),
+                "client_segment_chart": self._choice_chart(
+                    clients,
+                    "segment",
+                    ClientSegment.choices,
+                    "Clients by segment",
+                ),
                 "booking_timeline": self._daily_timeline(recent_reservations, "created_at", "Reservation requests by day"),
                 "visit_timeline": self._daily_timeline(visits, "created_at", "Visits by day"),
                 "invoice_status_chart": self._query_chart(
@@ -93,6 +111,19 @@ class OpsReportsView(TemplateView):
                     "status",
                     "Deposits by status",
                     transform=lambda value: str(value).replace("_", " ").title(),
+                ),
+                "donation_status_chart": self._query_chart(
+                    donations.values("status").annotate(total=Count("id")).order_by("-total", "status"),
+                    "status",
+                    "Donations by status",
+                    transform=lambda value: str(value).replace("_", " ").title(),
+                ),
+                "coupon_status_chart": self._boolean_chart(coupons, "is_active", "Coupons by status", "Active", "Inactive"),
+                "promotion_status_chart": self._query_chart(
+                    promotions.values("status").annotate(total=Count("id")).order_by("-total", "status"),
+                    "status",
+                    "Promotions by status",
+                    transform=str.title,
                 ),
                 "calendar_chart": self._calendar_chart(),
             }
@@ -114,6 +145,13 @@ class OpsReportsView(TemplateView):
             rows.append({"label": label, "total": queryset.filter(**{field_name: value}).count()})
         return self._with_widths(title, rows)
 
+    def _boolean_chart(self, queryset, field_name, title, true_label, false_label):
+        rows = [
+            {"label": true_label, "total": queryset.filter(**{field_name: True}).count()},
+            {"label": false_label, "total": queryset.filter(**{field_name: False}).count()},
+        ]
+        return self._with_widths(title, rows)
+
     def _query_chart(self, queryset, label_field, title, empty_label="Unassigned", transform=None):
         rows = []
         for row in queryset:
@@ -132,11 +170,11 @@ class OpsReportsView(TemplateView):
         rows = []
         for offset in range(30):
             day = start + timedelta(days=offset)
-            rows.append({"label": day.strftime("%b %-d"), "total": totals.get(day, 0)})
+            rows.append({"label": day.strftime("%b %d"), "total": totals.get(day, 0)})
         return self._with_widths(title, rows)
 
     def _calendar_chart(self):
-        total_stays = BookableItem.objects.filter(category="stay", is_active=True).count()
+        total_stays = BookableItem.objects.filter(category=BookingCategory.STAY, is_active=True).count()
         configured = CalendarFeed.objects.filter(is_active=True).exclude(airbnb_ical_url="").count()
         rows = [
             {"label": "Active stays", "total": total_stays},
