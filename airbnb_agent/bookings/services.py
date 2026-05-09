@@ -31,6 +31,7 @@ from .models import (
     EmailDeliveryStatus,
     Invoice,
     InvoiceStatus,
+    MarketingConsentStatus,
     Promotion,
     PromotionRecipient,
     PromotionStatus,
@@ -575,7 +576,9 @@ class InvoiceEmailService:
 
 class PromotionEmailService:
     def build_recipients(self, promotion: Promotion):
-        profiles = CustomerProfile.objects.exclude(email="")
+        profiles = CustomerProfile.objects.exclude(email="").filter(
+            marketing_consent_status=MarketingConsentStatus.OPTED_IN,
+        )
         if promotion.target_segment != "all":
             profiles = profiles.filter(segment=promotion.target_segment)
         recipients = []
@@ -595,6 +598,11 @@ class PromotionEmailService:
         recipients = list(promotion.recipients.all()) or self.build_recipients(promotion)
         sent = 0
         for recipient in recipients:
+            if not self._recipient_has_opted_in(recipient):
+                recipient.status = EmailDeliveryStatus.FAILED
+                recipient.error = "Promotion not sent because this recipient has not opted in."
+                recipient.save(update_fields=["status", "error"])
+                continue
             body = promotion.message
             if promotion.coupon:
                 body += f"\n\nCoupon code: {promotion.coupon.code}"
@@ -623,6 +631,46 @@ class PromotionEmailService:
         promotion.sent_at = timezone.now() if sent else None
         promotion.save(update_fields=["status", "sent_at", "updated_at"])
         return sent
+
+    def _recipient_has_opted_in(self, recipient):
+        profile = recipient.customer_profile
+        if profile is None:
+            return False
+        return profile.can_receive_promotions and recipient.email.lower() == profile.email.lower()
+
+
+class MarketingConsentEmailService:
+    def send_request(self, profile: CustomerProfile):
+        if not profile.email:
+            return False
+
+        body = (
+            f"Hi {profile.name or 'there'},\n\n"
+            "Thank you for staying with MLADIS. We would like your permission to contact you "
+            "with occasional future-stay discounts, travel tips, and direct-booking offers.\n\n"
+            "Please reply YES if you would like to receive those messages, or NO if you would prefer not to. "
+            "We will not send promotional offers unless you opt in.\n\n"
+            "Thank you,\nMLADIS"
+        )
+        send_mail(
+            "Permission to send future MLADIS offers?",
+            body,
+            settings.DEFAULT_FROM_EMAIL,
+            [profile.email],
+            fail_silently=False,
+        )
+        profile.marketing_consent_status = MarketingConsentStatus.REQUESTED
+        profile.marketing_consent_requested_at = timezone.now()
+        profile.marketing_consent_source = "email consent request"
+        profile.save(
+            update_fields=[
+                "marketing_consent_status",
+                "marketing_consent_requested_at",
+                "marketing_consent_source",
+                "updated_at",
+            ]
+        )
+        return True
 
 
 class DamageDepositService:

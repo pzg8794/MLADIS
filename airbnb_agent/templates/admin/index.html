@@ -28,6 +28,11 @@
     <p>{% trans "See charts for bookings, deposits, donations, coupons, clients, and calendar coverage." %}</p>
     <a class="mladis-admin-action" href="{% url 'bookings:ops-reports' %}">{% trans "Open reports" %}</a>
   </section>
+  <section class="mladis-admin-quicklink">
+    <h2>{% trans "OAuth setup" %}</h2>
+    <p>{% trans "Check the exact Google, Facebook, GitHub, and Microsoft callback URLs for social login." %}</p>
+    <a class="mladis-admin-action" href="{% url 'bookings:oauth-diagnostics' %}">{% trans "Open OAuth setup" %}</a>
+  </section>
 </div>
 
 <div id="content-main">

@@ -1,0 +1,39 @@
+{% extends "bookings/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "OAuth setup" %} | MLADIS{% endblock %}
+
+{% block content %}
+<main>
+  <section class="ops-hero">
+    <div>
+      <h1>{% trans "OAuth setup" %}</h1>
+      <p>{% trans "Use these exact callback URLs in each provider dashboard. A redirect_uri error means the provider app does not have this URL allow-listed." %}</p>
+      <div class="hero-actions">
+        <a class="button primary" href="{% url 'bookings:ops-dashboard' %}">{% trans "Dashboard" %}</a>
+        <a class="button secondary" href="{% url 'admin:socialaccount_socialapp_changelist' %}">{% trans "Social apps" %}</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="ops-card">
+    <h2>{% trans "Current site settings" %}</h2>
+    <p><strong>{% trans "Site domain" %}</strong>: {{ site.domain }}</p>
+    <p><strong>{% trans "Canonical origin" %}</strong>: {{ origin }}</p>
+    <p><strong>{% trans "Default protocol" %}</strong>: {{ account_protocol }}</p>
+  </section>
+
+  <section class="ops-columns">
+    {% for row in callback_rows %}
+      <article class="ops-card">
+        <h2>{{ row.label }}</h2>
+        <p><strong>{% trans "Status" %}</strong>: {% if row.is_configured %}{% trans "Credentials found" %}{% else %}{% trans "Needs credentials" %}{% endif %}</p>
+        <p><strong>{% trans "Callback URL" %}</strong></p>
+        <p><code>{{ row.callback_url }}</code></p>
+        <p><strong>{% trans "Login URL" %}</strong></p>
+        <p><code>{{ row.login_url }}</code></p>
+      </article>
+    {% endfor %}
+  </section>
+</main>
+{% endblock %}

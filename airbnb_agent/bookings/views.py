@@ -7,6 +7,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.conf import settings
+from django.contrib.sites.models import Site
 from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
@@ -51,6 +52,7 @@ from .services import (
     ReservationRequestService,
     get_damage_deposit_service,
 )
+from .social_auth import SOCIAL_LOGIN_PROVIDER_SPECS, get_social_login_providers
 
 
 class HomePageView(TemplateView):
@@ -532,6 +534,38 @@ class CalendarOpsView(TemplateView):
                     is_active=True,
                     category=BookingCategory.STAY,
                 ).select_related("calendar_feed"),
+            }
+        )
+        return context
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class OAuthDiagnosticsView(TemplateView):
+    template_name = "bookings/oauth_diagnostics.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        origin = getattr(settings, "SOCIAL_AUTH_CANONICAL_ORIGIN", "") or self.request.build_absolute_uri("/")[:-1]
+        callback_rows = []
+        provider_status = {provider["id"]: provider for provider in get_social_login_providers()}
+        for provider in SOCIAL_LOGIN_PROVIDER_SPECS:
+            callback_name = f"{provider['id']}_callback"
+            callback_path = reverse(callback_name)
+            callback_rows.append(
+                {
+                    "id": provider["id"],
+                    "label": provider["label"],
+                    "callback_url": f"{origin}{callback_path}",
+                    "login_url": f"{origin}{reverse(provider['url_name'])}",
+                    "is_configured": provider_status.get(provider["id"], {}).get("is_configured", False),
+                }
+            )
+        context.update(
+            {
+                "origin": origin,
+                "site": Site.objects.get(pk=settings.SITE_ID),
+                "callback_rows": callback_rows,
+                "account_protocol": settings.ACCOUNT_DEFAULT_HTTP_PROTOCOL,
             }
         )
         return context

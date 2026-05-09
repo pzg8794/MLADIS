@@ -42,6 +42,7 @@
           <a href="{% url 'bookings:ops-reports' %}">{% trans "Reports" %}</a>
           <a href="{% url 'admin:bookings_bookableitem_calendar' %}">{% trans "Business calendar" %}</a>
           <a href="{% url 'bookings:calendar-ops' %}">{% trans "Calendar setup" %}</a>
+          <a href="{% url 'bookings:oauth-diagnostics' %}">{% trans "OAuth setup" %}</a>
         {% endif %}
         <form class="language-form" action="{% url 'set_language' %}" method="post">
           {% csrf_token %}

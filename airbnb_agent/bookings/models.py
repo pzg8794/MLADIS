@@ -33,6 +33,20 @@ class ClientSegment(models.TextChoices):
     BLACKLISTED = "blacklisted", "Blacklisted"
 
 
+class ContactSource(models.TextChoices):
+    DIRECT = "direct", "Direct booking"
+    AIRBNB = "airbnb", "Airbnb"
+    SOCIAL = "social", "Social login"
+    MANUAL = "manual", "Manual entry"
+
+
+class MarketingConsentStatus(models.TextChoices):
+    UNKNOWN = "unknown", "Unknown"
+    REQUESTED = "requested", "Requested"
+    OPTED_IN = "opted_in", "Opted in"
+    OPTED_OUT = "opted_out", "Opted out"
+
+
 class CouponDiscountType(models.TextChoices):
     FIXED = "fixed", "Fixed amount"
     PERCENT = "percent", "Percentage"
@@ -188,6 +202,19 @@ class CustomerProfile(models.Model):
         choices=ClientSegment.choices,
         default=ClientSegment.AVERAGE,
     )
+    source = models.CharField(
+        max_length=24,
+        choices=ContactSource.choices,
+        default=ContactSource.DIRECT,
+    )
+    marketing_consent_status = models.CharField(
+        max_length=24,
+        choices=MarketingConsentStatus.choices,
+        default=MarketingConsentStatus.UNKNOWN,
+    )
+    marketing_consent_requested_at = models.DateTimeField(null=True, blank=True)
+    marketing_consent_at = models.DateTimeField(null=True, blank=True)
+    marketing_consent_source = models.CharField(max_length=120, blank=True)
     preferred_language = models.CharField(max_length=8, default="en")
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -202,6 +229,10 @@ class CustomerProfile(models.Model):
     @property
     def is_blacklisted(self):
         return self.segment == ClientSegment.BLACKLISTED
+
+    @property
+    def can_receive_promotions(self):
+        return self.marketing_consent_status == MarketingConsentStatus.OPTED_IN and bool(self.email)
 
     @classmethod
     def find_or_create_for_email(cls, email, defaults=None):
@@ -220,6 +251,60 @@ class CustomerProfile(models.Model):
                 profile.save(update_fields=changed + ["updated_at"])
             return profile
         return cls.objects.create(email=normalized, **defaults)
+
+
+class AirbnbGuestRecord(models.Model):
+    customer_profile = models.ForeignKey(
+        CustomerProfile,
+        on_delete=models.SET_NULL,
+        related_name="airbnb_guest_records",
+        null=True,
+        blank=True,
+    )
+    item = models.ForeignKey(
+        "BookableItem",
+        on_delete=models.SET_NULL,
+        related_name="airbnb_guest_records",
+        null=True,
+        blank=True,
+    )
+    guest_name = models.CharField(max_length=160)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=40, blank=True)
+    listing_title = models.CharField(max_length=240, blank=True)
+    airbnb_listing_id = models.CharField(max_length=40, blank=True)
+    airbnb_thread_url = models.URLField(max_length=600, blank=True)
+    source_message_id = models.CharField(max_length=128, unique=True, null=True, blank=True)
+    source_email_subject = models.CharField(max_length=300, blank=True)
+    source_email_timestamp = models.DateTimeField(null=True, blank=True)
+    check_in = models.DateField(null=True, blank=True)
+    check_out = models.DateField(null=True, blank=True)
+    guests = models.PositiveSmallIntegerField(null=True, blank=True)
+    message_excerpt = models.TextField(blank=True)
+    feedback_summary = models.TextField(blank=True)
+    rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    permission_notes = models.TextField(
+        blank=True,
+        help_text="Track how we can contact this Airbnb guest and whether they gave permission for future offers.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-check_in", "guest_name"]
+        verbose_name = "Airbnb guest record"
+        verbose_name_plural = "Airbnb guest records"
+
+    def __str__(self):
+        return f"{self.guest_name} - {self.listing_title or self.airbnb_listing_id or 'Airbnb'}"
+
+    @property
+    def stay_dates(self):
+        if self.check_in and self.check_out:
+            return f"{self.check_in} to {self.check_out}"
+        if self.check_in:
+            return str(self.check_in)
+        return ""
 
 
 class AdminAccess(models.Model):

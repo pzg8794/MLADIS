@@ -18,6 +18,7 @@ from .views import (
     HomePageView,
     InvoicePrintView,
     OpsDashboardView,
+    OAuthDiagnosticsView,
     PayPalDamageDepositCancelView,
     PayPalDamageDepositSuccessView,
     PrivacyPolicyPageView,
@@ -60,6 +61,7 @@ urlpatterns = [
     path("ops/dashboard/", OpsDashboardView.as_view(), name="ops-dashboard"),
     path("ops/reports/", OpsReportsView.as_view(), name="ops-reports"),
     path("ops/calendar/", CalendarOpsView.as_view(), name="calendar-ops"),
+    path("ops/oauth/", OAuthDiagnosticsView.as_view(), name="oauth-diagnostics"),
     path("stripe/webhook/", StripeWebhookView.as_view(), name="stripe-webhook"),
     path("api/agent/", AgentAPIView.as_view(), name="agent-api"),
 ]

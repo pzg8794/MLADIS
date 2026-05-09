@@ -179,3 +179,9 @@ Webhook endpoint:
 - Admin-test reservations can be created by staff from the public booking form
   and are recorded with zero cost.
 - Promotions can target all clients or favorite/VIP/average/blacklisted segments.
+- Airbnb guest history can be imported repeatedly from Gmail-export JSON/CSV files with
+  `python manage.py import_airbnb_guests imports/airbnb-guests.json`. Imported Airbnb
+  contacts default to unknown marketing consent and are excluded from promotion sends until
+  an admin marks them opted in.
+- Staff can visit `/ops/oauth/` to see the exact social-login callback URLs that must be
+  allow-listed in Google, Facebook, GitHub, and Microsoft app dashboards.

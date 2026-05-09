@@ -1,6 +1,9 @@
 .env
 __pycache__/
 *.pyc
+imports/
+*.airbnb-guests.json
+*.airbnb-guests.csv
 .venv/
 db.sqlite3
 staticfiles/

@@ -1,6 +1,8 @@
 import json
 import os
 from io import StringIO
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from datetime import date, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
@@ -22,10 +24,12 @@ from django.utils import timezone
 
 from .adapters import MLADISAccountAdapter, MLADISSocialAccountAdapter
 from .admin import DamageDepositAdmin
+from .airbnb_import import AirbnbGuestEmailParser, AirbnbGuestImportService
 from .forms import BookingInquiryForm
 from .models import (
     AdminAccess,
     AgentConversation,
+    AirbnbGuestRecord,
     AvailabilityBlock,
     BookableItem,
     BookingCategory,
@@ -33,6 +37,7 @@ from .models import (
     BookingStatus,
     CancellationPolicy,
     ClientSegment,
+    ContactSource,
     Coupon,
     CustomerProfile,
     DailyPriceOverride,
@@ -43,10 +48,13 @@ from .models import (
     DepositStatus,
     Invoice,
     InvoiceLineItem,
+    MarketingConsentStatus,
     PageVisit,
+    Promotion,
+    PromotionRecipient,
     SiteSettings,
 )
-from .services import AgentRequest, BookingAgentService, BookingCalendarService
+from .services import AgentRequest, BookingAgentService, BookingCalendarService, PromotionEmailService
 
 
 TEST_STORAGES = {
@@ -1006,6 +1014,18 @@ class OpsDashboardTests(TestCase):
         self.assertContains(response, "Business calendar")
         self.assertContains(response, reverse("admin:bookings_bookableitem_calendar"))
 
+    @override_settings(SOCIAL_AUTH_CANONICAL_ORIGIN="https://mladis.com")
+    def test_oauth_diagnostics_shows_exact_callback_urls_for_staff(self):
+        staff = get_user_model().objects.create_user("oauth", "oauth@example.com", "secret", is_staff=True)
+        self.client.force_login(staff)
+
+        response = self.client.get(reverse("bookings:oauth-diagnostics"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "OAuth setup")
+        self.assertContains(response, "https://mladis.com/oauth/facebook/login/callback/")
+        self.assertContains(response, "https://mladis.com/oauth/github/login/callback/")
+
 
 class DamageDepositTests(TestCase):
     @override_settings(STRIPE_SECRET_KEY="")
@@ -1382,6 +1402,177 @@ class DonationTests(TestCase):
         donation = Donation.objects.get()
         self.assertEqual(donation.amount_cents, 2500)
         self.assertEqual(donation.status, DonationStatus.REQUIRES_CONFIGURATION)
+
+
+class CustomerMarketingConsentTests(TestCase):
+    AIRBNB_SAMPLE_BODY = """
+RE: Inquiry at 6 Bedrooms Vacation Home & Pool (Apartment G-102) for August 22, 2024 - September 1, 2024
+
+Remember: Airbnb will never ask you to wire money. Learn more.
+
+Diana
+
+It will be a pleasure
+
+[Pre-approve / Decline](https://www.airbnb.com/hosting/thread/1773535134?thread_type=home_booking)
+
+Respond to Diana by replying directly to this email.
+
+[6 Bedrooms Vacation Home & Pool (Apartment G-102)](https://www.airbnb.com/rooms/588632365342578374)
+
+Reservation details
+
+6 Bedrooms Vacation Home & Pool (Apartment G-102)
+
+Guests
+
+10 guests
+
+Check-In
+
+Thursday
+
+August 22, 2024
+
+Check-out
+
+Sunday
+
+September 1, 2024
+"""
+
+    def test_airbnb_email_parser_extracts_guest_stay_and_thread_data(self):
+        payload = AirbnbGuestEmailParser().parse_message(
+            {
+                "id": "gmail-123",
+                "subject": "RE: Inquiry at 6 Bedrooms Vacation Home & Pool (Apartment G-102) for August 22, 2024 - September 1, 2024",
+                "body": self.AIRBNB_SAMPLE_BODY,
+                "email_ts": "2024-04-04T16:18:54",
+            }
+        )
+
+        self.assertEqual(payload.source_message_id, "gmail-123")
+        self.assertEqual(payload.guest_name, "Diana")
+        self.assertEqual(payload.airbnb_listing_id, "588632365342578374")
+        self.assertEqual(payload.guests, 10)
+        self.assertEqual(payload.check_in, date(2024, 8, 22))
+        self.assertEqual(payload.check_out, date(2024, 9, 1))
+        self.assertIn("It will be a pleasure", payload.message_excerpt)
+
+    def test_airbnb_import_service_upserts_guest_records_from_json_file(self):
+        item = BookableItem.objects.create(
+            name="Six bedroom stay",
+            slug="six-bedroom-stay",
+            category=BookingCategory.STAY,
+            short_description="A stay from Airbnb.",
+            airbnb_listing_id="999999999999999999",
+            is_active=True,
+        )
+        body = self.AIRBNB_SAMPLE_BODY.replace("588632365342578374", "999999999999999999")
+        data = {
+            "responses": [
+                {
+                    "id": "gmail-123",
+                    "subject": "RE: Inquiry at 6 Bedrooms Vacation Home & Pool (Apartment G-102) for August 22, 2024 - September 1, 2024",
+                    "body": body,
+                    "email_ts": "2024-04-04T16:18:54",
+                }
+            ]
+        }
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "airbnb-guests.json"
+            path.write_text(json.dumps(data))
+            service = AirbnbGuestImportService()
+
+            first = service.import_file(path)
+            second = service.import_file(path)
+
+        self.assertEqual(first.created, 1)
+        self.assertEqual(second.updated, 1)
+        self.assertEqual(AirbnbGuestRecord.objects.count(), 1)
+        record = AirbnbGuestRecord.objects.get()
+        self.assertEqual(record.item, item)
+        self.assertEqual(record.customer_profile.source, ContactSource.AIRBNB)
+        self.assertEqual(record.customer_profile.marketing_consent_status, MarketingConsentStatus.UNKNOWN)
+
+    def test_airbnb_guest_record_tracks_stay_feedback_and_permission_notes(self):
+        item = BookableItem.objects.create(
+            name="Airbnb Stay",
+            slug="airbnb-stay",
+            category=BookingCategory.STAY,
+            short_description="A stay from Airbnb.",
+            is_active=True,
+        )
+        profile = CustomerProfile.objects.create(
+            name="Diana",
+            source=ContactSource.AIRBNB,
+            marketing_consent_status=MarketingConsentStatus.UNKNOWN,
+        )
+
+        record = AirbnbGuestRecord.objects.create(
+            customer_profile=profile,
+            item=item,
+            guest_name="Diana",
+            listing_title="6 Bedrooms Vacation Home & Pool",
+            airbnb_listing_id="588632365342578374",
+            check_in=date(2024, 8, 22),
+            check_out=date(2024, 9, 1),
+            guests=10,
+            feedback_summary="Positive Airbnb message thread.",
+            permission_notes="Contact through Airbnb thread; no marketing opt-in yet.",
+        )
+
+        self.assertEqual(record.stay_dates, "2024-08-22 to 2024-09-01")
+        self.assertFalse(profile.can_receive_promotions)
+
+    def test_promotion_recipients_are_limited_to_opted_in_profiles(self):
+        opted_in = CustomerProfile.objects.create(
+            name="Opted In",
+            email="opted@example.com",
+            marketing_consent_status=MarketingConsentStatus.OPTED_IN,
+        )
+        CustomerProfile.objects.create(
+            name="Unknown",
+            email="unknown@example.com",
+            marketing_consent_status=MarketingConsentStatus.UNKNOWN,
+        )
+        CustomerProfile.objects.create(
+            name="Opted Out",
+            email="out@example.com",
+            marketing_consent_status=MarketingConsentStatus.OPTED_OUT,
+        )
+        promotion = Promotion.objects.create(
+            title="Future Stay",
+            subject="MLADIS future stay offer",
+            message="A small thank-you offer.",
+        )
+
+        recipients = PromotionEmailService().build_recipients(promotion)
+
+        self.assertEqual(len(recipients), 1)
+        self.assertEqual(recipients[0].customer_profile, opted_in)
+        self.assertEqual(recipients[0].email, "opted@example.com")
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_manual_promotion_recipient_without_opt_in_is_not_sent(self):
+        promotion = Promotion.objects.create(
+            title="Manual recipient",
+            subject="MLADIS future stay offer",
+            message="A small thank-you offer.",
+        )
+        recipient = PromotionRecipient.objects.create(
+            promotion=promotion,
+            email="manual@example.com",
+            name="Manual",
+        )
+
+        sent = PromotionEmailService().send_promotion(promotion)
+
+        self.assertEqual(sent, 0)
+        self.assertEqual(len(mail.outbox), 0)
+        recipient.refresh_from_db()
+        self.assertIn("not opted in", recipient.error)
 
 
 @override_settings(STORAGES=TEST_STORAGES)

@@ -1,3 +1,4 @@
+import csv
 from datetime import date
 from urllib.parse import urlencode
 
@@ -8,15 +9,17 @@ import stripe
 from django.contrib import admin, messages
 from django.contrib.admin.utils import quote
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
+from django.utils import timezone
 from django.utils.html import format_html
 
 from .forms import AvailabilityBlockForm, DailyPriceOverrideForm
 from .models import (
     AdminAccess,
     AgentConversation,
+    AirbnbGuestRecord,
     AvailabilityBlock,
     BookableItem,
     BookingCategory,
@@ -35,6 +38,7 @@ from .models import (
     HouseRule,
     Invoice,
     InvoiceLineItem,
+    MarketingConsentStatus,
     MissionCause,
     PageVisit,
     Promotion,
@@ -47,6 +51,7 @@ from .models import (
 from .services import (
     BookingCalendarService,
     InvoiceEmailService,
+    MarketingConsentEmailService,
     PayPalAPIError,
     PromotionEmailService,
     get_damage_deposit_service,
@@ -364,10 +369,173 @@ class CancellationPolicyAdmin(admin.ModelAdmin):
 
 @admin.register(CustomerProfile)
 class CustomerProfileAdmin(admin.ModelAdmin):
-    list_display = ("name", "email", "phone", "segment", "preferred_language", "updated_at")
-    list_filter = ("segment", "preferred_language")
+    list_display = (
+        "name",
+        "email",
+        "phone",
+        "segment",
+        "source",
+        "marketing_consent_status",
+        "preferred_language",
+        "updated_at",
+    )
+    list_filter = ("segment", "source", "marketing_consent_status", "preferred_language")
     search_fields = ("name", "email", "phone", "notes")
     autocomplete_fields = ("user",)
+    readonly_fields = ("marketing_consent_requested_at", "marketing_consent_at", "created_at", "updated_at")
+    actions = (
+        "mark_marketing_opted_in",
+        "mark_marketing_opted_out",
+        "mark_marketing_unknown",
+        "send_marketing_consent_requests",
+        "export_customer_contacts_csv",
+    )
+
+    @admin.action(description="Mark selected clients as opted in for promotions")
+    def mark_marketing_opted_in(self, request, queryset):
+        updated = queryset.update(
+            marketing_consent_status=MarketingConsentStatus.OPTED_IN,
+            marketing_consent_at=timezone.now(),
+            marketing_consent_source="admin",
+        )
+        self.message_user(request, f"Marked {updated} client(s) as opted in.")
+
+    @admin.action(description="Mark selected clients as opted out of promotions")
+    def mark_marketing_opted_out(self, request, queryset):
+        updated = queryset.update(
+            marketing_consent_status=MarketingConsentStatus.OPTED_OUT,
+            marketing_consent_at=timezone.now(),
+            marketing_consent_source="admin",
+        )
+        self.message_user(request, f"Marked {updated} client(s) as opted out.")
+
+    @admin.action(description="Reset selected clients to unknown promotion consent")
+    def mark_marketing_unknown(self, request, queryset):
+        updated = queryset.update(
+            marketing_consent_status=MarketingConsentStatus.UNKNOWN,
+            marketing_consent_at=None,
+            marketing_consent_source="",
+        )
+        self.message_user(request, f"Reset consent for {updated} client(s).")
+
+    @admin.action(description="Send permission request email to selected clients")
+    def send_marketing_consent_requests(self, request, queryset):
+        service = MarketingConsentEmailService()
+        sent = 0
+        skipped = 0
+        for profile in queryset:
+            if service.send_request(profile):
+                sent += 1
+            else:
+                skipped += 1
+        self.message_user(request, f"Sent {sent} consent request(s). Skipped {skipped} client(s) without email.")
+
+    @admin.action(description="Export selected customer contact list as CSV")
+    def export_customer_contacts_csv(self, request, queryset):
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="mladis-customer-contacts.csv"'
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "name",
+                "email",
+                "phone",
+                "segment",
+                "source",
+                "marketing_consent_status",
+                "marketing_consent_requested_at",
+                "marketing_consent_at",
+                "preferred_language",
+                "notes",
+            ]
+        )
+        for profile in queryset.order_by("email", "name"):
+            writer.writerow(
+                [
+                    profile.name,
+                    profile.email,
+                    profile.phone,
+                    profile.get_segment_display(),
+                    profile.get_source_display(),
+                    profile.get_marketing_consent_status_display(),
+                    profile.marketing_consent_requested_at or "",
+                    profile.marketing_consent_at or "",
+                    profile.preferred_language,
+                    profile.notes,
+                ]
+            )
+        return response
+
+
+@admin.register(AirbnbGuestRecord)
+class AirbnbGuestRecordAdmin(admin.ModelAdmin):
+    list_display = (
+        "guest_name",
+        "listing_title",
+        "airbnb_listing_id",
+        "stay_dates",
+        "guests",
+        "email",
+        "phone",
+        "updated_at",
+    )
+    list_filter = ("airbnb_listing_id", "check_in", "item")
+    search_fields = (
+        "guest_name",
+        "email",
+        "phone",
+        "listing_title",
+        "airbnb_listing_id",
+        "source_email_subject",
+        "message_excerpt",
+        "feedback_summary",
+        "permission_notes",
+    )
+    autocomplete_fields = ("customer_profile", "item")
+    readonly_fields = ("created_at", "updated_at")
+    actions = ("export_airbnb_guest_records_csv",)
+
+    @admin.action(description="Export selected Airbnb guest records as CSV")
+    def export_airbnb_guest_records_csv(self, request, queryset):
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="mladis-airbnb-guest-records.csv"'
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "guest_name",
+                "email",
+                "phone",
+                "listing_title",
+                "airbnb_listing_id",
+                "check_in",
+                "check_out",
+                "guests",
+                "airbnb_thread_url",
+                "message_excerpt",
+                "feedback_summary",
+                "rating",
+                "permission_notes",
+            ]
+        )
+        for record in queryset.order_by("-check_in", "guest_name"):
+            writer.writerow(
+                [
+                    record.guest_name,
+                    record.email,
+                    record.phone,
+                    record.listing_title,
+                    record.airbnb_listing_id,
+                    record.check_in or "",
+                    record.check_out or "",
+                    record.guests or "",
+                    record.airbnb_thread_url,
+                    record.message_excerpt,
+                    record.feedback_summary,
+                    record.rating or "",
+                    record.permission_notes,
+                ]
+            )
+        return response
 
 
 @admin.register(DamageDeposit)
