@@ -1,5 +1,7 @@
 import csv
 from datetime import date
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from urllib.parse import urlencode
 
 from django import forms as django_forms
@@ -15,7 +17,8 @@ from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
-from .forms import AvailabilityBlockForm, DailyPriceOverrideForm
+from .airbnb_import import AirbnbGuestImportService
+from .forms import AirbnbGuestImportForm, AvailabilityBlockForm, DailyPriceOverrideForm
 from .models import (
     AdminAccess,
     AgentConversation,
@@ -469,6 +472,7 @@ class CustomerProfileAdmin(admin.ModelAdmin):
 
 @admin.register(AirbnbGuestRecord)
 class AirbnbGuestRecordAdmin(admin.ModelAdmin):
+    change_list_template = "admin/bookings/airbnbguestrecord/change_list.html"
     list_display = (
         "guest_name",
         "listing_title",
@@ -494,6 +498,63 @@ class AirbnbGuestRecordAdmin(admin.ModelAdmin):
     autocomplete_fields = ("customer_profile", "item")
     readonly_fields = ("created_at", "updated_at")
     actions = ("export_airbnb_guest_records_csv",)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "import/",
+                self.admin_site.admin_view(self.import_view),
+                name=self._import_url_name(),
+            )
+        ]
+        return custom_urls + urls
+
+    def import_view(self, request):
+        if not self.has_add_permission(request):
+            raise PermissionDenied
+
+        form = AirbnbGuestImportForm(request.POST or None, request.FILES or None)
+        if request.method == "POST" and form.is_valid():
+            uploaded = form.cleaned_data["import_file"]
+            dry_run = form.cleaned_data["dry_run"]
+            suffix = Path(uploaded.name).suffix.lower()
+            with NamedTemporaryFile(suffix=suffix) as temporary_file:
+                for chunk in uploaded.chunks():
+                    temporary_file.write(chunk)
+                temporary_file.flush()
+                result = AirbnbGuestImportService().import_file(
+                    temporary_file.name,
+                    dry_run=dry_run,
+                )
+            verb = "Dry run complete" if dry_run else "Import complete"
+            self.message_user(
+                request,
+                (
+                    f"{verb}: {result.created} record(s) to create, "
+                    f"{result.updated} to update, {result.skipped} skipped."
+                ),
+                level=messages.SUCCESS,
+            )
+            return HttpResponseRedirect(self._changelist_url())
+
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "title": "Import Airbnb guests",
+            "form": form,
+            "changelist_url": self._changelist_url(),
+        }
+        return TemplateResponse(request, "admin/bookings/airbnbguestrecord/import.html", context)
+
+    def _import_url_name(self):
+        return f"{self.model._meta.app_label}_{self.model._meta.model_name}_import"
+
+    def _import_url(self):
+        return reverse(f"admin:{self._import_url_name()}")
+
+    def _changelist_url(self):
+        return reverse(f"admin:{self.model._meta.app_label}_{self.model._meta.model_name}_changelist")
 
     @admin.action(description="Export selected Airbnb guest records as CSV")
     def export_airbnb_guest_records_csv(self, request, queryset):

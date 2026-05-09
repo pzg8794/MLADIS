@@ -30,6 +30,9 @@ Accepted formats:
 
 ## Admin Workflow
 
+- Go to `Admin > Bookings > Airbnb guest records > Import Airbnb guests`.
+- Upload a `.json` or `.csv` export and run it with `Dry run only` checked first.
+- If the counts look right, upload the same file again with `Dry run only` unchecked.
 - Review imported records in `Admin > Bookings > Airbnb guest records`.
 - Review linked customer profiles in `Admin > Bookings > Customer profiles`.
 - Use the customer-profile admin action to send permission request emails.

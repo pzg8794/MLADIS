@@ -229,6 +229,28 @@ class DailyPriceOverrideForm(forms.ModelForm):
             field.widget.attrs.setdefault("data-field", f"daily_price_override_{field_name}")
 
 
+class AirbnbGuestImportForm(forms.Form):
+    import_file = forms.FileField(
+        label=_("Airbnb export file"),
+        help_text=_("Upload a .json or .csv export from Airbnb/Gmail reservation messages."),
+    )
+    dry_run = forms.BooleanField(
+        label=_("Dry run only"),
+        required=False,
+        initial=True,
+        help_text=_("Preview how many records would be created or updated before writing anything."),
+    )
+
+    def clean_import_file(self):
+        uploaded = self.cleaned_data["import_file"]
+        filename = (uploaded.name or "").lower()
+        if not filename.endswith((".json", ".csv")):
+            raise forms.ValidationError(_("Upload a .json or .csv file."))
+        if uploaded.size > 10 * 1024 * 1024:
+            raise forms.ValidationError(_("Keep Airbnb import files under 10 MB."))
+        return uploaded
+
+
 class SignUpForm(UserCreationForm):
     email = forms.EmailField(label=_("Email"))
     first_name = forms.CharField(label=_("First name"), max_length=150, required=False)

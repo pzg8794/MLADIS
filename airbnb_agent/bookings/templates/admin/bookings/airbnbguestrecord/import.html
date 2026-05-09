@@ -1,0 +1,83 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .airbnb-import {
+    max-width: 760px;
+  }
+  .airbnb-import__panel {
+    background: var(--body-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.25rem;
+  }
+  .airbnb-import__help {
+    color: var(--body-quiet-color);
+    margin: 0 0 1rem;
+  }
+  .airbnb-import__fields {
+    display: grid;
+    gap: 1rem;
+    margin: 0 0 1rem;
+  }
+  .airbnb-import__fields label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+  }
+  .airbnb-import__fields input[type="file"] {
+    width: 100%;
+  }
+  .airbnb-import__actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans "Home" %}</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{{ changelist_url }}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; {% trans "Import Airbnb guests" %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main" class="airbnb-import">
+  <form method="post" enctype="multipart/form-data" class="airbnb-import__panel" novalidate>
+    {% csrf_token %}
+    <p class="airbnb-import__help">
+      {% trans "Upload Airbnb/Gmail reservation exports as JSON or CSV. Start with a dry run, then uncheck it when the counts look right." %}
+    </p>
+    {% if form.non_field_errors %}
+      {{ form.non_field_errors }}
+    {% endif %}
+    <div class="airbnb-import__fields">
+      <div>
+        {{ form.import_file.label_tag }}
+        {{ form.import_file }}
+        {{ form.import_file.errors }}
+        <p class="help">{{ form.import_file.help_text }}</p>
+      </div>
+      <div>
+        <label>
+          {{ form.dry_run }}
+          {{ form.dry_run.label }}
+        </label>
+        {{ form.dry_run.errors }}
+        <p class="help">{{ form.dry_run.help_text }}</p>
+      </div>
+    </div>
+    <div class="airbnb-import__actions">
+      <input type="submit" value="{% trans 'Run import' %}" class="default">
+      <a href="{{ changelist_url }}" class="button cancel-link">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

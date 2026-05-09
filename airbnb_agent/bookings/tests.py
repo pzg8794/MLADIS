@@ -17,6 +17,7 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core import mail
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
@@ -1573,6 +1574,89 @@ September 1, 2024
         self.assertEqual(len(mail.outbox), 0)
         recipient.refresh_from_db()
         self.assertIn("not opted in", recipient.error)
+
+    def test_admin_airbnb_guest_import_page_loads(self):
+        user = get_user_model().objects.create_user(
+            username="airbnb-admin",
+            password="secret",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("admin:bookings_airbnbguestrecord_import"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Import Airbnb guests")
+
+    def test_admin_airbnb_guest_import_dry_run_does_not_write_records(self):
+        user = get_user_model().objects.create_user(
+            username="airbnb-dry-run-admin",
+            password="secret",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_login(user)
+        upload = SimpleUploadedFile(
+            "airbnb-guests.json",
+            self._airbnb_import_json("999999999999999998"),
+            content_type="application/json",
+        )
+
+        response = self.client.post(
+            reverse("admin:bookings_airbnbguestrecord_import"),
+            {"import_file": upload, "dry_run": "on"},
+        )
+
+        self.assertRedirects(response, reverse("admin:bookings_airbnbguestrecord_changelist"))
+        self.assertEqual(AirbnbGuestRecord.objects.count(), 0)
+
+    def test_admin_airbnb_guest_import_creates_records(self):
+        user = get_user_model().objects.create_user(
+            username="airbnb-import-admin",
+            password="secret",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_login(user)
+        item = BookableItem.objects.create(
+            name="Admin imported stay",
+            slug="admin-imported-stay",
+            category=BookingCategory.STAY,
+            short_description="A stay from Airbnb.",
+            airbnb_listing_id="999999999999999997",
+            is_active=True,
+        )
+        upload = SimpleUploadedFile(
+            "airbnb-guests.json",
+            self._airbnb_import_json("999999999999999997"),
+            content_type="application/json",
+        )
+
+        response = self.client.post(
+            reverse("admin:bookings_airbnbguestrecord_import"),
+            {"import_file": upload},
+        )
+
+        self.assertRedirects(response, reverse("admin:bookings_airbnbguestrecord_changelist"))
+        record = AirbnbGuestRecord.objects.get()
+        self.assertEqual(record.item, item)
+        self.assertEqual(record.guest_name, "Diana")
+        self.assertEqual(record.customer_profile.source, ContactSource.AIRBNB)
+
+    def _airbnb_import_json(self, listing_id):
+        body = self.AIRBNB_SAMPLE_BODY.replace("588632365342578374", listing_id)
+        data = {
+            "responses": [
+                {
+                    "id": f"gmail-{listing_id}",
+                    "subject": "RE: Inquiry at 6 Bedrooms Vacation Home & Pool (Apartment G-102) for August 22, 2024 - September 1, 2024",
+                    "body": body,
+                    "email_ts": "2024-04-04T16:18:54",
+                }
+            ]
+        }
+        return json.dumps(data).encode()
 
 
 @override_settings(STORAGES=TEST_STORAGES)
