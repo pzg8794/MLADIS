@@ -3,6 +3,7 @@ import os
 from io import StringIO
 from datetime import date, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from allauth.account.models import EmailAddress
@@ -45,7 +46,7 @@ from .models import (
     PageVisit,
     SiteSettings,
 )
-from .services import BookingCalendarService
+from .services import AgentRequest, BookingAgentService, BookingCalendarService
 
 
 TEST_STORAGES = {
@@ -96,6 +97,35 @@ class AgentAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("reply", response.json())
         self.assertEqual(AgentConversation.objects.count(), 1)
+
+    @override_settings(OPENAI_AGENT_MODEL="gpt-5-mini")
+    def test_agent_service_uses_openai_when_key_is_configured(self):
+        class FakeResponses:
+            def __init__(self):
+                self.kwargs = None
+
+            def create(self, **kwargs):
+                self.kwargs = kwargs
+                return SimpleNamespace(output_text="Yes, I can help with those dates.", id="resp_test")
+
+        fake_responses = FakeResponses()
+        fake_client = SimpleNamespace(responses=fake_responses)
+
+        response = BookingAgentService(api_key="sk-test", client=fake_client).reply(
+            AgentRequest(
+                message="Is there room for four guests?",
+                session_id="session-123",
+                item_id=self.item.id,
+            )
+        )
+
+        conversation = AgentConversation.objects.get()
+        self.assertEqual(response.reply, "Yes, I can help with those dates.")
+        self.assertEqual(fake_responses.kwargs["model"], "gpt-5-mini")
+        self.assertIn("admin-confirmed", fake_responses.kwargs["instructions"])
+        self.assertIn("Is there room for four guests?", fake_responses.kwargs["input"])
+        self.assertEqual(conversation.metadata["agent_mode"], "openai")
+        self.assertEqual(conversation.metadata["openai_response_id"], "resp_test")
 
 
 class BookingInquiryViewTests(TestCase):

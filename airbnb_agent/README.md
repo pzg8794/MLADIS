@@ -49,7 +49,7 @@ Visit `http://localhost:8000`.
 - Build command: `pip install -r requirements.txt`
 - Start command: `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
 - Required environment variables: `SECRET_KEY`, `ALLOWED_HOSTS`
-- Optional environment variables: `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+- Optional environment variables: `OPENAI_API_KEY`, `OPENAI_AGENT_MODEL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 - Email variables: `DEFAULT_FROM_EMAIL`, `BOOKING_INQUIRY_RECIPIENTS`, `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `EMAIL_USE_SSL`
 - Deposit settings: `DEPOSIT_AMOUNT_CENTS=20000`, `DEPOSIT_CURRENCY=usd`
 - Donation setting: `DONATION_CURRENCY=usd`
@@ -115,8 +115,10 @@ VM and let exactly one running instance write to SQLite.
 This works for a short pilot. The moment you need more than one app instance,
 more frequent writes, or stronger operational safety, move to Postgres.
 
-The app currently returns an agent-ready setup/stub response. Replace
-`BookingAgentService` in `bookings/services.py` when the real booking logic is ready.
+The website agent uses the OpenAI Responses API when `OPENAI_API_KEY` is set.
+It persists guest questions, topics, replies, and OpenAI response metadata in
+`AgentConversation` so admins can review what guests ask and improve the agent
+knowledge over time. Without a key, it falls back to setup-mode replies.
 
 ## Admin Access And Social Login
 

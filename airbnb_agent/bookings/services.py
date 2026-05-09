@@ -8,6 +8,7 @@ from django.core.mail import send_mail
 from django.db.models import F
 from django.urls import reverse
 from django.utils import timezone
+from openai import OpenAI
 import requests
 import stripe
 
@@ -244,19 +245,41 @@ class AdminAccessService:
 
 
 class BookingAgentService:
-    """Boundary for current stub behavior and future model-backed booking logic."""
+    """Boundary for the public booking agent and future deeper automation."""
 
-    def __init__(self, api_key=None):
+    def __init__(self, api_key=None, client=None):
         self.api_key = api_key if api_key is not None else settings.OPENAI_API_KEY
+        self.model = settings.OPENAI_AGENT_MODEL
+        self.client = client or (OpenAI(api_key=self.api_key) if self.api_key else None)
 
     def reply(self, request: AgentRequest) -> AgentResponse:
         item = self._get_item(request.item_id)
         topic = QuestionAnalyticsService.classify(request.message)
+        metadata = {"topic": topic}
 
         if not self.api_key:
             reply = self._setup_reply(item)
+            metadata["agent_mode"] = "setup"
         else:
-            reply = self._stubbed_reply(request.message, item)
+            try:
+                reply, response_id = self._openai_reply(request, item)
+            except Exception as error:  # The public endpoint should degrade instead of failing hard.
+                reply = self._fallback_reply(item)
+                metadata.update(
+                    {
+                        "agent_mode": "fallback",
+                        "model": self.model,
+                        "error": str(error)[:500],
+                    }
+                )
+            else:
+                metadata.update(
+                    {
+                        "agent_mode": "openai",
+                        "model": self.model,
+                        "openai_response_id": response_id,
+                    }
+                )
 
         conversation = AgentConversation.objects.create(
             session_id=request.session_id,
@@ -266,7 +289,7 @@ class BookingAgentService:
             last_user_message=request.message,
             last_agent_reply=reply,
             question_topic=topic,
-            metadata={"agent_mode": "stub", "topic": topic},
+            metadata=metadata,
         )
         return AgentResponse(reply=reply, conversation_id=conversation.id)
 
@@ -282,12 +305,101 @@ class BookingAgentService:
             "The live AI key is not configured yet, so I am running in setup mode."
         )
 
-    def _stubbed_reply(self, message, item):
+    def _fallback_reply(self, item):
         subject = item.name if item else "MLADIS bookings"
         return (
-            f"I am ready to help with {subject}. I received: \"{message}\". "
-            "Next step: connect this service to live availability, pricing, and direct booking."
+            f"I can help with {subject}, but the live agent is having trouble for a moment. "
+            "Please continue the booking form or try your question again in a minute."
         )
+
+    def _openai_reply(self, request, item):
+        response = self.client.responses.create(
+            model=self.model,
+            instructions=self._instructions(),
+            input=self._prompt(request, item),
+        )
+        reply = self._response_text(response).strip()
+        if not reply:
+            reply = self._fallback_reply(item)
+        return reply, getattr(response, "id", "")
+
+    def _instructions(self):
+        return (
+            "You are the MLADIS website booking assistant for Santo Domingo Norte vacation stays. "
+            "Be warm, concise, bilingual when useful, and focused on helping guests choose a stay, "
+            "understand rules, deposits, location, amenities, and next steps. Do not promise live "
+            "availability, final pricing, refunds, or reservation confirmation. Explain that bookings "
+            "are admin-confirmed and that the $200 damage deposit is an authorization hold. Ask for "
+            "dates, guest count, email, and phone when the guest wants to book. If a question needs "
+            "owner action, direct the guest to submit the booking form or contact MLADIS."
+        )
+
+    def _prompt(self, request, item):
+        parts = [
+            "Guest message:",
+            request.message,
+            "",
+            "Selected stay:",
+            self._item_context(item) if item else "No stay selected yet.",
+            "",
+            "MLADIS stay catalog:",
+            self._catalog_context(selected_item=item),
+        ]
+        history = self._recent_history(request.session_id)
+        if history:
+            parts.extend(["", "Recent conversation in this browser session:", history])
+        return "\n".join(parts)
+
+    def _item_context(self, item):
+        if not item:
+            return ""
+        stats = ", ".join(item.stat_list) or "details not listed"
+        rules = "; ".join(
+            rule.title for rule in item.house_rules.filter(is_active=True).order_by("sort_order", "title")[:6]
+        )
+        highlights = "; ".join(
+            highlight.title for highlight in item.guest_review_highlights.order_by("sort_order", "id")[:4]
+        )
+        return (
+            f"{item.name}. {item.short_description} {item.marketing_description or item.description} "
+            f"Location: {item.location_label or 'Santo Domingo Norte'}. Stats: {stats}. "
+            f"Rating: {item.review_label}. Price signal: {item.headline_price}. "
+            f"Rules: {rules or 'standard MLADIS house rules'}. "
+            f"Guest highlights: {highlights or 'Airbnb review signals are available on the page'}. "
+            f"Airbnb URL: {item.airbnb_embed_url or 'not available'}."
+        )
+
+    def _catalog_context(self, selected_item=None):
+        items = BookableItem.objects.filter(is_active=True).order_by("category", "name")[:12]
+        lines = []
+        for item in items:
+            marker = "selected" if selected_item and selected_item.pk == item.pk else "option"
+            lines.append(f"- ({marker}) {self._item_context(item)}")
+        return "\n".join(lines)
+
+    def _recent_history(self, session_id, limit=6):
+        if not session_id:
+            return ""
+        conversations = list(
+            AgentConversation.objects.filter(session_id=session_id).order_by("-created_at")[:limit]
+        )
+        lines = []
+        for conversation in reversed(conversations):
+            lines.append(f"Guest: {conversation.last_user_message}")
+            lines.append(f"MLADIS agent: {conversation.last_agent_reply}")
+        return "\n".join(lines)
+
+    def _response_text(self, response):
+        output_text = getattr(response, "output_text", "")
+        if output_text:
+            return output_text
+        chunks = []
+        for item in getattr(response, "output", []) or []:
+            for content in getattr(item, "content", []) or []:
+                text = getattr(content, "text", "")
+                if text:
+                    chunks.append(text)
+        return "\n".join(chunks)
 
 
 class QuestionAnalyticsService:
