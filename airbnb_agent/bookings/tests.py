@@ -367,6 +367,22 @@ class BookableItemCalendarAdminTests(TestCase):
             is_active=True,
         )
 
+    def test_admin_home_surfaces_business_calendar(self):
+        response = self.client.get(reverse("admin:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Business calendar")
+        self.assertContains(response, reverse("admin:bookings_bookableitem_calendar"))
+        self.assertContains(response, "Owner dashboard")
+        self.assertContains(response, "Reports")
+
+    def test_bookable_item_changelist_surfaces_business_calendar(self):
+        response = self.client.get(reverse("admin:bookings_bookableitem_changelist"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Business calendar")
+        self.assertContains(response, reverse("admin:bookings_bookableitem_calendar"))
+
     def test_calendar_view_renders_booked_blocked_and_priced_days(self):
         reservation = BookingInquiry.objects.create(
             item=self.item,

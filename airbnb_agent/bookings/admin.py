@@ -93,6 +93,7 @@ class CalendarFeedInline(admin.StackedInline):
 
 @admin.register(BookableItem)
 class BookableItemAdmin(admin.ModelAdmin):
+    change_list_template = "admin/bookings/bookableitem/change_list.html"
     list_display = (
         "name",
         "category",
