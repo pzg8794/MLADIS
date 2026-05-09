@@ -11,6 +11,28 @@ boundary that can later connect to live booking logic.
 
 ## Local Run
 
+From the parent `MLADIS` folder, use the one-file launcher:
+
+```bash
+./run_mladis_live.command
+```
+
+The launcher uses `airbnb_agent/.env`, creates or reuses `.venv`, installs
+requirements, runs migrations, syncs OAuth apps, runs Django checks, collects
+static files, starts `http://127.0.0.1:8000`, and starts a temporary
+Cloudflare tunnel when `cloudflared` is installed. The tunnel URL can be used
+for live demos without going through Google Cloud.
+
+Useful options:
+
+```bash
+MLADIS_PUBLIC_TUNNEL=0 ./run_mladis_live.command
+MLADIS_CHECK_ONLY=1 ./run_mladis_live.command
+MLADIS_SERVER=gunicorn ./run_mladis_live.command
+```
+
+Manual local setup is still available:
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate
@@ -33,22 +55,89 @@ Visit `http://localhost:8000`.
 - Donation setting: `DONATION_CURRENCY=usd`
 - Health check path: `/healthz`
 
+## Current Live VM Deployment
+
+The current public test site runs on one Google Compute Engine VM instead of
+Cloud Run.
+
+- Project: `mledis`
+- VM: `mladis-test-1`
+- Zone: `us-central1-a`
+- Domain: `https://mladis.com/`
+- systemd app service: `mladis`
+- Reverse proxy/TLS: `caddy`
+- Remote app directory: `/home/pitergarcia/airbnb_agent`
+
+For normal code updates, use the root-level `./deploy_mladis_vm.command`.
+That command packages `airbnb_agent/`, uploads it to the VM, creates a runtime
+backup, installs requirements, runs `migrate`, `sync_socialapps`,
+`provision_agent_admin`, `collectstatic`, `check`, and restarts `mladis`.
+
+The deploy path is intentionally non-destructive by default. It preserves the
+live `.env`, `.venv`, `db.sqlite3`, and `media/`. Enable remote prune only when
+you explicitly want stale code files removed.
+
+Full runbook: [../docs/live-vm-deployment.md](../docs/live-vm-deployment.md)
+
+## Optimal Google Cloud Production
+
+The correct production shape for this app on Google Cloud is:
+
+- Cloud Run for the web service
+- Cloud SQL Postgres for relational data
+- Cloud Storage for `media/` uploads
+- Secret Manager for secrets and database passwords
+
+Recommended configuration:
+
+- Use `CLOUDSQL_CONNECTION_NAME`, `DATABASE_NAME`, `DATABASE_USER`, and `DATABASE_PASSWORD` for the primary database.
+- Use `GCS_MEDIA_BUCKET` for media storage so uploaded files do not live on the Cloud Run container filesystem.
+- Keep WhiteNoise for collected static files baked into the deployed container image.
+- Run exactly one migration step per release before or during deployment orchestration.
+
+Google Cloud prerequisites:
+
+- Billing must be enabled on the target GCP project before Cloud Run, Cloud SQL, and Secret Manager services can be activated.
+- The Cloud Run service account needs database access and write access to the media bucket.
+
+## Pilot Hosting With SQLite
+
+If you want the fastest low-risk pilot before advertising, keep the app on one
+VM and let exactly one running instance write to SQLite.
+
+- Use SQLite only on a single machine with a persistent disk.
+- Treat `db.sqlite3` and `media/` as the runtime state that must be backed up.
+- Keep Git for code only. Do not use branches or commits as the live booking database.
+- Create a point-in-time snapshot with `bash scripts/backup_runtime_state.sh`.
+- Restore a snapshot only while the app is stopped with `bash scripts/restore_runtime_state.sh <archive.tar.gz>`.
+- Copy the generated tarballs off the VM on a schedule if you want disaster recovery.
+
+This works for a short pilot. The moment you need more than one app instance,
+more frequent writes, or stronger operational safety, move to Postgres.
+
 The app currently returns an agent-ready setup/stub response. Replace
 `BookingAgentService` in `bookings/services.py` when the real booking logic is ready.
 
 ## Admin Access And Social Login
 
 - Seeded owner/admin access: `Piter Garcia <garciapiterz@gmail.com>`, business phone `631-575-4841`.
+- Seeded admin access: `Diana Garcia <garciabdianas@gmail.com>`.
+- Optional automation/agent admin access is provisioned from `.env` by `python manage.py provision_agent_admin`.
+- Set `MLADIS_AGENT_ADMIN_EMAIL`, `MLADIS_AGENT_ADMIN_NAME`, `MLADIS_AGENT_ADMIN_PHONE`, `MLADIS_AGENT_ADMIN_USERNAME`, and optionally `MLADIS_AGENT_ADMIN_PASSWORD`. If no password is set, the user is created for social-login automation only.
 - Any password, Google, Facebook, Microsoft, or GitHub login with that email is promoted to staff/superuser by the `AdminAccess` table.
+- Manual `AdminAccess` entries in `/admin/` also work immediately on the current live database.
 - Local test user created for this workspace: username `piter`. Change the password in `/admin/` before sharing or deploying.
 - Social providers are scaffolded with django-allauth. By default, `.env` is the source of truth for Google, Facebook, Microsoft, and GitHub credentials; set `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK=True` only if you intentionally want `/admin/socialaccount/socialapp/` rows to enable providers without matching env vars.
 - Environment-based setup auto-syncs `SocialApp` records for the current `SITE_ID` when the login/signup page loads or a provider login starts.
-- Local env variables: `SITE_DOMAIN`, `SITE_NAME`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `USE_X_FORWARDED_PROTO`, `ACCOUNT_DEFAULT_HTTP_PROTOCOL`, `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_CLIENT_ID`, `FACEBOOK_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_SCOPE`, `MICROSOFT_OAUTH_CLIENT_ID`, `MICROSOFT_OAUTH_CLIENT_SECRET`, `MICROSOFT_OAUTH_TENANT`, `MICROSOFT_OAUTH_LOGIN_URL`, `MICROSOFT_GRAPH_URL`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`.
+- Local env variables: `SITE_DOMAIN`, `SITE_NAME`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `USE_X_FORWARDED_PROTO`, `ACCOUNT_DEFAULT_HTTP_PROTOCOL`, `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK`, `SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS`, `SOCIAL_AUTH_CANONICAL_ORIGIN`, `MLADIS_AGENT_ADMIN_EMAIL`, `MLADIS_AGENT_ADMIN_NAME`, `MLADIS_AGENT_ADMIN_PHONE`, `MLADIS_AGENT_ADMIN_USERNAME`, `MLADIS_AGENT_ADMIN_PASSWORD`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_CLIENT_ID`, `FACEBOOK_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_SCOPE`, `MICROSOFT_OAUTH_CLIENT_ID`, `MICROSOFT_OAUTH_CLIENT_SECRET`, `MICROSOFT_OAUTH_TENANT`, `MICROSOFT_OAUTH_LOGIN_URL`, `MICROSOFT_GRAPH_URL`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`.
 - Keep the provider callback URLs aligned with the host in `SITE_DOMAIN`, for example `http://127.0.0.1:8000` locally or your production domain.
+- `SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS=microsoft` hides Microsoft from the login/signup UI until its client ID and secret exist.
+- `SOCIAL_AUTH_CANONICAL_ORIGIN=http://127.0.0.1:8000` keeps social-login requests on the exact local origin registered with Google/Meta. If you open `localhost:8000`, the auth pages redirect to `127.0.0.1:8000` so Facebook receives the same callback every time.
 - Microsoft local callback URL for Azure App Registration: `http://127.0.0.1:8000/oauth/microsoft/login/callback/`. Use `MICROSOFT_OAUTH_TENANT=common` for consumer + work accounts, `organizations` for work/school accounts, or the tenant ID if your Azure app is single-tenant.
-- Facebook local development needs an HTTPS callback. A quick tunnel such as Cloudflare Tunnel works with `ALLOWED_HOSTS=localhost,127.0.0.1,.trycloudflare.com`, `CSRF_TRUSTED_ORIGINS=https://*.trycloudflare.com`, `USE_X_FORWARDED_PROTO=True`, and `ACCOUNT_DEFAULT_HTTP_PROTOCOL=https`.
+- Keep `ACCOUNT_DEFAULT_HTTP_PROTOCOL=http` for plain local `127.0.0.1` logins. When requests come through Cloudflare Tunnel, `USE_X_FORWARDED_PROTO=True` lets Django/allauth keep the tunnel callback on `https` without forcing local callbacks to `https`.
+- Facebook local development needs an HTTPS callback. A quick tunnel such as Cloudflare Tunnel works with `ALLOWED_HOSTS=localhost,127.0.0.1,.trycloudflare.com`, `CSRF_TRUSTED_ORIGINS=https://*.trycloudflare.com`, and `USE_X_FORWARDED_PROTO=True`.
 - For the current Meta app, `FACEBOOK_OAUTH_SCOPE=public_profile` is the working local default. If Meta later approves `email`, update the scope to `public_profile,email` and re-save the active tunnel callback URL plus app domain in Meta.
-- Meta basic settings can use the new public policy pages in this app: `https://<current-host>/privacy/`, `https://<current-host>/terms/`, and `https://<current-host>/data-deletion/`. For the current Cloudflare tunnel, replace `<current-host>` with the active `.trycloudflare.com` hostname before saving the fields in Meta.
+- Meta basic settings can use the new public policy pages in this app: `https://<current-host>/privacy/` and `https://<current-host>/terms/`. For Facebook data deletion, use the callback URL option with `https://<current-host>/data-deletion/callback/`; the human-facing instructions page stays at `https://<current-host>/data-deletion/`. For the current Cloudflare tunnel, replace `<current-host>` with the active `.trycloudflare.com` hostname before saving the fields in Meta.
 
 ## Damage Deposit Flow
 

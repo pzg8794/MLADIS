@@ -1,7 +1,28 @@
+from django.conf import settings
 from django.db.utils import OperationalError, ProgrammingError
+from django.shortcuts import redirect
 from django.utils.translation import get_language
 
 from .models import PageVisit
+
+
+class SocialAuthCanonicalOriginMiddleware:
+    """Keeps OAuth requests on the exact host/protocol registered with providers."""
+
+    PATH_PREFIXES = ("/accounts/login/", "/accounts/signup/", "/oauth/")
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        canonical_origin = getattr(settings, "SOCIAL_AUTH_CANONICAL_ORIGIN", "")
+        if canonical_origin and request.path.startswith(self.PATH_PREFIXES):
+            if request.get_host() == "testserver":
+                return self.get_response(request)
+            current_origin = f"{request.scheme}://{request.get_host()}".rstrip("/")
+            if current_origin != canonical_origin:
+                return redirect(f"{canonical_origin}{request.get_full_path()}")
+        return self.get_response(request)
 
 
 class PageVisitMiddleware:

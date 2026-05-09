@@ -16,6 +16,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DetailView, TemplateView, UpdateView
+import requests
 import stripe
 
 from .forms import (
@@ -45,7 +46,10 @@ from .services import (
     BookingEmailService,
     DamageDepositService,
     DonationService,
+    PayPalAPIError,
+    PayPalDamageDepositService,
     ReservationRequestService,
+    get_damage_deposit_service,
 )
 
 
@@ -214,12 +218,36 @@ class PrivacyPolicyPageView(TemplateView):
     template_name = "bookings/privacy_policy.html"
 
 
+class BusinessPageView(TemplateView):
+    template_name = "bookings/business.html"
+
+
 class TermsPageView(TemplateView):
     template_name = "bookings/terms.html"
 
 
 class DataDeletionPageView(TemplateView):
     template_name = "bookings/data_deletion.html"
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class DataDeletionCallbackView(View):
+    def get(self, request):
+        return JsonResponse(
+            {
+                "instructions_url": request.build_absolute_uri(reverse("bookings:data-deletion")),
+                "message": "Send Meta data deletion callbacks to this endpoint with POST.",
+            }
+        )
+
+    def post(self, request):
+        confirmation_code = uuid4().hex
+        return JsonResponse(
+            {
+                "url": request.build_absolute_uri(reverse("bookings:data-deletion")),
+                "confirmation_code": confirmation_code,
+            }
+        )
 
 
 class BookingInquiryCreateView(View):
@@ -351,8 +379,6 @@ class InvoicePrintView(DetailView):
 
 
 class DamageDepositCheckoutView(View):
-    service_class = DamageDepositService
-
     def post(self, request):
         form = DamageDepositForm(request.POST)
         if not form.is_valid():
@@ -362,7 +388,8 @@ class DamageDepositCheckoutView(View):
             return render(request, "bookings/home.html", context, status=400)
 
         deposit = form.save()
-        result = self.service_class().create_checkout_session(deposit, request)
+        service = get_damage_deposit_service(form.cleaned_data.get("payment_provider"))
+        result = service.create_checkout_session(deposit, request)
         if result.success:
             return redirect(result.checkout_url)
 
@@ -429,6 +456,41 @@ class DamageDepositSuccessView(View):
             )
         else:
             messages.success(request, "Thanks. Your deposit checkout was completed.")
+        return redirect(reverse("bookings:home") + "#deposit")
+
+
+class PayPalDamageDepositSuccessView(View):
+    service_class = PayPalDamageDepositService
+
+    def get(self, request):
+        order_id = request.GET.get("token", "")
+        deposit = None
+        if order_id:
+            try:
+                deposit = self.service_class().authorize_order(order_id)
+            except (PayPalAPIError, requests.RequestException):
+                deposit = None
+
+        if deposit:
+            messages.success(
+                request,
+                f"Your {deposit.display_amount} damage deposit authorization is recorded.",
+            )
+        else:
+            messages.warning(
+                request,
+                "We could not confirm the PayPal deposit authorization. Please try again.",
+            )
+        return redirect(reverse("bookings:home") + "#deposit")
+
+
+class PayPalDamageDepositCancelView(View):
+    service_class = PayPalDamageDepositService
+
+    def get(self, request):
+        order_id = request.GET.get("token", "")
+        self.service_class().cancel_order(order_id)
+        messages.warning(request, "The PayPal deposit authorization was canceled.")
         return redirect(reverse("bookings:home") + "#deposit")
 
 

@@ -5,3 +5,5 @@ __pycache__/
 db.sqlite3
 staticfiles/
 media/
+runtime_backups/
+runtime_restore_safety/

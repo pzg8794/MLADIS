@@ -1,0 +1,54 @@
+{% extends "bookings/base.html" %}
+
+{% block title %}Business Profile | MLADIS{% endblock %}
+
+{% block content %}
+<main>
+  <section class="story-band policy-page" aria-labelledby="business-title">
+    <div class="policy-copy">
+      <p class="policy-kicker">MLADIS business profile</p>
+      <h1 id="business-title">Business profile</h1>
+      <p class="policy-lead">MLADIS operates a direct-host travel and reservation website for vacation stays, guest support, and related service coordination based in {{ site_settings.public_address_label|default:"Santo Domingo Norte, Dominican Republic" }}.</p>
+      <p>This page publishes the public business details that guests, partners, and platform reviewers can use to confirm how MLADIS operates.</p>
+    </div>
+    <div class="policy-grid">
+      <article class="policy-card">
+        <h2>Business identity</h2>
+        <ul>
+          <li>Business name: {{ site_settings.site_name|default:"MLADIS" }}</li>
+          <li>Operating region: {{ site_settings.public_address_label|default:"Santo Domingo Norte, Dominican Republic" }}</li>
+          <li>Public contact: <a href="mailto:{{ site_settings.contact_email|default:'garciapiterz@gmail.com' }}">{{ site_settings.contact_email|default:"garciapiterz@gmail.com" }}</a></li>
+          <li>Last published site update: {{ site_settings.updated_at|date:"F j, Y" }}</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>What MLADIS does</h2>
+        <ul>
+          <li>Handles direct booking inquiries and guest account access for vacation stays in the Dominican Republic.</li>
+          <li>Supports reservation communication, secure payment collection through Stripe, and stay-related coordination.</li>
+          <li>Offers optional social sign-in for returning guests through supported identity providers.</li>
+          <li>Maintains public booking, privacy, and data-handling policies for guest transparency.</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>How guests reach us</h2>
+        <ul>
+          <li>Email support, privacy requests, and platform inquiries are handled through the public contact email above.</li>
+          <li>Website visitors can submit booking inquiries directly through the MLADIS website.</li>
+          <li>Guest accounts, reservations, and stay communications are managed through this site.</li>
+          <li>Operational follow-up is provided for inquiries, deposits, payments, and reservation updates.</li>
+        </ul>
+      </article>
+      <article class="policy-card">
+        <h2>Public policies</h2>
+        <ul>
+          <li><a href="{% url 'bookings:privacy-policy' %}">Privacy policy</a></li>
+          <li><a href="{% url 'bookings:terms' %}">Terms of service</a></li>
+          <li><a href="{% url 'bookings:data-deletion' %}">Data deletion instructions</a></li>
+          <li><a href="{% url 'bookings:about' %}">About MLADIS</a></li>
+        </ul>
+      </article>
+    </div>
+  </section>
+</main>
+{% endblock %}

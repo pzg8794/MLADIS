@@ -160,7 +160,7 @@
     <div class="booking-copy">
       <h2 id="booking-title">Start booking {{ stay.name }}.</h2>
       <p>Use the agent on the left while you choose dates on the right. Once started, the next step is the secure damage-deposit hold.</p>
-      <p class="deposit-note">Damage deposit: {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization hold through Stripe Checkout.</p>
+      <p class="deposit-note">Damage deposit: {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} authorization hold through Stripe Checkout or PayPal.</p>
     </div>
     <div class="booking-action-grid">
       {% include "bookings/partials/agent_panel.html" with selected_item_id=stay.id panel_title="Ask about this stay" panel_intro="Ask while you book: rooms, rules, deposits, location, or fit for your group." %}

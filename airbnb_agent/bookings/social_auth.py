@@ -128,6 +128,7 @@ def sync_social_apps_from_env():
 def get_social_login_providers():
     env_configured = set()
     admin_configured = set()
+    hidden_unconfigured = set(getattr(settings, "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS", []))
     try:
         env_configured |= sync_social_apps_from_env()
         if _env_bool("SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK", getattr(settings, "SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK", False)):
@@ -145,6 +146,8 @@ def get_social_login_providers():
         except NoReverseMatch:
             login_url = ""
         is_configured = provider["id"] in env_configured or provider["id"] in admin_configured
+        if provider["id"] in hidden_unconfigured and not is_configured:
+            continue
         providers.append(
             {
                 "id": provider["id"],

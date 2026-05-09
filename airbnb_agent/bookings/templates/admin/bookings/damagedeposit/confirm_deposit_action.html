@@ -1,0 +1,30 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; <a href="{{ cancel_url }}">{{ original|truncatewords:"18" }}</a>
+&rsaquo; {{ action_label }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <div class="module aligned">
+    <h1>{{ title }}</h1>
+    <p>{{ action_summary }}</p>
+    <p><strong>{{ action_provider_detail }}</strong></p>
+    <p>{{ action_warning }}</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="submit-row">
+        <input type="submit" value="{{ confirm_button_label }}">
+        <a href="{{ cancel_url }}" class="closelink">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

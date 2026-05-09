@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import dj_database_url
 from dotenv import load_dotenv
 
 
@@ -57,6 +58,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "bookings.middleware.SocialAuthCanonicalOriginMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "allauth.account.middleware.AccountMiddleware",
@@ -85,12 +87,59 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+DATABASE_NAME = os.getenv("DATABASE_NAME", "").strip()
+DATABASE_USER = os.getenv("DATABASE_USER", "").strip()
+DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD", "").strip()
+DATABASE_HOST = os.getenv("DATABASE_HOST", "").strip()
+DATABASE_PORT = os.getenv("DATABASE_PORT", "5432").strip() or "5432"
+CLOUDSQL_CONNECTION_NAME = os.getenv("CLOUDSQL_CONNECTION_NAME", "").strip()
+DATABASE_CONN_MAX_AGE = int(os.getenv("DATABASE_CONN_MAX_AGE", "600"))
+DATABASE_SSL_REQUIRE = env_bool(
+    "DATABASE_SSL_REQUIRE",
+    default=DATABASE_URL.startswith(("postgres://", "postgresql://")),
+)
+
+
+def build_postgres_database(host, *, require_ssl):
+    database = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": DATABASE_NAME,
+        "USER": DATABASE_USER,
+        "PASSWORD": DATABASE_PASSWORD,
+        "HOST": host,
+        "PORT": DATABASE_PORT,
+        "CONN_MAX_AGE": DATABASE_CONN_MAX_AGE,
     }
-}
+    if require_ssl and not host.startswith("/cloudsql/"):
+        database["OPTIONS"] = {"sslmode": "require"}
+    return {"default": database}
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=DATABASE_CONN_MAX_AGE,
+            ssl_require=DATABASE_SSL_REQUIRE,
+        )
+    }
+elif DATABASE_NAME and DATABASE_USER and CLOUDSQL_CONNECTION_NAME:
+    DATABASES = build_postgres_database(
+        f"/cloudsql/{CLOUDSQL_CONNECTION_NAME}",
+        require_ssl=False,
+    )
+elif DATABASE_NAME and DATABASE_USER and DATABASE_HOST:
+    DATABASES = build_postgres_database(
+        DATABASE_HOST,
+        require_ssl=DATABASE_SSL_REQUIRE,
+    )
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -111,9 +160,35 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+GCS_MEDIA_BUCKET = os.getenv("GCS_MEDIA_BUCKET", "").strip()
+GCS_MEDIA_LOCATION = os.getenv("GCS_MEDIA_LOCATION", "media").strip().strip("/")
+GS_PROJECT_ID = os.getenv("GS_PROJECT_ID", "").strip() or None
+GS_DEFAULT_ACL = None
+GS_QUERYSTRING_AUTH = False
+GS_FILE_OVERWRITE = False
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+if GCS_MEDIA_BUCKET:
+    media_options = {"bucket_name": GCS_MEDIA_BUCKET}
+    if GCS_MEDIA_LOCATION:
+        media_options["location"] = GCS_MEDIA_LOCATION
+        MEDIA_URL = f"https://storage.googleapis.com/{GCS_MEDIA_BUCKET}/{GCS_MEDIA_LOCATION}/"
+    else:
+        MEDIA_URL = f"https://storage.googleapis.com/{GCS_MEDIA_BUCKET}/"
+    STORAGES["default"] = {
+        "BACKEND": "bookings.storage_backends.PublicMediaStorage",
+        "OPTIONS": media_options,
+    }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SITE_ID = 1
@@ -133,6 +208,11 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 SOCIALACCOUNT_LOGIN_ON_GET = False
 SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK = env_bool("SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK", default=False)
+SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS = env_list(
+    "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS",
+    ["microsoft"],
+)
+SOCIAL_AUTH_CANONICAL_ORIGIN = os.getenv("SOCIAL_AUTH_CANONICAL_ORIGIN", "").strip().rstrip("/")
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "SCOPE": ["profile", "email"],
@@ -155,6 +235,10 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_API_VERSION = "2026-02-25.clover"
+PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "")
+PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "")
+PAYPAL_ENVIRONMENT = os.getenv("PAYPAL_ENVIRONMENT", "sandbox").strip().lower() or "sandbox"
+PAYPAL_BRAND_NAME = os.getenv("PAYPAL_BRAND_NAME", "MLADIS")
 DEPOSIT_AMOUNT_CENTS = int(os.getenv("DEPOSIT_AMOUNT_CENTS", "20000"))
 DEPOSIT_CURRENCY = os.getenv("DEPOSIT_CURRENCY", "usd").lower()
 DONATION_CURRENCY = os.getenv("DONATION_CURRENCY", DEPOSIT_CURRENCY).lower()

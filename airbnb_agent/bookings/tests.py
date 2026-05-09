@@ -1,24 +1,31 @@
-import os
 import json
-from datetime import timedelta
+import os
+from io import StringIO
+from datetime import date, timedelta
+from decimal import Decimal
 from unittest.mock import patch
 
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.internal.flows.signup import process_auto_signup
 from allauth.socialaccount.models import SocialApp
 from allauth.socialaccount.models import SocialAccount, SocialLogin
+from django.contrib import messages
+from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.core import mail
+from django.core.management import call_command
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from .adapters import MLADISAccountAdapter, MLADISSocialAccountAdapter
+from .admin import DamageDepositAdmin
 from .forms import BookingInquiryForm
 from .models import (
     AdminAccess,
     AgentConversation,
+    AvailabilityBlock,
     BookableItem,
     BookingCategory,
     BookingInquiry,
@@ -27,15 +34,28 @@ from .models import (
     ClientSegment,
     Coupon,
     CustomerProfile,
+    DailyPriceOverride,
     Donation,
     DonationStatus,
     DamageDeposit,
+    DepositProvider,
     DepositStatus,
     Invoice,
     InvoiceLineItem,
     PageVisit,
     SiteSettings,
 )
+from .services import BookingCalendarService
+
+
+TEST_STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 
 class BookingInquiryFormTests(TestCase):
@@ -222,6 +242,221 @@ class BookingInquiryViewTests(TestCase):
             f"{reverse('bookings:home')}?submitted=1&deposit_for={inquiry.id}#deposit",
             fetch_redirect_response=False,
         )
+        self.assertEqual(DamageDeposit.objects.count(), 0)
+
+
+class BookingCalendarServiceTests(TestCase):
+    def test_build_month_merges_bookings_blocks_and_daily_prices(self):
+        item = BookableItem.objects.create(
+            name="Calendar Stay",
+            slug="calendar-stay",
+            category=BookingCategory.STAY,
+            short_description="A test calendar stay.",
+            starting_price=Decimal("120.00"),
+            is_active=True,
+        )
+        BookingInquiry.objects.create(
+            item=item,
+            guest_name="Booked Guest",
+            email="guest@example.com",
+            check_in=date(2026, 6, 10),
+            check_out=date(2026, 6, 13),
+            guests=2,
+            status=BookingStatus.CONFIRMED,
+        )
+        BookingInquiry.objects.create(
+            item=item,
+            guest_name="Canceled Guest",
+            email="canceled@example.com",
+            check_in=date(2026, 6, 15),
+            check_out=date(2026, 6, 17),
+            guests=2,
+            status=BookingStatus.CANCELED,
+        )
+        AvailabilityBlock.objects.create(
+            item=item,
+            start_date=date(2026, 6, 18),
+            end_date=date(2026, 6, 19),
+            reason="Owner stay",
+        )
+        DailyPriceOverride.objects.create(
+            item=item,
+            start_date=date(2026, 6, 20),
+            end_date=date(2026, 6, 21),
+            nightly_price=Decimal("175.00"),
+            label="Weekend premium",
+        )
+
+        result = BookingCalendarService().build_month(item, month_start=date(2026, 6, 1))
+
+        booked_day = self._calendar_cell(result["weeks"], date(2026, 6, 11))
+        blocked_day = self._calendar_cell(result["weeks"], date(2026, 6, 18))
+        priced_day = self._calendar_cell(result["weeks"], date(2026, 6, 20))
+        available_day = self._calendar_cell(result["weeks"], date(2026, 6, 15))
+
+        self.assertEqual(booked_day["status"], "booked")
+        self.assertEqual(len(booked_day["reservations"]), 1)
+        self.assertEqual(booked_day["price_display"], "$120.00")
+
+        self.assertEqual(blocked_day["status"], "blocked")
+        self.assertEqual(blocked_day["blocks"][0].reason, "Owner stay")
+
+        self.assertEqual(priced_day["status"], "available")
+        self.assertEqual(priced_day["price_display"], "$175.00")
+        self.assertEqual(priced_day["price_source"], "override")
+
+        self.assertEqual(available_day["status"], "available")
+        self.assertEqual(available_day["price_display"], "$120.00")
+        self.assertEqual(len(result["reservations"]), 1)
+
+    def _calendar_cell(self, weeks, target_day):
+        for week in weeks:
+            for cell in week:
+                if cell["date"] == target_day:
+                    return cell
+        self.fail(f"Could not find calendar cell for {target_day}.")
+
+
+@override_settings(STORAGES=TEST_STORAGES)
+class BookableItemCalendarAdminTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="calendar-admin",
+            email="calendar-admin@example.com",
+            password="secret",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_login(self.user)
+        self.item = BookableItem.objects.create(
+            name="Calendar Admin Stay",
+            slug="calendar-admin-stay",
+            category=BookingCategory.STAY,
+            short_description="A stay used for admin calendar tests.",
+            starting_price=Decimal("120.00"),
+            is_active=True,
+        )
+
+    def test_calendar_view_renders_booked_blocked_and_priced_days(self):
+        reservation = BookingInquiry.objects.create(
+            item=self.item,
+            guest_name="Booked Guest",
+            email="guest@example.com",
+            check_in=date(2026, 6, 10),
+            check_out=date(2026, 6, 13),
+            guests=2,
+            status=BookingStatus.CONFIRMED,
+        )
+        block = AvailabilityBlock.objects.create(
+            item=self.item,
+            start_date=date(2026, 6, 18),
+            end_date=date(2026, 6, 19),
+            reason="Owner stay",
+        )
+        override = DailyPriceOverride.objects.create(
+            item=self.item,
+            start_date=date(2026, 6, 20),
+            end_date=date(2026, 6, 21),
+            nightly_price=Decimal("175.00"),
+            label="Weekend premium",
+        )
+
+        response = self.client.get(
+            reverse("admin:bookings_bookableitem_calendar"),
+            data={"item": self.item.pk, "month": "2026-06"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Business calendar")
+        self.assertContains(response, "Booked Guest")
+        self.assertContains(response, "Owner stay")
+        self.assertContains(response, "$175.00")
+        self.assertContains(response, "Default nightly price")
+        self.assertContains(response, "Click one day to start a range")
+        self.assertContains(response, 'data-calendar-quick-action="block"', html=False)
+        self.assertContains(response, 'data-calendar-quick-action="price"', html=False)
+        self.assertContains(response, reverse("admin:bookings_bookinginquiry_change", args=[reservation.pk]))
+        self.assertContains(response, reverse("admin:bookings_availabilityblock_change", args=[block.pk]))
+        self.assertContains(response, reverse("admin:bookings_dailypriceoverride_change", args=[override.pk]))
+        self.assertContains(response, 'data-calendar-date="2026-06-10"', html=False)
+
+    def test_calendar_view_post_add_block_creates_manual_block(self):
+        response = self.client.post(
+            reverse("admin:bookings_bookableitem_calendar"),
+            data={
+                "calendar_action": "add_block",
+                "month": "2026-06",
+                "item": self.item.pk,
+                "block-start_date": "2026-06-22",
+                "block-end_date": "2026-06-24",
+                "block-reason": "Maintenance",
+                "block-notes": "Paint work",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        block = AvailabilityBlock.objects.get()
+        self.assertEqual(block.reason, "Maintenance")
+        self.assertEqual(block.start_date, date(2026, 6, 22))
+        self.assertEqual(block.end_date, date(2026, 6, 24))
+
+    def test_calendar_view_post_add_price_override_creates_override(self):
+        response = self.client.post(
+            reverse("admin:bookings_bookableitem_calendar"),
+            data={
+                "calendar_action": "add_price",
+                "month": "2026-06",
+                "item": self.item.pk,
+                "price-start_date": "2026-06-27",
+                "price-end_date": "2026-06-28",
+                "price-nightly_price": "210.00",
+                "price-label": "Holiday weekend",
+                "price-notes": "High demand dates",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        override = DailyPriceOverride.objects.get()
+        self.assertEqual(override.label, "Holiday weekend")
+        self.assertEqual(override.nightly_price, Decimal("210.00"))
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
+        STRIPE_SECRET_KEY="sk_test_123",
+        PAYPAL_CLIENT_ID="paypal-client",
+        PAYPAL_CLIENT_SECRET="paypal-secret",
+    )
+    def test_booking_still_redirects_to_deposit_choice_when_payment_providers_are_configured(self):
+        item = BookableItem.objects.create(
+            name="Test Stay",
+            slug="test-stay-direct-checkout",
+            category=BookingCategory.STAY,
+            short_description="A test booking item.",
+            is_active=True,
+        )
+        today = timezone.localdate()
+
+        response = self.client.post(
+            reverse("bookings:inquiry-create"),
+            data={
+                "item": item.id,
+                "guest_name": "Jamie",
+                "email": "jamie@example.com",
+                "phone": "555-0106",
+                "check_in": today + timedelta(days=4),
+                "check_out": today + timedelta(days=7),
+                "guests": 2,
+            },
+        )
+
+        inquiry = BookingInquiry.objects.get()
+        self.assertRedirects(
+            response,
+            f"{reverse('bookings:home')}?submitted=1&deposit_for={inquiry.id}#deposit",
+            fetch_redirect_response=False,
+        )
+        self.assertEqual(DamageDeposit.objects.count(), 0)
 
 
 class MarketingPageTests(TestCase):
@@ -261,6 +496,18 @@ class LegalPageTests(TestCase):
         site_settings.contact_email = "privacy@example.com"
         site_settings.save(update_fields=["contact_email", "updated_at"])
 
+    def test_business_page_renders_public_business_details(self):
+        site_settings = SiteSettings.current()
+
+        response = self.client.get(reverse("bookings:business"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Business profile")
+        self.assertContains(response, site_settings.site_name)
+        self.assertContains(response, site_settings.public_address_label)
+        self.assertContains(response, "privacy@example.com")
+        self.assertContains(response, reverse("bookings:privacy-policy"))
+
     def test_privacy_policy_page_renders_contact_details(self):
         response = self.client.get(reverse("bookings:privacy-policy"))
 
@@ -284,8 +531,54 @@ class LegalPageTests(TestCase):
         self.assertContains(response, "Data deletion request")
         self.assertContains(response, "privacy@example.com")
 
+    def test_data_deletion_callback_returns_meta_confirmation_payload(self):
+        response = self.client.post(
+            reverse("bookings:data-deletion-callback"),
+            data={"signed_request": "test"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["url"], f"http://testserver{reverse('bookings:data-deletion')}")
+        self.assertEqual(len(payload["confirmation_code"]), 32)
+
+    def test_data_deletion_callback_gets_instruction_metadata(self):
+        response = self.client.get(reverse("bookings:data-deletion-callback"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(
+            payload["instructions_url"],
+            f"http://testserver{reverse('bookings:data-deletion')}",
+        )
+
 
 class AccountReservationTests(TestCase):
+    def test_agent_admin_command_provisions_dedicated_superuser(self):
+        output = StringIO()
+
+        call_command(
+            "provision_agent_admin",
+            email="agent@mladis.com",
+            name="MLADIS Agent",
+            phone="631-575-4841",
+            username="mladis-agent",
+            stdout=output,
+        )
+
+        user = get_user_model().objects.get(email="agent@mladis.com")
+        access = AdminAccess.objects.get(email="agent@mladis.com")
+        profile = CustomerProfile.objects.get(email="agent@mladis.com")
+        self.assertEqual(user.username, "mladis-agent")
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
+        self.assertFalse(user.has_usable_password())
+        self.assertEqual(access.name, "MLADIS Agent")
+        self.assertEqual(access.phone, "631-575-4841")
+        self.assertEqual(profile.user, user)
+        self.assertEqual(profile.segment, ClientSegment.VIP)
+        self.assertIn("Provisioned agent admin", output.getvalue())
+
     def test_seeded_admin_email_gets_staff_access_after_signup(self):
         response = self.client.post(
             reverse("bookings:signup"),
@@ -306,6 +599,27 @@ class AccountReservationTests(TestCase):
         self.assertTrue(user.is_staff)
         self.assertTrue(user.is_superuser)
 
+    def test_seeded_diana_admin_email_gets_staff_access_after_signup(self):
+        response = self.client.post(
+            reverse("bookings:signup"),
+            data={
+                "username": "diana-owner",
+                "email": "GarciaBDianaS@gmail.com",
+                "first_name": "Diana",
+                "last_name": "Garcia",
+                "phone": "555-0105",
+                "password1": "A-strong-pass-2026!",
+                "password2": "A-strong-pass-2026!",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        user = get_user_model().objects.get(username="diana-owner")
+        self.assertTrue(AdminAccess.objects.filter(email="garciabdianas@gmail.com", is_active=True).exists())
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
+
+    @override_settings(SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS=[])
     def test_login_page_renders_social_account_options(self):
         with patch.dict(
             os.environ,
@@ -319,6 +633,7 @@ class AccountReservationTests(TestCase):
                 "GITHUB_OAUTH_CLIENT_ID": "",
                 "GITHUB_OAUTH_CLIENT_SECRET": "",
                 "SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK": "",
+                "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS": "",
             },
             clear=False,
         ):
@@ -331,6 +646,48 @@ class AccountReservationTests(TestCase):
         self.assertContains(response, "Continue with GitHub")
         self.assertContains(response, "setup needed")
         self.assertNotContains(response, 'action="/oauth/google/login/"')
+
+    @override_settings(SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS=["microsoft"])
+    def test_unconfigured_microsoft_is_hidden_from_social_options(self):
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_OAUTH_CLIENT_ID": "",
+                "GOOGLE_OAUTH_CLIENT_SECRET": "",
+                "FACEBOOK_OAUTH_CLIENT_ID": "",
+                "FACEBOOK_OAUTH_CLIENT_SECRET": "",
+                "MICROSOFT_OAUTH_CLIENT_ID": "",
+                "MICROSOFT_OAUTH_CLIENT_SECRET": "",
+                "GITHUB_OAUTH_CLIENT_ID": "",
+                "GITHUB_OAUTH_CLIENT_SECRET": "",
+                "SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK": "",
+                "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS": "microsoft",
+            },
+            clear=False,
+        ):
+            response = self.client.get(reverse("bookings:login"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Continue with Microsoft")
+
+    @override_settings(
+        SOCIAL_AUTH_CANONICAL_ORIGIN="http://127.0.0.1:8000",
+        ALLOWED_HOSTS=["localhost", "127.0.0.1", "testserver"],
+    )
+    def test_social_auth_canonical_origin_redirects_login_host(self):
+        response = self.client.get(reverse("bookings:login"), HTTP_HOST="localhost:8000")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"http://127.0.0.1:8000{reverse('bookings:login')}")
+
+    @override_settings(
+        SOCIAL_AUTH_CANONICAL_ORIGIN="http://127.0.0.1:8000",
+        ALLOWED_HOSTS=["localhost", "127.0.0.1", "testserver"],
+    )
+    def test_social_auth_canonical_origin_keeps_matching_host(self):
+        response = self.client.get(reverse("bookings:login"), HTTP_HOST="127.0.0.1:8000")
+
+        self.assertEqual(response.status_code, 200)
 
     def test_login_page_auto_configures_google_from_environment(self):
         with patch.dict(
@@ -356,6 +713,7 @@ class AccountReservationTests(TestCase):
         self.assertEqual(site.domain, "127.0.0.1:8000")
         self.assertEqual(site.name, "MLADIS Local")
 
+    @override_settings(SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS=[])
     def test_stale_microsoft_social_app_is_ignored_when_env_is_empty(self):
         stale_app = SocialApp.objects.create(
             provider="microsoft",
@@ -383,6 +741,30 @@ class AccountReservationTests(TestCase):
         self.assertNotContains(response, f'action="{reverse("microsoft_login")}"')
         self.assertEqual(launch_response.status_code, 302)
         self.assertEqual(launch_response["Location"], reverse("bookings:login"))
+
+    def test_stale_microsoft_social_app_stays_hidden_by_default(self):
+        stale_app = SocialApp.objects.create(
+            provider="microsoft",
+            name="Microsoft OAuth",
+            client_id="demo-microsoft-client",
+            secret="demo-microsoft-secret",
+        )
+        stale_app.sites.add(Site.objects.get(id=1))
+
+        with patch.dict(
+            os.environ,
+            {
+                "MICROSOFT_OAUTH_CLIENT_ID": "",
+                "MICROSOFT_OAUTH_CLIENT_SECRET": "",
+                "SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK": "",
+                "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS": "microsoft",
+            },
+            clear=False,
+        ):
+            response = self.client.get(reverse("bookings:login"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Continue with Microsoft")
 
     def test_login_page_auto_configures_microsoft_from_environment(self):
         with patch.dict(
@@ -576,6 +958,7 @@ class OpsDashboardTests(TestCase):
 
 
 class DamageDepositTests(TestCase):
+    @override_settings(STRIPE_SECRET_KEY="")
     def test_deposit_checkout_without_stripe_key_records_configuration_status(self):
         item = BookableItem.objects.create(
             name="Test Stay",
@@ -597,7 +980,340 @@ class DamageDepositTests(TestCase):
         self.assertEqual(response.status_code, 302)
         deposit = DamageDeposit.objects.get()
         self.assertEqual(deposit.amount_cents, 20000)
+        self.assertEqual(deposit.payment_provider, DepositProvider.STRIPE)
         self.assertEqual(deposit.status, DepositStatus.REQUIRES_CONFIGURATION)
+
+    @override_settings(PAYPAL_CLIENT_ID="", PAYPAL_CLIENT_SECRET="")
+    def test_paypal_checkout_without_credentials_records_configuration_status(self):
+        item = BookableItem.objects.create(
+            name="PayPal Stay",
+            slug="paypal-stay",
+            category=BookingCategory.STAY,
+            short_description="A test booking item.",
+            is_active=True,
+        )
+
+        response = self.client.post(
+            reverse("bookings:deposit-checkout"),
+            data={
+                "item": item.id,
+                "guest_name": "Jordan",
+                "email": "jordan@example.com",
+                "payment_provider": DepositProvider.PAYPAL,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        deposit = DamageDeposit.objects.get()
+        self.assertEqual(deposit.payment_provider, DepositProvider.PAYPAL)
+        self.assertEqual(deposit.status, DepositStatus.REQUIRES_CONFIGURATION)
+
+    @override_settings(
+        PAYPAL_CLIENT_ID="paypal-client",
+        PAYPAL_CLIENT_SECRET="paypal-secret",
+    )
+    @patch("bookings.services.PayPalDamageDepositService._paypal_api_request")
+    @patch("bookings.services.PayPalDamageDepositService._create_access_token", return_value="access-token")
+    def test_paypal_checkout_redirect_records_order(self, _mock_token, mock_api_request):
+        item = BookableItem.objects.create(
+            name="PayPal Stay Configured",
+            slug="paypal-stay-configured",
+            category=BookingCategory.STAY,
+            short_description="A test booking item.",
+            is_active=True,
+        )
+        mock_api_request.return_value = {
+            "id": "ORDER-123",
+            "links": [
+                {
+                    "rel": "payer-action",
+                    "href": "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-123",
+                }
+            ],
+        }
+
+        response = self.client.post(
+            reverse("bookings:deposit-checkout"),
+            data={
+                "item": item.id,
+                "guest_name": "Taylor",
+                "email": "taylor@example.com",
+                "payment_provider": DepositProvider.PAYPAL,
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-123",
+            fetch_redirect_response=False,
+        )
+        deposit = DamageDeposit.objects.get()
+        self.assertEqual(deposit.payment_provider, DepositProvider.PAYPAL)
+        self.assertEqual(deposit.paypal_order_id, "ORDER-123")
+        self.assertEqual(deposit.status, DepositStatus.CHECKOUT_CREATED)
+
+    @override_settings(
+        PAYPAL_CLIENT_ID="paypal-client",
+        PAYPAL_CLIENT_SECRET="paypal-secret",
+    )
+    @patch("bookings.services.PayPalDamageDepositService._paypal_api_request")
+    @patch("bookings.services.PayPalDamageDepositService._create_access_token", return_value="access-token")
+    def test_paypal_success_authorizes_deposit(self, _mock_token, mock_api_request):
+        deposit = DamageDeposit.objects.create(
+            guest_name="Taylor",
+            email="taylor@example.com",
+            payment_provider=DepositProvider.PAYPAL,
+            paypal_order_id="ORDER-123",
+        )
+        mock_api_request.return_value = {
+            "purchase_units": [
+                {
+                    "payments": {
+                        "authorizations": [
+                            {
+                                "id": "AUTH-123",
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+
+        response = self.client.get(
+            reverse("bookings:deposit-paypal-success"),
+            data={"token": "ORDER-123"},
+        )
+
+        self.assertRedirects(response, reverse("bookings:home") + "#deposit", fetch_redirect_response=False)
+        deposit.refresh_from_db()
+        self.assertEqual(deposit.paypal_authorization_id, "AUTH-123")
+        self.assertEqual(deposit.status, DepositStatus.REQUIRES_CAPTURE)
+
+
+@override_settings(STORAGES=TEST_STORAGES)
+class DamageDepositAdminTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.admin = DamageDepositAdmin(DamageDeposit, AdminSite())
+        self.user = get_user_model().objects.create_user(
+            username="deposit-admin",
+            email="deposit-admin@example.com",
+            password="secret",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_login(self.user)
+
+    def _request(self):
+        request = self.factory.post("/admin/bookings/damagedeposit/")
+        request.user = self.user
+        return request
+
+    @override_settings(
+        PAYPAL_CLIENT_ID="paypal-client",
+        PAYPAL_CLIENT_SECRET="paypal-secret",
+    )
+    @patch.object(DamageDepositAdmin, "message_user")
+    @patch("bookings.services.PayPalDamageDepositService._paypal_api_request")
+    @patch("bookings.services.PayPalDamageDepositService._create_access_token", return_value="access-token")
+    def test_capture_selected_deposits_updates_only_authorized_paypal_deposits(
+        self,
+        _mock_token,
+        mock_api_request,
+        mock_message_user,
+    ):
+        paypal_deposit = DamageDeposit.objects.create(
+            guest_name="Taylor",
+            email="taylor@example.com",
+            amount_cents=20000,
+            currency="usd",
+            payment_provider=DepositProvider.PAYPAL,
+            status=DepositStatus.REQUIRES_CAPTURE,
+            paypal_order_id="ORDER-123",
+            paypal_authorization_id="AUTH-123",
+        )
+        stripe_deposit = DamageDeposit.objects.create(
+            guest_name="Jordan",
+            email="jordan@example.com",
+            amount_cents=20000,
+            currency="usd",
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.CANCELED,
+            stripe_payment_intent_id="pi_123",
+        )
+        mock_api_request.return_value = {"id": "CAPTURE-123"}
+
+        self.admin.capture_selected_deposits(
+            self._request(),
+            DamageDeposit.objects.filter(pk__in=[paypal_deposit.pk, stripe_deposit.pk]),
+        )
+
+        paypal_deposit.refresh_from_db()
+        stripe_deposit.refresh_from_db()
+        self.assertEqual(paypal_deposit.status, DepositStatus.CAPTURED)
+        self.assertEqual(stripe_deposit.status, DepositStatus.CANCELED)
+        self.assertIn("CAPTURE-123", paypal_deposit.notes)
+        mock_api_request.assert_called_once_with(
+            "post",
+            "/v2/payments/authorizations/AUTH-123/capture",
+            access_token="access-token",
+            json_body={
+                "amount": {"currency_code": "USD", "value": "200.00"},
+                "final_capture": True,
+            },
+        )
+
+        messages = [call.args[1] for call in mock_message_user.call_args_list]
+        self.assertIn("Captured 1 deposit hold(s).", messages)
+        self.assertIn("Skipped 1 deposit(s) that were not active authorized holds.", messages)
+
+    @override_settings(
+        PAYPAL_CLIENT_ID="paypal-client",
+        PAYPAL_CLIENT_SECRET="paypal-secret",
+    )
+    @patch.object(DamageDepositAdmin, "message_user")
+    @patch("bookings.services.PayPalDamageDepositService._paypal_api_request", return_value={})
+    @patch("bookings.services.PayPalDamageDepositService._create_access_token", return_value="access-token")
+    def test_release_selected_deposits_voids_authorized_paypal_deposit(
+        self,
+        _mock_token,
+        mock_api_request,
+        mock_message_user,
+    ):
+        deposit = DamageDeposit.objects.create(
+            guest_name="Taylor",
+            email="taylor@example.com",
+            amount_cents=20000,
+            currency="usd",
+            payment_provider=DepositProvider.PAYPAL,
+            status=DepositStatus.REQUIRES_CAPTURE,
+            paypal_order_id="ORDER-123",
+            paypal_authorization_id="AUTH-123",
+        )
+
+        self.admin.release_selected_deposits(
+            self._request(),
+            DamageDeposit.objects.filter(pk=deposit.pk),
+        )
+
+        deposit.refresh_from_db()
+        self.assertEqual(deposit.status, DepositStatus.CANCELED)
+        self.assertIn("AUTH-123", deposit.notes)
+        mock_api_request.assert_called_once_with(
+            "post",
+            "/v2/payments/authorizations/AUTH-123/void",
+            access_token="access-token",
+            json_body={},
+        )
+
+        messages = [call.args[1] for call in mock_message_user.call_args_list]
+        self.assertIn("Released 1 deposit hold(s).", messages)
+
+    @override_settings(STRIPE_SECRET_KEY="stripe-secret")
+    @patch.object(DamageDepositAdmin, "message_user")
+    @patch("bookings.services.stripe.PaymentIntent.capture")
+    def test_capture_selected_deposits_updates_authorized_stripe_deposit(
+        self,
+        mock_capture,
+        mock_message_user,
+    ):
+        deposit = DamageDeposit.objects.create(
+            guest_name="Jordan",
+            email="jordan@example.com",
+            amount_cents=20000,
+            currency="usd",
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.REQUIRES_CAPTURE,
+            stripe_payment_intent_id="pi_123",
+        )
+        mock_capture.return_value = {"id": "pi_123", "latest_charge": "ch_123"}
+
+        self.admin.capture_selected_deposits(
+            self._request(),
+            DamageDeposit.objects.filter(pk=deposit.pk),
+        )
+
+        deposit.refresh_from_db()
+        self.assertEqual(deposit.status, DepositStatus.CAPTURED)
+        self.assertIn("ch_123", deposit.notes)
+        mock_capture.assert_called_once_with("pi_123")
+
+        messages_seen = [call.args[1] for call in mock_message_user.call_args_list]
+        self.assertIn("Captured 1 deposit hold(s).", messages_seen)
+
+    @override_settings(STRIPE_SECRET_KEY="stripe-secret")
+    @patch.object(DamageDepositAdmin, "message_user")
+    @patch("bookings.services.stripe.PaymentIntent.cancel")
+    def test_release_selected_deposits_cancels_authorized_stripe_deposit(
+        self,
+        mock_cancel,
+        mock_message_user,
+    ):
+        deposit = DamageDeposit.objects.create(
+            guest_name="Jordan",
+            email="jordan@example.com",
+            amount_cents=20000,
+            currency="usd",
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.REQUIRES_CAPTURE,
+            stripe_payment_intent_id="pi_123",
+        )
+        mock_cancel.return_value = {"id": "pi_123"}
+
+        self.admin.release_selected_deposits(
+            self._request(),
+            DamageDeposit.objects.filter(pk=deposit.pk),
+        )
+
+        deposit.refresh_from_db()
+        self.assertEqual(deposit.status, DepositStatus.CANCELED)
+        self.assertIn("pi_123", deposit.notes)
+        mock_cancel.assert_called_once_with("pi_123")
+
+        messages_seen = [call.args[1] for call in mock_message_user.call_args_list]
+        self.assertIn("Released 1 deposit hold(s).", messages_seen)
+
+    def test_change_view_shows_confirmation_links_for_capturable_deposit(self):
+        deposit = DamageDeposit.objects.create(
+            guest_name="Jordan",
+            email="jordan@example.com",
+            amount_cents=20000,
+            currency="usd",
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.REQUIRES_CAPTURE,
+            stripe_payment_intent_id="pi_123",
+        )
+
+        response = self.client.get(reverse("admin:bookings_damagedeposit_change", args=[deposit.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Capture deposit")
+        self.assertContains(response, "Release deposit")
+
+    @override_settings(STRIPE_SECRET_KEY="stripe-secret")
+    @patch("bookings.services.stripe.PaymentIntent.cancel", return_value={"id": "pi_123"})
+    def test_confirm_release_view_posts_and_redirects(self, _mock_cancel):
+        deposit = DamageDeposit.objects.create(
+            guest_name="Jordan",
+            email="jordan@example.com",
+            amount_cents=20000,
+            currency="usd",
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.REQUIRES_CAPTURE,
+            stripe_payment_intent_id="pi_123",
+        )
+
+        response = self.client.post(
+            reverse("admin:bookings_damagedeposit_deposit_action", args=[deposit.pk, "release"]),
+            follow=True,
+        )
+
+        deposit.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(deposit.status, DepositStatus.CANCELED)
+        self.assertContains(response, "Released deposit")
+        message_levels = [message.level for message in response.context["messages"]]
+        self.assertIn(messages.SUCCESS, message_levels)
 
 
 class DonationTests(TestCase):
@@ -618,6 +1334,7 @@ class DonationTests(TestCase):
         self.assertEqual(donation.status, DonationStatus.REQUIRES_CONFIGURATION)
 
 
+@override_settings(STORAGES=TEST_STORAGES)
 class CalendarOpsTests(TestCase):
     def test_calendar_ops_requires_staff_login(self):
         response = self.client.get(reverse("bookings:calendar-ops"))

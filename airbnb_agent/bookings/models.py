@@ -3,6 +3,7 @@ from datetime import datetime, time, timedelta
 from uuid import uuid4
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -56,9 +57,14 @@ class PromotionStatus(models.TextChoices):
     FAILED = "failed", "Failed"
 
 
+class DepositProvider(models.TextChoices):
+    STRIPE = "stripe", "Stripe"
+    PAYPAL = "paypal", "PayPal"
+
+
 class DepositStatus(models.TextChoices):
     NEW = "new", "New"
-    REQUIRES_CONFIGURATION = "requires_configuration", "Requires Stripe configuration"
+    REQUIRES_CONFIGURATION = "requires_configuration", "Requires payment configuration"
     CHECKOUT_CREATED = "checkout_created", "Checkout created"
     REQUIRES_CAPTURE = "requires_capture", "Authorized"
     CAPTURED = "captured", "Captured"
@@ -534,6 +540,62 @@ class BookingInquiry(models.Model):
         return f"${cents / 100:,.2f} {self.currency.upper()}"
 
 
+class AvailabilityBlock(models.Model):
+    item = models.ForeignKey(
+        BookableItem,
+        on_delete=models.CASCADE,
+        related_name="availability_blocks",
+    )
+    start_date = models.DateField()
+    end_date = models.DateField()
+    reason = models.CharField(max_length=160, blank=True)
+    notes = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["item__name", "start_date", "end_date", "id"]
+
+    def __str__(self):
+        return f"{self.item.name}: {self.start_date} to {self.end_date}"
+
+    def clean(self):
+        if self.end_date and self.start_date and self.end_date < self.start_date:
+            raise ValidationError({"end_date": "End date must be on or after start date."})
+
+
+class DailyPriceOverride(models.Model):
+    item = models.ForeignKey(
+        BookableItem,
+        on_delete=models.CASCADE,
+        related_name="daily_price_overrides",
+    )
+    start_date = models.DateField()
+    end_date = models.DateField()
+    nightly_price = models.DecimalField(max_digits=8, decimal_places=2)
+    label = models.CharField(max_length=120, blank=True)
+    notes = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["item__name", "start_date", "end_date", "id"]
+
+    def __str__(self):
+        return f"{self.item.name}: ${self.nightly_price:,.2f} from {self.start_date} to {self.end_date}"
+
+    def clean(self):
+        errors = {}
+        if self.end_date and self.start_date and self.end_date < self.start_date:
+            errors["end_date"] = "End date must be on or after start date."
+        if self.nightly_price is not None and self.nightly_price < 0:
+            errors["nightly_price"] = "Nightly price must be zero or greater."
+        if errors:
+            raise ValidationError(errors)
+
+
 class DamageDeposit(models.Model):
     inquiry = models.ForeignKey(
         BookingInquiry,
@@ -553,6 +615,11 @@ class DamageDeposit(models.Model):
     email = models.EmailField()
     amount_cents = models.PositiveIntegerField(default=20000)
     currency = models.CharField(max_length=3, default="usd")
+    payment_provider = models.CharField(
+        max_length=20,
+        choices=DepositProvider.choices,
+        default=DepositProvider.STRIPE,
+    )
     status = models.CharField(
         max_length=32,
         choices=DepositStatus.choices,
@@ -560,6 +627,8 @@ class DamageDeposit(models.Model):
     )
     stripe_checkout_session_id = models.CharField(max_length=255, blank=True)
     stripe_payment_intent_id = models.CharField(max_length=255, blank=True)
+    paypal_order_id = models.CharField(max_length=255, blank=True)
+    paypal_authorization_id = models.CharField(max_length=255, blank=True)
     checkout_url = models.URLField(blank=True, max_length=1000)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

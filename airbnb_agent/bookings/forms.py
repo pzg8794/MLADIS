@@ -6,7 +6,18 @@ from django.utils.translation import gettext_lazy as _
 
 from django.conf import settings
 
-from .models import BookableItem, BookingInquiry, Coupon, DamageDeposit, Donation, MissionCause
+from .models import (
+    AvailabilityBlock,
+    BookableItem,
+    BookingCategory,
+    BookingInquiry,
+    Coupon,
+    DailyPriceOverride,
+    DamageDeposit,
+    DepositProvider,
+    Donation,
+    MissionCause,
+)
 
 
 class BookingInquiryForm(forms.ModelForm):
@@ -88,6 +99,13 @@ class BookingInquiryForm(forms.ModelForm):
 
 class DamageDepositForm(forms.ModelForm):
     inquiry_id = forms.IntegerField(required=False, widget=forms.HiddenInput)
+    payment_provider = forms.ChoiceField(
+        label=_("Payment method"),
+        choices=DepositProvider.choices,
+        required=False,
+        initial=DepositProvider.STRIPE,
+        widget=forms.RadioSelect,
+    )
 
     class Meta:
         model = DamageDeposit
@@ -105,6 +123,8 @@ class DamageDepositForm(forms.ModelForm):
             field.widget.attrs.setdefault("class", "form-control")
             field.widget.attrs.setdefault("data-field", f"deposit_{field_name}")
             field.widget.attrs.setdefault("id", f"id_deposit_{field_name}")
+        self.fields["payment_provider"].widget.attrs.setdefault("data-field", "deposit_payment_provider")
+        self.order_fields(["item", "guest_name", "email", "payment_provider", "inquiry_id"])
 
     def save(self, commit=True):
         deposit = super().save(commit=False)
@@ -116,6 +136,7 @@ class DamageDepositForm(forms.ModelForm):
                 deposit.item = deposit.item or inquiry.item
                 deposit.guest_name = deposit.guest_name or inquiry.guest_name
                 deposit.email = deposit.email or inquiry.email
+        deposit.payment_provider = self.cleaned_data.get("payment_provider") or DepositProvider.STRIPE
         deposit.amount_cents = settings.DEPOSIT_AMOUNT_CENTS
         deposit.currency = settings.DEPOSIT_CURRENCY
         if commit:
@@ -163,6 +184,49 @@ class DonationForm(forms.ModelForm):
         if commit:
             donation.save()
         return donation
+
+
+class AvailabilityBlockForm(forms.ModelForm):
+    class Meta:
+        model = AvailabilityBlock
+        fields = ["item", "start_date", "end_date", "reason", "notes"]
+        widgets = {
+            "start_date": forms.DateInput(attrs={"type": "date"}),
+            "end_date": forms.DateInput(attrs={"type": "date"}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["item"].queryset = BookableItem.objects.filter(
+            is_active=True,
+            category=BookingCategory.STAY,
+        )
+        for field_name, field in self.fields.items():
+            field.widget.attrs.setdefault("class", "vTextField")
+            field.widget.attrs.setdefault("data-field", f"availability_block_{field_name}")
+
+
+class DailyPriceOverrideForm(forms.ModelForm):
+    class Meta:
+        model = DailyPriceOverride
+        fields = ["item", "start_date", "end_date", "nightly_price", "label", "notes"]
+        widgets = {
+            "start_date": forms.DateInput(attrs={"type": "date"}),
+            "end_date": forms.DateInput(attrs={"type": "date"}),
+            "nightly_price": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["item"].queryset = BookableItem.objects.filter(
+            is_active=True,
+            category=BookingCategory.STAY,
+        )
+        for field_name, field in self.fields.items():
+            field.widget.attrs.setdefault("class", "vTextField")
+            field.widget.attrs.setdefault("data-field", f"daily_price_override_{field_name}")
 
 
 class SignUpForm(UserCreationForm):

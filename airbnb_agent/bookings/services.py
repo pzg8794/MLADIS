@@ -1,21 +1,29 @@
+import calendar
 from dataclasses import dataclass
+from datetime import date, timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db.models import F
 from django.urls import reverse
 from django.utils import timezone
+import requests
 import stripe
 
 from .models import (
     AdminAccess,
     AgentConversation,
+    AvailabilityBlock,
     BookableItem,
     BookingInquiry,
+    BookingStatus,
     CancellationPolicy,
     ClientSegment,
     CustomerProfile,
     DamageDeposit,
+    DailyPriceOverride,
+    DepositProvider,
     DepositStatus,
     Donation,
     DonationStatus,
@@ -48,6 +56,127 @@ class DepositCheckoutResult:
     success: bool
     message: str
     checkout_url: str = ""
+
+
+class PayPalAPIError(Exception):
+    pass
+
+
+class BookingCalendarService:
+    ACTIVE_BOOKING_STATUSES = {
+        BookingStatus.NEW,
+        BookingStatus.REVIEWING,
+        BookingStatus.QUOTED,
+        BookingStatus.CONFIRMED,
+    }
+
+    def build_month(self, item: BookableItem, month_start: date | None = None):
+        month_start = (month_start or timezone.localdate()).replace(day=1)
+        weeks = calendar.Calendar(firstweekday=6).monthdatescalendar(month_start.year, month_start.month)
+        visible_start = weeks[0][0]
+        visible_end = weeks[-1][-1]
+
+        reservations = list(
+            BookingInquiry.objects.filter(
+                item=item,
+                status__in=self.ACTIVE_BOOKING_STATUSES,
+                check_in__lt=visible_end + timedelta(days=1),
+                check_out__gt=visible_start,
+            ).order_by("check_in", "id")
+        )
+        blocks = list(
+            AvailabilityBlock.objects.filter(
+                item=item,
+                is_active=True,
+                start_date__lte=visible_end,
+                end_date__gte=visible_start,
+            ).order_by("start_date", "id")
+        )
+        overrides = list(
+            DailyPriceOverride.objects.filter(
+                item=item,
+                is_active=True,
+                start_date__lte=visible_end,
+                end_date__gte=visible_start,
+            ).order_by("start_date", "created_at", "id")
+        )
+
+        reservation_map = self._reservation_map(reservations, visible_start, visible_end)
+        block_map = self._range_map(blocks, visible_start, visible_end)
+        override_map = self._range_map(overrides, visible_start, visible_end)
+        default_price = self._default_price(item)
+
+        month_weeks = []
+        for week in weeks:
+            cells = []
+            for day in week:
+                reservation_entries = reservation_map.get(day, [])
+                block_entries = block_map.get(day, [])
+                override_entries = override_map.get(day, [])
+                price_override = override_entries[-1] if override_entries else None
+                price_value = price_override.nightly_price if price_override else default_price
+                if reservation_entries:
+                    status = "booked"
+                elif block_entries:
+                    status = "blocked"
+                else:
+                    status = "available"
+                cells.append(
+                    {
+                        "date": day,
+                        "in_month": day.month == month_start.month,
+                        "is_today": day == timezone.localdate(),
+                        "status": status,
+                        "reservations": reservation_entries,
+                        "blocks": block_entries,
+                        "price_override": price_override,
+                        "price": price_value,
+                        "price_display": self._display_price(price_value),
+                        "price_source": "override" if price_override else "default",
+                        "price_label": price_override.label if price_override else "Default nightly price",
+                    }
+                )
+            month_weeks.append(cells)
+
+        return {
+            "month_start": month_start,
+            "weeks": month_weeks,
+            "reservations": reservations,
+            "blocks": blocks,
+            "price_overrides": overrides,
+        }
+
+    def _reservation_map(self, reservations, visible_start, visible_end):
+        result = {}
+        for reservation in reservations:
+            start = max(reservation.check_in, visible_start)
+            end = min(reservation.check_out - timedelta(days=1), visible_end)
+            day = start
+            while day <= end:
+                result.setdefault(day, []).append(reservation)
+                day += timedelta(days=1)
+        return result
+
+    def _range_map(self, entries, visible_start, visible_end):
+        result = {}
+        for entry in entries:
+            start = max(entry.start_date, visible_start)
+            end = min(entry.end_date, visible_end)
+            day = start
+            while day <= end:
+                result.setdefault(day, []).append(entry)
+                day += timedelta(days=1)
+        return result
+
+    def _default_price(self, item):
+        if item.starting_price is None:
+            return None
+        return item.starting_price
+
+    def _display_price(self, value):
+        if value is None:
+            return ""
+        return f"${value:,.2f}"
 
 
 class AdminAccessService:
@@ -394,11 +523,27 @@ class DamageDepositService:
     def is_configured(self):
         return bool(self.api_key)
 
+    def create_checkout_for_inquiry(self, inquiry, request) -> DepositCheckoutResult:
+        deposit = DamageDeposit.objects.filter(inquiry=inquiry).order_by("-created_at").first()
+        if not deposit:
+            deposit = DamageDeposit(inquiry=inquiry)
+
+        deposit.item = inquiry.item
+        deposit.guest_name = inquiry.guest_name
+        deposit.email = inquiry.email
+        deposit.payment_provider = DepositProvider.STRIPE
+        deposit.amount_cents = settings.DEPOSIT_AMOUNT_CENTS
+        deposit.currency = settings.DEPOSIT_CURRENCY
+        deposit.save()
+
+        return self.create_checkout_session(deposit, request)
+
     def create_checkout_session(self, deposit: DamageDeposit, request) -> DepositCheckoutResult:
+        deposit.payment_provider = DepositProvider.STRIPE
         if not self.is_configured:
             deposit.status = DepositStatus.REQUIRES_CONFIGURATION
             deposit.notes = "Stripe is not configured. Set STRIPE_SECRET_KEY before collecting deposits."
-            deposit.save(update_fields=["status", "notes", "updated_at"])
+            deposit.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
             return DepositCheckoutResult(
                 success=False,
                 message="Stripe is not configured yet, so no deposit hold was created.",
@@ -434,19 +579,24 @@ class DamageDepositService:
         except stripe.StripeError as error:
             deposit.status = DepositStatus.FAILED
             deposit.notes = str(error)
-            deposit.save(update_fields=["status", "notes", "updated_at"])
+            deposit.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
             return DepositCheckoutResult(success=False, message=str(error))
 
         deposit.status = DepositStatus.CHECKOUT_CREATED
+        deposit.paypal_order_id = ""
+        deposit.paypal_authorization_id = ""
         deposit.stripe_checkout_session_id = session.id
         deposit.checkout_url = session.url or ""
         if session.payment_intent:
             deposit.stripe_payment_intent_id = session.payment_intent
         deposit.save(
             update_fields=[
+                "payment_provider",
                 "status",
                 "stripe_checkout_session_id",
                 "stripe_payment_intent_id",
+                "paypal_order_id",
+                "paypal_authorization_id",
                 "checkout_url",
                 "updated_at",
             ]
@@ -469,6 +619,33 @@ class DamageDepositService:
         if session.payment_status == "paid":
             deposit.status = DepositStatus.REQUIRES_CAPTURE
         deposit.save(update_fields=["status", "stripe_payment_intent_id", "updated_at"])
+        return deposit
+
+    def capture_deposit(self, deposit: DamageDeposit):
+        deposit = self._require_capturable_deposit(deposit)
+        payment_intent = stripe.PaymentIntent.capture(deposit.stripe_payment_intent_id)
+        charge_id = payment_intent.get("latest_charge", "")
+
+        note = f"Stripe payment intent {deposit.stripe_payment_intent_id} captured"
+        if charge_id:
+            note += f" as charge {charge_id}"
+        note += f" at {timezone.now().isoformat()}"
+        deposit.status = DepositStatus.CAPTURED
+        deposit.notes = self._append_note(deposit.notes, note)
+        deposit.save(update_fields=["status", "notes", "updated_at"])
+        return deposit
+
+    def release_deposit(self, deposit: DamageDeposit):
+        deposit = self._require_capturable_deposit(deposit)
+        stripe.PaymentIntent.cancel(deposit.stripe_payment_intent_id)
+
+        note = (
+            f"Stripe payment intent {deposit.stripe_payment_intent_id} canceled at "
+            f"{timezone.now().isoformat()}"
+        )
+        deposit.status = DepositStatus.CANCELED
+        deposit.notes = self._append_note(deposit.notes, note)
+        deposit.save(update_fields=["status", "notes", "updated_at"])
         return deposit
 
     def handle_event(self, event):
@@ -508,6 +685,294 @@ class DamageDepositService:
             "bookable_item_id": str(deposit.item_id or ""),
             "booking_inquiry_id": str(deposit.inquiry_id or ""),
         }
+
+    def _append_note(self, notes, note):
+        return f"{notes}\n{note}".strip() if notes else note
+
+    def _require_capturable_deposit(self, deposit):
+        if not self.is_configured:
+            raise ValueError("Stripe is not configured. Set STRIPE_SECRET_KEY first.")
+        if not deposit or deposit.payment_provider != DepositProvider.STRIPE:
+            raise ValueError("This deposit is not managed by Stripe.")
+        if not deposit.stripe_payment_intent_id:
+            raise ValueError("This Stripe deposit does not have a payment intent to manage.")
+        if deposit.status != DepositStatus.REQUIRES_CAPTURE:
+            raise ValueError("Only authorized Stripe deposits can be captured or released.")
+        return deposit
+
+
+class PayPalDamageDepositService:
+    def __init__(self, client_id=None, client_secret=None, environment=None):
+        self.client_id = client_id if client_id is not None else settings.PAYPAL_CLIENT_ID
+        self.client_secret = client_secret if client_secret is not None else settings.PAYPAL_CLIENT_SECRET
+        self.environment = environment if environment is not None else settings.PAYPAL_ENVIRONMENT
+
+    @property
+    def is_configured(self):
+        return bool(self.client_id and self.client_secret)
+
+    @property
+    def base_url(self):
+        if self.environment in {"live", "production"}:
+            return "https://api-m.paypal.com"
+        return "https://api-m.sandbox.paypal.com"
+
+    def create_checkout_session(self, deposit: DamageDeposit, request) -> DepositCheckoutResult:
+        deposit.payment_provider = DepositProvider.PAYPAL
+        if not self.is_configured:
+            deposit.status = DepositStatus.REQUIRES_CONFIGURATION
+            deposit.notes = "PayPal is not configured. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET before collecting deposits."
+            deposit.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
+            return DepositCheckoutResult(
+                success=False,
+                message="PayPal is not configured yet, so no deposit hold was created.",
+            )
+
+        try:
+            access_token = self._create_access_token()
+            order = self._paypal_api_request(
+                "post",
+                "/v2/checkout/orders",
+                access_token=access_token,
+                json_body=self._create_order_payload(deposit, request),
+            )
+            checkout_url = self._extract_checkout_url(order)
+            if not checkout_url:
+                raise PayPalAPIError("PayPal did not return an approval link for the deposit hold.")
+        except (PayPalAPIError, requests.RequestException) as error:
+            deposit.status = DepositStatus.FAILED
+            deposit.notes = str(error)
+            deposit.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
+            return DepositCheckoutResult(success=False, message=str(error))
+
+        deposit.status = DepositStatus.CHECKOUT_CREATED
+        deposit.stripe_checkout_session_id = ""
+        deposit.stripe_payment_intent_id = ""
+        deposit.paypal_order_id = order.get("id", "")
+        deposit.paypal_authorization_id = ""
+        deposit.checkout_url = checkout_url
+        deposit.save(
+            update_fields=[
+                "payment_provider",
+                "status",
+                "stripe_checkout_session_id",
+                "stripe_payment_intent_id",
+                "paypal_order_id",
+                "paypal_authorization_id",
+                "checkout_url",
+                "updated_at",
+            ]
+        )
+        return DepositCheckoutResult(
+            success=True,
+            message="PayPal deposit checkout created.",
+            checkout_url=deposit.checkout_url,
+        )
+
+    def authorize_order(self, order_id):
+        if not self.is_configured or not order_id:
+            return None
+
+        deposit = DamageDeposit.objects.filter(paypal_order_id=order_id).first()
+        if not deposit:
+            return None
+        if deposit.paypal_authorization_id:
+            if deposit.status != DepositStatus.REQUIRES_CAPTURE:
+                deposit.status = DepositStatus.REQUIRES_CAPTURE
+                deposit.save(update_fields=["status", "updated_at"])
+            return deposit
+
+        access_token = self._create_access_token()
+        order = self._paypal_api_request(
+            "post",
+            f"/v2/checkout/orders/{order_id}/authorize",
+            access_token=access_token,
+            json_body={},
+        )
+        authorization_id = self._extract_authorization_id(order)
+        if not authorization_id:
+            raise PayPalAPIError("PayPal did not return an authorization for this deposit.")
+
+        deposit.payment_provider = DepositProvider.PAYPAL
+        deposit.paypal_authorization_id = authorization_id
+        deposit.status = DepositStatus.REQUIRES_CAPTURE
+        deposit.save(update_fields=["payment_provider", "paypal_authorization_id", "status", "updated_at"])
+        return deposit
+
+    def capture_deposit(self, deposit: DamageDeposit):
+        return self.capture_authorization(deposit)
+
+    def release_deposit(self, deposit: DamageDeposit):
+        return self.void_authorization(deposit)
+
+    def capture_authorization(self, deposit: DamageDeposit):
+        deposit = self._require_authorized_deposit(deposit)
+        access_token = self._create_access_token()
+        capture = self._paypal_api_request(
+            "post",
+            f"/v2/payments/authorizations/{deposit.paypal_authorization_id}/capture",
+            access_token=access_token,
+            json_body={
+                "amount": {
+                    "currency_code": deposit.currency.upper(),
+                    "value": self._amount_value(deposit),
+                },
+                "final_capture": True,
+            },
+        )
+
+        capture_id = capture.get("id", "")
+        note = f"PayPal authorization {deposit.paypal_authorization_id} captured"
+        if capture_id:
+            note += f" as capture {capture_id}"
+        note += f" at {timezone.now().isoformat()}"
+        deposit.status = DepositStatus.CAPTURED
+        deposit.notes = self._append_note(deposit.notes, note)
+        deposit.save(update_fields=["status", "notes", "updated_at"])
+        return deposit
+
+    def void_authorization(self, deposit: DamageDeposit):
+        deposit = self._require_authorized_deposit(deposit)
+        access_token = self._create_access_token()
+        self._paypal_api_request(
+            "post",
+            f"/v2/payments/authorizations/{deposit.paypal_authorization_id}/void",
+            access_token=access_token,
+            json_body={},
+        )
+
+        note = (
+            f"PayPal authorization {deposit.paypal_authorization_id} voided at "
+            f"{timezone.now().isoformat()}"
+        )
+        deposit.status = DepositStatus.CANCELED
+        deposit.notes = self._append_note(deposit.notes, note)
+        deposit.save(update_fields=["status", "notes", "updated_at"])
+        return deposit
+
+    def cancel_order(self, order_id):
+        if not order_id:
+            return None
+        deposit = DamageDeposit.objects.filter(paypal_order_id=order_id).first()
+        if deposit and deposit.status == DepositStatus.CHECKOUT_CREATED:
+            deposit.status = DepositStatus.CANCELED
+            deposit.save(update_fields=["status", "updated_at"])
+        return deposit
+
+    def _create_access_token(self):
+        response = requests.post(
+            f"{self.base_url}/v1/oauth2/token",
+            auth=(self.client_id, self.client_secret),
+            data={"grant_type": "client_credentials"},
+            headers={
+                "Accept": "application/json",
+                "Accept-Language": "en_US",
+            },
+            timeout=30,
+        )
+        payload = self._parse_response(response)
+        access_token = payload.get("access_token", "")
+        if not access_token:
+            raise PayPalAPIError("PayPal did not return an access token.")
+        return access_token
+
+    def _paypal_api_request(self, method, path, access_token, json_body=None):
+        response = requests.request(
+            method,
+            f"{self.base_url}{path}",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            json=json_body,
+            timeout=30,
+        )
+        return self._parse_response(response)
+
+    def _parse_response(self, response):
+        try:
+            payload = response.json() if response.content else {}
+        except ValueError:
+            payload = {}
+
+        if response.ok:
+            return payload
+
+        message = payload.get("message") if isinstance(payload, dict) else ""
+        details = payload.get("details") if isinstance(payload, dict) else None
+        if not message and isinstance(details, list) and details:
+            message = details[0].get("description") or details[0].get("issue") or ""
+        if not message:
+            message = response.text.strip() or "PayPal request failed."
+        raise PayPalAPIError(message)
+
+    def _create_order_payload(self, deposit, request):
+        return {
+            "intent": "AUTHORIZE",
+            "purchase_units": [
+                {
+                    "reference_id": f"damage-deposit-{deposit.id}",
+                    "custom_id": str(deposit.id),
+                    "description": "MLADIS refundable damage deposit hold",
+                    "amount": {
+                        "currency_code": deposit.currency.upper(),
+                        "value": self._amount_value(deposit),
+                    },
+                }
+            ],
+            "payment_source": {
+                "paypal": {
+                    "experience_context": {
+                        "brand_name": settings.PAYPAL_BRAND_NAME,
+                        "landing_page": "LOGIN",
+                        "shipping_preference": "NO_SHIPPING",
+                        "user_action": "PAY_NOW",
+                        "return_url": request.build_absolute_uri(reverse("bookings:deposit-paypal-success")),
+                        "cancel_url": request.build_absolute_uri(reverse("bookings:deposit-paypal-cancel")),
+                    }
+                }
+            },
+        }
+
+    def _amount_value(self, deposit):
+        amount = Decimal(deposit.amount_cents) / Decimal("100")
+        return f"{amount:.2f}"
+
+    def _append_note(self, notes, note):
+        return f"{notes}\n{note}".strip() if notes else note
+
+    def _require_authorized_deposit(self, deposit):
+        if not self.is_configured:
+            raise PayPalAPIError("PayPal is not configured. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET first.")
+        if not deposit or deposit.payment_provider != DepositProvider.PAYPAL:
+            raise PayPalAPIError("This deposit is not managed by PayPal.")
+        if not deposit.paypal_authorization_id:
+            raise PayPalAPIError("This PayPal deposit does not have an authorization to manage.")
+        if deposit.status != DepositStatus.REQUIRES_CAPTURE:
+            raise PayPalAPIError("Only authorized PayPal deposits can be captured or released.")
+        return deposit
+
+    def _extract_checkout_url(self, order):
+        for link in order.get("links", []):
+            if link.get("rel") in {"payer-action", "approve"} and link.get("href"):
+                return link["href"]
+        return ""
+
+    def _extract_authorization_id(self, order):
+        for purchase_unit in order.get("purchase_units", []):
+            authorizations = purchase_unit.get("payments", {}).get("authorizations", [])
+            for authorization in authorizations:
+                authorization_id = authorization.get("id")
+                if authorization_id:
+                    return authorization_id
+        return ""
+
+
+def get_damage_deposit_service(provider):
+    if provider == DepositProvider.PAYPAL:
+        return PayPalDamageDepositService()
+    return DamageDepositService()
 
 
 class DonationService:

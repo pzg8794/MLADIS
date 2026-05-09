@@ -1,0 +1,612 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .calendar-toolbar,
+  .calendar-layout,
+  .calendar-panels {
+    display: grid;
+    gap: 1rem;
+  }
+  .calendar-toolbar {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    align-items: end;
+    margin-bottom: 1rem;
+  }
+  .calendar-layout {
+    grid-template-columns: 2fr 1fr;
+    margin-top: 1rem;
+  }
+  .calendar-panels {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    margin-top: 1rem;
+  }
+  .calendar-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .calendar-selection {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .calendar-selection p {
+    margin: 0;
+  }
+  .calendar-summary__card {
+    padding: 0.85rem 1rem;
+    border: 1px solid #d7d7d7;
+    border-radius: 10px;
+    background: #fff;
+    min-width: 180px;
+  }
+  .calendar-summary__label {
+    display: block;
+    font-size: 0.8rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .calendar-summary__value {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+  .calendar-nav {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .calendar-nav a {
+    padding: 0.55rem 0.85rem;
+    border: 1px solid #d0d0d0;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  .business-calendar {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0.35rem;
+    table-layout: fixed;
+  }
+  .business-calendar th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #666;
+    padding-bottom: 0.25rem;
+  }
+  .calendar-day {
+    vertical-align: top;
+    min-height: 130px;
+    padding: 0.6rem;
+    border-radius: 14px;
+    background: #f3f6f7;
+    border: 1px solid transparent;
+  }
+  .calendar-day.is-available {
+    background: #eef9f0;
+  }
+  .calendar-day.is-booked {
+    background: #fff1ef;
+  }
+  .calendar-day.is-blocked {
+    background: #fff7da;
+  }
+  .calendar-day.is-outside {
+    opacity: 0.48;
+  }
+  .calendar-day.is-today {
+    border-color: #1f6feb;
+  }
+  .calendar-day.is-selected {
+    box-shadow: inset 0 0 0 2px #10665f;
+  }
+  .calendar-day__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    align-items: baseline;
+  }
+  .calendar-day__number {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .calendar-day__picker {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+  .calendar-day__picker:hover,
+  .calendar-day__picker:focus {
+    color: #10665f;
+    outline: none;
+  }
+  .calendar-day__status {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #5c5c5c;
+  }
+  .calendar-day__price {
+    margin-top: 0.4rem;
+    font-weight: 700;
+  }
+  .calendar-day__meta {
+    font-size: 0.78rem;
+    color: #666;
+    margin-top: 0.15rem;
+  }
+  .calendar-day__helper {
+    margin-top: 0.45rem;
+    font-size: 0.76rem;
+  }
+  .calendar-day__actions {
+    margin-top: 0.45rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .calendar-day__action,
+  .calendar-day__action-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.22rem 0.5rem;
+    border: 1px solid #cfd8dc;
+    border-radius: 999px;
+    background: #fff;
+    color: #124b45;
+    text-decoration: none;
+    font-size: 0.72rem;
+    line-height: 1.2;
+  }
+  .calendar-day__action {
+    cursor: pointer;
+    font: inherit;
+  }
+  .calendar-pill {
+    margin-top: 0.45rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .calendar-pill.is-booked {
+    background: #f7d4cf;
+  }
+  .calendar-pill.is-blocked {
+    background: #f3dfa2;
+  }
+  .calendar-panel {
+    background: #fff;
+    border: 1px solid #d7d7d7;
+    border-radius: 14px;
+    padding: 1rem;
+  }
+  .calendar-panel h2 {
+    margin-top: 0;
+  }
+  .calendar-panel form > div,
+  .calendar-filter {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .calendar-filter select,
+  .calendar-filter input,
+  .calendar-panel input,
+  .calendar-panel textarea {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .calendar-list {
+    margin: 0;
+    display: grid;
+    gap: 0.65rem;
+  }
+  .calendar-list__item {
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid #efefef;
+  }
+  .calendar-list__item:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+  .calendar-inline-form {
+    display: inline;
+  }
+  .calendar-inline-form button {
+    margin-top: 0.45rem;
+  }
+  .errorlist {
+    margin: 0 0 0.3rem;
+  }
+  @media (max-width: 960px) {
+    .calendar-layout {
+      grid-template-columns: 1fr;
+    }
+    .calendar-selection {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .business-calendar {
+      display: block;
+      overflow-x: auto;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">Home</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; <a href="{{ changelist_url }}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; Business calendar
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <div class="calendar-toolbar">
+    <form method="get" class="calendar-filter">
+      <label for="id_item">Stay</label>
+      <select id="id_item" name="item">
+        {% for stay in stays %}
+        <option value="{{ stay.pk }}"{% if selected_item and stay.pk == selected_item.pk %} selected{% endif %}>{{ stay.name }}</option>
+        {% endfor %}
+      </select>
+      <label for="id_month">Month</label>
+      <input id="id_month" type="text" name="month" value="{{ month_value }}" pattern="[0-9]{4}-[0-9]{2}" placeholder="YYYY-MM">
+      <button type="submit" class="default">Load calendar</button>
+    </form>
+    <div class="calendar-nav">
+      <a href="{{ previous_month_url }}">Previous month</a>
+      <a href="{{ next_month_url }}">Next month</a>
+    </div>
+  </div>
+
+  {% if selected_item %}
+  <div class="calendar-summary">
+    <div class="calendar-summary__card">
+      <span class="calendar-summary__label">Stay</span>
+      <span class="calendar-summary__value">{{ selected_item.name }}</span>
+    </div>
+    <div class="calendar-summary__card">
+      <span class="calendar-summary__label">Month</span>
+      <span class="calendar-summary__value">{{ month_label }}</span>
+    </div>
+    <div class="calendar-summary__card">
+      <span class="calendar-summary__label">Default nightly price</span>
+      <span class="calendar-summary__value">{{ default_price_display }}</span>
+    </div>
+    <div class="calendar-summary__card">
+      <span class="calendar-summary__label">Edit stay</span>
+      <span class="calendar-summary__value"><a href="{{ selected_item_change_url }}">Open stay record</a></span>
+    </div>
+  </div>
+
+  <div class="calendar-panel calendar-selection">
+    <p id="calendar-selection-status">Click one day to start a range, then click another day to finish it. The block and price forms will update automatically.</p>
+    <button type="button" id="calendar-selection-clear">Clear selected range</button>
+  </div>
+
+  <table class="business-calendar">
+    <thead>
+      <tr>
+        <th>Sun</th>
+        <th>Mon</th>
+        <th>Tue</th>
+        <th>Wed</th>
+        <th>Thu</th>
+        <th>Fri</th>
+        <th>Sat</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for week in calendar_weeks %}
+      <tr>
+        {% for cell in week %}
+        <td class="calendar-day is-{{ cell.status }}{% if not cell.in_month %} is-outside{% endif %}{% if cell.is_today %} is-today{% endif %}" data-calendar-cell="{{ cell.date|date:'Y-m-d' }}">
+          <div class="calendar-day__header">
+            <button type="button" class="calendar-day__number calendar-day__picker" data-calendar-date="{{ cell.date|date:'Y-m-d' }}" aria-describedby="calendar-selection-status">{{ cell.date|date:"j" }}</button>
+            <span class="calendar-day__status">{{ cell.status }}</span>
+          </div>
+          {% if cell.price_display %}
+          <div class="calendar-day__price">{{ cell.price_display }}</div>
+          {% endif %}
+          {% if cell.price_source == "override" %}
+          <div class="calendar-day__meta">{{ cell.price_label|default:"Override" }}</div>
+          {% endif %}
+          {% for reservation in cell.reservations|slice:":2" %}
+          <div class="calendar-pill is-booked">{{ reservation.guest_name }}</div>
+          {% endfor %}
+          {% if cell.reservations|length > 2 %}
+          <div class="calendar-day__meta">+{{ cell.reservations|length|add:"-2" }} more reservations</div>
+          {% endif %}
+          {% for block in cell.blocks|slice:":2" %}
+          <div class="calendar-pill is-blocked">{{ block.reason|default:"Blocked" }}</div>
+          {% endfor %}
+          <div class="calendar-day__helper">Pick date or use a quick action.</div>
+          <div class="calendar-day__actions">
+            <button type="button" class="calendar-day__action" data-calendar-quick-action="block" data-calendar-date="{{ cell.date|date:'Y-m-d' }}">Block day</button>
+            <button type="button" class="calendar-day__action" data-calendar-quick-action="price" data-calendar-date="{{ cell.date|date:'Y-m-d' }}">Price day</button>
+            {% if cell.reservations %}
+            <a class="calendar-day__action-link" href="{% url 'admin:bookings_bookinginquiry_change' cell.reservations.0.pk %}">Open booking</a>
+            {% endif %}
+            {% if cell.blocks %}
+            <a class="calendar-day__action-link" href="{% url 'admin:bookings_availabilityblock_change' cell.blocks.0.pk %}">Edit block</a>
+            {% endif %}
+            {% if cell.price_override %}
+            <a class="calendar-day__action-link" href="{% url 'admin:bookings_dailypriceoverride_change' cell.price_override.pk %}">Edit price</a>
+            {% endif %}
+          </div>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="calendar-layout">
+    <div class="calendar-panel">
+      <h2>Block days</h2>
+      <p>Manually close a date range without changing reservation records.</p>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="calendar_action" value="add_block">
+        <input type="hidden" name="month" value="{{ month_value }}">
+        {{ block_form.item }}
+        <div>
+          {{ block_form.start_date.errors }}
+          <label for="{{ block_form.start_date.id_for_label }}">Start date</label>
+          {{ block_form.start_date }}
+        </div>
+        <div>
+          {{ block_form.end_date.errors }}
+          <label for="{{ block_form.end_date.id_for_label }}">End date</label>
+          {{ block_form.end_date }}
+        </div>
+        <div>
+          {{ block_form.reason.errors }}
+          <label for="{{ block_form.reason.id_for_label }}">Reason</label>
+          {{ block_form.reason }}
+        </div>
+        <div>
+          {{ block_form.notes.errors }}
+          <label for="{{ block_form.notes.id_for_label }}">Notes</label>
+          {{ block_form.notes }}
+        </div>
+        <button type="submit" class="default">Save block</button>
+      </form>
+    </div>
+
+    <div class="calendar-panel">
+      <h2>Override nightly price</h2>
+      <p>Apply a specific nightly price across a date range while keeping the default rate visible on other days.</p>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="calendar_action" value="add_price">
+        <input type="hidden" name="month" value="{{ month_value }}">
+        {{ price_form.item }}
+        <div>
+          {{ price_form.start_date.errors }}
+          <label for="{{ price_form.start_date.id_for_label }}">Start date</label>
+          {{ price_form.start_date }}
+        </div>
+        <div>
+          {{ price_form.end_date.errors }}
+          <label for="{{ price_form.end_date.id_for_label }}">End date</label>
+          {{ price_form.end_date }}
+        </div>
+        <div>
+          {{ price_form.nightly_price.errors }}
+          <label for="{{ price_form.nightly_price.id_for_label }}">Nightly price</label>
+          {{ price_form.nightly_price }}
+        </div>
+        <div>
+          {{ price_form.label.errors }}
+          <label for="{{ price_form.label.id_for_label }}">Label</label>
+          {{ price_form.label }}
+        </div>
+        <div>
+          {{ price_form.notes.errors }}
+          <label for="{{ price_form.notes.id_for_label }}">Notes</label>
+          {{ price_form.notes }}
+        </div>
+        <button type="submit" class="default">Save price override</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="calendar-panels">
+    <div class="calendar-panel">
+      <h2>Reservations in view</h2>
+      {% if reservation_rows %}
+      <div class="calendar-list" role="list">
+        {% for row in reservation_rows %}
+        <div class="calendar-list__item" role="listitem">
+          <strong><a href="{{ row.url }}">{{ row.reservation.guest_name }}</a></strong><br>
+          {{ row.reservation.check_in }} to {{ row.reservation.check_out }}<br>
+          {{ row.reservation.get_status_display }}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p>No active reservations overlap this month.</p>
+      {% endif %}
+    </div>
+
+    <div class="calendar-panel">
+      <h2>Manual blocks in view</h2>
+      {% if block_rows %}
+      <div class="calendar-list" role="list">
+        {% for block in block_rows %}
+        <div class="calendar-list__item" role="listitem">
+          <strong>{{ block.start_date }} to {{ block.end_date }}</strong><br>
+          {{ block.reason|default:"Blocked" }}
+          <form method="post" class="calendar-inline-form">
+            {% csrf_token %}
+            <input type="hidden" name="calendar_action" value="remove_block">
+            <input type="hidden" name="month" value="{{ month_value }}">
+            <input type="hidden" name="item" value="{{ selected_item.pk }}">
+            <input type="hidden" name="block_id" value="{{ block.pk }}">
+            <button type="submit">Remove</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p>No manual blocks overlap this month.</p>
+      {% endif %}
+    </div>
+
+    <div class="calendar-panel">
+      <h2>Price overrides in view</h2>
+      {% if price_rows %}
+      <div class="calendar-list" role="list">
+        {% for override in price_rows %}
+        <div class="calendar-list__item" role="listitem">
+          <strong>{{ override.start_date }} to {{ override.end_date }}</strong><br>
+          {{ override.nightly_price }} per night{% if override.label %} · {{ override.label }}{% endif %}
+          <form method="post" class="calendar-inline-form">
+            {% csrf_token %}
+            <input type="hidden" name="calendar_action" value="remove_price">
+            <input type="hidden" name="month" value="{{ month_value }}">
+            <input type="hidden" name="item" value="{{ selected_item.pk }}">
+            <input type="hidden" name="price_id" value="{{ override.pk }}">
+            <button type="submit">Remove</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p>No price overrides overlap this month.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="calendar-panel">
+    <h2>No stays yet</h2>
+    <p>Create a stay in Bookable items before using the business calendar.</p>
+  </div>
+  {% endif %}
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const pickers = Array.from(document.querySelectorAll(".calendar-day__picker"));
+  const quickActions = Array.from(document.querySelectorAll("[data-calendar-quick-action]"));
+  const cells = Array.from(document.querySelectorAll("[data-calendar-cell]"));
+  const blockStart = document.querySelector('input[name="block-start_date"]');
+  const blockEnd = document.querySelector('input[name="block-end_date"]');
+  const priceStart = document.querySelector('input[name="price-start_date"]');
+  const priceEnd = document.querySelector('input[name="price-end_date"]');
+  const status = document.getElementById("calendar-selection-status");
+  const clearButton = document.getElementById("calendar-selection-clear");
+
+  if (!pickers.length || !blockStart || !blockEnd || !priceStart || !priceEnd || !status || !clearButton) {
+    return;
+  }
+
+  let selectionStart = blockStart.value || priceStart.value || "";
+  let selectionEnd = blockEnd.value || priceEnd.value || selectionStart;
+
+  function normalizeRange(startValue, endValue) {
+    if (!startValue && !endValue) {
+      return ["", ""];
+    }
+    if (!endValue) {
+      return [startValue, startValue];
+    }
+    return startValue <= endValue ? [startValue, endValue] : [endValue, startValue];
+  }
+
+  function writeRange(startValue, endValue) {
+    blockStart.value = startValue;
+    blockEnd.value = endValue;
+    priceStart.value = startValue;
+    priceEnd.value = endValue;
+  }
+
+  function paintRange(startValue, endValue) {
+    cells.forEach(function (cell) {
+      const day = cell.dataset.calendarCell;
+      const active = Boolean(startValue && endValue && day >= startValue && day <= endValue);
+      cell.classList.toggle("is-selected", active);
+    });
+  }
+
+  function updateStatus(startValue, endValue) {
+    if (!startValue) {
+      status.textContent = "Click one day to start a range, then click another day to finish it. The block and price forms will update automatically.";
+      return;
+    }
+    if (startValue === endValue) {
+      status.textContent = "Selected day: " + startValue + ". Click another day to expand the range.";
+      return;
+    }
+    status.textContent = "Selected range: " + startValue + " to " + endValue + ". Both forms are now prefilled.";
+  }
+
+  function focusField(field) {
+    field.focus();
+    if (field.scrollIntoView) {
+      field.scrollIntoView({behavior: "smooth", block: "center"});
+    }
+  }
+
+  function applyRange(startValue, endValue) {
+    const normalized = normalizeRange(startValue, endValue);
+    selectionStart = normalized[0];
+    selectionEnd = normalized[1];
+    writeRange(selectionStart, selectionEnd);
+    paintRange(selectionStart, selectionEnd);
+    updateStatus(selectionStart, selectionEnd);
+  }
+
+  pickers.forEach(function (picker) {
+    picker.addEventListener("click", function () {
+      const clicked = picker.dataset.calendarDate;
+      if (!selectionStart || (selectionStart && selectionEnd && selectionStart !== selectionEnd)) {
+        applyRange(clicked, clicked);
+        return;
+      }
+      applyRange(selectionStart, clicked);
+    });
+  });
+
+  quickActions.forEach(function (button) {
+    button.addEventListener("click", function () {
+      const clicked = button.dataset.calendarDate;
+      applyRange(clicked, clicked);
+      if (button.dataset.calendarQuickAction === "block") {
+        focusField(blockStart);
+        return;
+      }
+      focusField(priceStart);
+    });
+  });
+
+  clearButton.addEventListener("click", function () {
+    selectionStart = "";
+    selectionEnd = "";
+    writeRange("", "");
+    paintRange("", "");
+    updateStatus("", "");
+  });
+
+  applyRange(selectionStart, selectionEnd);
+});
+</script>
+{% endblock %}

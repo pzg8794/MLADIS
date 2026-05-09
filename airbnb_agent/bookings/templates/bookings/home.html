@@ -135,7 +135,7 @@
     <div class="booking-copy">
       <h2 id="booking-title">{% trans "Start booking with an agent beside you." %}</h2>
       <p>{% trans "Ask questions on the left while you choose dates on the right. When the booking starts, the next step is the secure damage-deposit hold." %}</p>
-      <p class="deposit-note">{% trans "Damage deposit" %}: {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} {% trans "authorization hold through Stripe Checkout." %}</p>
+      <p class="deposit-note">{% trans "Damage deposit" %}: {{ deposit_amount|floatformat:0 }} {{ deposit_currency }} {% trans "authorization hold through Stripe Checkout or PayPal." %}</p>
       {% if service_items %}
         <div class="service-list">
           {% for service in service_items %}
@@ -161,7 +161,7 @@
           </div>
         {% elif submitted %}
           <div class="form-success" role="status">
-              <p>{% trans "Your booking is started. Complete the secure deposit hold below." %}</p>
+              <p>{% trans "Your booking is started. Choose Stripe or PayPal below to complete the secure deposit hold." %}</p>
           </div>
         {% endif %}
 
@@ -192,7 +192,7 @@
         <div class="deposit-facts" aria-label="Deposit details">
           <span>{{ deposit_amount|floatformat:0 }} {{ deposit_currency }}</span>
           <span>Manual capture</span>
-          <span>Stripe Checkout</span>
+          <span>Stripe or PayPal</span>
         </div>
       </div>
 
@@ -200,16 +200,30 @@
         {% csrf_token %}
         {% for hidden in deposit_form.hidden_fields %}{{ hidden }}{% endfor %}
         {% for field in deposit_form.visible_fields %}
-          <div class="field-group {% if field.errors %}has-error{% endif %}">
-            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {{ field }}
-            {% if field.errors %}
-              <p class="field-error">{{ field.errors|striptags }}</p>
-            {% endif %}
-          </div>
+          {% if field.name == 'payment_provider' %}
+            <div class="field-group {% if field.errors %}has-error{% endif %}">
+              <span>{{ field.label }}</span>
+              <div class="provider-choice-row">
+                {% for radio in field %}
+                  <label for="{{ radio.id_for_label }}">{{ radio.tag }} <span>{{ radio.choice_label }}</span></label>
+                {% endfor %}
+              </div>
+              {% if field.errors %}
+                <p class="field-error">{{ field.errors|striptags }}</p>
+              {% endif %}
+            </div>
+          {% else %}
+            <div class="field-group {% if field.errors %}has-error{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}
+                <p class="field-error">{{ field.errors|striptags }}</p>
+              {% endif %}
+            </div>
+          {% endif %}
         {% endfor %}
-        <p class="payment-copy">Stripe will show safe eligible payment methods for an authorization hold. Some payment methods cannot be held and may not appear.</p>
-        <button class="button primary full" type="submit">{% trans "Complete secure deposit hold" %}</button>
+        <p class="payment-copy">Choose Stripe Checkout or PayPal for the authorization hold. The deposit is captured only if there is a valid damage claim; otherwise it is released or voided.</p>
+        <button class="button primary full" type="submit">{% trans "Make secure deposit hold" %}</button>
       </form>
     </section>
   {% endif %}
