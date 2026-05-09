@@ -959,6 +959,8 @@ class OpsDashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Owner dashboard")
         self.assertContains(response, "Pricing")
+        self.assertContains(response, "Business calendar")
+        self.assertContains(response, reverse("admin:bookings_bookableitem_calendar"))
 
     def test_ops_reports_show_graphs_for_staff(self):
         staff = get_user_model().objects.create_user("reports", "reports@example.com", "secret", is_staff=True)
@@ -985,6 +987,8 @@ class OpsDashboardTests(TestCase):
         self.assertContains(response, "Reservations by status")
         self.assertContains(response, "Agent question topics")
         self.assertContains(response, "Visits by day")
+        self.assertContains(response, "Business calendar")
+        self.assertContains(response, reverse("admin:bookings_bookableitem_calendar"))
 
 
 class DamageDepositTests(TestCase):

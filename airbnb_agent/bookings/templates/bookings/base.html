@@ -40,7 +40,8 @@
           <a href="{% url 'admin:index' %}">{% trans "Admin" %}</a>
           <a href="{% url 'bookings:ops-dashboard' %}">{% trans "Dashboard" %}</a>
           <a href="{% url 'bookings:ops-reports' %}">{% trans "Reports" %}</a>
-          <a href="{% url 'bookings:calendar-ops' %}">{% trans "Calendar" %}</a>
+          <a href="{% url 'admin:bookings_bookableitem_calendar' %}">{% trans "Business calendar" %}</a>
+          <a href="{% url 'bookings:calendar-ops' %}">{% trans "Calendar setup" %}</a>
         {% endif %}
         <form class="language-form" action="{% url 'set_language' %}" method="post">
           {% csrf_token %}
