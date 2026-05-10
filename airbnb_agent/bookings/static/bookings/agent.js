@@ -1,5 +1,5 @@
-function csrfToken() {
-  const input = document.querySelector("[name=csrfmiddlewaretoken]");
+function csrfToken(panel) {
+  const input = panel.querySelector("[name=csrfmiddlewaretoken]") || document.querySelector("[name=csrfmiddlewaretoken]");
   return input ? input.value : "";
 }
 
@@ -36,7 +36,7 @@ document.querySelectorAll("[data-agent-panel]").forEach((panel) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken(),
+          "X-CSRFToken": csrfToken(panel),
         },
         body: JSON.stringify({
           message,

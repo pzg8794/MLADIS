@@ -8,6 +8,7 @@
     <p class="agent-empty">{% if panel_empty %}{{ panel_empty }}{% else %}{% trans "Start with your travel dates, group size, or a question before booking." %}{% endif %}</p>
   </div>
   <form class="agent-form">
+    {% csrf_token %}
     <select class="agent-item" aria-label="{% trans 'Booking to ask about' %}">
       <option value="">{% trans "Any booking" %}</option>
       {% for item in active_items %}

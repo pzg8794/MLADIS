@@ -303,14 +303,18 @@ class BookingAgentService:
         subject = item.name if item else "your booking"
         return (
             f"I can help with {subject}, dates, guest count, amenities, and custom services. "
-            "The live AI key is not configured yet, so I am running in setup mode."
+            "The live AI key is not configured yet, so I am running in setup mode. "
+            "To start a reservation, choose the stay, dates, guest count, name, email, and phone in the booking form. "
+            "After you submit it, the secure $200 damage-deposit hold step appears."
         )
 
     def _fallback_reply(self, item):
         subject = item.name if item else "MLADIS bookings"
         return (
-            f"I can help with {subject}, but the live agent is having trouble for a moment. "
-            "Please continue the booking form or try your question again in a minute."
+            f"I can still help with {subject}: choose your stay, dates, guest count, name, email, and phone in the booking form. "
+            "Then use Make secure deposit hold to open the refundable $200 damage-deposit authorization through Stripe or PayPal. "
+            "A MLADIS admin reviews availability and confirms the reservation by email. "
+            "The live AI assistant is temporarily unavailable, so please include any special questions in the booking message."
         )
 
     def _openai_reply(self, request, item):
@@ -330,8 +334,11 @@ class BookingAgentService:
             "Be warm, concise, bilingual when useful, and focused on helping guests choose a stay, "
             "understand rules, deposits, location, amenities, and next steps. Do not promise live "
             "availability, final pricing, refunds, or reservation confirmation. Explain that bookings "
-            "are admin-confirmed and that the $200 damage deposit is an authorization hold. Ask for "
-            "dates, guest count, email, and phone when the guest wants to book. Do not promise discounts, "
+            "are admin-confirmed and that the $200 damage deposit is an authorization hold. When a guest "
+            "is ready to book, guide them to the booking form and tell them to enter the stay, dates, "
+            "guest count, name, email, phone, coupon if any, and special requests. Explain that after "
+            "submitting the booking form, the secure deposit-hold step appears through Stripe or PayPal. "
+            "Ask for dates, guest count, email, and phone when the guest wants to book. Do not promise discounts, "
             "early or late checkout, exact address details, private pool access, or waived house rules unless "
             "an admin has explicitly confirmed them. If a question needs owner action, direct the guest to "
             "submit the booking form or contact MLADIS."
@@ -347,6 +354,9 @@ class BookingAgentService:
             "",
             "MLADIS stay catalog:",
             self._catalog_context(selected_item=item),
+            "",
+            "Booking workflow:",
+            self._booking_workflow_context(),
         ]
         history = self._recent_history(request.session_id)
         if history:
@@ -379,6 +389,19 @@ class BookingAgentService:
             marker = "selected" if selected_item and selected_item.pk == item.pk else "option"
             lines.append(f"- ({marker}) {self._item_context(item)}")
         return "\n".join(lines)
+
+    def _booking_workflow_context(self):
+        deposit_amount = settings.DEPOSIT_AMOUNT_CENTS / 100
+        deposit_currency = settings.DEPOSIT_CURRENCY.upper()
+        return (
+            "Guests book from the website booking section. Required reservation details are stay, dates, "
+            "guest count, name, email, and phone. Coupon code is optional. The form button says "
+            "Make secure deposit hold. After submitting, guests complete a refundable damage-deposit "
+            f"authorization for ${deposit_amount:,.0f} {deposit_currency} through Stripe Checkout or PayPal. "
+            "The deposit is an authorization hold, not a captured charge unless there is a valid damage claim. "
+            "Reservation requests are stored for admin review and confirmation by email. Guests can create an "
+            "account to view and manage reservations."
+        )
 
     def _recent_history(self, session_id, limit=6):
         if not session_id:
