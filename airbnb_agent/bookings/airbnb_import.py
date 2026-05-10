@@ -39,6 +39,11 @@ class AirbnbGuestEmailParser:
     ROOM_RE = re.compile(r"airbnb\.com/rooms/(\d+)")
     THREAD_RE = re.compile(r"airbnb\.com/hosting/thread/(\d+)")
     GUESTS_RE = re.compile(r"\bGuests\s+(\d+)\s+guests?\b", re.IGNORECASE)
+    TRAVELERS_RE = re.compile(
+        r"\b(?:Guests|Viajeros)\s+(\d+)\s+(?:adultos?|adults?)\b"
+        r"(?:,\s*(\d+)\s+(?:children|kids|ni[nñ]os?)\b)?",
+        re.IGNORECASE,
+    )
     ADULTS_RE = re.compile(r"\b(?:Guests|Viajeros)\s+(\d+)\s+(?:adults?|adultos?|guests?|hu[eé]spedes|viajeros?)\b", re.IGNORECASE)
     INITIAL_INQUIRY_RE = re.compile(r"Respond to\s+(.+?)['’]s inquiry", re.IGNORECASE)
     INITIAL_INQUIRY_ES_RE = re.compile(r"Responde a la solicitud de\s+(.+)", re.IGNORECASE)
@@ -184,6 +189,11 @@ class AirbnbGuestEmailParser:
         return after_name.strip()[:1200]
 
     def _parse_guests(self, body):
+        travelers_match = self.TRAVELERS_RE.search(body)
+        if travelers_match:
+            adults = int(travelers_match.group(1))
+            children = int(travelers_match.group(2) or 0)
+            return adults + children
         match = self.GUESTS_RE.search(body) or self.ADULTS_RE.search(body)
         return int(match.group(1)) if match else None
 
