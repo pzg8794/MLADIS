@@ -30,6 +30,9 @@ Accepted formats:
 
 ## Admin Workflow
 
+- Go to `Dashboard > Reservations` or `/ops/reservations/` to see booked Airbnb guests linked to stay history, feedback, contact path, and customer group.
+- Use the group filters for `Favorite`, `VIP`, `Average`, and `Blacklisted`.
+- Export the reservation/customer list from that page as `mladis-airbnb-customers.csv`.
 - Go to `Admin > Bookings > Airbnb guest records > Import Airbnb guests`.
 - Upload a `.json` or `.csv` export and run it with `Dry run only` checked first.
 - If the counts look right, upload the same file again with `Dry run only` unchecked.

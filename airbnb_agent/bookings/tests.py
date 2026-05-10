@@ -1658,6 +1658,101 @@ September 1, 2024
         }
         return json.dumps(data).encode()
 
+    def test_ops_reservations_requires_staff_login(self):
+        response = self.client.get(reverse("bookings:ops-reservations"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
+
+    def test_ops_reservations_lists_customer_groups_feedback_and_contact(self):
+        user = get_user_model().objects.create_user(
+            username="reservation-ops",
+            password="secret",
+            is_staff=True,
+        )
+        self.client.force_login(user)
+        profile = CustomerProfile.objects.create(
+            name="Diana",
+            email="diana@example.com",
+            phone="631-555-0100",
+            segment=ClientSegment.VIP,
+            source=ContactSource.AIRBNB,
+            marketing_consent_status=MarketingConsentStatus.REQUESTED,
+        )
+        AirbnbGuestRecord.objects.create(
+            customer_profile=profile,
+            guest_name="Diana",
+            email="",
+            phone="",
+            listing_title="6 Bedrooms Vacation Home & Pool",
+            airbnb_listing_id="588632365342578374",
+            check_in=date(2024, 8, 22),
+            check_out=date(2024, 9, 1),
+            guests=10,
+            feedback_summary="Loved the pool and the host support.",
+            airbnb_thread_url="https://www.airbnb.com/hosting/thread/1773535134",
+        )
+
+        response = self.client.get(reverse("bookings:ops-reservations"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Reservations")
+        self.assertContains(response, "Diana")
+        self.assertContains(response, "VIP")
+        self.assertContains(response, "diana@example.com")
+        self.assertContains(response, "Loved the pool")
+        self.assertContains(response, "Customer groups")
+
+    def test_ops_reservations_filters_by_customer_group_and_exports_csv(self):
+        user = get_user_model().objects.create_user(
+            username="reservation-export-ops",
+            password="secret",
+            is_staff=True,
+        )
+        self.client.force_login(user)
+        vip_profile = CustomerProfile.objects.create(
+            name="VIP Guest",
+            email="vip@example.com",
+            segment=ClientSegment.VIP,
+            source=ContactSource.AIRBNB,
+        )
+        favorite_profile = CustomerProfile.objects.create(
+            name="Favorite Guest",
+            email="favorite@example.com",
+            segment=ClientSegment.FAVORITE,
+            source=ContactSource.AIRBNB,
+        )
+        AirbnbGuestRecord.objects.create(
+            customer_profile=vip_profile,
+            guest_name="VIP Guest",
+            listing_title="VIP Stay",
+            check_in=date(2024, 8, 22),
+            check_out=date(2024, 8, 24),
+        )
+        AirbnbGuestRecord.objects.create(
+            customer_profile=favorite_profile,
+            guest_name="Favorite Guest",
+            listing_title="Favorite Stay",
+            check_in=date(2024, 9, 2),
+            check_out=date(2024, 9, 4),
+        )
+
+        response = self.client.get(reverse("bookings:ops-reservations"), {"segment": ClientSegment.VIP})
+
+        self.assertContains(response, "VIP Guest")
+        self.assertNotContains(response, "Favorite Guest")
+
+        csv_response = self.client.get(
+            reverse("bookings:ops-reservations"),
+            {"segment": ClientSegment.VIP, "format": "csv"},
+        )
+
+        self.assertEqual(csv_response.status_code, 200)
+        self.assertEqual(csv_response["Content-Type"], "text/csv")
+        content = csv_response.content.decode()
+        self.assertIn("VIP Guest", content)
+        self.assertNotIn("Favorite Guest", content)
+
 
 @override_settings(STORAGES=TEST_STORAGES)
 class CalendarOpsTests(TestCase):

@@ -1,0 +1,108 @@
+{% extends "bookings/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Reservations" %} | MLADIS{% endblock %}
+
+{% block content %}
+<main>
+  <section class="ops-hero">
+    <div>
+      <h1>{% trans "Reservations" %}</h1>
+      <p>{% trans "Booked Airbnb guests linked to stay history, feedback, contact paths, and customer groups." %}</p>
+      <div class="hero-actions">
+        <a class="button primary" href="{{ export_url }}">{% trans "Export CSV" %}</a>
+        <a class="button secondary" href="{{ booking_inquiries_admin_url }}">{% trans "Direct reservations" %}</a>
+        <a class="button secondary" href="{{ airbnb_records_admin_url }}">{% trans "Airbnb records" %}</a>
+        <a class="button secondary" href="{{ customer_profiles_admin_url }}">{% trans "Customer groups" %}</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="ops-metric-grid">
+    {% for card in summary_cards %}
+      <article>
+        <span>{{ card.value }}</span>
+        <p><strong>{{ card.label }}</strong><br>{{ card.caption }}</p>
+      </article>
+    {% endfor %}
+  </section>
+
+  <section class="ops-card reservation-intel">
+    <div class="reservation-intel__header">
+      <div>
+        <h2>{% trans "Customer groups" %}</h2>
+        <p>{% trans "Favorite, VIP, Average, and Blacklisted are managed from each customer profile." %}</p>
+      </div>
+      <div class="reservation-segments" aria-label="{% trans 'Customer groups' %}">
+        {% for option in segment_options %}
+          <a class="reservation-segment {% if option.value == selected_segment %}is-active{% endif %}" href="{{ option.url }}">
+            <span>{{ option.label }}</span>
+            <strong>{{ option.count }}</strong>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="reservation-table-wrap">
+      <table class="reservation-table">
+        <thead>
+          <tr>
+            <th>{% trans "Guest" %}</th>
+            <th>{% trans "Group" %}</th>
+            <th>{% trans "Contact" %}</th>
+            <th>{% trans "Stay" %}</th>
+            <th>{% trans "Feedback" %}</th>
+            <th>{% trans "Consent" %}</th>
+            <th>{% trans "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in reservation_customer_rows %}
+            <tr>
+              <td>
+                <strong>{{ row.name }}</strong>
+                {% if row.source_subject %}
+                  <span>{{ row.source_subject|truncatechars:80 }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="reservation-badge">{{ row.segment|default:"Average" }}</span>
+              </td>
+              <td>
+                <strong>{{ row.contact_path }}</strong>
+                {% if row.email %}<span>{{ row.email }}</span>{% endif %}
+                {% if row.phone %}<span>{{ row.phone }}</span>{% endif %}
+                {% if not row.email and not row.phone and row.thread_url %}
+                  <a href="{{ row.thread_url }}" target="_blank" rel="noopener">{% trans "Open Airbnb thread" %}</a>
+                {% endif %}
+              </td>
+              <td>
+                <strong>{{ row.listing|default:"Airbnb stay" }}</strong>
+                <span>{{ row.stay_dates|default:"Dates not captured" }}</span>
+                {% if row.guests %}<span>{{ row.guests }} {% trans "guests" %}</span>{% endif %}
+              </td>
+              <td>
+                {% if row.rating %}<strong>★ {{ row.rating }}</strong>{% endif %}
+                <span>{{ row.feedback|default:"No feedback captured yet."|truncatechars:180 }}</span>
+              </td>
+              <td>{{ row.consent_status }}</td>
+              <td>
+                <div class="reservation-actions">
+                  <a href="{{ row.record_admin_url }}">{% trans "Record" %}</a>
+                  {% if row.profile_admin_url %}
+                    <a href="{{ row.profile_admin_url }}">{% trans "Profile" %}</a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7">{% trans "No Airbnb reservation customer records yet." %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+{% endblock %}

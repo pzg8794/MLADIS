@@ -1,3 +1,4 @@
+import csv
 import json
 from datetime import timedelta
 from uuid import uuid4
@@ -30,13 +31,16 @@ from .forms import (
 )
 from .models import (
     AgentConversation,
+    AirbnbGuestRecord,
     BookableItem,
     BookingCategory,
     BookingInquiry,
     BookingStatus,
     CalendarFeed,
+    ClientSegment,
     CustomerProfile,
     Invoice,
+    MarketingConsentStatus,
     MissionCause,
     PageVisit,
 )
@@ -569,6 +573,168 @@ class OAuthDiagnosticsView(TemplateView):
             }
         )
         return context
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class OpsReservationsView(TemplateView):
+    template_name = "bookings/ops_reservations.html"
+
+    def get(self, request, *args, **kwargs):
+        if request.GET.get("format") == "csv":
+            return self._csv_response(self._reservation_customer_rows())
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rows = self._reservation_customer_rows()
+        context.update(
+            {
+                "reservation_customer_rows": rows,
+                "segment_options": self._segment_options(rows),
+                "selected_segment": self._selected_segment(),
+                "summary_cards": self._summary_cards(rows),
+                "airbnb_records_admin_url": reverse("admin:bookings_airbnbguestrecord_changelist"),
+                "customer_profiles_admin_url": reverse("admin:bookings_customerprofile_changelist"),
+                "booking_inquiries_admin_url": reverse("admin:bookings_bookinginquiry_changelist"),
+                "export_url": self._export_url(),
+            }
+        )
+        return context
+
+    def _reservation_customer_rows(self, apply_filter=True):
+        rows = []
+        records = (
+            AirbnbGuestRecord.objects.select_related("customer_profile", "item")
+            .order_by("-check_in", "guest_name", "-updated_at")
+        )
+        for record in records:
+            profile = record.customer_profile
+            email = record.email or (profile.email if profile else "")
+            phone = record.phone or (profile.phone if profile else "")
+            feedback = record.feedback_summary or record.message_excerpt
+            consent_status = (
+                profile.get_marketing_consent_status_display()
+                if profile
+                else MarketingConsentStatus.UNKNOWN.label
+            )
+            rows.append(
+                {
+                    "name": record.guest_name or (profile.name if profile else "Airbnb guest"),
+                    "email": email,
+                    "phone": phone,
+                    "contact_path": self._contact_path(email, phone, record.airbnb_thread_url),
+                    "profile": profile,
+                    "profile_admin_url": reverse("admin:bookings_customerprofile_change", args=[profile.pk])
+                    if profile
+                    else "",
+                    "record": record,
+                    "record_admin_url": reverse("admin:bookings_airbnbguestrecord_change", args=[record.pk]),
+                    "item": record.item,
+                    "listing": record.item.name if record.item else record.listing_title or record.airbnb_listing_id,
+                    "listing_id": record.airbnb_listing_id,
+                    "stay_dates": record.stay_dates,
+                    "guests": record.guests,
+                    "rating": record.rating,
+                    "feedback": feedback,
+                    "source_subject": record.source_email_subject,
+                    "thread_url": record.airbnb_thread_url,
+                    "consent_status": consent_status,
+                    "segment": profile.get_segment_display() if profile else "",
+                    "updated_at": record.updated_at,
+                }
+            )
+        selected_segment = self._selected_segment() if apply_filter else ""
+        if apply_filter and selected_segment:
+            rows = [row for row in rows if row["profile"] and row["profile"].segment == selected_segment]
+        return rows
+
+    def _summary_cards(self, rows):
+        with_email = sum(1 for row in rows if row["email"])
+        with_phone = sum(1 for row in rows if row["phone"])
+        with_feedback = sum(1 for row in rows if row["feedback"] or row["rating"])
+        opted_in = sum(1 for row in rows if row["consent_status"] == MarketingConsentStatus.OPTED_IN.label)
+        return [
+            {"label": "Airbnb reservations", "value": len(rows), "caption": "Booked Airbnb stays linked to guests."},
+            {"label": "With email", "value": with_email, "caption": "Direct email found in imported data."},
+            {"label": "With phone", "value": with_phone, "caption": "Phone number found in imported data."},
+            {"label": "With feedback", "value": with_feedback, "caption": "Feedback, rating, or message context attached."},
+            {"label": "Promotion-ready", "value": opted_in, "caption": "Customers marked opted in for offers."},
+        ]
+
+    def _segment_options(self, rows):
+        base_url = reverse("bookings:ops-reservations")
+        all_rows = self._reservation_customer_rows(apply_filter=False)
+        options = [{"value": "", "label": "All", "count": len(all_rows), "url": base_url}]
+        for value, label in ClientSegment.choices:
+            count = sum(1 for row in all_rows if row["profile"] and row["profile"].segment == value)
+            options.append({"value": value, "label": label, "count": count, "url": f"{base_url}?segment={value}"})
+        return options
+
+    def _selected_segment(self):
+        value = self.request.GET.get("segment", "")
+        return value if value in ClientSegment.values else ""
+
+    def _export_url(self):
+        base_url = reverse("bookings:ops-reservations")
+        selected_segment = self._selected_segment()
+        if selected_segment:
+            return f"{base_url}?segment={selected_segment}&format=csv"
+        return f"{base_url}?format=csv"
+
+    def _csv_response(self, rows):
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="mladis-airbnb-customers.csv"'
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "guest_name",
+                "email",
+                "phone",
+                "contact_path",
+                "listing",
+                "airbnb_listing_id",
+                "stay_dates",
+                "guests",
+                "rating",
+                "feedback",
+                "airbnb_thread_url",
+                "marketing_consent_status",
+                "client_segment",
+                "source_email_subject",
+                "updated_at",
+            ]
+        )
+        for row in rows:
+            writer.writerow(
+                [
+                    row["name"],
+                    row["email"],
+                    row["phone"],
+                    row["contact_path"],
+                    row["listing"],
+                    row["listing_id"],
+                    row["stay_dates"],
+                    row["guests"] or "",
+                    row["rating"] or "",
+                    row["feedback"],
+                    row["thread_url"],
+                    row["consent_status"],
+                    row["segment"],
+                    row["source_subject"],
+                    row["updated_at"].isoformat(),
+                ]
+            )
+        return response
+
+    @staticmethod
+    def _contact_path(email, phone, thread_url):
+        if email:
+            return "Email"
+        if phone:
+            return "Phone"
+        if thread_url:
+            return "Airbnb thread"
+        return "Needs contact"
 
 
 @method_decorator(staff_member_required, name="dispatch")
