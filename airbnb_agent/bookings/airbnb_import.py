@@ -42,7 +42,7 @@ class AirbnbGuestEmailParser:
     GUESTS_RE = re.compile(r"\bGuests\s+(\d+)\s+guests?\b", re.IGNORECASE)
     TRAVELERS_RE = re.compile(
         r"\b(?:Guests|Viajeros)\s+(\d+)\s+(?:adultos?|adults?)\b"
-        r"(?:,\s*(\d+)\s+(?:children|kids|ni[nñ]os?)\b)?",
+        r"(?:,\s*(\d+)\s+(?:children|kids|infants?|bab(?:y|ies)|ni[nñ]os?|beb[eé]s?)\b)?",
         re.IGNORECASE,
     )
     ADULTS_RE = re.compile(r"\b(?:Guests|Viajeros)\s+(\d+)\s+(?:adults?|adultos?|guests?|hu[eé]spedes|viajeros?)\b", re.IGNORECASE)

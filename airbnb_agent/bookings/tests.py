@@ -1581,6 +1581,20 @@ Viajeros
 
         self.assertEqual(payload.guests, 7)
 
+    def test_airbnb_email_parser_counts_spanish_babies_as_travelers(self):
+        body = self.AIRBNB_SPANISH_REPLY_BODY.replace("7 adultos", "1 adulto, 1 bebé")
+
+        payload = AirbnbGuestEmailParser().parse_message(
+            {
+                "id": "gmail-spanish-baby-123",
+                "subject": "RE: Consulta sobre 3 Bedrooms Vacation Home & Pool (Apartment G-101), para 4 – 5 de may",
+                "body": body,
+                "email_ts": "2026-05-03T15:40:25",
+            }
+        )
+
+        self.assertEqual(payload.guests, 2)
+
     def test_airbnb_import_service_upserts_guest_records_from_json_file(self):
         item = BookableItem.objects.create(
             name="Six bedroom stay",
