@@ -39,6 +39,7 @@ class AirbnbGuestEmailParser:
     ROOM_RE = re.compile(r"airbnb\.com/rooms/(\d+)")
     THREAD_RE = re.compile(r"airbnb\.com/hosting/thread/(\d+)")
     GUESTS_RE = re.compile(r"\bGuests\s+(\d+)\s+guests?\b", re.IGNORECASE)
+    INITIAL_INQUIRY_RE = re.compile(r"Respond to\s+(.+?)['’]s inquiry", re.IGNORECASE)
     RESPOND_TO_RE = re.compile(r"Respond to\s+(.+?)\s+by replying", re.IGNORECASE)
     SUBJECT_RE = re.compile(r"at\s+(.+?)\s+for\s+(.+?)\s+-\s+(.+)$", re.IGNORECASE)
     CHECK_IN_RE = re.compile(r"Check-In\s+\w+\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})", re.IGNORECASE)
@@ -89,6 +90,9 @@ class AirbnbGuestEmailParser:
         return listing_title, self._parse_date(match.group(2)), self._parse_date(match.group(3))
 
     def _parse_guest_name(self, body):
+        match = self.INITIAL_INQUIRY_RE.search(body)
+        if match:
+            return self._compact_name(match.group(1))
         match = self.RESPOND_TO_RE.search(body)
         if match:
             return self._compact_name(match.group(1))
@@ -230,12 +234,25 @@ class AirbnbGuestImportService:
             "feedback_summary": payload.feedback_summary,
         }
         if existing:
+            if (
+                existing.guest_name
+                and payload.guest_name
+                and existing.guest_name != payload.guest_name
+                and not self._is_initial_inquiry(payload)
+            ):
+                values["guest_name"] = existing.guest_name
+                values["customer_profile"] = existing.customer_profile
             for field, value in values.items():
+                if value in ("", None) and getattr(existing, field):
+                    continue
                 setattr(existing, field, value)
             existing.save()
         else:
             AirbnbGuestRecord.objects.create(**values)
         return action
+
+    def _is_initial_inquiry(self, payload):
+        return payload.source_email_subject.lower().startswith("inquiry for")
 
     def _profile_for(self, payload):
         defaults = {

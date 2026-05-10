@@ -1441,6 +1441,35 @@ Sunday
 
 September 1, 2024
 """
+    AIRBNB_INITIAL_INQUIRY_BODY = """
+Respond to Ana’s inquiry
+
+[Ana](https://www.airbnb.com/hosting/thread/1773535134?thread_type=home_booking)
+
+Identity verified · 1 review
+
+US
+
+Hello Diana, my name is Ana im planning a trip to DR on August 22 to sept 1 with my volleyball team.
+
+[6 Bedrooms Vacation Home & Pool (Apartment G-102)](https://www.airbnb.com/rooms/588632365342578374)
+
+Check-in
+
+Thu, Aug 22
+
+3:00 PM
+
+Checkout
+
+Sun, Sep 1
+
+11:00 AM
+
+Guests
+
+10 adults
+"""
 
     def test_airbnb_email_parser_extracts_guest_stay_and_thread_data(self):
         payload = AirbnbGuestEmailParser().parse_message(
@@ -1460,6 +1489,20 @@ September 1, 2024
         self.assertEqual(payload.check_in, date(2024, 8, 22))
         self.assertEqual(payload.check_out, date(2024, 9, 1))
         self.assertIn("It will be a pleasure", payload.message_excerpt)
+
+    def test_airbnb_email_parser_extracts_guest_from_initial_inquiry(self):
+        payload = AirbnbGuestEmailParser().parse_message(
+            {
+                "id": "gmail-initial-123",
+                "subject": "Inquiry for 6 Bedrooms Vacation Home & Pool (Apartment G-102) for Aug 22 – Sep 1, 2024",
+                "body": self.AIRBNB_INITIAL_INQUIRY_BODY,
+                "email_ts": "2024-04-04T15:44:13",
+            }
+        )
+
+        self.assertEqual(payload.guest_name, "Ana")
+        self.assertEqual(payload.airbnb_thread_url, "https://www.airbnb.com/hosting/thread/1773535134")
+        self.assertEqual(payload.airbnb_listing_id, "588632365342578374")
 
     def test_airbnb_import_service_upserts_guest_records_from_json_file(self):
         item = BookableItem.objects.create(
@@ -1529,6 +1572,34 @@ September 1, 2024
         record = AirbnbGuestRecord.objects.get()
         self.assertEqual(record.airbnb_thread_url, "https://www.airbnb.com/hosting/thread/1773535134")
         self.assertIn("Can we use the pool?", record.message_excerpt)
+
+    def test_airbnb_import_service_preserves_initial_inquiry_guest_identity(self):
+        data = {
+            "responses": [
+                {
+                    "id": "gmail-reply-first",
+                    "subject": "RE: Inquiry at 6 Bedrooms Vacation Home & Pool (Apartment G-102) for August 22, 2024 - September 1, 2024",
+                    "body": self.AIRBNB_SAMPLE_BODY,
+                    "email_ts": "2024-04-04T16:18:54",
+                },
+                {
+                    "id": "gmail-initial-second",
+                    "subject": "Inquiry for 6 Bedrooms Vacation Home & Pool (Apartment G-102) for Aug 22 – Sep 1, 2024",
+                    "body": self.AIRBNB_INITIAL_INQUIRY_BODY,
+                    "email_ts": "2024-04-04T15:44:13",
+                },
+            ]
+        }
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "airbnb-guests.json"
+            path.write_text(json.dumps(data))
+            result = AirbnbGuestImportService().import_file(path)
+
+        self.assertEqual(result.created, 1)
+        self.assertEqual(result.updated, 1)
+        self.assertEqual(AirbnbGuestRecord.objects.count(), 1)
+        self.assertEqual(AirbnbGuestRecord.objects.get().guest_name, "Ana")
 
     def test_airbnb_guest_record_tracks_stay_feedback_and_permission_notes(self):
         item = BookableItem.objects.create(
