@@ -132,6 +132,7 @@ class AgentAPITests(TestCase):
         self.assertEqual(response.reply, "Yes, I can help with those dates.")
         self.assertEqual(fake_responses.kwargs["model"], "gpt-5-mini")
         self.assertIn("admin-confirmed", fake_responses.kwargs["instructions"])
+        self.assertIn("Do not promise discounts", fake_responses.kwargs["instructions"])
         self.assertIn("Is there room for four guests?", fake_responses.kwargs["input"])
         self.assertEqual(conversation.metadata["agent_mode"], "openai")
         self.assertEqual(conversation.metadata["openai_response_id"], "resp_test")
