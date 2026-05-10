@@ -1632,6 +1632,47 @@ Viajeros
         self.assertEqual(record.customer_profile.source, ContactSource.AIRBNB)
         self.assertEqual(record.customer_profile.marketing_consent_status, MarketingConsentStatus.UNKNOWN)
 
+    def test_airbnb_import_service_imports_structured_guest_contact_list(self):
+        data = {
+            "guest_contact_list": [
+                {
+                    "guest_name": "Jessica",
+                    "email": "",
+                    "phone_number": "",
+                    "airbnb_profile_name_or_id": "airbnb-profile-123",
+                    "airbnb_thread_url": "https://www.airbnb.com/hosting/messages/2423037932",
+                    "listing_apartment": "6 Bedrooms Vacation Home & Pool (Apartment G-102)",
+                    "check_in_date": "Apr 17",
+                    "check_out_date": "Apr 19",
+                    "number_of_guests": "",
+                    "message_summary": "Template message: discount offer + feedback request.",
+                    "feedback_or_review_summary": "Feedback requested; review not shown.",
+                    "permission_to_contact_outside_airbnb": "unknown",
+                    "consent_status": "unknown",
+                    "promotion_permission_notes": "Opt-in required before marketing.",
+                }
+            ]
+        }
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "airbnb-contacts.json"
+            path.write_text(json.dumps(data))
+            result = AirbnbGuestImportService().import_file(path)
+
+        current_year = timezone.localdate().year
+        self.assertEqual(result.created, 1)
+        record = AirbnbGuestRecord.objects.get()
+        self.assertEqual(record.guest_name, "Jessica")
+        self.assertEqual(record.airbnb_listing_id, "588632365342578374")
+        self.assertEqual(record.airbnb_thread_url, "https://www.airbnb.com/hosting/thread/2423037932")
+        self.assertEqual(record.check_in, date(current_year, 4, 17))
+        self.assertEqual(record.check_out, date(current_year, 4, 19))
+        self.assertIsNone(record.guests)
+        self.assertIn("discount offer", record.message_excerpt)
+        self.assertIn("Feedback requested", record.feedback_summary)
+        self.assertIn("airbnb-profile-123", record.permission_notes)
+        self.assertEqual(record.customer_profile.marketing_consent_status, MarketingConsentStatus.UNKNOWN)
+
     def test_airbnb_import_service_coalesces_messages_from_same_thread(self):
         first_body = self.AIRBNB_SAMPLE_BODY
         second_body = self.AIRBNB_SAMPLE_BODY.replace("It will be a pleasure", "Can we use the pool?")

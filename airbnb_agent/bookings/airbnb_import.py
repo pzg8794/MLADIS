@@ -27,6 +27,8 @@ class AirbnbGuestPayload:
     guests: int | None = None
     message_excerpt: str = ""
     feedback_summary: str = ""
+    marketing_consent_status: str = MarketingConsentStatus.UNKNOWN
+    permission_notes: str = ""
 
 
 @dataclass(frozen=True)
@@ -38,7 +40,7 @@ class AirbnbGuestImportResult:
 
 class AirbnbGuestEmailParser:
     ROOM_RE = re.compile(r"airbnb\.com/rooms/(\d+)")
-    THREAD_RE = re.compile(r"airbnb\.com/hosting/thread/(\d+)")
+    THREAD_RE = re.compile(r"airbnb\.com/hosting/(?:thread|messages)/(\d+)")
     GUESTS_RE = re.compile(r"\bGuests\s+(\d+)\s+guests?\b", re.IGNORECASE)
     TRAVELERS_RE = re.compile(
         r"\b(?:Guests|Viajeros)\s+(\d+)\s+(?:adultos?|adults?)\b"
@@ -83,6 +85,11 @@ class AirbnbGuestEmailParser:
         "dic": 12,
         "diciembre": 12,
     }
+    LISTING_IDS_BY_TITLE = {
+        "6 Bedrooms Vacation Home & Pool (Apartment G-102)": "588632365342578374",
+        "3 Bedrooms Vacation Home & Pool (Apartment G-102)": "587194328968598250",
+        "3 Bedrooms Vacation Home & Pool (Apartment G-101)": "582161420407543691",
+    }
 
     def parse_many(self, messages):
         for message in messages:
@@ -91,6 +98,9 @@ class AirbnbGuestEmailParser:
                 yield payload
 
     def parse_message(self, message):
+        if self._is_structured_contact_export(message):
+            return self._parse_structured_contact_export(message)
+
         body = self._clean_text(message.get("body", ""))
         subject = self._clean_text(message.get("subject", ""))
         listing_title, subject_check_in, subject_check_out = self._parse_subject(subject)
@@ -124,6 +134,46 @@ class AirbnbGuestEmailParser:
             guests=guests,
             message_excerpt=message_excerpt,
             feedback_summary=(message.get("feedback_summary") or "").strip(),
+        )
+
+    def _is_structured_contact_export(self, message):
+        return any(
+            key in message
+            for key in (
+                "guest_name",
+                "listing_apartment",
+                "check_in_date",
+                "check_out_date",
+                "airbnb_profile_name_or_id",
+            )
+        )
+
+    def _parse_structured_contact_export(self, row):
+        listing_title = self._clean_text(row.get("listing_title") or row.get("listing_apartment"))
+        check_in = self._parse_date(row.get("check_in") or row.get("check_in_date"), default_year=timezone.localdate().year)
+        check_out_default_year = check_in.year if check_in else timezone.localdate().year
+        check_out = self._parse_date(row.get("check_out") or row.get("check_out_date"), default_year=check_out_default_year)
+        if check_in and check_out and check_out < check_in:
+            check_out = date(check_out.year + 1, check_out.month, check_out.day)
+        message_excerpt = self._clean_text(row.get("message_excerpt") or row.get("message_summary"))
+        feedback_summary = self._clean_text(row.get("feedback_summary") or row.get("feedback_or_review_summary"))
+        return AirbnbGuestPayload(
+            source_message_id=self._clean_text(row.get("source_message_id") or row.get("id")),
+            source_email_subject=self._clean_text(row.get("source_email_subject") or "Structured Airbnb contact export"),
+            source_email_timestamp=self._parse_timestamp(row.get("source_email_timestamp") or row.get("email_ts")),
+            guest_name=self._compact_name(row.get("guest_name") or ""),
+            email=(row.get("email") or "").strip().lower(),
+            phone=(row.get("phone") or row.get("phone_number") or "").strip(),
+            listing_title=listing_title,
+            airbnb_listing_id=(row.get("airbnb_listing_id") or self.LISTING_IDS_BY_TITLE.get(listing_title, "")).strip(),
+            airbnb_thread_url=self._parse_thread_url(row.get("airbnb_thread_url") or ""),
+            check_in=check_in,
+            check_out=check_out,
+            guests=self._parse_guest_count(row.get("guests") or row.get("number_of_guests")),
+            message_excerpt=message_excerpt,
+            feedback_summary=feedback_summary,
+            marketing_consent_status=self._normalize_marketing_consent(row.get("marketing_consent_status") or row.get("consent_status")),
+            permission_notes=self._structured_permission_notes(row),
         )
 
     def _clean_text(self, value):
@@ -203,8 +253,9 @@ class AirbnbGuestEmailParser:
             return None
         return self._parse_date(match.group(1))
 
-    def _parse_date(self, value):
+    def _parse_date(self, value, default_year=None):
         value = (value or "").strip()
+        value = value.replace("\u2009", " ").replace("\xa0", " ")
         spanish_match = re.match(
             r"(\d{1,2})\s+de\s+([A-Za-záéíóúñ]+)\s+de\s+(\d{4})",
             value,
@@ -221,6 +272,12 @@ class AirbnbGuestEmailParser:
                 return datetime.strptime(value, fmt).date()
             except ValueError:
                 continue
+        if default_year:
+            for fmt in ("%B %d", "%b %d"):
+                try:
+                    return datetime.strptime(f"{value} {default_year}", f"{fmt} %Y").date()
+                except ValueError:
+                    continue
         return None
 
     def _parse_timestamp(self, value):
@@ -241,6 +298,35 @@ class AirbnbGuestEmailParser:
     def _parse_thread_url(self, body):
         thread_id = self._first_match(self.THREAD_RE, body)
         return f"https://www.airbnb.com/hosting/thread/{thread_id}" if thread_id else ""
+
+    def _parse_guest_count(self, value):
+        if value in ("", None):
+            return None
+        if isinstance(value, int):
+            return value
+        match = re.search(r"\d+", str(value))
+        return int(match.group(0)) if match else None
+
+    def _normalize_marketing_consent(self, value):
+        normalized = str(value or "").strip().lower().replace(" ", "_").replace("-", "_")
+        return (
+            normalized
+            if normalized in MarketingConsentStatus.values
+            else MarketingConsentStatus.UNKNOWN
+        )
+
+    def _structured_permission_notes(self, row):
+        notes = []
+        promotion_notes = self._clean_text(row.get("permission_notes") or row.get("promotion_permission_notes"))
+        permission = self._clean_text(row.get("permission_to_contact_outside_airbnb"))
+        profile_id = self._clean_text(row.get("airbnb_profile_name_or_id"))
+        if promotion_notes:
+            notes.append(promotion_notes)
+        if permission:
+            notes.append(f"Airbnb outside-contact permission: {permission}")
+        if profile_id:
+            notes.append(f"Airbnb profile name/id: {profile_id}")
+        return "\n".join(notes)
 
     def _looks_like_name(self, value):
         if len(value) > 80 or any(character.isdigit() for character in value):
@@ -295,6 +381,7 @@ class AirbnbGuestImportService:
             "guests": payload.guests,
             "message_excerpt": payload.message_excerpt,
             "feedback_summary": payload.feedback_summary,
+            "permission_notes": payload.permission_notes,
         }
         if existing:
             if (
@@ -350,7 +437,7 @@ class AirbnbGuestImportService:
             "name": payload.guest_name,
             "phone": payload.phone,
             "source": ContactSource.AIRBNB,
-            "marketing_consent_status": MarketingConsentStatus.UNKNOWN,
+            "marketing_consent_status": payload.marketing_consent_status or MarketingConsentStatus.UNKNOWN,
             "notes": "Imported from Airbnb message history. Request permission before sending promotions.",
         }
         if payload.email:
@@ -376,7 +463,7 @@ class AirbnbGuestImportService:
         if suffix == ".json":
             data = json.loads(path.read_text())
             if isinstance(data, dict):
-                return data.get("responses") or data.get("messages") or []
+                return data.get("guest_contact_list") or data.get("responses") or data.get("messages") or []
             return data
         if suffix == ".csv":
             with path.open(newline="") as handle:
