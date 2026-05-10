@@ -93,15 +93,30 @@
       });
     });
 
-    document.querySelectorAll("select[data-auto-submit], .ml-auto-submit select").forEach((select) => {
-      select.addEventListener("change", () => {
-        const form = select.closest("form");
-        if (form) {
-          showLoadingOverlay("Updating...");
-          form.requestSubmit ? form.requestSubmit() : form.submit();
-        }
+    document.querySelectorAll("[data-auto-submit], .ml-auto-submit select, .ml-auto-submit input").forEach((control) => {
+      const eventName = control.matches('input[type="text"], input[type="month"], input[type="date"], input[type="search"]') ? "change" : "change";
+      control.addEventListener(eventName, () => submitClosestForm(control, "Updating..."));
+    });
+
+    document.querySelectorAll("[data-auto-navigate]").forEach((control) => {
+      control.addEventListener("change", () => {
+        const url = control.value || control.dataset.autoNavigateUrl;
+        if (!url) return;
+        showLoadingOverlay("Updating...");
+        window.location.assign(url);
       });
     });
+
+    document.querySelectorAll(".ml-autoload-link").forEach((link) => {
+      link.addEventListener("click", () => showLoadingOverlay("Updating..."));
+    });
+  }
+
+  function submitClosestForm(control, label) {
+    const form = control.closest("form");
+    if (!form) return;
+    showLoadingOverlay(label || "Updating...");
+    form.requestSubmit ? form.requestSubmit() : form.submit();
   }
 
   function showLoadingOverlay(label) {
