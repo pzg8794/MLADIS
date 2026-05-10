@@ -1,4 +1,5 @@
 import { Activity, Bot, CalendarDays, CreditCard, Database, ExternalLink, FileText, KeyRound, ShieldCheck, Users } from 'lucide-react';
+import './admin-page.css';
 
 class AdminShortcut {
   constructor(
