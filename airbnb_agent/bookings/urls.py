@@ -80,6 +80,7 @@ urlpatterns = [
     path("donations/checkout/", DonationCheckoutView.as_view(), name="donation-checkout"),
     path("donations/success/", DonationSuccessView.as_view(), name="donation-success"),
     path("ops/dashboard/", ModernOpsDashboardView.as_view(), name="ops-dashboard"),
+    path("ops/admin/", ModernOpsDashboardView.as_view(), name="ops-admin"),
     path("ops/legacy-dashboard/", LegacyOpsDashboardView.as_view(), name="ops-legacy-dashboard"),
     path("ops/reservations/", OpsReservationsView.as_view(), name="ops-reservations"),
     path("ops/reports/", OpsReportsView.as_view(), name="ops-reports"),
