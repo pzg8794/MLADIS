@@ -1650,6 +1650,41 @@ Viajeros
         self.assertEqual(record.airbnb_thread_url, "https://www.airbnb.com/hosting/thread/1773535134")
         self.assertIn("Can we use the pool?", record.message_excerpt)
 
+    def test_airbnb_import_service_coalesces_same_guest_listing_and_dates(self):
+        first_body = self.AIRBNB_SPANISH_REPLY_BODY.replace("2520797227", "2520797000")
+        second_body = self.AIRBNB_SPANISH_REPLY_BODY.replace("2520797227", "2520797999").replace(
+            "Hola dia a que hora es la salida?",
+            "Vamos otra vez y queremos confirmar la piscina.",
+        )
+        data = {
+            "responses": [
+                {
+                    "id": "gmail-same-stay-1",
+                    "subject": "RE: Consulta sobre 3 Bedrooms Vacation Home & Pool (Apartment G-101), para 4 – 5 de may",
+                    "body": first_body,
+                    "email_ts": "2026-05-03T15:40:25",
+                },
+                {
+                    "id": "gmail-same-stay-2",
+                    "subject": "RE: Consulta sobre 3 Bedrooms Vacation Home & Pool (Apartment G-101), para 4 – 5 de may",
+                    "body": second_body,
+                    "email_ts": "2026-05-03T15:42:25",
+                },
+            ]
+        }
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "airbnb-guests.json"
+            path.write_text(json.dumps(data))
+            result = AirbnbGuestImportService().import_file(path)
+
+        self.assertEqual(result.created, 1)
+        self.assertEqual(result.updated, 1)
+        self.assertEqual(AirbnbGuestRecord.objects.count(), 1)
+        record = AirbnbGuestRecord.objects.get()
+        self.assertEqual(record.airbnb_thread_url, "https://www.airbnb.com/hosting/thread/2520797000")
+        self.assertIn("confirmar la piscina", record.message_excerpt)
+
     def test_airbnb_import_service_preserves_initial_inquiry_guest_identity(self):
         data = {
             "responses": [

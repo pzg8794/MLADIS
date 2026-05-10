@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import AirbnbGuestRecord, BookableItem, ContactSource, CustomerProfile, MarketingConsentStatus
@@ -270,23 +271,7 @@ class AirbnbGuestImportService:
         return AirbnbGuestImportResult(**result)
 
     def _upsert(self, payload, dry_run=False):
-        if payload.airbnb_thread_url:
-            lookup = {"airbnb_thread_url": payload.airbnb_thread_url}
-        elif payload.guest_name and payload.airbnb_listing_id and payload.check_in and payload.check_out:
-            lookup = {
-                "guest_name": payload.guest_name,
-                "airbnb_listing_id": payload.airbnb_listing_id,
-                "check_in": payload.check_in,
-                "check_out": payload.check_out,
-            }
-        elif payload.source_message_id:
-            lookup = {"source_message_id": payload.source_message_id}
-        else:
-            lookup = {
-                "guest_name": payload.guest_name,
-                "airbnb_listing_id": payload.airbnb_listing_id,
-            }
-        existing = AirbnbGuestRecord.objects.filter(**lookup).first()
+        existing = self._find_existing(payload)
         action = "updated" if existing else "created"
         if dry_run:
             return action
@@ -320,6 +305,12 @@ class AirbnbGuestImportService:
             ):
                 values["guest_name"] = existing.guest_name
                 values["customer_profile"] = existing.customer_profile
+            if (
+                existing.airbnb_thread_url
+                and payload.airbnb_thread_url
+                and existing.airbnb_thread_url != payload.airbnb_thread_url
+            ):
+                values["airbnb_thread_url"] = existing.airbnb_thread_url
             for field, value in values.items():
                 if value in ("", None) and getattr(existing, field):
                     continue
@@ -331,6 +322,28 @@ class AirbnbGuestImportService:
 
     def _is_initial_inquiry(self, payload):
         return payload.source_email_subject.lower().startswith("inquiry for")
+
+    def _find_existing(self, payload):
+        signature = Q()
+        if payload.guest_name and payload.airbnb_listing_id and payload.check_in and payload.check_out:
+            signature = Q(
+                guest_name__iexact=payload.guest_name,
+                airbnb_listing_id=payload.airbnb_listing_id,
+                check_in=payload.check_in,
+                check_out=payload.check_out,
+            )
+        if payload.airbnb_thread_url and signature:
+            return AirbnbGuestRecord.objects.filter(Q(airbnb_thread_url=payload.airbnb_thread_url) | signature).first()
+        if payload.airbnb_thread_url:
+            return AirbnbGuestRecord.objects.filter(airbnb_thread_url=payload.airbnb_thread_url).first()
+        if signature:
+            return AirbnbGuestRecord.objects.filter(signature).first()
+        if payload.source_message_id:
+            return AirbnbGuestRecord.objects.filter(source_message_id=payload.source_message_id).first()
+        return AirbnbGuestRecord.objects.filter(
+            guest_name__iexact=payload.guest_name,
+            airbnb_listing_id=payload.airbnb_listing_id,
+        ).first()
 
     def _profile_for(self, payload):
         defaults = {
