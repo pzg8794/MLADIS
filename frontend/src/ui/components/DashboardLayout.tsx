@@ -1,4 +1,4 @@
-import { Bot, CalendarDays, Home, LayoutDashboard, LineChart, ReceiptText, Users } from 'lucide-react';
+import { Bot, CalendarDays, Home, LayoutDashboard, LineChart, ReceiptText, Search, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { ReactNode } from 'react';
 
 interface DashboardLayoutProps {
@@ -6,50 +6,59 @@ interface DashboardLayoutProps {
 }
 
 const navItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, active: true },
-  { label: 'Reservations', icon: CalendarDays },
-  { label: 'Reports', icon: LineChart },
-  { label: 'Customers', icon: Users },
-  { label: 'Deposits', icon: ReceiptText },
-  { label: 'Agent', icon: Bot },
+  { label: 'Dashboard', icon: LayoutDashboard, href: '/ops/dashboard/', active: true },
+  { label: 'Reservations', icon: CalendarDays, href: '/ops/reservations/' },
+  { label: 'Reports', icon: LineChart, href: '/ops/reports/' },
+  { label: 'Customers', icon: Users, href: '/admin/bookings/customerprofile/' },
+  { label: 'Deposits', icon: ReceiptText, href: '/admin/bookings/damagedeposit/' },
+  { label: 'Agent', icon: Bot, href: '/admin/bookings/agentfaq/' },
 ];
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="dashboard-shell">
-      <aside className="dashboard-sidebar glass-card">
+      <aside className="dashboard-sidebar">
         <div className="dashboard-brand">
           <span>M</span>
           <div>
             <strong>MLADIS</strong>
-            <small>Vacation Homes</small>
+            <small>Stay operations</small>
           </div>
         </div>
         <nav aria-label="Dashboard sections">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <button className={item.active ? 'active' : ''} key={item.label} type="button">
+              <a className={item.active ? 'active' : ''} href={item.href} key={item.label}>
                 <Icon size={18} />
                 {item.label}
-              </button>
+              </a>
             );
           })}
         </nav>
+        <div className="sidebar-card">
+          <Sparkles size={18} />
+          <strong>Modern ops mode</strong>
+          <span>Django remains the source of truth for reservations, deposits, reports, and admin controls.</span>
+        </div>
         <a className="back-to-site" href="/">
           <Home size={16} />
           Back to live site
         </a>
       </aside>
       <div className="dashboard-main">
-        <header className="dashboard-topbar glass-card">
+        <header className="dashboard-topbar">
           <div>
-            <p>Modern operations dashboard</p>
+            <p><ShieldCheck size={16} /> Modern operations cockpit</p>
             <h1>Welcome back, Piter</h1>
           </div>
+          <label className="dashboard-search">
+            <Search size={17} />
+            <input aria-label="Search dashboard" placeholder="Search guests or stays" />
+          </label>
           <div className="dashboard-topbar__actions">
-            <a href="/admin/">Open Django Admin</a>
-            <a href="/ops/reports/">Legacy reports</a>
+            <a href="/admin/" aria-label="Open Django admin">Admin</a>
+            <a href="/ops/reports/" aria-label="Open reports">Reports</a>
           </div>
         </header>
         {children}

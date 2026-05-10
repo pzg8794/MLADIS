@@ -1,8 +1,9 @@
 from datetime import timedelta
 
-from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncDate
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
@@ -27,7 +28,13 @@ from .models import (
 )
 
 
-@method_decorator(staff_member_required, name="dispatch")
+ops_staff_required = user_passes_test(
+    lambda user: user.is_active and user.is_staff,
+    login_url=reverse_lazy("bookings:login"),
+)
+
+
+@method_decorator(ops_staff_required, name="dispatch")
 class OpsReportsView(TemplateView):
     template_name = "bookings/ops_reports.html"
 

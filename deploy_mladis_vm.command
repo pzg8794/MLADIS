@@ -48,6 +48,24 @@ if ! command -v tar >/dev/null 2>&1; then
   exit 1
 fi
 
+if [[ -f "$PROJECT_ROOT/frontend/package.json" ]]; then
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "npm is required to build the modern MLADIS frontend before deployment." >&2
+    exit 1
+  fi
+  echo
+  echo "Building modern MLADIS frontend into Django static assets..."
+  (
+    cd "$PROJECT_ROOT/frontend"
+    if [[ -f package-lock.json ]]; then
+      npm ci
+    else
+      npm install
+    fi
+    npm run build:django
+  )
+fi
+
 echo
 echo "Packaging MLADIS app for deployment..."
 tar \

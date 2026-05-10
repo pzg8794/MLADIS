@@ -4,7 +4,7 @@ import { HttpClient } from '../infrastructure/HttpClient';
 
 export class DashboardFactory {
   static create(): DashboardService {
-    const useMockData = import.meta.env.VITE_USE_MOCK_DATA !== 'false';
+    const useMockData = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
     if (useMockData) {
       return new DashboardService(new MockDashboardRepository());

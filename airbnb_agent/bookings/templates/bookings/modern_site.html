@@ -1,0 +1,18 @@
+{% load static %}
+<!doctype html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#eef3f4">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="available-languages" content="en,es">
+    <link rel="icon" href="{% static 'frontend/modern-dashboard/favicon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}">
+    <title>MLADIS Modern Stays</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="{% static 'frontend/modern-dashboard/assets/app.js' %}"></script>
+  </body>
+</html>

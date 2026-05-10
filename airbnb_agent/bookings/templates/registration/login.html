@@ -1,52 +1,67 @@
-{% extends "bookings/base.html" %}
-{% load i18n %}
-
-{% block title %}{% trans "Log in" %} | MLADIS{% endblock %}
-
-{% block content %}
-<main class="auth-page">
-  <section class="auth-panel">
-    <h1>{% trans "Log in to MLADIS" %}</h1>
-    <p>{% trans "See your reservations, invoices, and booking updates." %}</p>
-    {% if messages %}
-      <div class="form-success" role="status">
-        {% for message in messages %}
-          <p>{{ message }}</p>
-        {% endfor %}
-      </div>
-    {% endif %}
-    <div class="social-auth-grid" aria-label="{% trans 'Social login options' %}">
-      {% for provider in social_login_providers %}
-        {% if provider.is_configured %}
-          <form method="post" action="{{ provider.login_url }}">
-            {% csrf_token %}
-            <button class="button social full" type="submit">{{ provider.button_label }}</button>
-          </form>
-        {% else %}
-          <button class="button social full is-disabled" type="button" disabled>{{ provider.button_label }} <span>{% trans "setup needed" %}</span></button>
+{% load i18n static %}
+<!doctype html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#eef3f4">
+    <link rel="icon" href="{% static 'frontend/modern-dashboard/favicon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}">
+    <title>{% trans "Log in" %} | MLADIS</title>
+  </head>
+  <body>
+    <main class="modern-auth-page">
+      <section class="modern-auth-hero">
+        <a class="public-brand" href="/">
+          <span>M</span>
+          <strong>MLADIS</strong>
+        </a>
+        <h1>{% trans "Welcome back to your stay dashboard." %}</h1>
+        <p>{% trans "Manage reservations, invoices, deposits, and messages from one modern MLADIS account." %}</p>
+      </section>
+      <section class="modern-auth-panel">
+        <h2>{% trans "Log in" %}</h2>
+        <p>{% trans "Use a connected account for faster access, or continue with email." %}</p>
+        {% if messages %}
+          <div class="public-success" role="status">
+            {% for message in messages %}
+              <p>{{ message }}</p>
+            {% endfor %}
+          </div>
         {% endif %}
-      {% endfor %}
-    </div>
-    {% if social_login_provider_count %}
-      <p class="auth-note">{% trans "Choose a social provider for a faster sign-in, or use email below." %}</p>
-    {% else %}
-      <p class="auth-note">{% trans "Social sign-in turns on automatically after OAuth credentials are added in the environment or admin. Use email login for now." %}</p>
-    {% endif %}
-    <div class="auth-divider"><span>{% trans "or use email" %}</span></div>
-    <form method="post" class="booking-form">
-      {% csrf_token %}
-      {% for field in form %}
-        <div class="field-group {% if field.errors %}has-error{% endif %}">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}
-            <p class="field-error">{{ field.errors|striptags }}</p>
-          {% endif %}
+        <div class="modern-social-grid" aria-label="{% trans 'Social login options' %}">
+          {% for provider in social_login_providers %}
+            {% if provider.is_configured %}
+              <form method="post" action="{{ provider.login_url }}">
+                {% csrf_token %}
+                <button type="submit">{{ provider.button_label }}</button>
+              </form>
+            {% else %}
+              <button class="is-disabled" type="button" disabled>{{ provider.button_label }} <span>{% trans "setup needed" %}</span></button>
+            {% endif %}
+          {% endfor %}
         </div>
-      {% endfor %}
-      <button class="button primary full" type="submit">{% trans "Log in" %}</button>
-    </form>
-    <a class="text-link" href="{% url 'bookings:signup' %}">{% trans "Create an account" %}</a>
-  </section>
-</main>
-{% endblock %}
+        {% if social_login_provider_count %}
+          <p class="modern-auth-note">{% trans "Choose a social provider for a faster sign-in, or use email below." %}</p>
+        {% else %}
+          <p class="modern-auth-note">{% trans "Social sign-in turns on automatically after OAuth credentials are added in the environment or admin. Use email login for now." %}</p>
+        {% endif %}
+        <div class="modern-auth-divider"><span>{% trans "or use email" %}</span></div>
+        <form method="post" class="modern-auth-form">
+          {% csrf_token %}
+          {% for field in form %}
+            <label for="{{ field.id_for_label }}">
+              {{ field.label }}
+              {{ field }}
+              {% if field.errors %}
+                <span>{{ field.errors|striptags }}</span>
+              {% endif %}
+            </label>
+          {% endfor %}
+          <button type="submit">{% trans "Log in" %}</button>
+        </form>
+        <a class="modern-auth-link" href="{% url 'bookings:signup' %}">{% trans "Create an account" %}</a>
+      </section>
+    </main>
+  </body>
+</html>

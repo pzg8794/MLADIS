@@ -4,12 +4,12 @@ from datetime import timedelta
 from uuid import uuid4
 
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import login
+from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.conf import settings
 from django.contrib.sites.models import Site
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django.utils import timezone
@@ -32,6 +32,7 @@ from .forms import (
 from .models import (
     AgentConversation,
     AirbnbGuestRecord,
+    AvailabilityBlock,
     BookableItem,
     BookingCategory,
     BookingInquiry,
@@ -39,10 +40,14 @@ from .models import (
     CalendarFeed,
     ClientSegment,
     CustomerProfile,
+    DailyPriceOverride,
+    DamageDeposit,
+    DepositStatus,
     Invoice,
     MarketingConsentStatus,
     MissionCause,
     PageVisit,
+    SiteSettings,
 )
 from .services import (
     AdminAccessService,
@@ -57,6 +62,12 @@ from .services import (
     get_damage_deposit_service,
 )
 from .social_auth import SOCIAL_LOGIN_PROVIDER_SPECS, get_social_login_providers
+
+
+ops_staff_required = user_passes_test(
+    lambda user: user.is_active and user.is_staff,
+    login_url=reverse_lazy("bookings:login"),
+)
 
 
 class HomePageView(TemplateView):
@@ -142,6 +153,181 @@ class HomePageView(TemplateView):
         context = super().get_context_data(**kwargs)
         context.update(self.booking_context(self.request))
         return context
+
+
+class ModernSiteView(TemplateView):
+    template_name = "bookings/modern_site.html"
+
+
+class ModernAccountView(LoginRequiredMixin, TemplateView):
+    template_name = "bookings/modern_site.html"
+
+
+class PublicSiteSummaryAPIView(View):
+    def get(self, request):
+        settings_obj = SiteSettings.current()
+        logo_url = settings_obj.logo_display_url
+        if settings_obj.logo:
+            try:
+                if not settings_obj.logo.storage.exists(settings_obj.logo.name):
+                    logo_url = settings_obj.logo_url
+            except OSError:
+                logo_url = settings_obj.logo_url
+        if logo_url and "test-logo" in logo_url:
+            logo_url = settings_obj.logo_url
+        if logo_url and logo_url.startswith("/"):
+            logo_url = request.build_absolute_uri(logo_url)
+
+        stays = (
+            BookableItem.objects.filter(is_active=True, is_featured=True, category=BookingCategory.STAY)
+            .prefetch_related("gallery_images", "guest_review_highlights", "house_rules")
+            .order_by("-is_featured", "name")
+        )
+        data = {
+            "site_name": settings_obj.site_name,
+            "logo_url": logo_url,
+            "contact_email": settings_obj.contact_email,
+            "public_address_label": settings_obj.public_address_label,
+            "deposit_amount": f"${settings.DEPOSIT_AMOUNT_CENTS / 100:,.0f}",
+            "stays": [self._stay_payload(request, stay) for stay in stays],
+            "area_tiles": self._area_tiles(),
+            "mission_causes": [
+                {"title": cause.name, "description": cause.description}
+                for cause in MissionCause.objects.filter(is_active=True).order_by("sort_order", "name")[:3]
+            ],
+            "generated_at": timezone.now().isoformat(),
+        }
+        return JsonResponse(data)
+
+    @staticmethod
+    def _area_tiles():
+        return [
+            {
+                "title": "Santo Domingo Norte",
+                "caption": "A practical base near Colinas del Arroyo II, Los Guaricanos, and Jacobo Majluta.",
+                "image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e3/SantoDomingoedit.JPG",
+            },
+            {
+                "title": "Malls and restaurants",
+                "caption": "Shopping, dinner plans, and Embassy-corridor errands within the city rhythm.",
+                "image_url": "https://sambil.do/wp-content/uploads/2024/08/LY2A0949.jpg",
+            },
+            {
+                "title": "Juan Dolio beach days",
+                "caption": "A prettier beach-day escape east of Santo Domingo when guests want island time.",
+                "image_url": "https://upload.wikimedia.org/wikipedia/commons/6/62/Juan_Dolio_Beach_1.jpg",
+            },
+            {
+                "title": "Hosted city nights",
+                "caption": "Food, music, family plans, and direct host support before and during the stay.",
+                "image_url": "https://sambil.do/wp-content/uploads/2024/08/LY2A0977.jpg",
+            },
+        ]
+
+    def _stay_payload(self, request, stay):
+        gallery = list(stay.gallery_images.all())
+        image_url = stay.image or (gallery[0].image_url if gallery else "")
+        if image_url and image_url.startswith("/"):
+            image_url = request.build_absolute_uri(image_url)
+        detail_url = request.build_absolute_uri(stay.get_absolute_url())
+        return {
+            "id": stay.id,
+            "name": stay.name,
+            "slug": stay.slug,
+            "headline": stay.marketing_headline or stay.short_description,
+            "description": stay.marketing_description or stay.description or stay.short_description,
+            "location": stay.location_label,
+            "image_url": image_url,
+            "rating": str(stay.airbnb_rating or ""),
+            "review_label": stay.review_label,
+            "price_label": stay.headline_price,
+            "stat_list": stay.stat_list,
+            "detail_url": detail_url,
+            "airbnb_url": stay.airbnb_embed_url,
+            "gallery": [
+                {
+                    "image_url": image.image_url,
+                    "alt_text": image.alt_text,
+                    "caption": image.caption,
+                }
+                for image in gallery[:8]
+            ],
+            "highlights": [
+                {
+                    "title": highlight.title,
+                    "body": highlight.body,
+                    "source_label": highlight.source_label,
+                }
+                for highlight in stay.guest_review_highlights.all()[:4]
+            ],
+            "rules": [
+                {
+                    "title": rule.title,
+                    "description": rule.description,
+                }
+                for rule in stay.house_rules.filter(is_active=True)[:6]
+            ],
+        }
+
+
+class AccountSummaryAPIView(LoginRequiredMixin, View):
+    def get(self, request):
+        reservations = (
+            BookingInquiry.objects.filter(Q(user=request.user) | Q(email__iexact=request.user.email))
+            .select_related("item", "coupon", "cancellation_policy")
+            .order_by("-created_at")
+        )
+        invoices = (
+            Invoice.objects.filter(Q(recipient_email__iexact=request.user.email) | Q(customer_profile__user=request.user))
+            .select_related("inquiry", "customer_profile")
+            .order_by("-created_at")
+        )
+        return JsonResponse(
+            {
+                "profile": {
+                    "name": request.user.get_full_name() or request.user.username or request.user.email,
+                    "email": request.user.email,
+                },
+                "reservations": [self._reservation_payload(request, reservation) for reservation in reservations],
+                "invoices": [self._invoice_payload(request, invoice) for invoice in invoices],
+                "generated_at": timezone.now().isoformat(),
+            }
+        )
+
+    @staticmethod
+    def _reservation_payload(request, reservation):
+        item = reservation.item
+        return {
+            "id": reservation.id,
+            "guest_name": reservation.guest_name,
+            "stay_name": item.name if item else "Flexible stay",
+            "check_in": reservation.check_in.isoformat(),
+            "check_out": reservation.check_out.isoformat(),
+            "guests": reservation.guests,
+            "phone": reservation.phone,
+            "status": reservation.get_status_display(),
+            "can_cancel": reservation.can_customer_cancel,
+            "display_total": reservation.display_total,
+            "display_deposit": reservation._display_money(reservation.deposit_cents),
+            "coupon_code": reservation.coupon_code,
+            "message": reservation.message,
+            "detail_url": request.build_absolute_uri(reverse("bookings:reservation-detail", kwargs={"pk": reservation.pk})),
+            "edit_url": request.build_absolute_uri(reverse("bookings:reservation-edit", kwargs={"pk": reservation.pk})),
+            "cancel_url": request.build_absolute_uri(reverse("bookings:reservation-cancel", kwargs={"pk": reservation.pk})),
+            "airbnb_url": item.airbnb_embed_url if item else "",
+            "created_at": reservation.created_at.isoformat(),
+        }
+
+    @staticmethod
+    def _invoice_payload(request, invoice):
+        return {
+            "id": invoice.id,
+            "title": invoice.title,
+            "status": invoice.get_status_display(),
+            "display_total": invoice.display_total,
+            "print_url": request.build_absolute_uri(reverse("bookings:invoice-print", kwargs={"token": invoice.public_token})),
+            "created_at": invoice.created_at.isoformat(),
+        }
 
 
 class StayDetailView(DetailView):
@@ -338,6 +524,14 @@ class ReservationDetailView(OwnedReservationMixin, DetailView):
     template_name = "bookings/reservation_detail.html"
 
 
+class ModernReservationDetailView(OwnedReservationMixin, TemplateView):
+    template_name = "bookings/modern_site.html"
+
+    def get(self, request, pk):
+        get_object_or_404(self.get_queryset(), pk=pk)
+        return super().get(request, pk=pk)
+
+
 class ReservationUpdateView(OwnedReservationMixin, UpdateView):
     form_class = ReservationManageForm
     template_name = "bookings/reservation_form.html"
@@ -351,6 +545,14 @@ class ReservationUpdateView(OwnedReservationMixin, UpdateView):
 
     def get_success_url(self):
         return reverse("bookings:reservation-detail", kwargs={"pk": self.object.pk})
+
+
+class ModernReservationUpdateView(ReservationUpdateView):
+    template_name = "bookings/modern_site.html"
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        return render(request, self.template_name)
 
 
 class ReservationCancelView(OwnedReservationMixin, View):
@@ -371,6 +573,14 @@ class ReservationCancelView(OwnedReservationMixin, View):
             messages.success(request, "Your cancellation request was recorded.")
             return redirect(reverse("bookings:dashboard"))
         return render(request, self.template_name, {"reservation": reservation, "form": form}, status=400)
+
+
+class ModernReservationCancelView(ReservationCancelView):
+    template_name = "bookings/modern_site.html"
+
+    def get(self, request, pk):
+        get_object_or_404(self.get_queryset(), pk=pk)
+        return render(request, self.template_name)
 
 
 class InvoicePrintView(DetailView):
@@ -525,7 +735,7 @@ class StripeWebhookView(View):
         return HttpResponse(status=200)
 
 
-@method_decorator(staff_member_required, name="dispatch")
+@method_decorator(ops_staff_required, name="dispatch")
 class CalendarOpsView(TemplateView):
     template_name = "bookings/ops_calendar.html"
 
@@ -543,7 +753,7 @@ class CalendarOpsView(TemplateView):
         return context
 
 
-@method_decorator(staff_member_required, name="dispatch")
+@method_decorator(ops_staff_required, name="dispatch")
 class OAuthDiagnosticsView(TemplateView):
     template_name = "bookings/oauth_diagnostics.html"
 
@@ -575,7 +785,7 @@ class OAuthDiagnosticsView(TemplateView):
         return context
 
 
-@method_decorator(staff_member_required, name="dispatch")
+@method_decorator(ops_staff_required, name="dispatch")
 class OpsReservationsView(TemplateView):
     template_name = "bookings/ops_reservations.html"
 
@@ -745,8 +955,262 @@ class OpsReservationsView(TemplateView):
         return "Needs contact"
 
 
-@method_decorator(staff_member_required, name="dispatch")
-class OpsDashboardView(TemplateView):
+@method_decorator(ops_staff_required, name="dispatch")
+class ModernOpsDashboardView(TemplateView):
+    template_name = "bookings/modern_dashboard.html"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsSummaryAPIView(View):
+    def get(self, request):
+        now = timezone.now()
+        since = now - timedelta(days=30)
+        reservations = BookingInquiry.objects.select_related("item", "customer_profile")
+        deposits = DamageDeposit.objects.select_related("item", "inquiry")
+        conversations = AgentConversation.objects.select_related("item")
+        customers = CustomerProfile.objects.all()
+        visits = PageVisit.objects.filter(created_at__gte=since)
+
+        active_hold_statuses = [
+            DepositStatus.NEW,
+            DepositStatus.REQUIRES_CONFIGURATION,
+            DepositStatus.CHECKOUT_CREATED,
+            DepositStatus.REQUIRES_CAPTURE,
+        ]
+        active_deposits = deposits.filter(status__in=active_hold_statuses)
+        faq_total = conversations.filter(metadata__agent_mode="faq").count()
+        conversation_total = conversations.count()
+        agent_coverage = round((faq_total / conversation_total) * 100) if conversation_total else 0
+
+        data = {
+            "metrics": [
+                self._metric(
+                    "reservations",
+                    "Reservations",
+                    str(reservations.count()),
+                    "Open and upcoming requests",
+                    progress=min(reservations.filter(created_at__gte=since).count() * 8, 100),
+                    trend_label=f"+{reservations.filter(created_at__gte=since).count()} in 30 days",
+                    accent="teal",
+                ),
+                self._metric(
+                    "deposits",
+                    "Deposit holds",
+                    self._money(active_deposits.aggregate(total=Sum("amount_cents"))["total"]),
+                    "Authorized or pending holds",
+                    progress=min(active_deposits.count() * 12, 100),
+                    trend_label=f"{active_deposits.count()} active holds",
+                    accent="blue",
+                ),
+                self._metric(
+                    "customers",
+                    "Guest CRM",
+                    str(customers.count()),
+                    "Customer profiles and imported Airbnb contacts",
+                    progress=min(customers.count(), 100),
+                    trend_label=f"{customers.filter(updated_at__gte=since).count()} updated",
+                    accent="amber",
+                ),
+                self._metric(
+                    "agent",
+                    "Agent coverage",
+                    f"{agent_coverage}%",
+                    "Questions answered by the FAQ layer",
+                    progress=agent_coverage,
+                    trend_label="FAQ layer active" if agent_coverage else "Needs more FAQ data",
+                    accent="violet",
+                ),
+            ],
+            "reservations": [self._reservation(row) for row in reservations.order_by("-created_at")[:8]],
+            "deposits": [self._deposit(row) for row in deposits.order_by("-created_at")[:6]],
+            "agent_questions": [self._agent_question(row) for row in conversations.order_by("-updated_at")[:6]],
+            "calendar_alerts": self._calendar_alerts(),
+            "stays": self._stays(),
+            "generated_at": now.isoformat(),
+            "signals": {
+                "visits_30_days": visits.count(),
+                "cancellations": reservations.filter(status=BookingStatus.CANCELED).count(),
+                "inquiries": reservations.filter(status=BookingStatus.NEW).count(),
+            },
+        }
+        return JsonResponse(data)
+
+    @staticmethod
+    def _metric(id_, label, value, caption, *, progress, trend_label, accent):
+        return {
+            "id": id_,
+            "label": label,
+            "value": value,
+            "caption": caption,
+            "trend": "up" if progress else "neutral",
+            "trend_label": trend_label,
+            "accent": accent,
+            "progress": progress,
+        }
+
+    @staticmethod
+    def _money(cents):
+        return f"${(cents or 0) / 100:,.0f}"
+
+    @staticmethod
+    def _date_label(value):
+        return value.strftime("%b %-d") if value else ""
+
+    def _reservation(self, row):
+        return {
+            "id": row.pk,
+            "guest_name": row.guest_name,
+            "stay_name": row.item.name if row.item else "Flexible MLADIS stay",
+            "check_in": self._date_label(row.check_in),
+            "check_out": self._date_label(row.check_out),
+            "guests": row.guests,
+            "status": self._reservation_status(row.status),
+            "action_required": row.status in {BookingStatus.NEW, BookingStatus.REVIEWING, BookingStatus.QUOTED}
+            or row.is_blacklist_flagged
+            or row.email_delivery_status == "failed",
+        }
+
+    @staticmethod
+    def _reservation_status(status):
+        if status == BookingStatus.CONFIRMED:
+            return "confirmed"
+        if status in {BookingStatus.CANCELED, BookingStatus.DECLINED}:
+            return "cancelled"
+        if status in {BookingStatus.REVIEWING, BookingStatus.QUOTED}:
+            return "reviewing"
+        return "new"
+
+    def _deposit(self, row):
+        return {
+            "id": row.pk,
+            "guest_name": row.guest_name,
+            "stay_name": row.item.name if row.item else "Flexible MLADIS stay",
+            "amount_cents": row.amount_cents,
+            "currency": row.currency.upper(),
+            "provider": "PayPal" if row.payment_provider == "paypal" else "Stripe",
+            "status": self._deposit_status(row.status),
+        }
+
+    @staticmethod
+    def _deposit_status(status):
+        if status == DepositStatus.REQUIRES_CAPTURE:
+            return "authorized"
+        if status == DepositStatus.CAPTURED:
+            return "captured"
+        if status == DepositStatus.CANCELED:
+            return "released"
+        if status == DepositStatus.FAILED:
+            return "failed"
+        return "pending"
+
+    @staticmethod
+    def _agent_question(row):
+        mode = (row.metadata or {}).get("agent_mode", "fallback")
+        if mode not in {"faq", "openai"}:
+            mode = "fallback"
+        return {
+            "id": row.pk,
+            "topic": row.question_topic or "general",
+            "last_question": row.last_user_message[:140],
+            "mode": mode,
+            "created_at": row.updated_at.isoformat(),
+        }
+
+    def _calendar_alerts(self):
+        alerts = []
+        today = timezone.localdate()
+        blocks = (
+            AvailabilityBlock.objects.filter(is_active=True, end_date__gte=today)
+            .select_related("item")
+            .order_by("start_date")[:4]
+        )
+        for block in blocks:
+            alerts.append(
+                {
+                    "id": f"block-{block.pk}",
+                    "label": block.reason or "Manual block active",
+                    "stay_name": block.item.name,
+                    "date_range": self._range_label(block.start_date, block.end_date),
+                    "severity": "warning",
+                }
+            )
+        overrides = (
+            DailyPriceOverride.objects.filter(is_active=True, end_date__gte=today)
+            .select_related("item")
+            .order_by("start_date")[:4]
+        )
+        for override in overrides:
+            alerts.append(
+                {
+                    "id": f"price-{override.pk}",
+                    "label": override.label or f"${override.nightly_price:,.0f} nightly override",
+                    "stay_name": override.item.name,
+                    "date_range": self._range_label(override.start_date, override.end_date),
+                    "severity": "info",
+                }
+            )
+        if not alerts:
+            needs_setup = BookableItem.objects.filter(
+                is_active=True,
+                category=BookingCategory.STAY,
+            ).filter(Q(calendar_feed__isnull=True) | Q(calendar_feed__airbnb_ical_url=""))
+            for stay in needs_setup[:3]:
+                alerts.append(
+                    {
+                        "id": f"feed-{stay.pk}",
+                        "label": "Calendar feed needs setup",
+                        "stay_name": stay.name,
+                        "date_range": "Airbnb iCal not connected",
+                        "severity": "danger",
+                    }
+                )
+        return alerts[:6]
+
+    def _stays(self):
+        rows = []
+        today = timezone.localdate()
+        for stay in (
+            BookableItem.objects.filter(is_active=True, category=BookingCategory.STAY)
+            .prefetch_related("gallery_images")
+            .order_by("-is_featured", "name")[:6]
+        ):
+            reservations = BookingInquiry.objects.filter(
+                item=stay,
+                status__in=[BookingStatus.CONFIRMED, BookingStatus.REVIEWING, BookingStatus.QUOTED],
+                check_out__gte=today,
+            )
+            booked_nights = sum(min((row.check_out - row.check_in).days, 30) for row in reservations[:20])
+            occupancy = min(round((booked_nights / 30) * 100), 100)
+            revenue_cents = reservations.aggregate(total=Sum("total_cents"))["total"] or 0
+            rows.append(
+                {
+                    "id": stay.slug,
+                    "name": stay.name,
+                    "subtitle": stay.short_description,
+                    "image_url": self._stay_image_url(stay),
+                    "rating": str(stay.airbnb_rating or ""),
+                    "occupancy_label": f"{occupancy}% occupied",
+                    "revenue_label": self._money(revenue_cents),
+                    "status": "review" if not getattr(stay, "calendar_feed", None) else "live",
+                }
+            )
+        return rows
+
+    @staticmethod
+    def _stay_image_url(stay):
+        gallery_image = stay.gallery_images.first()
+        if gallery_image:
+            return gallery_image.image_url
+        return stay.image
+
+    def _range_label(self, start, end):
+        if start == end:
+            return self._date_label(start)
+        return f"{self._date_label(start)} - {self._date_label(end)}"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class LegacyOpsDashboardView(TemplateView):
     template_name = "bookings/ops_dashboard.html"
 
     def get_context_data(self, **kwargs):

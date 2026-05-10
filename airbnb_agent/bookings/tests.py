@@ -270,7 +270,86 @@ class AgentAPITests(TestCase):
         response = self.client.get(reverse("bookings:about"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'name="csrfmiddlewaretoken"')
+        self.assertContains(response, 'name="csrf-token"')
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+
+
+@override_settings(STORAGES=TEST_STORAGES)
+class ModernOpsDashboardTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.staff_user = User.objects.create_user(
+            username="ops",
+            email="ops@example.com",
+            password="password",
+            is_staff=True,
+        )
+        self.item = BookableItem.objects.create(
+            name="G-101 Comfort Stay",
+            slug="g-101-comfort-stay",
+            category=BookingCategory.STAY,
+            short_description="3 bedrooms near Santo Domingo Norte.",
+            is_active=True,
+            is_featured=True,
+            airbnb_rating=Decimal("4.93"),
+        )
+        self.inquiry = BookingInquiry.objects.create(
+            item=self.item,
+            guest_name="Maria R.",
+            email="maria@example.com",
+            phone="555-0100",
+            check_in=date.today() + timedelta(days=3),
+            check_out=date.today() + timedelta(days=6),
+            guests=4,
+            status=BookingStatus.REVIEWING,
+            total_cents=48000,
+        )
+        DamageDeposit.objects.create(
+            inquiry=self.inquiry,
+            item=self.item,
+            guest_name="Maria R.",
+            email="maria@example.com",
+            amount_cents=20000,
+            status=DepositStatus.REQUIRES_CAPTURE,
+        )
+        AgentConversation.objects.create(
+            session_id="ops-summary",
+            item=self.item,
+            last_user_message="How does the deposit work?",
+            last_agent_reply="The deposit is an authorization hold.",
+            question_topic="deposit",
+            metadata={"agent_mode": "faq"},
+        )
+
+    def test_modern_dashboard_replaces_ops_dashboard_route(self):
+        self.client.force_login(self.staff_user)
+
+        response = self.client.get(reverse("bookings:ops-dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "MLADIS Modern Dashboard")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+
+    def test_modern_dashboard_redirects_anonymous_users_to_social_login(self):
+        response = self.client.get(reverse("bookings:ops-dashboard"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("bookings:login"), response["Location"])
+        self.assertIn("next=/ops/dashboard/", response["Location"])
+
+    def test_ops_summary_api_returns_react_dashboard_payload(self):
+        self.client.force_login(self.staff_user)
+
+        response = self.client.get(reverse("bookings:ops-summary-api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["reservations"][0]["guest_name"], "Maria R.")
+        self.assertEqual(payload["reservations"][0]["status"], "reviewing")
+        self.assertEqual(payload["deposits"][0]["status"], "authorized")
+        self.assertEqual(payload["agent_questions"][0]["mode"], "faq")
+        self.assertIn("G-101 Comfort Stay", {stay["name"] for stay in payload["stays"]})
+        self.assertEqual(payload["metrics"][0]["id"], "reservations")
 
 
 class BookingInquiryViewTests(TestCase):
@@ -702,13 +781,28 @@ class PublicMediaRoutingTests(TestCase):
 
 @override_settings(STORAGES=TEST_STORAGES)
 class MarketingPageTests(TestCase):
-    def test_home_displays_airbnb_images_and_review_proof(self):
+    def test_home_serves_modern_public_site(self):
         response = self.client.get(reverse("bookings:home"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "MLADIS Modern Stays")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+        self.assertContains(response, 'name="available-languages" content="en,es"')
+
+    def test_site_summary_api_keeps_airbnb_images_and_review_proof(self):
+        response = self.client.get(reverse("bookings:site-summary-api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["stays"])
+        self.assertIn("https://a0.muscache.com/im/pictures/", payload["stays"][0]["image_url"])
+        self.assertIn("Airbnb", payload["stays"][0]["review_label"])
+
+    def test_legacy_home_remains_available_for_comparison(self):
+        response = self.client.get(reverse("bookings:legacy-home"))
+
+        self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Stay close to Santo Domingo")
-        self.assertContains(response, "https://a0.muscache.com/im/pictures/")
-        self.assertContains(response, "Guest proof")
 
     def test_stay_detail_displays_gallery_and_booking_form(self):
         stay = BookableItem.objects.get(slug="mladis-santo-domingo-guest-home")
@@ -716,20 +810,33 @@ class MarketingPageTests(TestCase):
         response = self.client.get(stay.get_absolute_url())
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Gallery")
-        self.assertContains(response, "Airbnb review snapshot")
-        self.assertContains(response, "3 Bedrooms Vacation Home &amp; Pool G-101")
-        self.assertContains(response, "Top guest highlights")
-        self.assertContains(response, "Apartment rules")
-        self.assertContains(response, "rules-book")
-        self.assertContains(response, "Make secure deposit hold")
+        self.assertContains(response, "MLADIS Modern Stays")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+
+        legacy_response = self.client.get(reverse("bookings:legacy-stay-detail", kwargs={"slug": stay.slug}))
+
+        self.assertEqual(legacy_response.status_code, 200)
+        self.assertContains(legacy_response, "Gallery")
+        self.assertContains(legacy_response, "Airbnb review snapshot")
+        self.assertContains(legacy_response, "3 Bedrooms Vacation Home &amp; Pool G-101")
+        self.assertContains(legacy_response, "Top guest highlights")
+        self.assertContains(legacy_response, "Apartment rules")
+        self.assertContains(legacy_response, "rules-book")
+        self.assertContains(legacy_response, "Make secure deposit hold")
+
+    def test_about_serves_modern_public_site(self):
+        response = self.client.get(reverse("bookings:about"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "MLADIS Modern Stays")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
     def test_spanish_language_switches_public_copy(self):
         response = self.client.get(reverse("bookings:home"), HTTP_ACCEPT_LANGUAGE="es")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Quédate cerca de Santo Domingo")
-        self.assertContains(response, "Explorar alojamientos")
+        self.assertContains(response, 'name="available-languages" content="en,es"')
+        self.assertContains(response, "MLADIS Modern Stays")
 
 
 @override_settings(STORAGES=TEST_STORAGES)
@@ -745,34 +852,58 @@ class LegalPageTests(TestCase):
         response = self.client.get(reverse("bookings:business"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Business profile")
-        self.assertContains(response, site_settings.site_name)
-        self.assertContains(response, site_settings.public_address_label)
-        self.assertContains(response, "privacy@example.com")
-        self.assertContains(response, reverse("bookings:privacy-policy"))
+        self.assertContains(response, "MLADIS Modern Stays")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
-    def test_privacy_policy_page_renders_contact_details(self):
+        legacy_response = self.client.get(reverse("bookings:legacy-business"))
+
+        self.assertEqual(legacy_response.status_code, 200)
+        self.assertContains(legacy_response, "Business profile")
+        self.assertContains(legacy_response, site_settings.site_name)
+        self.assertContains(legacy_response, site_settings.public_address_label)
+        self.assertContains(legacy_response, "privacy@example.com")
+        self.assertContains(legacy_response, reverse("bookings:privacy-policy"))
+
+    def test_privacy_policy_page_renders_modern_shell_and_legacy_details(self):
         response = self.client.get(reverse("bookings:privacy-policy"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Privacy policy")
-        self.assertContains(response, "privacy@example.com")
-        self.assertContains(response, "Social login details")
+        self.assertContains(response, "MLADIS Modern Stays")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
-    def test_terms_page_renders_booking_rules_summary(self):
+        legacy_response = self.client.get(reverse("bookings:legacy-privacy-policy"))
+
+        self.assertEqual(legacy_response.status_code, 200)
+        self.assertContains(legacy_response, "Privacy policy")
+        self.assertContains(legacy_response, "privacy@example.com")
+        self.assertContains(legacy_response, "Social login details")
+
+    def test_terms_page_renders_modern_shell_and_legacy_rules(self):
         response = self.client.get(reverse("bookings:terms"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Terms of service")
-        self.assertContains(response, "Payments are processed through Stripe")
+        self.assertContains(response, "MLADIS Modern Stays")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
-    def test_data_deletion_page_renders_request_instructions(self):
+        legacy_response = self.client.get(reverse("bookings:legacy-terms"))
+
+        self.assertEqual(legacy_response.status_code, 200)
+        self.assertContains(legacy_response, "Terms of service")
+        self.assertContains(legacy_response, "Payments are processed through Stripe")
+
+    def test_data_deletion_page_renders_modern_shell_and_legacy_instructions(self):
         response = self.client.get(reverse("bookings:data-deletion"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Data deletion instructions")
-        self.assertContains(response, "Data deletion request")
-        self.assertContains(response, "privacy@example.com")
+        self.assertContains(response, "MLADIS Modern Stays")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+
+        legacy_response = self.client.get(reverse("bookings:legacy-data-deletion"))
+
+        self.assertEqual(legacy_response.status_code, 200)
+        self.assertContains(legacy_response, "Data deletion instructions")
+        self.assertContains(legacy_response, "Data deletion request")
+        self.assertContains(legacy_response, "privacy@example.com")
 
     def test_data_deletion_callback_returns_meta_confirmation_payload(self):
         response = self.client.post(
@@ -1123,7 +1254,12 @@ class SocialAccountAdapterTests(TestCase):
 
         dashboard = self.client.get(reverse("bookings:dashboard"))
         self.assertEqual(dashboard.status_code, 200)
-        self.assertContains(dashboard, "Guest User")
+        self.assertContains(dashboard, "MLADIS Modern Stays")
+
+        account_response = self.client.get(reverse("bookings:account-summary-api"))
+        self.assertEqual(account_response.status_code, 200)
+        reservations = account_response.json()["reservations"]
+        self.assertEqual(reservations[0]["guest_name"], "Guest User")
 
         response = self.client.post(
             reverse("bookings:reservation-cancel", kwargs={"pk": reservation.pk}),
@@ -1174,8 +1310,21 @@ class OpsDashboardTests(TestCase):
         response = self.client.get(reverse("bookings:ops-dashboard"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "MLADIS Modern Dashboard")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+
+        summary_response = self.client.get(reverse("bookings:ops-summary-api"))
+        self.assertEqual(summary_response.status_code, 200)
+        self.assertEqual(summary_response.json()["agent_questions"][0]["topic"], "pricing")
+
+    def test_legacy_ops_dashboard_remains_available_for_staff(self):
+        staff = get_user_model().objects.create_user("legacy-ops", "legacy@example.com", "secret", is_staff=True)
+        self.client.force_login(staff)
+
+        response = self.client.get(reverse("bookings:ops-legacy-dashboard"))
+
+        self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Owner dashboard")
-        self.assertContains(response, "Pricing")
         self.assertContains(response, "Business calendar")
         self.assertContains(response, reverse("admin:bookings_bookableitem_calendar"))
 
@@ -2146,7 +2295,8 @@ Viajeros
         response = self.client.get(reverse("bookings:ops-reservations"))
 
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/admin/login/", response["Location"])
+        self.assertIn(reverse("bookings:login"), response["Location"])
+        self.assertIn("next=/ops/reservations/", response["Location"])
 
     def test_ops_reservations_lists_customer_groups_feedback_and_contact(self):
         user = get_user_model().objects.create_user(
@@ -2246,7 +2396,8 @@ class CalendarOpsTests(TestCase):
         response = self.client.get(reverse("bookings:calendar-ops"))
 
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/admin/login/", response["Location"])
+        self.assertIn(reverse("bookings:login"), response["Location"])
+        self.assertIn("next=/ops/calendar/", response["Location"])
 
     def test_calendar_ops_loads_for_staff(self):
         user = get_user_model().objects.create_user(
