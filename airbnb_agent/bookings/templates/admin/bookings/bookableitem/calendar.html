@@ -21,51 +21,27 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
     gap: 1rem;
     margin-bottom: 1rem;
-  }
-  .calendar-selection p { margin: 0; }
-  .calendar-bulk-bar {
     position: sticky;
-    top: 0.75rem;
-    z-index: 30;
+    top: 1rem;
+    z-index: 5;
+    border: 1px solid #d7d7d7;
+    box-shadow: 0 12px 28px rgba(18, 75, 69, 0.08);
+  }
+  .calendar-selection p {
+    margin: 0;
+    flex: 1 1 280px;
+  }
+  .calendar-selection__actions {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.8rem;
-    margin: 0 0 1rem;
-    padding: 0.9rem 1rem;
-    color: #fff;
-    background: linear-gradient(135deg, #073f3a, #10665f);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 18px;
-    box-shadow: 0 22px 52px rgba(7, 63, 58, 0.22);
+    gap: 0.65rem;
+    justify-content: flex-end;
   }
-  .calendar-bulk-bar[hidden] { display: none; }
-  .calendar-bulk-bar__copy { display: grid; gap: 0.18rem; }
-  .calendar-bulk-bar__eyebrow {
-    color: rgba(255, 255, 255, 0.72);
-    font-size: 0.74rem;
-    font-weight: 900;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .calendar-bulk-bar__range { font-size: 1rem; font-weight: 900; }
-  .calendar-bulk-bar__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-  .calendar-bulk-bar__actions button {
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    border-radius: 999px;
-    padding: 0.55rem 0.85rem;
-    color: #073f3a;
-    background: #fff;
-    font: inherit;
-    font-weight: 900;
-    cursor: pointer;
-  }
-  .calendar-bulk-bar__actions button.secondary {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.14);
+  .calendar-selection__actions button {
+    white-space: nowrap;
   }
   .calendar-summary__card {
     padding: 0.85rem 1rem;
@@ -133,9 +109,7 @@
   .errorlist { margin: 0 0 0.3rem; }
   @media (max-width: 960px) {
     .calendar-layout { grid-template-columns: 1fr; }
-    .calendar-selection, .calendar-bulk-bar { flex-direction: column; align-items: flex-start; }
-    .calendar-bulk-bar__actions { width: 100%; }
-    .calendar-bulk-bar__actions button { flex: 1 1 160px; }
+    .calendar-selection { flex-direction: column; align-items: flex-start; }
     .business-calendar { display: block; overflow-x: auto; }
   }
 </style>
@@ -153,21 +127,20 @@
 {% block content %}
 <div id="content-main">
   <div class="calendar-toolbar">
-    <form method="get" class="calendar-filter ml-auto-submit" data-auto-submit-form>
+    <form method="get" class="calendar-filter" id="calendar-filter-form">
       <label for="id_item">Stay</label>
-      <select id="id_item" name="item" data-auto-submit>
+      <select id="id_item" name="item">
         {% for stay in stays %}
         <option value="{{ stay.pk }}"{% if selected_item and stay.pk == selected_item.pk %} selected{% endif %}>{{ stay.name }}</option>
         {% endfor %}
       </select>
       <label for="id_month">Month</label>
-      <input id="id_month" type="month" name="month" value="{{ month_value }}" data-auto-submit>
-      <p class="calendar-filter__hint">Changing the stay or month refreshes the calendar automatically.</p>
-      <noscript class="calendar-filter__fallback"><button type="submit" class="default">Load calendar</button></noscript>
+      <input id="id_month" type="text" name="month" value="{{ month_value }}" pattern="[0-9]{4}-[0-9]{2}" placeholder="YYYY-MM">
+      <button type="submit" class="default">Load calendar</button>
     </form>
     <div class="calendar-nav">
-      <a class="ml-autoload-link" href="{{ previous_month_url }}">Previous month</a>
-      <a class="ml-autoload-link" href="{{ next_month_url }}">Next month</a>
+      <a href="{{ previous_month_url }}">Previous month</a>
+      <a href="{{ next_month_url }}">Next month</a>
     </div>
   </div>
 
@@ -181,18 +154,10 @@
 
   <div class="calendar-panel calendar-selection">
     <p id="calendar-selection-status">Click one day to start a range, then click another day to finish it. The block and price forms will update automatically.</p>
-    <button type="button" id="calendar-selection-clear">Clear selected range</button>
-  </div>
-
-  <div class="calendar-bulk-bar" id="calendar-bulk-bar" hidden>
-    <div class="calendar-bulk-bar__copy">
-      <span class="calendar-bulk-bar__eyebrow">Selected range</span>
-      <strong class="calendar-bulk-bar__range" id="calendar-bulk-range">No dates selected</strong>
-    </div>
-    <div class="calendar-bulk-bar__actions">
-      <button type="button" id="calendar-bulk-block">Block selected dates</button>
-      <button type="button" id="calendar-bulk-price">Set selected price</button>
-      <button type="button" class="secondary" id="calendar-bulk-clear">Clear</button>
+    <div class="calendar-selection__actions">
+      <button type="button" id="calendar-selection-block">Block selected dates</button>
+      <button type="button" id="calendar-selection-price">Set selected price</button>
+      <button type="button" id="calendar-selection-clear">Clear selected range</button>
     </div>
   </div>
 
@@ -231,12 +196,31 @@
     <div class="calendar-panel" id="calendar-block-panel">
       <h2>Block days</h2>
       <p>Manually close a date range without changing reservation records.</p>
-      <form method="post">
-        {% csrf_token %}<input type="hidden" name="calendar_action" value="add_block"><input type="hidden" name="month" value="{{ month_value }}">{{ block_form.item }}
-        <div>{{ block_form.start_date.errors }}<label for="{{ block_form.start_date.id_for_label }}">Start date</label>{{ block_form.start_date }}</div>
-        <div>{{ block_form.end_date.errors }}<label for="{{ block_form.end_date.id_for_label }}">End date</label>{{ block_form.end_date }}</div>
-        <div>{{ block_form.reason.errors }}<label for="{{ block_form.reason.id_for_label }}">Reason</label>{{ block_form.reason }}</div>
-        <div>{{ block_form.notes.errors }}<label for="{{ block_form.notes.id_for_label }}">Notes</label>{{ block_form.notes }}</div>
+      <form method="post" id="calendar-block-form">
+        {% csrf_token %}
+        <input type="hidden" name="calendar_action" value="add_block">
+        <input type="hidden" name="month" value="{{ month_value }}">
+        {{ block_form.item }}
+        <div>
+          {{ block_form.start_date.errors }}
+          <label for="{{ block_form.start_date.id_for_label }}">Start date</label>
+          {{ block_form.start_date }}
+        </div>
+        <div>
+          {{ block_form.end_date.errors }}
+          <label for="{{ block_form.end_date.id_for_label }}">End date</label>
+          {{ block_form.end_date }}
+        </div>
+        <div>
+          {{ block_form.reason.errors }}
+          <label for="{{ block_form.reason.id_for_label }}">Reason</label>
+          {{ block_form.reason }}
+        </div>
+        <div>
+          {{ block_form.notes.errors }}
+          <label for="{{ block_form.notes.id_for_label }}">Notes</label>
+          {{ block_form.notes }}
+        </div>
         <button type="submit" class="default">Save block</button>
       </form>
     </div>
@@ -244,13 +228,36 @@
     <div class="calendar-panel" id="calendar-price-panel">
       <h2>Override nightly price</h2>
       <p>Apply a specific nightly price across a date range while keeping the default rate visible on other days.</p>
-      <form method="post">
-        {% csrf_token %}<input type="hidden" name="calendar_action" value="add_price"><input type="hidden" name="month" value="{{ month_value }}">{{ price_form.item }}
-        <div>{{ price_form.start_date.errors }}<label for="{{ price_form.start_date.id_for_label }}">Start date</label>{{ price_form.start_date }}</div>
-        <div>{{ price_form.end_date.errors }}<label for="{{ price_form.end_date.id_for_label }}">End date</label>{{ price_form.end_date }}</div>
-        <div>{{ price_form.nightly_price.errors }}<label for="{{ price_form.nightly_price.id_for_label }}">Nightly price</label>{{ price_form.nightly_price }}</div>
-        <div>{{ price_form.label.errors }}<label for="{{ price_form.label.id_for_label }}">Label</label>{{ price_form.label }}</div>
-        <div>{{ price_form.notes.errors }}<label for="{{ price_form.notes.id_for_label }}">Notes</label>{{ price_form.notes }}</div>
+      <form method="post" id="calendar-price-form">
+        {% csrf_token %}
+        <input type="hidden" name="calendar_action" value="add_price">
+        <input type="hidden" name="month" value="{{ month_value }}">
+        {{ price_form.item }}
+        <div>
+          {{ price_form.start_date.errors }}
+          <label for="{{ price_form.start_date.id_for_label }}">Start date</label>
+          {{ price_form.start_date }}
+        </div>
+        <div>
+          {{ price_form.end_date.errors }}
+          <label for="{{ price_form.end_date.id_for_label }}">End date</label>
+          {{ price_form.end_date }}
+        </div>
+        <div>
+          {{ price_form.nightly_price.errors }}
+          <label for="{{ price_form.nightly_price.id_for_label }}">Nightly price</label>
+          {{ price_form.nightly_price }}
+        </div>
+        <div>
+          {{ price_form.label.errors }}
+          <label for="{{ price_form.label.id_for_label }}">Label</label>
+          {{ price_form.label }}
+        </div>
+        <div>
+          {{ price_form.notes.errors }}
+          <label for="{{ price_form.notes.id_for_label }}">Notes</label>
+          {{ price_form.notes }}
+        </div>
         <button type="submit" class="default">Save price override</button>
       </form>
     </div>
@@ -276,25 +283,37 @@
 </div>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+  const filterForm = document.getElementById("calendar-filter-form");
+  const stayFilter = document.getElementById("id_item");
+  const monthFilter = document.getElementById("id_month");
   const pickers = Array.from(document.querySelectorAll(".calendar-day__picker"));
   const quickActions = Array.from(document.querySelectorAll("[data-calendar-quick-action]"));
   const cells = Array.from(document.querySelectorAll("[data-calendar-cell]"));
+  const blockPanel = document.getElementById("calendar-block-panel");
+  const pricePanel = document.getElementById("calendar-price-panel");
   const blockStart = document.querySelector('input[name="block-start_date"]');
   const blockEnd = document.querySelector('input[name="block-end_date"]');
   const priceStart = document.querySelector('input[name="price-start_date"]');
   const priceEnd = document.querySelector('input[name="price-end_date"]');
   const status = document.getElementById("calendar-selection-status");
+  const blockSelectionButton = document.getElementById("calendar-selection-block");
+  const priceSelectionButton = document.getElementById("calendar-selection-price");
   const clearButton = document.getElementById("calendar-selection-clear");
-  const bulkBar = document.getElementById("calendar-bulk-bar");
-  const bulkRange = document.getElementById("calendar-bulk-range");
-  const bulkBlock = document.getElementById("calendar-bulk-block");
-  const bulkPrice = document.getElementById("calendar-bulk-price");
-  const bulkClear = document.getElementById("calendar-bulk-clear");
-  const blockPanel = document.getElementById("calendar-block-panel");
-  const pricePanel = document.getElementById("calendar-price-panel");
   if (!pickers.length || !blockStart || !blockEnd || !priceStart || !priceEnd || !status || !clearButton) return;
   let selectionStart = blockStart.value || priceStart.value || "";
   let selectionEnd = blockEnd.value || priceEnd.value || selectionStart;
+
+  function submitFilterForm() {
+    if (!filterForm) {
+      return;
+    }
+    if (filterForm.requestSubmit) {
+      filterForm.requestSubmit();
+      return;
+    }
+    filterForm.submit();
+  }
+
   function normalizeRange(startValue, endValue) {
     if (!startValue && !endValue) return ["", ""];
     if (!endValue) return [startValue, startValue];
@@ -309,32 +328,40 @@ document.addEventListener("DOMContentLoaded", function () {
       cell.classList.toggle("is-selected", Boolean(startValue && endValue && day >= startValue && day <= endValue));
     });
   }
-  function rangeLabel(startValue, endValue) {
-    if (!startValue) return "No dates selected";
-    if (startValue === endValue) return startValue;
-    return startValue + " to " + endValue;
-  }
   function updateStatus(startValue, endValue) {
     if (!startValue) { status.textContent = "Click one day to start a range, then click another day to finish it. The block and price forms will update automatically."; return; }
-    if (startValue === endValue) { status.textContent = "Selected day: " + startValue + ". Use the bulk action bar or click another day to expand the range."; return; }
-    status.textContent = "Selected range: " + rangeLabel(startValue, endValue) + ". Use the bulk action bar or the prefilled forms below.";
-  }
-  function updateBulkBar(startValue, endValue) {
-    if (!bulkBar || !bulkRange) return;
-    const hasSelection = Boolean(startValue);
-    bulkBar.hidden = !hasSelection;
-    bulkRange.textContent = rangeLabel(startValue, endValue);
+    if (startValue === endValue) { status.textContent = "Selected day: " + startValue + ". Click another day to expand the range."; return; }
+    status.textContent = "Selected range: " + startValue + " to " + endValue + ". Both forms are now prefilled.";
   }
   function focusPanel(panel, field) {
-    if (panel && panel.scrollIntoView) panel.scrollIntoView({behavior: "smooth", block: "center"});
+    if (panel && panel.scrollIntoView) {
+      panel.scrollIntoView({behavior: "smooth", block: "start"});
+    }
     if (field) field.focus();
+    if (field && field.scrollIntoView) {
+      field.scrollIntoView({behavior: "smooth", block: "center"});
+    }
   }
+
   function applyRange(startValue, endValue) {
     const normalized = normalizeRange(startValue, endValue);
-    selectionStart = normalized[0]; selectionEnd = normalized[1];
-    writeRange(selectionStart, selectionEnd); paintRange(selectionStart, selectionEnd); updateStatus(selectionStart, selectionEnd); updateBulkBar(selectionStart, selectionEnd);
+    selectionStart = normalized[0];
+    selectionEnd = normalized[1];
+    writeRange(selectionStart, selectionEnd); paintRange(selectionStart, selectionEnd); updateStatus(selectionStart, selectionEnd);
   }
-  function clearRange() { selectionStart = ""; selectionEnd = ""; writeRange("", ""); paintRange("", ""); updateStatus("", ""); updateBulkBar("", ""); }
+
+  if (stayFilter) {
+    stayFilter.addEventListener("change", submitFilterForm);
+  }
+
+  if (monthFilter) {
+    monthFilter.addEventListener("change", function () {
+      const value = monthFilter.value.trim();
+      if (/^\d{4}-\d{2}$/.test(value)) {
+        submitFilterForm();
+      }
+    });
+  }
   pickers.forEach(function (picker) {
     picker.addEventListener("click", function () {
       const clicked = picker.dataset.calendarDate;
@@ -346,14 +373,33 @@ document.addEventListener("DOMContentLoaded", function () {
     button.addEventListener("click", function () {
       const clicked = button.dataset.calendarDate;
       applyRange(clicked, clicked);
-      if (button.dataset.calendarQuickAction === "block") { focusPanel(blockPanel, blockStart); return; }
+      if (button.dataset.calendarQuickAction === "block") {
+        focusPanel(blockPanel, blockStart);
+        return;
+      }
       focusPanel(pricePanel, priceStart);
     });
   });
-  clearButton.addEventListener("click", clearRange);
-  if (bulkClear) bulkClear.addEventListener("click", clearRange);
-  if (bulkBlock) bulkBlock.addEventListener("click", function () { focusPanel(blockPanel, document.querySelector('textarea[name="block-reason"], input[name="block-reason"]') || blockStart); });
-  if (bulkPrice) bulkPrice.addEventListener("click", function () { focusPanel(pricePanel, document.querySelector('input[name="price-nightly_price"]') || priceStart); });
+
+  if (blockSelectionButton) {
+    blockSelectionButton.addEventListener("click", function () {
+      focusPanel(blockPanel, blockStart);
+    });
+  }
+
+  if (priceSelectionButton) {
+    priceSelectionButton.addEventListener("click", function () {
+      focusPanel(pricePanel, priceStart);
+    });
+  }
+
+  clearButton.addEventListener("click", function () {
+    selectionStart = "";
+    selectionEnd = "";
+    writeRange("", "");
+    paintRange("", "");
+    updateStatus("", "");
+  });
   applyRange(selectionStart, selectionEnd);
 });
 </script>

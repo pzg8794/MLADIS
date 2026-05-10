@@ -21,6 +21,7 @@ from .airbnb_import import AirbnbGuestImportService
 from .forms import AirbnbGuestImportForm, AvailabilityBlockForm, DailyPriceOverrideForm
 from .models import (
     AdminAccess,
+    AgentKnowledgeSource,
     AgentConversation,
     AirbnbGuestRecord,
     AvailabilityBlock,
@@ -1064,6 +1065,14 @@ class SiteSettingsAdmin(admin.ModelAdmin):
             obj.logo_display_url,
             obj.site_name,
         )
+
+
+@admin.register(AgentKnowledgeSource)
+class AgentKnowledgeSourceAdmin(admin.ModelAdmin):
+    list_display = ("title", "source_type", "source_value", "is_active", "sort_order", "updated_at")
+    list_filter = ("source_type", "is_active")
+    search_fields = ("title", "source_value", "body")
+    ordering = ("sort_order", "title")
 
 
 @admin.register(SiteContentBlock)

@@ -29,6 +29,7 @@ from .airbnb_import import AirbnbGuestEmailParser, AirbnbGuestImportService
 from .forms import BookingInquiryForm
 from .models import (
     AdminAccess,
+    AgentKnowledgeSource,
     AgentConversation,
     AirbnbGuestRecord,
     AvailabilityBlock,
@@ -108,7 +109,7 @@ class AgentAPITests(TestCase):
         self.assertIn("reply", response.json())
         self.assertEqual(AgentConversation.objects.count(), 1)
 
-    @override_settings(OPENAI_AGENT_MODEL="gpt-5-mini")
+    @override_settings(OPENAI_AGENT_MODEL="gpt-5.4-nano")
     def test_agent_service_uses_openai_when_key_is_configured(self):
         class FakeResponses:
             def __init__(self):
@@ -131,14 +132,137 @@ class AgentAPITests(TestCase):
 
         conversation = AgentConversation.objects.get()
         self.assertEqual(response.reply, "Yes, I can help with those dates.")
-        self.assertEqual(fake_responses.kwargs["model"], "gpt-5-mini")
+        self.assertEqual(fake_responses.kwargs["model"], "gpt-5.4-nano")
         self.assertIn("admin-confirmed", fake_responses.kwargs["instructions"])
         self.assertIn("secure deposit-hold step", fake_responses.kwargs["instructions"])
+        self.assertIn("Quick steps (English / Español)", fake_responses.kwargs["instructions"])
+        self.assertIn("preferred booking answer template", fake_responses.kwargs["instructions"])
         self.assertIn("Do not promise discounts", fake_responses.kwargs["instructions"])
         self.assertIn("Is there room for four guests?", fake_responses.kwargs["input"])
         self.assertIn("Booking workflow", fake_responses.kwargs["input"])
+        self.assertIn("Preferred booking answer template", fake_responses.kwargs["input"])
+        self.assertIn("Custom Booking Concierge", fake_responses.kwargs["input"])
+        self.assertIn("Repository-backed guest knowledge", fake_responses.kwargs["input"])
+        self.assertIn("Admin and external knowledge sources", fake_responses.kwargs["input"])
+        self.assertIn(
+            "Submitting an inquiry or deposit request does not guarantee a reservation until MLADIS confirms availability and booking terms.",
+            fake_responses.kwargs["input"],
+        )
+        self.assertIn(
+            "Booking and account details such as your name, email address, phone number, stay dates, guest count, and messages you send through the site.",
+            fake_responses.kwargs["input"],
+        )
         self.assertEqual(conversation.metadata["agent_mode"], "openai")
         self.assertEqual(conversation.metadata["openai_response_id"], "resp_test")
+
+    @override_settings(OPENAI_AGENT_MODEL="gpt-5.4-nano")
+    def test_agent_service_blocks_off_topic_question_before_openai(self):
+        class FakeResponses:
+            def create(self, **_kwargs):
+                raise AssertionError("Off-topic prompts should not reach OpenAI")
+
+        fake_client = SimpleNamespace(responses=FakeResponses())
+
+        response = BookingAgentService(api_key="sk-test", client=fake_client).reply(
+            AgentRequest(message="Tell me a joke about cats.", session_id="session-off-topic")
+        )
+
+        conversation = AgentConversation.objects.get()
+        self.assertIn("I can only help with MLADIS bookings", response.reply)
+        self.assertEqual(conversation.metadata["agent_mode"], "guardrail")
+        self.assertEqual(conversation.metadata["guardrail_reason"], "off_topic")
+
+    @override_settings(OPENAI_AGENT_MODEL="gpt-5.4-nano")
+    def test_agent_service_allows_short_follow_up_in_booking_context(self):
+        AgentConversation.objects.create(
+            session_id="session-follow-up",
+            item=self.item,
+            last_user_message="I want to book for four guests next weekend.",
+            last_agent_reply="Please tell me which stay you prefer.",
+            question_topic="availability",
+            metadata={"agent_mode": "openai"},
+        )
+
+        class FakeResponses:
+            def __init__(self):
+                self.kwargs = None
+
+            def create(self, **kwargs):
+                self.kwargs = kwargs
+                return SimpleNamespace(output_text="G-101 works well for that group size.", id="resp_follow_up")
+
+        fake_responses = FakeResponses()
+        fake_client = SimpleNamespace(responses=fake_responses)
+
+        response = BookingAgentService(api_key="sk-test", client=fake_client).reply(
+            AgentRequest(message="John Doe", session_id="session-follow-up")
+        )
+
+        self.assertEqual(response.reply, "G-101 works well for that group size.")
+        self.assertIn("John Doe", fake_responses.kwargs["input"])
+
+    @override_settings(OPENAI_AGENT_MODEL="gpt-5.4-nano")
+    def test_agent_service_includes_inline_knowledge_sources(self):
+        AgentKnowledgeSource.objects.create(
+            title="Airport support",
+            source_type="inline",
+            body="Airport pickup is available by request through the Custom Booking Concierge option.",
+        )
+
+        class FakeResponses:
+            def __init__(self):
+                self.kwargs = None
+
+            def create(self, **kwargs):
+                self.kwargs = kwargs
+                return SimpleNamespace(output_text="I can help.", id="resp_inline")
+
+        fake_responses = FakeResponses()
+        fake_client = SimpleNamespace(responses=fake_responses)
+
+        BookingAgentService(api_key="sk-test", client=fake_client).reply(
+            AgentRequest(message="Can you arrange airport pickup?", session_id="session-inline")
+        )
+
+        self.assertIn("Admin and external knowledge sources", fake_responses.kwargs["input"])
+        self.assertIn(
+            "Airport pickup is available by request through the Custom Booking Concierge option.",
+            fake_responses.kwargs["input"],
+        )
+
+    @override_settings(OPENAI_AGENT_MODEL="gpt-5.4-nano")
+    @patch("bookings.services.requests.get")
+    def test_agent_service_supports_github_blob_sources(self, mock_get):
+        mock_get.return_value = SimpleNamespace(
+            text="- Guests can share special requests in the booking form.\n- Use concierge for custom transport.",
+            raise_for_status=lambda: None,
+        )
+        AgentKnowledgeSource.objects.create(
+            title="GitHub runbook",
+            source_type="url",
+            source_value="https://github.com/pzg8794/MLADIS/blob/main/docs/guest-faq.md",
+        )
+
+        class FakeResponses:
+            def __init__(self):
+                self.kwargs = None
+
+            def create(self, **kwargs):
+                self.kwargs = kwargs
+                return SimpleNamespace(output_text="I can help.", id="resp_github")
+
+        fake_responses = FakeResponses()
+        fake_client = SimpleNamespace(responses=fake_responses)
+
+        BookingAgentService(api_key="sk-test", client=fake_client).reply(
+            AgentRequest(message="Can I add special requests?", session_id="session-github")
+        )
+
+        self.assertIn("Guests can share special requests in the booking form.", fake_responses.kwargs["input"])
+        self.assertEqual(
+            mock_get.call_args.args[0],
+            "https://raw.githubusercontent.com/pzg8794/MLADIS/main/docs/guest-faq.md",
+        )
 
     def test_agent_panel_includes_panel_scoped_csrf_token(self):
         response = self.client.get(reverse("bookings:about"))
@@ -438,8 +562,13 @@ class BookableItemCalendarAdminTests(TestCase):
         self.assertContains(response, "$175.00")
         self.assertContains(response, "Default nightly price")
         self.assertContains(response, "Click one day to start a range")
+        self.assertContains(response, "Block selected dates")
+        self.assertContains(response, "Set selected price")
+        self.assertContains(response, "position: sticky")
         self.assertContains(response, 'data-calendar-quick-action="block"', html=False)
         self.assertContains(response, 'data-calendar-quick-action="price"', html=False)
+        self.assertContains(response, 'stayFilter.addEventListener("change"', html=False)
+        self.assertContains(response, 'monthFilter.addEventListener("change"', html=False)
         self.assertContains(response, reverse("admin:bookings_bookinginquiry_change", args=[reservation.pk]))
         self.assertContains(response, reverse("admin:bookings_availabilityblock_change", args=[block.pk]))
         self.assertContains(response, reverse("admin:bookings_dailypriceoverride_change", args=[override.pk]))
@@ -484,6 +613,25 @@ class BookableItemCalendarAdminTests(TestCase):
         override = DailyPriceOverride.objects.get()
         self.assertEqual(override.label, "Holiday weekend")
         self.assertEqual(override.nightly_price, Decimal("210.00"))
+
+
+@override_settings(STORAGES=TEST_STORAGES)
+class PublicMediaRoutingTests(TestCase):
+    def test_uploaded_logo_is_served_from_media_route(self):
+        with TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root, MEDIA_URL="/media/", GCS_MEDIA_BUCKET=""):
+                site_settings = SiteSettings.current()
+                upload = SimpleUploadedFile(
+                    "logo.jpg",
+                    b"fake-logo-bytes",
+                    content_type="image/jpeg",
+                )
+                site_settings.logo.save("logo.jpg", upload, save=True)
+
+                response = self.client.get(site_settings.logo_display_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(b"".join(response.streaming_content), b"fake-logo-bytes")
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",

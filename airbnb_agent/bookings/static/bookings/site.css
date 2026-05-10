@@ -809,6 +809,7 @@ a {
   justify-self: start;
   background: #fff;
   border: 1px solid var(--line);
+  white-space: pre-wrap;
 }
 
 .agent-form {

@@ -95,6 +95,12 @@ class DonationStatus(models.TextChoices):
     FAILED = "failed", "Failed"
 
 
+class AgentKnowledgeSourceType(models.TextChoices):
+    INLINE = "inline", "Inline text"
+    REPO_FILE = "repo_file", "Repo file"
+    URL = "url", "Public URL or GitHub link"
+
+
 class CancellationPolicy(models.Model):
     name = models.CharField(max_length=120)
     slug = models.SlugField(unique=True)
@@ -1142,6 +1148,43 @@ class SiteSettings(models.Model):
     def current(cls):
         settings_obj, _created = cls.objects.get_or_create(pk=1)
         return settings_obj
+
+
+class AgentKnowledgeSource(models.Model):
+    title = models.CharField(max_length=160)
+    source_type = models.CharField(
+        max_length=24,
+        choices=AgentKnowledgeSourceType.choices,
+        default=AgentKnowledgeSourceType.INLINE,
+    )
+    source_value = models.CharField(
+        max_length=1000,
+        blank=True,
+        help_text="Repo-relative file path or public URL, depending on source type.",
+    )
+    body = models.TextField(
+        blank=True,
+        help_text="Paste guest-facing text here for inline sources.",
+    )
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "title"]
+        verbose_name = "agent knowledge source"
+        verbose_name_plural = "agent knowledge sources"
+
+    def __str__(self):
+        return self.title
+
+    def clean(self):
+        super().clean()
+        if self.source_type == AgentKnowledgeSourceType.INLINE:
+            if not self.body.strip():
+                raise ValidationError({"body": "Inline text sources need pasted content."})
+        elif not self.source_value.strip():
+            raise ValidationError({"source_value": "File and URL sources need a source value."})
 
 
 class SiteContentBlock(models.Model):

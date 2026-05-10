@@ -2,6 +2,9 @@ import calendar
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
+from functools import lru_cache
+from pathlib import Path
+import re
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -14,6 +17,7 @@ import stripe
 
 from .models import (
     AdminAccess,
+    AgentKnowledgeSource,
     AgentConversation,
     AvailabilityBlock,
     BookableItem,
@@ -36,6 +40,215 @@ from .models import (
     PromotionRecipient,
     PromotionStatus,
 )
+
+
+APP_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
+MAX_AGENT_SOURCE_SNIPPETS = 12
+MAX_TOTAL_AGENT_SOURCES = 6
+
+
+REPO_KNOWLEDGE_HEADINGS = (
+    "## Initial Airbnb Listings",
+    "## Marketing Pages",
+)
+
+REPO_KNOWLEDGE_TEMPLATE_PATHS = (
+    "bookings/templates/bookings/terms.html",
+    "bookings/templates/bookings/business.html",
+    "bookings/templates/bookings/privacy_policy.html",
+    "bookings/templates/bookings/data_deletion.html",
+)
+
+REPO_KNOWLEDGE_SECTION_PATHS = (
+    ("bookings/templates/bookings/home.html", ("booking", "deposit")),
+    ("bookings/templates/bookings/stay_detail.html", ("booking",)),
+)
+
+
+def _clean_knowledge_text(value):
+    return " ".join(value.replace("`", "").split())
+
+
+def _strip_template_markup(value):
+    value = re.sub(r'{%\s*trans\s+"([^"]+)"\s*%}', r"\1", value)
+    value = re.sub(r"{%\s*blocktrans.*?%}(.*?){%\s*endblocktrans\s*%}", r"\1", value, flags=re.DOTALL)
+    value = re.sub(r"{%.*?%}", " ", value, flags=re.DOTALL)
+    value = re.sub(r"{{.*?}}", " ", value, flags=re.DOTALL)
+    return value
+
+
+def _extract_markdown_bullets(source_text, heading):
+    match = re.search(
+        rf"^{re.escape(heading)}\n(?P<body>.*?)(?=^## |\Z)",
+        source_text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if not match:
+        return []
+    return [_clean_knowledge_text(line[2:]) for line in match.group("body").splitlines() if line.startswith("- ")]
+
+
+def _extract_html_list_items(source_text):
+    items = []
+    cleaned_text = _strip_template_markup(source_text)
+    for raw_item in re.findall(r"<li[^>]*>(.*?)</li>", cleaned_text, flags=re.DOTALL | re.IGNORECASE):
+        item = _clean_knowledge_text(re.sub(r"<[^>]+>", " ", raw_item))
+        if item and not item.endswith(":"):
+            items.append(item)
+    return items
+
+
+def _extract_html_paragraphs(source_text):
+    items = []
+    cleaned_text = _strip_template_markup(source_text)
+    for raw_item in re.findall(r"<p[^>]*>(.*?)</p>", cleaned_text, flags=re.DOTALL | re.IGNORECASE):
+        item = _clean_knowledge_text(re.sub(r"<[^>]+>", " ", raw_item))
+        if item and not item.endswith(":"):
+            items.append(item)
+    return items
+
+
+def _extract_html_section(source_text, section_id):
+    match = re.search(
+        rf'<section[^>]*id="{re.escape(section_id)}"[^>]*>(?P<body>.*?)</section>',
+        source_text,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    return match.group("body")
+
+
+@lru_cache(maxsize=1)
+def _repo_knowledge_snippets():
+    snippets = []
+
+    readme_path = APP_ROOT / "README.md"
+    if readme_path.exists():
+        readme_text = readme_path.read_text(encoding="utf-8")
+        for heading in REPO_KNOWLEDGE_HEADINGS:
+            snippets.extend(_extract_markdown_bullets(readme_text, heading))
+
+    for relative_path in REPO_KNOWLEDGE_TEMPLATE_PATHS:
+        template_path = APP_ROOT / relative_path
+        if template_path.exists():
+            snippets.extend(_extract_html_list_items(template_path.read_text(encoding="utf-8")))
+
+    for relative_path, section_ids in REPO_KNOWLEDGE_SECTION_PATHS:
+        template_path = APP_ROOT / relative_path
+        if not template_path.exists():
+            continue
+        template_text = template_path.read_text(encoding="utf-8")
+        for section_id in section_ids:
+            section_html = _extract_html_section(template_text, section_id)
+            if section_html:
+                snippets.extend(_extract_html_paragraphs(section_html))
+
+    deduped = []
+    seen = set()
+    for snippet in snippets:
+        if snippet and snippet not in seen:
+            seen.add(snippet)
+            deduped.append(snippet)
+    return tuple(deduped[:40])
+
+
+def _clean_snippet_collection(snippets, limit=None):
+    deduped = []
+    seen = set()
+    for snippet in snippets:
+        normalized = _clean_knowledge_text(snippet)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(normalized)
+        if limit and len(deduped) >= limit:
+            break
+    return tuple(deduped)
+
+
+def _extract_generic_text_snippets(source_text):
+    text = _strip_template_markup(source_text)
+    snippets = []
+    if "<li" in source_text or "<p" in source_text:
+        snippets.extend(_extract_html_list_items(source_text))
+        snippets.extend(_extract_html_paragraphs(source_text))
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith(("#", "```")):
+            continue
+        if stripped.startswith(("- ", "* ")):
+            snippets.append(stripped[2:])
+            continue
+        numbered = re.sub(r"^\d+\.\s*", "", stripped)
+        if numbered != stripped:
+            snippets.append(numbered)
+            continue
+        if len(stripped) <= 280:
+            snippets.append(stripped)
+
+    paragraphs = [
+        _clean_knowledge_text(chunk)
+        for chunk in re.split(r"\n\s*\n", text)
+        if _clean_knowledge_text(chunk)
+    ]
+    snippets.extend(paragraphs)
+    return _clean_snippet_collection(snippets, limit=MAX_AGENT_SOURCE_SNIPPETS)
+
+
+def _normalize_source_url(source_value):
+    match = re.match(r"^https://github\.com/([^/]+)/([^/]+)/blob/([^/]+)/(.+)$", source_value)
+    if match:
+        owner, repo, branch, path = match.groups()
+        return f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}"
+    return source_value
+
+
+def _safe_repo_path(source_value):
+    candidate = Path(source_value)
+    resolved = candidate.resolve() if candidate.is_absolute() else (REPO_ROOT / candidate).resolve()
+    try:
+        resolved.relative_to(REPO_ROOT)
+    except ValueError:
+        return None
+    return resolved
+
+
+@lru_cache(maxsize=64)
+def _load_external_knowledge_source(source_type, source_value, body, updated_at_key):
+    del updated_at_key
+    if source_type == "inline":
+        return _extract_generic_text_snippets(body)
+    if source_type == "repo_file":
+        path = _safe_repo_path(source_value)
+        if not path or not path.exists() or not path.is_file():
+            return tuple()
+        return _extract_generic_text_snippets(path.read_text(encoding="utf-8"))
+    if source_type == "url":
+        try:
+            response = requests.get(_normalize_source_url(source_value), timeout=5)
+            response.raise_for_status()
+        except requests.RequestException:
+            return tuple()
+        return _extract_generic_text_snippets(response.text)
+    return tuple()
+
+
+def _agent_knowledge_source_snippets():
+    snippets = []
+    sources = AgentKnowledgeSource.objects.filter(is_active=True).order_by("sort_order", "title")[:MAX_TOTAL_AGENT_SOURCES]
+    for source in sources:
+        snippets.extend(
+            _load_external_knowledge_source(
+                source.source_type,
+                source.source_value,
+                source.body,
+                source.updated_at.isoformat(),
+            )
+        )
+    return _clean_snippet_collection(snippets, limit=MAX_TOTAL_AGENT_SOURCES * MAX_AGENT_SOURCE_SNIPPETS)
 
 
 @dataclass(frozen=True)
@@ -248,6 +461,8 @@ class AdminAccessService:
 class BookingAgentService:
     """Boundary for the public booking agent and future deeper automation."""
 
+    ALLOWED_SESSION_AGENT_MODES = {"openai", "fallback", "setup"}
+
     def __init__(self, api_key=None, client=None):
         self.api_key = api_key if api_key is not None else settings.OPENAI_API_KEY
         self.model = settings.OPENAI_AGENT_MODEL
@@ -258,7 +473,10 @@ class BookingAgentService:
         topic = QuestionAnalyticsService.classify(request.message)
         metadata = {"topic": topic}
 
-        if not self.api_key:
+        if self._should_guardrail(request, item, topic):
+            reply = self._guardrail_reply()
+            metadata.update({"agent_mode": "guardrail", "guardrail_reason": "off_topic"})
+        elif not self.api_key:
             reply = self._setup_reply(item)
             metadata["agent_mode"] = "setup"
         else:
@@ -299,6 +517,28 @@ class BookingAgentService:
             return None
         return BookableItem.objects.filter(id=item_id, is_active=True).first()
 
+    def _should_guardrail(self, request, item, topic):
+        if item or QuestionAnalyticsService.is_business_related(request.message, topic=topic):
+            return False
+        if self._has_booking_context(request.session_id) and QuestionAnalyticsService.is_contextual_follow_up(request.message):
+            return False
+        return True
+
+    def _has_booking_context(self, session_id):
+        if not session_id:
+            return False
+        last_conversation = AgentConversation.objects.filter(session_id=session_id).order_by("-created_at").first()
+        if not last_conversation:
+            return False
+        return (last_conversation.metadata or {}).get("agent_mode") in self.ALLOWED_SESSION_AGENT_MODES
+
+    def _guardrail_reply(self):
+        return (
+            "I can only help with MLADIS bookings, stays, deposits, rules, concierge services, guest accounts, "
+            "and public business policies. Please ask about a stay, dates, guest count, availability, the damage-deposit hold, "
+            "house rules, concierge help, account support, or MLADIS business information."
+        )
+
     def _setup_reply(self, item):
         subject = item.name if item else "your booking"
         return (
@@ -338,10 +578,19 @@ class BookingAgentService:
             "is ready to book, guide them to the booking form and tell them to enter the stay, dates, "
             "guest count, name, email, phone, coupon if any, and special requests. Explain that after "
             "submitting the booking form, the secure deposit-hold step appears through Stripe or PayPal. "
-            "Ask for dates, guest count, email, and phone when the guest wants to book. Do not promise discounts, "
+            "Ask for dates, guest count, preferred stay, full name, email, and phone when the guest wants to book. "
+            "Do not promise discounts, "
             "early or late checkout, exact address details, private pool access, or waived house rules unless "
             "an admin has explicitly confirmed them. If a question needs owner action, direct the guest to "
-            "submit the booking form or contact MLADIS."
+            "submit the booking form or contact MLADIS. If a guest asks for unrelated general knowledge, jokes, or help outside MLADIS business topics, "
+            "politely refuse and redirect them back to booking, guest support, account support, or business-policy questions. Default to well-organized plain text with short headings, "
+            "numbered steps, and short bullet lists instead of dense paragraphs. For booking, availability, deposit, "
+            "or next-step questions, use the preferred booking answer template from the prompt unless the guest asks for "
+            "a much shorter reply. Keep the same section titles and order: opening line, Quick steps (English / Español), "
+            "Important notes, and Next step - ready to book?. Include short Spanish lines after each numbered step. Keep each "
+            "list item to one sentence when possible. Do not use markdown tables. Use the selected stay context, booking workflow, "
+            "preferred booking answer template, repository-backed guest knowledge, and admin-provided knowledge sources from the prompt as your source of truth, "
+            "but never mention the repository or internal files to the guest."
         )
 
     def _prompt(self, request, item):
@@ -357,6 +606,15 @@ class BookingAgentService:
             "",
             "Booking workflow:",
             self._booking_workflow_context(),
+            "",
+            "Preferred booking answer template:",
+            self._response_template_context(),
+            "",
+            "Repository-backed guest knowledge:",
+            self._repo_knowledge_context(),
+            "",
+            "Admin and external knowledge sources:",
+            self._agent_knowledge_sources_context(),
         ]
         history = self._recent_history(request.session_id)
         if history:
@@ -403,6 +661,39 @@ class BookingAgentService:
             "account to view and manage reservations."
         )
 
+    def _response_template_context(self):
+        return (
+            "Opening line: Great - I can help. Here's how to make a reservation and what to expect.\n"
+            "Quick steps (English / Español)\n"
+            "1) Choose a stay on our site, or offer the main options: G-101, G-102, 6-bedroom, or Custom Booking Concierge.\n"
+            "   - Elige una estancia en nuestro sitio, u ofrece las opciones principales: G-101, G-102, 6 habitaciones o Custom Booking Concierge.\n"
+            "2) Tell the guest to fill the booking form with stay, arrival and departure dates, guest count, full name, email, phone, coupon if any, and special requests.\n"
+            "   - Indica al huesped que complete el formulario con estancia, fechas de llegada y salida, numero de huespedes, nombre completo, correo, telefono, cupon si tiene y peticiones especiales.\n"
+            "3) Explain that after submitting, the site opens the refundable $200 USD damage-deposit authorization hold through Stripe Checkout or PayPal.\n"
+            "   - Explica que despues de enviar, el sitio abre la retencion reembolsable de deposito por $200 USD mediante Stripe Checkout o PayPal.\n"
+            "4) Explain that all reservation requests go to MLADIS admins for review and confirmation by email.\n"
+            "   - Explica que todas las solicitudes pasan al equipo de MLADIS para revision y confirmacion por correo.\n"
+            "Important notes\n"
+            "- Say that availability, final pricing, discounts, address details, pool exceptions, and waived rules require admin confirmation.\n"
+            "- Say that standard house rules apply: no parties or events, no indoor smoking, registered guests only, respect quiet hours, and protect keys or smart locks.\n"
+            "- Say that concierge, airport pickup, and add-on requests should use Custom Booking Concierge or be written in the form.\n"
+            "Next step - ready to book?\n"
+            "- Ask for exact arrival and departure dates, guest count, preferred stay, full name, email, and phone number.\n"
+            "- If the guest wants help choosing first, ask for group size and travel dates and recommend the best option."
+        )
+
+    def _repo_knowledge_context(self):
+        snippets = _repo_knowledge_snippets()
+        if not snippets:
+            return "No additional repository-backed guest guidance loaded."
+        return "\n".join(f"- {snippet}" for snippet in snippets)
+
+    def _agent_knowledge_sources_context(self):
+        snippets = _agent_knowledge_source_snippets()
+        if not snippets:
+            return "No admin-provided knowledge sources loaded."
+        return "\n".join(f"- {snippet}" for snippet in snippets)
+
     def _recent_history(self, session_id, limit=6):
         if not session_id:
             return ""
@@ -436,6 +727,84 @@ class QuestionAnalyticsService:
         "amenities": {"pool", "bed", "bedroom", "bath", "kitchen", "wifi", "parking", "amenity", "piscina"},
         "rules": {"rules", "party", "smoking", "pet", "quiet", "cancel", "refund", "regla", "cancelar"},
         "services": {"transport", "pickup", "cleaning", "tour", "restaurant", "service", "limpieza"},
+        "business": {
+            "mladis",
+            "business",
+            "contact",
+            "support",
+            "policy",
+            "privacy",
+            "terms",
+            "account",
+            "login",
+            "sign in",
+            "signup",
+            "invoice",
+            "payment",
+            "paypal",
+            "stripe",
+            "website",
+            "airbnb",
+            "concierge",
+            "guest",
+            "apartment",
+            "stay",
+            "special request",
+            "g-101",
+            "g-102",
+            "6-bedroom",
+            "6 bedroom",
+        },
+    }
+
+    CONTEXT_FOLLOW_UP_HINTS = {
+        "yes",
+        "no",
+        "ok",
+        "okay",
+        "sure",
+        "si",
+        "sí",
+        "thanks",
+        "thank you",
+        "gracias",
+        "tomorrow",
+        "today",
+        "tonight",
+        "weekend",
+        "friday",
+        "saturday",
+        "sunday",
+        "lunes",
+        "martes",
+        "miercoles",
+        "miércoles",
+        "jueves",
+        "viernes",
+        "sabado",
+        "sábado",
+        "domingo",
+        "g-101",
+        "g-102",
+        "concierge",
+        "custom",
+    }
+
+    OFF_TOPIC_HINTS = {
+        "joke",
+        "weather",
+        "news",
+        "recipe",
+        "poem",
+        "song",
+        "movie",
+        "sports",
+        "bitcoin",
+        "stock",
+        "president",
+        "python",
+        "code",
+        "homework",
     }
 
     @classmethod
@@ -445,6 +814,29 @@ class QuestionAnalyticsService:
             if any(keyword in lowered for keyword in keywords):
                 return topic
         return "general"
+
+    @classmethod
+    def is_business_related(cls, message, topic=None):
+        if topic and topic != "general":
+            return True
+        lowered = (message or "").lower()
+        return any(keyword in lowered for keyword in cls.TOPIC_KEYWORDS["business"])
+
+    @classmethod
+    def is_contextual_follow_up(cls, message):
+        raw = (message or "").strip()
+        lowered = raw.lower()
+        if not lowered or any(keyword in lowered for keyword in cls.OFF_TOPIC_HINTS):
+            return False
+        if re.search(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", raw, flags=re.IGNORECASE):
+            return True
+        if len(re.sub(r"\D", "", raw)) >= 7:
+            return True
+        if re.search(r"\b(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}([/-]\d{2,4})?)\b", lowered):
+            return True
+        if any(keyword in lowered for keyword in cls.CONTEXT_FOLLOW_UP_HINTS):
+            return True
+        return "?" not in raw and len(lowered.split()) <= 4 and len(lowered) <= 40
 
 
 class ReservationRequestService:
