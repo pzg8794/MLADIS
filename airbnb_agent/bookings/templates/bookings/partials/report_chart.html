@@ -1,21 +1,23 @@
-<article class="ops-report-card{% if wide %} is-wide{% endif %}">
+<article class="ops-report-card{% if wide %} is-wide{% endif %}" data-report-card data-report-category="{{ category|default:'all' }}" data-report-text="{{ chart.title }}{% for row in chart.rows %} {{ row.label }} {{ row.total }}{% endfor %}">
   <header>
-    <h2>{{ chart.title }}</h2>
+    <button type="button" class="ops-report-card__toggle" aria-expanded="true">
+      <span>{{ chart.title }}</span>
+    </button>
     {% if chart.max_total %}
       <span>{{ chart.max_total }} max</span>
     {% endif %}
   </header>
   <div class="ops-bar-chart" role="list" aria-label="{{ chart.title }}">
     {% for row in chart.rows %}
-      <div class="ops-bar-row" role="listitem">
-        <div class="ops-bar-label">
+      <button class="ops-bar-row" type="button" role="listitem" data-report-row>
+        <span class="ops-bar-label">
           <strong>{{ row.label }}</strong>
           <span>{{ row.total }}</span>
-        </div>
-        <div class="ops-bar-track" aria-hidden="true">
+        </span>
+        <span class="ops-bar-track" aria-hidden="true">
           <span style="width: {{ row.width }}%"></span>
-        </div>
-      </div>
+        </span>
+      </button>
     {% empty %}
       <p class="ops-empty">No data yet.</p>
     {% endfor %}
