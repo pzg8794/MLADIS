@@ -1,74 +1,21 @@
 {% extends "admin/base.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('MLADIS Admin') }}{% endblock %}
 
 {% block extrastyle %}
 {{ block.super }}
-<style>
-  .mladis-admin-shortcuts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 0 1.5rem 0.85rem;
-  }
-
-  .mladis-admin-shortcuts a,
-  .mladis-admin-action {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    padding: 0.5rem 0.85rem;
-    font-weight: 700;
-    text-decoration: none;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-  }
-
-  .mladis-admin-shortcuts a {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.14);
-  }
-
-  .mladis-admin-shortcuts a:first-child {
-    background: #f4b942;
-    border-color: #f4b942;
-    color: #1f2933;
-  }
-
-  .mladis-admin-quicklinks {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-    gap: 1rem;
-    margin: 0 0 1.5rem;
-  }
-
-  .mladis-admin-quicklink {
-    border: 1px solid var(--hairline-color);
-    border-radius: 10px;
-    background: var(--body-bg);
-    padding: 1rem;
-  }
-
-  .mladis-admin-quicklink h2 {
-    margin: 0 0 0.45rem;
-    font-size: 1rem;
-  }
-
-  .mladis-admin-quicklink p {
-    margin: 0 0 0.85rem;
-  }
-
-  .mladis-admin-action {
-    color: #fff;
-    background: var(--button-bg);
-    border-color: var(--button-bg);
-  }
-</style>
+<link rel="stylesheet" href="{% static 'bookings/admin/mladis_admin.css' %}">
 {% endblock %}
 
 {% block branding %}
-<div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('MLADIS Admin') }}</a></div>
+<div class="mladis-admin-brand">
+  <div class="mladis-admin-mark" aria-hidden="true">M</div>
+  <div class="mladis-admin-brand-text">
+    <div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('MLADIS Admin') }}</a></div>
+    <p>{% trans "Vacation homes, guests, deposits, and agent operations" %}</p>
+  </div>
+</div>
 {% if user.is_anonymous %}
   {% include "admin/color_theme_toggle.html" %}
 {% endif %}
@@ -77,11 +24,13 @@
 {% block nav-global %}
 {% if has_permission %}
 <nav class="mladis-admin-shortcuts" aria-label="{% trans 'MLADIS admin shortcuts' %}">
-  <a href="{% url 'admin:bookings_bookableitem_calendar' %}">{% trans "Business calendar" %}</a>
+  <a class="primary" href="{% url 'admin:bookings_bookableitem_calendar' %}">{% trans "Business calendar" %}</a>
   <a href="{% url 'bookings:ops-dashboard' %}">{% trans "Owner dashboard" %}</a>
+  <a href="{% url 'admin:bookings_bookinginquiry_changelist' %}">{% trans "Reservations" %}</a>
+  <a href="{% url 'admin:bookings_customerprofile_changelist' %}">{% trans "Customers" %}</a>
+  <a href="{% url 'admin:bookings_airbnbguestrecord_changelist' %}">{% trans "Airbnb guests" %}</a>
+  <a href="{% url 'admin:bookings_agentconversation_changelist' %}">{% trans "Agent logs" %}</a>
   <a href="{% url 'bookings:ops-reports' %}">{% trans "Reports" %}</a>
-  <a href="{% url 'bookings:calendar-ops' %}">{% trans "Calendar setup" %}</a>
-  <a href="{% url 'bookings:oauth-diagnostics' %}">{% trans "OAuth setup" %}</a>
 </nav>
 {% endif %}
 {% endblock %}
