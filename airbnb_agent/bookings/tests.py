@@ -88,6 +88,7 @@ class BookingInquiryFormTests(TestCase):
         self.assertIn("check_out", form.errors)
 
 
+@override_settings(STORAGES=TEST_STORAGES)
 class AgentAPITests(TestCase):
     def setUp(self):
         self.item = BookableItem.objects.create(
