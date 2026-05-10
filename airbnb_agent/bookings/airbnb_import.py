@@ -39,11 +39,44 @@ class AirbnbGuestEmailParser:
     ROOM_RE = re.compile(r"airbnb\.com/rooms/(\d+)")
     THREAD_RE = re.compile(r"airbnb\.com/hosting/thread/(\d+)")
     GUESTS_RE = re.compile(r"\bGuests\s+(\d+)\s+guests?\b", re.IGNORECASE)
+    ADULTS_RE = re.compile(r"\b(?:Guests|Viajeros)\s+(\d+)\s+(?:adults?|adultos?|guests?|hu[eé]spedes|viajeros?)\b", re.IGNORECASE)
     INITIAL_INQUIRY_RE = re.compile(r"Respond to\s+(.+?)['’]s inquiry", re.IGNORECASE)
+    INITIAL_INQUIRY_ES_RE = re.compile(r"Responde a la solicitud de\s+(.+)", re.IGNORECASE)
     RESPOND_TO_RE = re.compile(r"Respond to\s+(.+?)\s+by replying", re.IGNORECASE)
     SUBJECT_RE = re.compile(r"at\s+(.+?)\s+for\s+(.+?)\s+-\s+(.+)$", re.IGNORECASE)
     CHECK_IN_RE = re.compile(r"Check-In\s+\w+\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})", re.IGNORECASE)
     CHECK_OUT_RE = re.compile(r"Check-out\s+\w+\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})", re.IGNORECASE)
+    CHECK_IN_ES_RE = re.compile(r"Check-in\s+\w+\s+(\d{1,2}\s+de\s+[A-Za-záéíóúñ]+\s+de\s+\d{4})", re.IGNORECASE)
+    CHECK_OUT_ES_RE = re.compile(r"Check-out\s+\w+\s+(\d{1,2}\s+de\s+[A-Za-záéíóúñ]+\s+de\s+\d{4})", re.IGNORECASE)
+    RESPONSIBLE_RE = re.compile(r"\n([^\n]{2,80})\n\nResponsable de reservaci[oó]n\b", re.IGNORECASE)
+    SPANISH_MONTHS = {
+        "ene": 1,
+        "enero": 1,
+        "feb": 2,
+        "febrero": 2,
+        "mar": 3,
+        "marzo": 3,
+        "abr": 4,
+        "abril": 4,
+        "may": 5,
+        "mayo": 5,
+        "jun": 6,
+        "junio": 6,
+        "jul": 7,
+        "julio": 7,
+        "ago": 8,
+        "agosto": 8,
+        "sep": 9,
+        "sept": 9,
+        "septiembre": 9,
+        "setiembre": 9,
+        "oct": 10,
+        "octubre": 10,
+        "nov": 11,
+        "noviembre": 11,
+        "dic": 12,
+        "diciembre": 12,
+    }
 
     def parse_many(self, messages):
         for message in messages:
@@ -55,8 +88,16 @@ class AirbnbGuestEmailParser:
         body = self._clean_text(message.get("body", ""))
         subject = self._clean_text(message.get("subject", ""))
         listing_title, subject_check_in, subject_check_out = self._parse_subject(subject)
-        check_in = self._parse_date_match(self.CHECK_IN_RE.search(body)) or subject_check_in
-        check_out = self._parse_date_match(self.CHECK_OUT_RE.search(body)) or subject_check_out
+        check_in = (
+            self._parse_date_match(self.CHECK_IN_RE.search(body))
+            or self._parse_date_match(self.CHECK_IN_ES_RE.search(body))
+            or subject_check_in
+        )
+        check_out = (
+            self._parse_date_match(self.CHECK_OUT_RE.search(body))
+            or self._parse_date_match(self.CHECK_OUT_ES_RE.search(body))
+            or subject_check_out
+        )
         guest_name = self._parse_guest_name(body)
         message_excerpt = self._parse_message_excerpt(body, guest_name)
         listing_id = self._first_match(self.ROOM_RE, body)
@@ -93,7 +134,13 @@ class AirbnbGuestEmailParser:
         match = self.INITIAL_INQUIRY_RE.search(body)
         if match:
             return self._compact_name(match.group(1))
+        match = self.INITIAL_INQUIRY_ES_RE.search(body)
+        if match:
+            return self._compact_name(match.group(1))
         match = self.RESPOND_TO_RE.search(body)
+        if match:
+            return self._compact_name(match.group(1))
+        match = self.RESPONSIBLE_RE.search(f"\n{body}")
         if match:
             return self._compact_name(match.group(1))
         lines = [line.strip() for line in body.splitlines() if line.strip()]
@@ -121,13 +168,23 @@ class AirbnbGuestEmailParser:
         _, separator, after_name = body.partition(marker)
         if not separator:
             return ""
-        for stop in ("\n[Pre-approve", "\n[Reply", "\nRespond to ", "\nReservation details"):
+        for stop in (
+            "\n[Pre-approve",
+            "\n[Preaprobar",
+            "\n[Reply",
+            "\n[Revisar",
+            "\n[Responder",
+            "\nRespond to ",
+            "\nTambién puedes",
+            "\nDiana\n",
+            "\nReservation details",
+        ):
             if stop in after_name:
                 after_name = after_name.split(stop, 1)[0]
         return after_name.strip()[:1200]
 
     def _parse_guests(self, body):
-        match = self.GUESTS_RE.search(body)
+        match = self.GUESTS_RE.search(body) or self.ADULTS_RE.search(body)
         return int(match.group(1)) if match else None
 
     def _parse_date_match(self, match):
@@ -137,6 +194,17 @@ class AirbnbGuestEmailParser:
 
     def _parse_date(self, value):
         value = (value or "").strip()
+        spanish_match = re.match(
+            r"(\d{1,2})\s+de\s+([A-Za-záéíóúñ]+)\s+de\s+(\d{4})",
+            value,
+            re.IGNORECASE,
+        )
+        if spanish_match:
+            day = int(spanish_match.group(1))
+            month = self.SPANISH_MONTHS.get(spanish_match.group(2).lower())
+            year = int(spanish_match.group(3))
+            if month:
+                return date(year, month, day)
         for fmt in ("%B %d, %Y", "%b %d, %Y"):
             try:
                 return datetime.strptime(value, fmt).date()

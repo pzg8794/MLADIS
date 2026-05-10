@@ -1470,6 +1470,51 @@ Guests
 
 10 adults
 """
+    AIRBNB_SPANISH_REPLY_BODY = """
+Consulta sobre 3 Bedrooms Vacation Home & Pool (Apartment G-101), para 4 – 5 de may
+
+Por tu seguridad y protección, comunícate siempre a través de la plataforma de Airbnb.
+
+Yoel
+
+Responsable de reservación
+
+Hola dia a que hora es la salida?
+
+Diana
+
+Anfitrión
+
+Saludos Yoel, es un apartamento de tres habitaciones.
+
+[Revisar consulta](https://es-l.airbnb.com/hosting/thread/2520797227?thread_type=home_booking)
+
+[3 Bedrooms Vacation Home & Pool (Apartment G-101)](https://es-l.airbnb.com/rooms/582161420407543691)
+
+3 Bedrooms Vacation Home & Pool (Apartment G-101)
+
+Alojamiento vacacional - Vivienda o apartamento entero, anfitrión: Piter
+
+Check-in
+
+lunes
+
+4 de mayo de 2026
+
+15:00
+
+Check-out
+
+martes
+
+5 de mayo de 2026
+
+11:00
+
+Viajeros
+
+7 adultos
+"""
 
     def test_airbnb_email_parser_extracts_guest_stay_and_thread_data(self):
         payload = AirbnbGuestEmailParser().parse_message(
@@ -1503,6 +1548,24 @@ Guests
         self.assertEqual(payload.guest_name, "Ana")
         self.assertEqual(payload.airbnb_thread_url, "https://www.airbnb.com/hosting/thread/1773535134")
         self.assertEqual(payload.airbnb_listing_id, "588632365342578374")
+
+    def test_airbnb_email_parser_extracts_spanish_airbnb_reply(self):
+        payload = AirbnbGuestEmailParser().parse_message(
+            {
+                "id": "gmail-spanish-123",
+                "subject": "RE: Consulta sobre 3 Bedrooms Vacation Home & Pool (Apartment G-101), para 4 – 5 de may",
+                "body": self.AIRBNB_SPANISH_REPLY_BODY,
+                "email_ts": "2026-05-03T15:40:25",
+            }
+        )
+
+        self.assertEqual(payload.guest_name, "Yoel")
+        self.assertEqual(payload.airbnb_thread_url, "https://www.airbnb.com/hosting/thread/2520797227")
+        self.assertEqual(payload.airbnb_listing_id, "582161420407543691")
+        self.assertEqual(payload.check_in, date(2026, 5, 4))
+        self.assertEqual(payload.check_out, date(2026, 5, 5))
+        self.assertEqual(payload.guests, 7)
+        self.assertIn("Hola dia", payload.message_excerpt)
 
     def test_airbnb_import_service_upserts_guest_records_from_json_file(self):
         item = BookableItem.objects.create(
