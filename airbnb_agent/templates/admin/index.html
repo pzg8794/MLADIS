@@ -14,9 +14,34 @@
 {% block content %}
 <div class="mladis-admin-quicklinks">
   <section class="mladis-admin-quicklink">
+    <h2>{% trans "Reservations" %}</h2>
+    <p>{% trans "Review new requests, admin confirmations, coupons, dates, and guest notes." %}</p>
+    <a class="mladis-admin-action" href="{% url 'admin:bookings_bookinginquiry_changelist' %}">{% trans "Open reservations" %}</a>
+  </section>
+  <section class="mladis-admin-quicklink">
     <h2>{% trans "Business calendar" %}</h2>
     <p>{% trans "Manage booked dates, manual blocks, and nightly price overrides for every stay." %}</p>
     <a class="mladis-admin-action" href="{% url 'admin:bookings_bookableitem_calendar' %}">{% trans "Open calendar" %}</a>
+  </section>
+  <section class="mladis-admin-quicklink">
+    <h2>{% trans "Damage deposits" %}</h2>
+    <p>{% trans "Manage Stripe and PayPal authorization holds, captures, and releases." %}</p>
+    <a class="mladis-admin-action" href="{% url 'admin:bookings_damagedeposit_changelist' %}">{% trans "Open deposits" %}</a>
+  </section>
+  <section class="mladis-admin-quicklink">
+    <h2>{% trans "Customers & consent" %}</h2>
+    <p>{% trans "Organize guest profiles, marketing consent, segments, and future promotions." %}</p>
+    <a class="mladis-admin-action" href="{% url 'admin:bookings_customerprofile_changelist' %}">{% trans "Open customers" %}</a>
+  </section>
+  <section class="mladis-admin-quicklink">
+    <h2>{% trans "Airbnb imports" %}</h2>
+    <p>{% trans "Review imported Airbnb guests, message excerpts, feedback, and contact data." %}</p>
+    <a class="mladis-admin-action" href="{% url 'admin:bookings_airbnbguestrecord_changelist' %}">{% trans "Open Airbnb guests" %}</a>
+  </section>
+  <section class="mladis-admin-quicklink">
+    <h2>{% trans "Agent conversations" %}</h2>
+    <p>{% trans "See guest questions, topics, fallback events, FAQ hits, and agent metadata." %}</p>
+    <a class="mladis-admin-action" href="{% url 'admin:bookings_agentconversation_changelist' %}">{% trans "Open agent logs" %}</a>
   </section>
   <section class="mladis-admin-quicklink">
     <h2>{% trans "Owner dashboard" %}</h2>
@@ -27,11 +52,6 @@
     <h2>{% trans "Reports" %}</h2>
     <p>{% trans "See charts for bookings, deposits, donations, coupons, clients, and calendar coverage." %}</p>
     <a class="mladis-admin-action" href="{% url 'bookings:ops-reports' %}">{% trans "Open reports" %}</a>
-  </section>
-  <section class="mladis-admin-quicklink">
-    <h2>{% trans "OAuth setup" %}</h2>
-    <p>{% trans "Check the exact Google, Facebook, GitHub, and Microsoft callback URLs for social login." %}</p>
-    <a class="mladis-admin-action" href="{% url 'bookings:oauth-diagnostics' %}">{% trans "Open OAuth setup" %}</a>
   </section>
 </div>
 
