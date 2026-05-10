@@ -101,6 +101,18 @@ class AgentKnowledgeSourceType(models.TextChoices):
     URL = "url", "Public URL or GitHub link"
 
 
+class AgentFAQCategory(models.TextChoices):
+    AVAILABILITY = "availability", "Availability"
+    BOOKING = "booking", "Booking"
+    CONTACT = "contact", "Contact"
+    DEPOSIT = "deposit", "Deposit"
+    PAYMENT = "payment", "Payment"
+    PRICING = "pricing", "Pricing"
+    RULES = "rules", "Rules"
+    AGENT_SCOPE = "agent_scope", "Agent scope"
+    GENERAL = "general", "General"
+
+
 class CancellationPolicy(models.Model):
     name = models.CharField(max_length=120)
     slug = models.SlugField(unique=True)
@@ -1148,6 +1160,43 @@ class SiteSettings(models.Model):
     def current(cls):
         settings_obj, _created = cls.objects.get_or_create(pk=1)
         return settings_obj
+
+
+class AgentFAQ(models.Model):
+    category = models.CharField(
+        max_length=80,
+        choices=AgentFAQCategory.choices,
+        default=AgentFAQCategory.GENERAL,
+        blank=True,
+    )
+    question = models.CharField(max_length=240, unique=True)
+    answer = models.TextField()
+    keywords = models.CharField(
+        max_length=600,
+        blank=True,
+        help_text="Comma-separated trigger words or phrases.",
+    )
+    item = models.ForeignKey(
+        BookableItem,
+        on_delete=models.SET_NULL,
+        related_name="agent_faqs",
+        null=True,
+        blank=True,
+    )
+    language = models.CharField(max_length=8, default="en")
+    min_score = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal("0.55"))
+    priority = models.PositiveSmallIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-priority", "category", "question"]
+        verbose_name = "agent FAQ"
+        verbose_name_plural = "agent FAQs"
+
+    def __str__(self):
+        return self.question
 
 
 class AgentKnowledgeSource(models.Model):

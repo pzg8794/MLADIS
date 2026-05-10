@@ -29,6 +29,7 @@ from .airbnb_import import AirbnbGuestEmailParser, AirbnbGuestImportService
 from .forms import BookingInquiryForm
 from .models import (
     AdminAccess,
+    AgentFAQ,
     AgentKnowledgeSource,
     AgentConversation,
     AirbnbGuestRecord,
@@ -562,10 +563,23 @@ class BookableItemCalendarAdminTests(TestCase):
         self.assertContains(response, "Owner stay")
         self.assertContains(response, "$175.00")
         self.assertContains(response, "Default nightly price")
-        self.assertContains(response, "Click one day to start a range")
+        self.assertContains(response, "Click any day card once to start a range")
+        self.assertContains(response, "Availability command center")
         self.assertContains(response, "Block selected dates")
         self.assertContains(response, "Set selected price")
         self.assertContains(response, "position: sticky")
+        self.assertContains(response, 'class="calendar-filter ml-auto-submit"', html=False)
+        self.assertContains(response, 'type="month"', html=False)
+        self.assertContains(response, 'data-auto-submit', html=False)
+        self.assertContains(response, '<noscript>', html=False)
+        self.assertContains(response, 'class="ml-autoload-link"', html=False)
+        self.assertContains(response, 'id="calendar-bulk-bar"', html=False)
+        self.assertContains(response, 'id="calendar-bulk-range"', html=False)
+        self.assertContains(response, 'id="calendar-bulk-block"', html=False)
+        self.assertContains(response, 'id="calendar-bulk-price"', html=False)
+        self.assertContains(response, 'id="calendar-bulk-clear"', html=False)
+        self.assertNotContains(response, 'type="text" name="month"', html=False)
+        self.assertContains(response, 'cell.addEventListener("click"', html=False)
         self.assertContains(response, 'data-calendar-quick-action="block"', html=False)
         self.assertContains(response, 'data-calendar-quick-action="price"', html=False)
         self.assertContains(response, 'stayFilter.addEventListener("change"', html=False)
@@ -574,6 +588,19 @@ class BookableItemCalendarAdminTests(TestCase):
         self.assertContains(response, reverse("admin:bookings_availabilityblock_change", args=[block.pk]))
         self.assertContains(response, reverse("admin:bookings_dailypriceoverride_change", args=[override.pk]))
         self.assertContains(response, 'data-calendar-date="2026-06-10"', html=False)
+
+    def test_agent_faq_admin_is_registered(self):
+        faq = AgentFAQ.objects.create(
+            category="booking",
+            question="How do I reserve?",
+            answer="Use the booking form.",
+            keywords="reserve, booking",
+        )
+
+        response = self.client.get(reverse("admin:bookings_agentfaq_change", args=[faq.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "How do I reserve?")
 
     def test_calendar_view_post_add_block_creates_manual_block(self):
         response = self.client.post(
@@ -673,6 +700,7 @@ class PublicMediaRoutingTests(TestCase):
         self.assertEqual(DamageDeposit.objects.count(), 0)
 
 
+@override_settings(STORAGES=TEST_STORAGES)
 class MarketingPageTests(TestCase):
     def test_home_displays_airbnb_images_and_review_proof(self):
         response = self.client.get(reverse("bookings:home"))
@@ -704,6 +732,7 @@ class MarketingPageTests(TestCase):
         self.assertContains(response, "Explorar alojamientos")
 
 
+@override_settings(STORAGES=TEST_STORAGES)
 class LegalPageTests(TestCase):
     def setUp(self):
         site_settings = SiteSettings.current()
@@ -767,6 +796,7 @@ class LegalPageTests(TestCase):
         )
 
 
+@override_settings(STORAGES=TEST_STORAGES)
 class AccountReservationTests(TestCase):
     def test_agent_admin_command_provisions_dedicated_superuser(self):
         output = StringIO()
@@ -1021,6 +1051,7 @@ class AccountReservationTests(TestCase):
         self.assertEqual(response["Location"], reverse("bookings:login"))
 
 
+@override_settings(STORAGES=TEST_STORAGES)
 class SocialAccountAdapterTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
@@ -1104,6 +1135,7 @@ class SocialAccountAdapterTests(TestCase):
         self.assertEqual(reservation.status, BookingStatus.CANCELED)
 
 
+@override_settings(STORAGES=TEST_STORAGES)
 class InvoicePageTests(TestCase):
     def test_invoice_print_page_renders_logo_ready_invoice(self):
         invoice = Invoice.objects.create(
@@ -1126,6 +1158,7 @@ class InvoicePageTests(TestCase):
         self.assertContains(response, "$500.00 USD")
 
 
+@override_settings(STORAGES=TEST_STORAGES)
 class OpsDashboardTests(TestCase):
     def test_ops_dashboard_shows_metrics_for_staff(self):
         staff = get_user_model().objects.create_user("ops", "ops@example.com", "secret", is_staff=True)
@@ -1565,6 +1598,7 @@ class DonationTests(TestCase):
         self.assertEqual(donation.status, DonationStatus.REQUIRES_CONFIGURATION)
 
 
+@override_settings(STORAGES=TEST_STORAGES)
 class CustomerMarketingConsentTests(TestCase):
     AIRBNB_SAMPLE_BODY = """
 RE: Inquiry at 6 Bedrooms Vacation Home & Pool (Apartment G-102) for August 22, 2024 - September 1, 2024

@@ -22,6 +22,7 @@ from .forms import AirbnbGuestImportForm, AvailabilityBlockForm, DailyPriceOverr
 from .models import (
     AdminAccess,
     AgentKnowledgeSource,
+    AgentFAQ,
     AgentConversation,
     AirbnbGuestRecord,
     AvailabilityBlock,
@@ -1073,6 +1074,16 @@ class AgentKnowledgeSourceAdmin(admin.ModelAdmin):
     list_filter = ("source_type", "is_active")
     search_fields = ("title", "source_value", "body")
     ordering = ("sort_order", "title")
+
+
+@admin.register(AgentFAQ)
+class AgentFAQAdmin(admin.ModelAdmin):
+    list_display = ("question", "category", "item", "language", "priority", "min_score", "is_active", "updated_at")
+    list_filter = ("is_active", "category", "language", "item")
+    search_fields = ("question", "answer", "keywords", "category")
+    autocomplete_fields = ("item",)
+    list_editable = ("priority", "min_score", "is_active")
+    readonly_fields = ("created_at", "updated_at")
 
 
 @admin.register(SiteContentBlock)
