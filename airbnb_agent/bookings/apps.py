@@ -7,3 +7,6 @@ class BookingsConfig(AppConfig):
 
     def ready(self):
         from . import signals  # noqa: F401
+        from .agent_faq import install_agent_faq_patch
+
+        install_agent_faq_patch()
