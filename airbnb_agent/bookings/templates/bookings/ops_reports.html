@@ -12,7 +12,7 @@
   <section class="ops-hero">
     <div>
       <h1>{% trans "Reporting" %}</h1>
-      <p>{% trans "Graphs for the booking platform signals we track: reservations, visits, agent questions, invoices, deposits, donations, coupons, promotions, listings, clients, and calendar setup." %}</p>
+      <p>{% trans "Graphs for the booking platform signals we track: reservations, visits, agent questions, feedback, invoices, deposits, donations, coupons, promotions, listings, clients, and calendar setup." %}</p>
       <div class="hero-actions">
         <a class="button primary" href="{% url 'admin:index' %}">{% trans "Open admin" %}</a>
         <a class="button secondary" href="{% url 'bookings:ops-dashboard' %}">{% trans "Dashboard" %}</a>
@@ -48,6 +48,8 @@
     {% include "bookings/partials/report_chart.html" with chart=visit_timeline wide=True %}
     {% include "bookings/partials/report_chart.html" with chart=agent_topic_chart %}
     {% include "bookings/partials/report_chart.html" with chart=client_segment_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=feedback_source_chart %}
+    {% include "bookings/partials/report_chart.html" with chart=feedback_listing_chart %}
     {% include "bookings/partials/report_chart.html" with chart=invoice_status_chart %}
     {% include "bookings/partials/report_chart.html" with chart=deposit_status_chart %}
     {% include "bookings/partials/report_chart.html" with chart=donation_status_chart %}

@@ -30,6 +30,7 @@ from .models import (
     CalendarFeed,
     CancellationPolicy,
     Coupon,
+    CustomerFeedback,
     CustomerProfile,
     DamageDeposit,
     DailyPriceOverride,
@@ -370,6 +371,15 @@ class CancellationPolicyAdmin(admin.ModelAdmin):
     search_fields = ("name", "description")
 
 
+class CustomerProfileFeedbackInline(admin.TabularInline):
+    model = CustomerFeedback
+    fk_name = "customer_profile"
+    extra = 0
+    fields = ("guest_name", "source", "item", "rating", "feedback_text", "is_public", "created_at")
+    readonly_fields = ("created_at",)
+    autocomplete_fields = ("airbnb_guest_record", "item")
+
+
 @admin.register(CustomerProfile)
 class CustomerProfileAdmin(admin.ModelAdmin):
     list_display = (
@@ -386,6 +396,7 @@ class CustomerProfileAdmin(admin.ModelAdmin):
     search_fields = ("name", "email", "phone", "notes")
     autocomplete_fields = ("user",)
     readonly_fields = ("marketing_consent_requested_at", "marketing_consent_at", "created_at", "updated_at")
+    inlines = (CustomerProfileFeedbackInline,)
     actions = (
         "mark_marketing_opted_in",
         "mark_marketing_opted_out",
@@ -470,6 +481,27 @@ class CustomerProfileAdmin(admin.ModelAdmin):
         return response
 
 
+class AirbnbGuestFeedbackInline(admin.StackedInline):
+    model = CustomerFeedback
+    fk_name = "airbnb_guest_record"
+    extra = 0
+    max_num = 1
+    fields = (
+        "customer_profile",
+        "item",
+        "source",
+        "source_label",
+        "source_url",
+        "rating",
+        "feedback_text",
+        "feedback_summary",
+        "permission_notes",
+        "is_public",
+        "published_at",
+    )
+    autocomplete_fields = ("customer_profile", "item")
+
+
 @admin.register(AirbnbGuestRecord)
 class AirbnbGuestRecordAdmin(admin.ModelAdmin):
     change_list_template = "admin/bookings/airbnbguestrecord/change_list.html"
@@ -497,6 +529,7 @@ class AirbnbGuestRecordAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ("customer_profile", "item")
     readonly_fields = ("created_at", "updated_at")
+    inlines = (AirbnbGuestFeedbackInline,)
     actions = ("export_airbnb_guest_records_csv",)
 
     def get_urls(self):
@@ -594,6 +627,86 @@ class AirbnbGuestRecordAdmin(admin.ModelAdmin):
                     record.feedback_summary,
                     record.rating or "",
                     record.permission_notes,
+                ]
+            )
+        return response
+
+
+@admin.register(CustomerFeedback)
+class CustomerFeedbackAdmin(admin.ModelAdmin):
+    list_display = (
+        "guest_name",
+        "item",
+        "source",
+        "rating",
+        "customer_profile",
+        "is_public",
+        "updated_at",
+    )
+    list_filter = ("source", "is_public", "item", "rating")
+    search_fields = (
+        "guest_name",
+        "email",
+        "phone",
+        "feedback_text",
+        "feedback_summary",
+        "permission_notes",
+        "source_url",
+    )
+    autocomplete_fields = ("customer_profile", "airbnb_guest_record", "item")
+    readonly_fields = ("created_at", "updated_at")
+    actions = ("mark_public", "mark_private", "export_feedback_csv")
+
+    @admin.action(description="Mark selected feedback as public")
+    def mark_public(self, request, queryset):
+        updated = queryset.update(is_public=True, published_at=timezone.now())
+        self.message_user(request, f"Marked {updated} selected feedback record(s) public.")
+
+    @admin.action(description="Mark selected feedback as private")
+    def mark_private(self, request, queryset):
+        updated = queryset.update(is_public=False, published_at=None)
+        self.message_user(request, f"Marked {updated} selected feedback record(s) private.")
+
+    @admin.action(description="Export selected feedback as CSV")
+    def export_feedback_csv(self, request, queryset):
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="mladis-customer-feedback.csv"'
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "guest_name",
+                "email",
+                "phone",
+                "customer_profile",
+                "listing",
+                "source",
+                "source_url",
+                "rating",
+                "feedback_text",
+                "feedback_summary",
+                "permission_notes",
+                "is_public",
+                "created_at",
+                "updated_at",
+            ]
+        )
+        for feedback in queryset.select_related("customer_profile", "item").order_by("-created_at"):
+            writer.writerow(
+                [
+                    feedback.guest_name,
+                    feedback.email,
+                    feedback.phone,
+                    feedback.customer_profile or "",
+                    feedback.item or "",
+                    feedback.get_source_display(),
+                    feedback.source_url,
+                    feedback.rating or "",
+                    feedback.feedback_text,
+                    feedback.feedback_summary,
+                    feedback.permission_notes,
+                    feedback.is_public,
+                    feedback.created_at,
+                    feedback.updated_at,
                 ]
             )
         return response

@@ -604,14 +604,19 @@ class OpsReservationsView(TemplateView):
     def _reservation_customer_rows(self, apply_filter=True):
         rows = []
         records = (
-            AirbnbGuestRecord.objects.select_related("customer_profile", "item")
+            AirbnbGuestRecord.objects.select_related("customer_profile", "item", "customer_feedback")
             .order_by("-check_in", "guest_name", "-updated_at")
         )
         for record in records:
             profile = record.customer_profile
             email = record.email or (profile.email if profile else "")
             phone = record.phone or (profile.phone if profile else "")
-            feedback = record.feedback_summary or record.message_excerpt
+            feedback_entry = getattr(record, "customer_feedback", None)
+            feedback = (
+                feedback_entry.feedback_text
+                if feedback_entry
+                else record.feedback_summary or record.message_excerpt
+            )
             consent_status = (
                 profile.get_marketing_consent_status_display()
                 if profile
@@ -629,6 +634,9 @@ class OpsReservationsView(TemplateView):
                     else "",
                     "record": record,
                     "record_admin_url": reverse("admin:bookings_airbnbguestrecord_change", args=[record.pk]),
+                    "feedback_admin_url": reverse("admin:bookings_customerfeedback_change", args=[feedback_entry.pk])
+                    if feedback_entry
+                    else "",
                     "item": record.item,
                     "listing": record.item.name if record.item else record.listing_title or record.airbnb_listing_id,
                     "listing_id": record.airbnb_listing_id,

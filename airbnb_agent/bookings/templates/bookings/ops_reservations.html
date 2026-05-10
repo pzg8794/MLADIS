@@ -89,6 +89,9 @@
               <td>
                 <div class="reservation-actions">
                   <a href="{{ row.record_admin_url }}">{% trans "Record" %}</a>
+                  {% if row.feedback_admin_url %}
+                    <a href="{{ row.feedback_admin_url }}">{% trans "Feedback" %}</a>
+                  {% endif %}
                   {% if row.profile_admin_url %}
                     <a href="{{ row.profile_admin_url }}">{% trans "Profile" %}</a>
                   {% endif %}

@@ -445,6 +445,87 @@ class BookableItem(models.Model):
         return [(label, rating) for label, rating in ratings if rating is not None]
 
 
+class CustomerFeedback(models.Model):
+    customer_profile = models.ForeignKey(
+        CustomerProfile,
+        on_delete=models.SET_NULL,
+        related_name="feedback_entries",
+        null=True,
+        blank=True,
+    )
+    airbnb_guest_record = models.OneToOneField(
+        AirbnbGuestRecord,
+        on_delete=models.CASCADE,
+        related_name="customer_feedback",
+        null=True,
+        blank=True,
+    )
+    item = models.ForeignKey(
+        BookableItem,
+        on_delete=models.SET_NULL,
+        related_name="customer_feedback_entries",
+        null=True,
+        blank=True,
+    )
+    source = models.CharField(
+        max_length=24,
+        choices=ContactSource.choices,
+        default=ContactSource.DIRECT,
+    )
+    source_label = models.CharField(max_length=120, default="Website feedback")
+    source_url = models.URLField(max_length=1000, blank=True)
+    guest_name = models.CharField(max_length=160, blank=True)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=40, blank=True)
+    rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    feedback_text = models.TextField()
+    feedback_summary = models.TextField(blank=True)
+    permission_notes = models.TextField(blank=True)
+    is_public = models.BooleanField(
+        default=False,
+        help_text="Only publish exact feedback when we have permission to display it publicly.",
+    )
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        verbose_name = "customer feedback"
+        verbose_name_plural = "customer feedback"
+
+    def __str__(self):
+        label = self.guest_name or (self.customer_profile.name if self.customer_profile else "Guest")
+        return f"{label} feedback"
+
+    @classmethod
+    def sync_from_airbnb_record(cls, record):
+        feedback_text = (record.feedback_summary or record.message_excerpt or "").strip()
+        if not feedback_text and record.rating is None:
+            return None
+
+        profile = record.customer_profile
+        defaults = {
+            "customer_profile": profile,
+            "item": record.item,
+            "source": ContactSource.AIRBNB,
+            "source_label": "Airbnb message import",
+            "source_url": record.airbnb_thread_url,
+            "guest_name": record.guest_name,
+            "email": record.email or (profile.email if profile else ""),
+            "phone": record.phone or (profile.phone if profile else ""),
+            "rating": record.rating,
+            "feedback_text": feedback_text or "Airbnb rating captured without written feedback.",
+            "feedback_summary": record.feedback_summary,
+            "permission_notes": record.permission_notes,
+        }
+        feedback, _created = cls.objects.update_or_create(
+            airbnb_guest_record=record,
+            defaults=defaults,
+        )
+        return feedback
+
+
 class GuestReviewHighlight(models.Model):
     item = models.ForeignKey(BookableItem, on_delete=models.CASCADE, related_name="guest_review_highlights")
     title = models.CharField(max_length=100)

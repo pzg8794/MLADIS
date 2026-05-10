@@ -9,6 +9,7 @@ This pipeline imports Airbnb reservation/message history into MLADIS without com
 - Check-in/check-out dates and guest count
 - Airbnb thread URL/source email metadata
 - Message excerpt and feedback notes
+- A linked customer feedback entry tied to the customer profile, stay, and Airbnb reservation record
 - Marketing consent status on the linked customer profile
 
 Airbnb usually hides direct guest email/phone behind platform messaging. Imported Airbnb-only contacts default to `Unknown` marketing consent, so promotions are not sent until an admin records opt-in.
@@ -38,6 +39,7 @@ For structured Airbnb contact exports, the importer:
 - Keeps email/phone blank when Airbnb does not expose them.
 - Stores consent as `Unknown` unless the export explicitly provides a valid MLADIS consent status.
 - Stores promotion/contact permission notes on the Airbnb guest record.
+- Copies message feedback/rating context into `Customer feedback` so admins can review it from the guest profile, the Airbnb record, reporting, and the reservations screen.
 
 ## Admin Workflow
 
@@ -48,6 +50,7 @@ For structured Airbnb contact exports, the importer:
 - Upload a `.json` or `.csv` export and run it with `Dry run only` checked first.
 - If the counts look right, upload the same file again with `Dry run only` unchecked.
 - Review imported records in `Admin > Bookings > Airbnb guest records`.
+- Review linked feedback in `Admin > Bookings > Customer feedback`.
 - Review linked customer profiles in `Admin > Bookings > Customer profiles`.
 - Use the customer-profile admin action to send permission request emails.
 - Mark a customer `Opted in` only after permission is received.

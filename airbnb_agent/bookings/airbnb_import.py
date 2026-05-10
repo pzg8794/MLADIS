@@ -8,7 +8,14 @@ from pathlib import Path
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import AirbnbGuestRecord, BookableItem, ContactSource, CustomerProfile, MarketingConsentStatus
+from .models import (
+    AirbnbGuestRecord,
+    BookableItem,
+    ContactSource,
+    CustomerFeedback,
+    CustomerProfile,
+    MarketingConsentStatus,
+)
 
 
 @dataclass(frozen=True)
@@ -403,8 +410,10 @@ class AirbnbGuestImportService:
                     continue
                 setattr(existing, field, value)
             existing.save()
+            record = existing
         else:
-            AirbnbGuestRecord.objects.create(**values)
+            record = AirbnbGuestRecord.objects.create(**values)
+        CustomerFeedback.sync_from_airbnb_record(record)
         return action
 
     def _is_initial_inquiry(self, payload):

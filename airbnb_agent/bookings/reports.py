@@ -15,7 +15,9 @@ from .models import (
     BookingStatus,
     CalendarFeed,
     ClientSegment,
+    ContactSource,
     Coupon,
+    CustomerFeedback,
     CustomerProfile,
     DamageDeposit,
     Donation,
@@ -41,6 +43,7 @@ class OpsReportsView(TemplateView):
         visits = PageVisit.objects.filter(created_at__gte=since)
         conversations = AgentConversation.objects.filter(created_at__gte=since)
         clients = CustomerProfile.objects.all()
+        feedback = CustomerFeedback.objects.all()
         listings = BookableItem.objects.all()
         coupons = Coupon.objects.all()
         promotions = Promotion.objects.all()
@@ -55,6 +58,7 @@ class OpsReportsView(TemplateView):
                     self._card("Visits", visits.count(), "Tracked page visits in the last 30 days."),
                     self._card("Agent chats", conversations.count(), "Guest questions answered by the booking agent."),
                     self._card("Clients", clients.count(), "Customer profiles and segments."),
+                    self._card("Feedback entries", feedback.count(), "Guest feedback linked to profiles, stays, and reservation records."),
                     self._card("Active listings", listings.filter(is_active=True).count(), "Bookable stays, services, experiences, and transport."),
                     self._card("Coupons", coupons.count(), "Discount codes managed by admins."),
                     self._card("Promotions", promotions.count(), "Campaigns created from the admin."),
@@ -97,6 +101,17 @@ class OpsReportsView(TemplateView):
                     "segment",
                     ClientSegment.choices,
                     "Clients by segment",
+                ),
+                "feedback_source_chart": self._choice_chart(
+                    feedback,
+                    "source",
+                    ContactSource.choices,
+                    "Feedback by source",
+                ),
+                "feedback_listing_chart": self._query_chart(
+                    feedback.values("item__name").annotate(total=Count("id")).order_by("-total", "item__name")[:10],
+                    "item__name",
+                    "Feedback by listing",
                 ),
                 "booking_timeline": self._daily_timeline(recent_reservations, "created_at", "Reservation requests by day"),
                 "visit_timeline": self._daily_timeline(visits, "created_at", "Visits by day"),

@@ -40,6 +40,7 @@ from .models import (
     ClientSegment,
     ContactSource,
     Coupon,
+    CustomerFeedback,
     CustomerProfile,
     DailyPriceOverride,
     Donation,
@@ -1012,6 +1013,7 @@ class OpsDashboardTests(TestCase):
         self.assertContains(response, "Reporting")
         self.assertContains(response, "Reservations by status")
         self.assertContains(response, "Agent question topics")
+        self.assertContains(response, "Feedback by source")
         self.assertContains(response, "Visits by day")
         self.assertContains(response, "Business calendar")
         self.assertContains(response, reverse("admin:bookings_bookableitem_calendar"))
@@ -1632,6 +1634,11 @@ Viajeros
         self.assertEqual(record.item, item)
         self.assertEqual(record.customer_profile.source, ContactSource.AIRBNB)
         self.assertEqual(record.customer_profile.marketing_consent_status, MarketingConsentStatus.UNKNOWN)
+        feedback = CustomerFeedback.objects.get()
+        self.assertEqual(feedback.airbnb_guest_record, record)
+        self.assertEqual(feedback.customer_profile, record.customer_profile)
+        self.assertEqual(feedback.item, item)
+        self.assertIn("It will be a pleasure", feedback.feedback_text)
 
     def test_airbnb_import_service_imports_structured_guest_contact_list(self):
         data = {
@@ -1673,6 +1680,11 @@ Viajeros
         self.assertIn("Feedback requested", record.feedback_summary)
         self.assertIn("airbnb-profile-123", record.permission_notes)
         self.assertEqual(record.customer_profile.marketing_consent_status, MarketingConsentStatus.UNKNOWN)
+        feedback = CustomerFeedback.objects.get()
+        self.assertEqual(feedback.airbnb_guest_record, record)
+        self.assertEqual(feedback.customer_profile, record.customer_profile)
+        self.assertIn("Feedback requested", feedback.feedback_text)
+        self.assertIn("airbnb-profile-123", feedback.permission_notes)
 
     def test_airbnb_import_service_coalesces_messages_from_same_thread(self):
         first_body = self.AIRBNB_SAMPLE_BODY
@@ -1705,6 +1717,8 @@ Viajeros
         record = AirbnbGuestRecord.objects.get()
         self.assertEqual(record.airbnb_thread_url, "https://www.airbnb.com/hosting/thread/1773535134")
         self.assertIn("Can we use the pool?", record.message_excerpt)
+        self.assertEqual(CustomerFeedback.objects.count(), 1)
+        self.assertIn("Can we use the pool?", record.customer_feedback.feedback_text)
 
     def test_airbnb_import_service_coalesces_same_guest_listing_and_dates(self):
         first_body = self.AIRBNB_SPANISH_REPLY_BODY.replace("2520797227", "2520797000")
@@ -1740,6 +1754,8 @@ Viajeros
         record = AirbnbGuestRecord.objects.get()
         self.assertEqual(record.airbnb_thread_url, "https://www.airbnb.com/hosting/thread/2520797000")
         self.assertIn("confirmar la piscina", record.message_excerpt)
+        self.assertEqual(CustomerFeedback.objects.count(), 1)
+        self.assertIn("confirmar la piscina", record.customer_feedback.feedback_text)
 
     def test_airbnb_import_service_preserves_initial_inquiry_guest_identity(self):
         data = {
@@ -1798,6 +1814,10 @@ Viajeros
 
         self.assertEqual(record.stay_dates, "2024-08-22 to 2024-09-01")
         self.assertFalse(profile.can_receive_promotions)
+        feedback = CustomerFeedback.sync_from_airbnb_record(record)
+        self.assertEqual(feedback.customer_profile, profile)
+        self.assertEqual(feedback.item, item)
+        self.assertEqual(feedback.feedback_text, "Positive Airbnb message thread.")
 
     def test_promotion_recipients_are_limited_to_opted_in_profiles(self):
         opted_in = CustomerProfile.objects.create(
@@ -1915,6 +1935,7 @@ Viajeros
         self.assertEqual(record.item, item)
         self.assertEqual(record.guest_name, "Diana")
         self.assertEqual(record.customer_profile.source, ContactSource.AIRBNB)
+        self.assertEqual(CustomerFeedback.objects.get().airbnb_guest_record, record)
 
     def _airbnb_import_json(self, listing_id):
         body = self.AIRBNB_SAMPLE_BODY.replace("588632365342578374", listing_id)
@@ -1951,7 +1972,7 @@ Viajeros
             source=ContactSource.AIRBNB,
             marketing_consent_status=MarketingConsentStatus.REQUESTED,
         )
-        AirbnbGuestRecord.objects.create(
+        record = AirbnbGuestRecord.objects.create(
             customer_profile=profile,
             guest_name="Diana",
             email="",
@@ -1964,6 +1985,7 @@ Viajeros
             feedback_summary="Loved the pool and the host support.",
             airbnb_thread_url="https://www.airbnb.com/hosting/thread/1773535134",
         )
+        CustomerFeedback.sync_from_airbnb_record(record)
 
         response = self.client.get(reverse("bookings:ops-reservations"))
 
@@ -1973,6 +1995,7 @@ Viajeros
         self.assertContains(response, "VIP")
         self.assertContains(response, "diana@example.com")
         self.assertContains(response, "Loved the pool")
+        self.assertContains(response, "Feedback")
         self.assertContains(response, "Customer groups")
 
     def test_ops_reservations_filters_by_customer_group_and_exports_csv(self):
