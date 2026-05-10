@@ -1,0 +1,238 @@
+@media (prefers-reduced-motion: no-preference) {
+  .ml-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.75s ease, transform 0.75s ease;
+  }
+
+  .ml-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .listing-card,
+  .review-card,
+  .review-highlight-card,
+  .mini-stay,
+  .agent-panel,
+  .booking-form,
+  .deposit-form,
+  .ops-card,
+  .reservation-row {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  }
+
+  .listing-card:hover,
+  .review-card:hover,
+  .review-highlight-card:hover,
+  .mini-stay:hover,
+  .agent-panel:hover,
+  .ops-card:hover,
+  .reservation-row:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 70px rgba(23, 35, 33, 0.14);
+  }
+
+  .button,
+  .text-link,
+  .back-link,
+  .nav-links a,
+  .site-footer a {
+    transition: transform 0.16s ease, background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+
+  .button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 26px rgba(23, 35, 33, 0.12);
+  }
+
+  .button:active {
+    transform: translateY(0);
+  }
+
+  .hero-photo img,
+  .stay-hero-image img,
+  .listing-image img,
+  .gallery-grid img,
+  .about-gallery img,
+  .mini-stay img {
+    transition: transform 0.9s ease, opacity 0.45s ease, filter 0.45s ease;
+  }
+
+  .hero-photo:hover img,
+  .stay-hero-image:hover img,
+  .listing-image:hover img,
+  .gallery-grid figure:hover img,
+  .about-gallery figure:hover img,
+  .mini-stay:hover img {
+    transform: scale(1.045);
+  }
+
+  .hero-photo {
+    animation: ml-float-photo 8s ease-in-out infinite;
+  }
+
+  @keyframes ml-float-photo {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+}
+
+.ml-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: rgba(251, 251, 245, 0.62);
+  backdrop-filter: blur(8px);
+}
+
+.ml-loading-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid rgba(16, 102, 95, 0.14);
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  color: var(--ocean-dark, #073f3a);
+  background: #fff;
+  box-shadow: 0 18px 52px rgba(23, 35, 33, 0.16);
+  font-weight: 900;
+}
+
+.ml-spinner {
+  width: 18px;
+  height: 18px;
+  border: 3px solid rgba(16, 102, 95, 0.18);
+  border-top-color: var(--ocean, #10665f);
+  border-radius: 50%;
+  animation: ml-spin 0.75s linear infinite;
+}
+
+@keyframes ml-spin {
+  to { transform: rotate(360deg); }
+}
+
+.gallery-grid {
+  position: relative;
+}
+
+.gallery-grid figure {
+  cursor: pointer;
+}
+
+.gallery-grid figure.is-active-gallery-image {
+  outline: 4px solid rgba(212, 91, 67, 0.38);
+  outline-offset: -4px;
+}
+
+.ml-gallery-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.ml-gallery-control {
+  border: 1px solid var(--line, #dbe4dc);
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  color: var(--ocean-dark, #073f3a);
+  background: #fff;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.ml-gallery-control[aria-pressed="true"] {
+  color: #fff;
+  background: var(--coral, #d45b43);
+  border-color: var(--coral, #d45b43);
+}
+
+.ml-autoplay-pulse {
+  position: relative;
+  overflow: hidden;
+}
+
+.ml-autoplay-pulse::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  content: "";
+  background: linear-gradient(90deg, transparent, var(--mango, #e3ad39), transparent);
+  animation: ml-progress 5s linear infinite;
+}
+
+@keyframes ml-progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.ml-button-loading {
+  pointer-events: none;
+  opacity: 0.82;
+}
+
+.ml-button-loading::before {
+  width: 14px;
+  height: 14px;
+  margin-right: 0.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  content: "";
+  animation: ml-spin 0.75s linear infinite;
+}
+
+.form-control,
+.agent-form select,
+.agent-form textarea,
+.language-form select {
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.form-control:focus,
+.agent-form select:focus,
+.agent-form textarea:focus,
+.language-form select:focus {
+  transform: translateY(-1px);
+}
+
+.stat-row li,
+.theme-row span,
+.deposit-facts span,
+.status-chip,
+.rating {
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.stat-row li:hover,
+.theme-row span:hover,
+.deposit-facts span:hover,
+.status-chip:hover,
+.rating:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(23, 35, 33, 0.08);
+}
+
+.ml-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #eef3ef;
+}
+
+.ml-skeleton::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+  transform: translateX(-100%);
+  animation: ml-skeleton 1.2s ease-in-out infinite;
+}
+
+@keyframes ml-skeleton {
+  100% { transform: translateX(100%); }
+}
