@@ -25,12 +25,18 @@
 
   <section class="ops-report-wrap">
     <div class="ops-report-heading">
-      <h2>{% trans "Platform summary" %}</h2>
-      <p>{% trans "Rolling 30-day charts plus all-time totals where useful." %}</p>
+      <div>
+        <h2>{% trans "Platform summary" %}</h2>
+        <p>{% trans "Rolling 30-day charts plus all-time totals where useful." %}</p>
+      </div>
+      <div class="ops-report-period" aria-label="{% trans 'Report period' %}">
+        <span>{% trans "Showing" %}</span>
+        <strong>{{ report_since|date:"M j" }} – {{ report_until|date:"M j, Y" }}</strong>
+      </div>
     </div>
     <div class="ops-report-metrics">
       {% for card in summary_cards %}
-        <article class="ops-report-metric">
+        <article class="ops-report-metric" data-report-text="{{ card.label }} {{ card.caption }} {{ card.value }}">
           <span>{{ card.value }}</span>
           <strong>{{ card.label }}</strong>
           <p>{{ card.caption }}</p>
@@ -39,23 +45,45 @@
     </div>
   </section>
 
-  <section class="ops-report-grid">
-    {% include "bookings/partials/report_chart.html" with chart=reservation_status_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=booking_category_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=item_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=booking_timeline wide=True %}
-    {% include "bookings/partials/report_chart.html" with chart=visit_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=visit_timeline wide=True %}
-    {% include "bookings/partials/report_chart.html" with chart=agent_topic_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=client_segment_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=feedback_source_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=feedback_listing_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=invoice_status_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=deposit_status_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=donation_status_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=coupon_status_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=promotion_status_chart %}
-    {% include "bookings/partials/report_chart.html" with chart=calendar_chart %}
+  <section class="ops-report-controls" aria-label="{% trans 'Report controls' %}">
+    <div class="ops-report-search">
+      <label for="report-search">{% trans "Search reports" %}</label>
+      <input id="report-search" type="search" placeholder="{% trans 'Try deposits, visits, agent, calendar...' %}" autocomplete="off">
+    </div>
+    <div class="ops-report-filter-chips" aria-label="{% trans 'Report categories' %}">
+      <button type="button" data-report-filter="all" aria-pressed="true">{% trans "All" %}</button>
+      <button type="button" data-report-filter="booking">{% trans "Bookings" %}</button>
+      <button type="button" data-report-filter="traffic">{% trans "Traffic" %}</button>
+      <button type="button" data-report-filter="agent">{% trans "Agent" %}</button>
+      <button type="button" data-report-filter="money">{% trans "Money" %}</button>
+      <button type="button" data-report-filter="marketing">{% trans "Marketing" %}</button>
+      <button type="button" data-report-filter="operations">{% trans "Operations" %}</button>
+    </div>
+    <div class="ops-report-actions">
+      <button type="button" data-report-expand>{% trans "Expand all" %}</button>
+      <button type="button" data-report-collapse>{% trans "Collapse all" %}</button>
+      <button type="button" onclick="window.print()">{% trans "Print" %}</button>
+    </div>
+  </section>
+
+  <section class="ops-report-grid" id="report-grid">
+    {% include "bookings/partials/report_chart.html" with chart=reservation_status_chart category="booking" %}
+    {% include "bookings/partials/report_chart.html" with chart=booking_category_chart category="operations" %}
+    {% include "bookings/partials/report_chart.html" with chart=item_chart category="booking" %}
+    {% include "bookings/partials/report_chart.html" with chart=booking_timeline category="booking" wide=True %}
+    {% include "bookings/partials/report_chart.html" with chart=visit_chart category="traffic" %}
+    {% include "bookings/partials/report_chart.html" with chart=visit_timeline category="traffic" wide=True %}
+    {% include "bookings/partials/report_chart.html" with chart=agent_topic_chart category="agent" %}
+    {% include "bookings/partials/report_chart.html" with chart=client_segment_chart category="marketing" %}
+    {% include "bookings/partials/report_chart.html" with chart=feedback_source_chart category="marketing" %}
+    {% include "bookings/partials/report_chart.html" with chart=feedback_listing_chart category="marketing" %}
+    {% include "bookings/partials/report_chart.html" with chart=invoice_status_chart category="money" %}
+    {% include "bookings/partials/report_chart.html" with chart=deposit_status_chart category="money" %}
+    {% include "bookings/partials/report_chart.html" with chart=donation_status_chart category="money" %}
+    {% include "bookings/partials/report_chart.html" with chart=coupon_status_chart category="marketing" %}
+    {% include "bookings/partials/report_chart.html" with chart=promotion_status_chart category="marketing" %}
+    {% include "bookings/partials/report_chart.html" with chart=calendar_chart category="operations" %}
   </section>
 </main>
+<script src="{% static 'bookings/ops_reports.js' %}" defer></script>
 {% endblock %}
