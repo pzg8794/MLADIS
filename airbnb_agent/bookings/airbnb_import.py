@@ -37,7 +37,7 @@ class AirbnbGuestImportResult:
 
 class AirbnbGuestEmailParser:
     ROOM_RE = re.compile(r"airbnb\.com/rooms/(\d+)")
-    THREAD_RE = re.compile(r"https://www\.airbnb\.com/hosting/thread/\d+[^\s)\]]*")
+    THREAD_RE = re.compile(r"airbnb\.com/hosting/thread/(\d+)")
     GUESTS_RE = re.compile(r"\bGuests\s+(\d+)\s+guests?\b", re.IGNORECASE)
     RESPOND_TO_RE = re.compile(r"Respond to\s+(.+?)\s+by replying", re.IGNORECASE)
     SUBJECT_RE = re.compile(r"at\s+(.+?)\s+for\s+(.+?)\s+-\s+(.+)$", re.IGNORECASE)
@@ -70,7 +70,7 @@ class AirbnbGuestEmailParser:
             phone=(message.get("guest_phone") or message.get("phone") or "").strip(),
             listing_title=listing_title or self._parse_listing_title(body),
             airbnb_listing_id=listing_id,
-            airbnb_thread_url=self._first_match(self.THREAD_RE, body),
+            airbnb_thread_url=self._parse_thread_url(body),
             check_in=check_in,
             check_out=check_out,
             guests=guests,
@@ -155,6 +155,10 @@ class AirbnbGuestEmailParser:
         match = regex.search(text)
         return match.group(1) if match and match.groups() else match.group(0) if match else ""
 
+    def _parse_thread_url(self, body):
+        thread_id = self._first_match(self.THREAD_RE, body)
+        return f"https://www.airbnb.com/hosting/thread/{thread_id}" if thread_id else ""
+
     def _looks_like_name(self, value):
         if len(value) > 80 or any(character.isdigit() for character in value):
             return False
@@ -184,15 +188,21 @@ class AirbnbGuestImportService:
         return AirbnbGuestImportResult(**result)
 
     def _upsert(self, payload, dry_run=False):
-        lookup = {}
-        if payload.source_message_id:
-            lookup["source_message_id"] = payload.source_message_id
-        else:
+        if payload.airbnb_thread_url:
+            lookup = {"airbnb_thread_url": payload.airbnb_thread_url}
+        elif payload.guest_name and payload.airbnb_listing_id and payload.check_in and payload.check_out:
             lookup = {
                 "guest_name": payload.guest_name,
                 "airbnb_listing_id": payload.airbnb_listing_id,
                 "check_in": payload.check_in,
                 "check_out": payload.check_out,
+            }
+        elif payload.source_message_id:
+            lookup = {"source_message_id": payload.source_message_id}
+        else:
+            lookup = {
+                "guest_name": payload.guest_name,
+                "airbnb_listing_id": payload.airbnb_listing_id,
             }
         existing = AirbnbGuestRecord.objects.filter(**lookup).first()
         action = "updated" if existing else "created"

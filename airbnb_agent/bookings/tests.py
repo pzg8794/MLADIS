@@ -1455,6 +1455,7 @@ September 1, 2024
         self.assertEqual(payload.source_message_id, "gmail-123")
         self.assertEqual(payload.guest_name, "Diana")
         self.assertEqual(payload.airbnb_listing_id, "588632365342578374")
+        self.assertEqual(payload.airbnb_thread_url, "https://www.airbnb.com/hosting/thread/1773535134")
         self.assertEqual(payload.guests, 10)
         self.assertEqual(payload.check_in, date(2024, 8, 22))
         self.assertEqual(payload.check_out, date(2024, 9, 1))
@@ -1496,6 +1497,38 @@ September 1, 2024
         self.assertEqual(record.item, item)
         self.assertEqual(record.customer_profile.source, ContactSource.AIRBNB)
         self.assertEqual(record.customer_profile.marketing_consent_status, MarketingConsentStatus.UNKNOWN)
+
+    def test_airbnb_import_service_coalesces_messages_from_same_thread(self):
+        first_body = self.AIRBNB_SAMPLE_BODY
+        second_body = self.AIRBNB_SAMPLE_BODY.replace("It will be a pleasure", "Can we use the pool?")
+        data = {
+            "responses": [
+                {
+                    "id": "gmail-thread-1",
+                    "subject": "RE: Inquiry at 6 Bedrooms Vacation Home & Pool (Apartment G-102) for August 22, 2024 - September 1, 2024",
+                    "body": first_body,
+                    "email_ts": "2024-04-04T16:18:54",
+                },
+                {
+                    "id": "gmail-thread-2",
+                    "subject": "RE: Inquiry at 6 Bedrooms Vacation Home & Pool (Apartment G-102) for August 22, 2024 - September 1, 2024",
+                    "body": second_body,
+                    "email_ts": "2024-04-04T16:19:33",
+                },
+            ]
+        }
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "airbnb-guests.json"
+            path.write_text(json.dumps(data))
+            result = AirbnbGuestImportService().import_file(path)
+
+        self.assertEqual(result.created, 1)
+        self.assertEqual(result.updated, 1)
+        self.assertEqual(AirbnbGuestRecord.objects.count(), 1)
+        record = AirbnbGuestRecord.objects.get()
+        self.assertEqual(record.airbnb_thread_url, "https://www.airbnb.com/hosting/thread/1773535134")
+        self.assertIn("Can we use the pool?", record.message_excerpt)
 
     def test_airbnb_guest_record_tracks_stay_feedback_and_permission_notes(self):
         item = BookableItem.objects.create(
