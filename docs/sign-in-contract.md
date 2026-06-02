@@ -119,6 +119,8 @@ The launcher should be the one-file way to see normal code and UI changes:
   Facebook callback URL.
 - `MLADIS_TUNNEL_LOG` defaults to `/private/tmp/mladis-tunnel.log`; use this log
   to inspect named-tunnel startup if the Terminal scrollback moves.
+- With default settings, the launcher stops stale Django listeners on the local
+  port and stale `mladis-local` tunnel processes before starting the clean run.
 - `MLADIS_STARTUP_TIMEOUT` defaults to `60` seconds.
 - Dependency install is skipped when `requirements.txt` has not changed.
 - `collectstatic` is skipped for local startup unless `MLADIS_COLLECTSTATIC=1`.
@@ -169,4 +171,8 @@ from normal browsers.
 - The page opens on `127.0.0.1:5173`: stop the Vite server for auth testing and
   run `./run_mladis_live.command`.
 - The page opens on plain `127.0.0.1:8000` while testing Facebook: switch to
+  `https://local.mladis.com`.
+- `dig local.mladis.com` returns Cloudflare public IPs but browsers or Python
+  still resolve `fd10:aec2:5dae::`: flush the Mac resolver cache with
+  `sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder`, then retry
   `https://local.mladis.com`.

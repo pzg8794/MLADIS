@@ -289,14 +289,28 @@ start_named_tunnel() {
 
   local existing_named_pids
   existing_named_pids="$(pgrep -f "cloudflared.*tunnel.*run.*$MLADIS_TUNNEL_NAME" || true)"
+  local existing_bare_pids
+  existing_bare_pids="$(pgrep -f "^cloudflared tunnel run$" || true)"
+  existing_named_pids="$(printf "%s\n%s\n" "$existing_named_pids" "$existing_bare_pids" | awk 'NF' | sort -u)"
   if [[ -n "$existing_named_pids" ]]; then
-    echo
-    echo "Reusing stable Cloudflare tunnel '$MLADIS_TUNNEL_NAME'."
-    echo "Public live URL: $PUBLIC_URL"
-    echo "Facebook OAuth origin for this run: $SOCIAL_AUTH_FACEBOOK_ORIGIN"
-    echo "Facebook callback URL does not rotate:"
-    echo "$SOCIAL_AUTH_FACEBOOK_ORIGIN/oauth/facebook/login/callback/"
-    return
+    if truthy "$MLADIS_RESTART_EXISTING"; then
+      echo
+      echo "Stopping existing stable Cloudflare tunnel '$MLADIS_TUNNEL_NAME' before restart..."
+      kill $existing_named_pids >/dev/null 2>&1 || true
+      sleep 1
+      existing_named_pids="$(printf "%s\n%s\n" "$(pgrep -f "cloudflared.*tunnel.*run.*$MLADIS_TUNNEL_NAME" || true)" "$(pgrep -f "^cloudflared tunnel run$" || true)" | awk 'NF' | sort -u)"
+      if [[ -n "$existing_named_pids" ]]; then
+        kill -9 $existing_named_pids >/dev/null 2>&1 || true
+      fi
+    else
+      echo
+      echo "Reusing stable Cloudflare tunnel '$MLADIS_TUNNEL_NAME'."
+      echo "Public live URL: $PUBLIC_URL"
+      echo "Facebook OAuth origin for this run: $SOCIAL_AUTH_FACEBOOK_ORIGIN"
+      echo "Facebook callback URL does not rotate:"
+      echo "$SOCIAL_AUTH_FACEBOOK_ORIGIN/oauth/facebook/login/callback/"
+      return
+    fi
   fi
 
   : > "$TUNNEL_LOG"
