@@ -32,6 +32,18 @@ export SITE_NAME="${SITE_NAME:-MLADIS Local}"
 "${PYTHON_BIN}" manage.py test bookings.test_signin_contracts.SignInContractTests
 
 bash -n ../run_mladis_live.command
+test ! -e ../preview_mladis_ui.command
+grep -q 'MLADIS_PUBLIC_TUNNEL="${MLADIS_PUBLIC_TUNNEL:-1}"' ../run_mladis_live.command
+grep -q 'MLADIS_BUILD_FRONTEND="${MLADIS_BUILD_FRONTEND:-1}"' ../run_mladis_live.command
+grep -q 'MLADIS_RESTART_EXISTING="${MLADIS_RESTART_EXISTING:-1}"' ../run_mladis_live.command
+grep -q 'MLADIS_TUNNEL_STARTUP_TIMEOUT="${MLADIS_TUNNEL_STARTUP_TIMEOUT:-45}"' ../run_mladis_live.command
+grep -q 'MLADIS_TUNNEL_LOG="${MLADIS_TUNNEL_LOG:-/private/tmp/mladis-tunnel.log}"' ../run_mladis_live.command
 grep -q 'MLADIS_STARTUP_TIMEOUT="${MLADIS_STARTUP_TIMEOUT:-60}"' ../run_mladis_live.command
 grep -q 'MLADIS_COLLECTSTATIC="${MLADIS_COLLECTSTATIC:-0}"' ../run_mladis_live.command
 grep -q 'install_requirements_if_needed' ../run_mladis_live.command
+grep -q 'start_public_tunnel_if_needed' ../run_mladis_live.command
+grep -q 'grep -aEo' ../run_mladis_live.command
+grep -q 'npm run build:django' ../run_mladis_live.command
+grep -q 'export SOCIAL_AUTH_FACEBOOK_ORIGIN="$facebook_origin"' ../run_mladis_live.command
+grep -q 'Use the public URL printed below for browser testing when Facebook login matters.' ../run_mladis_live.command
+grep -q 'Tunnel log: $TUNNEL_LOG' ../run_mladis_live.command

@@ -18,10 +18,15 @@ From the parent `MLADIS` folder, use the one-file launcher:
 ```
 
 The launcher uses `airbnb_agent/.env`, creates or reuses `.venv`, installs
-requirements when `requirements.txt` changes, runs migrations, syncs OAuth
-apps, runs Django checks, starts `http://127.0.0.1:8000`, and starts a
-temporary Cloudflare tunnel when `cloudflared` is installed. The tunnel URL can
-be used for live demos without going through Google Cloud.
+requirements when `requirements.txt` changes, builds the React UI into Django
+static assets, runs migrations, syncs OAuth apps, runs Django checks, stops
+stale Django/tunnel processes on the same port, starts Django at
+`http://127.0.0.1:8000`, and starts a temporary Cloudflare tunnel when
+`cloudflared` is installed. The printed tunnel URL is the browser URL to use
+when Facebook sign-in matters. The launcher exports the active quick-tunnel URL
+as `SOCIAL_AUTH_FACEBOOK_ORIGIN` for the Django process it starts unless an
+explicit shell override is provided.
+The active tunnel output is also written to `/private/tmp/mladis-tunnel.log`.
 
 Useful options:
 
@@ -30,6 +35,7 @@ MLADIS_PUBLIC_TUNNEL=0 ./run_mladis_live.command
 MLADIS_CHECK_ONLY=1 ./run_mladis_live.command
 MLADIS_SERVER=gunicorn ./run_mladis_live.command
 MLADIS_FORCE_INSTALL=1 ./run_mladis_live.command
+MLADIS_FORCE_NPM_INSTALL=1 ./run_mladis_live.command
 MLADIS_COLLECTSTATIC=1 ./run_mladis_live.command
 MLADIS_STARTUP_TIMEOUT=120 ./run_mladis_live.command
 ```
@@ -38,7 +44,9 @@ For repeated development, local `collectstatic` is skipped unless
 `MLADIS_COLLECTSTATIC=1`. Production deploy still collects static files through
 the deployment script.
 
-Manual local setup is still available:
+Manual local setup is for one-off debugging only. Do not use it for normal
+MLADIS testing, auth testing, or UI review, because it bypasses the one-file
+startup contract:
 
 ```bash
 python -m venv .venv
@@ -61,7 +69,9 @@ middleware, or social launch routes, run:
 bash scripts/test_signin_contracts.sh
 ```
 
-Use `http://127.0.0.1:8000` for auth testing. Do not test Django/allauth login
+Use the printed `https://...trycloudflare.com` URL for browser testing when
+Facebook sign-in matters. `http://127.0.0.1:8000` is the internal Django origin
+and the Google/GitHub local callback origin. Do not test Django/allauth login
 through the Vite dev server at `http://127.0.0.1:5173`.
 
 The full contract is documented in

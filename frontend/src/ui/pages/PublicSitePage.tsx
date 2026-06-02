@@ -68,17 +68,17 @@ const copy = {
     navAbout: 'About',
     navAccount: 'Account',
     signIn: 'Sign in',
-    heroTitle: 'Modern vacation stays in Santo Domingo Norte.',
+    heroTitle: 'Vacation stays in Santo Domingo Norte.',
     heroText:
       'Pool-ready apartments near Colinas del Arroyo II, Los Guaricanos, Jacobo Majluta, malls, restaurants, and the Embassy corridor.',
     primary: 'Start booking',
     secondary: 'Explore stays',
     proof: 'Airbnb review signals',
     staysTitle: 'Choose your stay',
-    staysText: 'Each apartment keeps its own images, guest proof, rules, and direct booking path.',
+    staysText: 'Each apartment has its own photos, guest reviews, house rules, and a direct booking path.',
     areaTitle: 'More than a place to sleep',
     areaText:
-      'Sell the trip, not only the room: city errands, food, malls, beach-day options, and hosted support from Santo Domingo Norte.',
+      'Beyond the room: city errands, food, malls, beach-day options, and hosted support from Santo Domingo Norte.',
     bookingTitle: 'Ask first, then book with confidence',
     bookingText:
       'The agent sits beside the booking form so guests can ask about rules, deposits, location, and the best fit before starting a reservation.',
@@ -109,17 +109,17 @@ const copy = {
     navAbout: 'Nosotros',
     navAccount: 'Cuenta',
     signIn: 'Entrar',
-    heroTitle: 'Estadías modernas en Santo Domingo Norte.',
+    heroTitle: 'Estadías en Santo Domingo Norte.',
     heroText:
       'Apartamentos con piscina cerca de Colinas del Arroyo II, Los Guaricanos, Jacobo Majluta, plazas, restaurantes y la zona de la Embajada.',
     primary: 'Empezar reserva',
     secondary: 'Ver estadías',
     proof: 'Señales de reseñas Airbnb',
     staysTitle: 'Elige tu estadía',
-    staysText: 'Cada apartamento conserva sus propias imágenes, prueba social, reglas y ruta de reserva.',
+    staysText: 'Cada apartamento tiene sus propias fotos, reseñas de huéspedes, reglas y ruta de reserva directa.',
     areaTitle: 'Más que un lugar para dormir',
     areaText:
-      'Vendemos el viaje completo: diligencias, comida, plazas, playa y apoyo anfitrión desde Santo Domingo Norte.',
+      'Más allá del cuarto: diligencias, comida, plazas, playa y apoyo anfitrión desde Santo Domingo Norte.',
     bookingTitle: 'Pregunta primero y reserva con confianza',
     bookingText:
       'El agente está al lado del formulario para responder sobre reglas, depósito, ubicación y el mejor apartamento antes de iniciar la reserva.',

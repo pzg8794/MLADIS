@@ -131,6 +131,26 @@ class SignInContractTests(TestCase):
             ["https://facebook-contract.trycloudflare.com/oauth/facebook/login/callback/"],
         )
 
+    @override_settings(
+        SOCIAL_AUTH_PROVIDER_ORIGINS={
+            "google": "http://127.0.0.1:8000",
+            "github": "http://127.0.0.1:8000",
+            "facebook": "",
+            "microsoft": "",
+        }
+    )
+    def test_facebook_tunnel_request_origin_can_drive_callback(self):
+        query = self._oauth_redirect_query(
+            "facebook_login",
+            host="active-facebook-tunnel.trycloudflare.com",
+            secure=True,
+        )
+
+        self.assertEqual(
+            query["redirect_uri"],
+            ["https://active-facebook-tunnel.trycloudflare.com/oauth/facebook/login/callback/"],
+        )
+
     def test_oauth_diagnostics_route_shows_provider_callback_urls(self):
         self._sync_env_apps()
         staff = get_user_model().objects.create_user("oauth", "oauth@example.com", "secret", is_staff=True)

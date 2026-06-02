@@ -5,16 +5,27 @@ Private parent repository for the MLADIS source corpus and future Airbnb agent w
 ## One-File Live Launcher
 
 Run `./run_mladis_live.command` from this folder, or double-click it in Finder.
-It uses `airbnb_agent/.env`, prepares the Django app, starts the local site at
-`http://127.0.0.1:8000`, and opens a temporary Cloudflare public URL when
-`cloudflared` is installed.
+This is the only normal way to run the local MLADIS site. It uses
+`airbnb_agent/.env`, builds the React UI into Django static assets, prepares the
+Django app, stops stale Django/tunnel processes on the same port, starts Django
+at `http://127.0.0.1:8000`, and opens a temporary Cloudflare public URL when
+`cloudflared` is installed. For quick-tunnel runs, it exports the active tunnel
+URL as `SOCIAL_AUTH_FACEBOOK_ORIGIN` for the Django process it starts, so stale
+Facebook quick-tunnel values in `.env` do not silently steer the browser to an
+old host.
+
+Use the printed `https://...trycloudflare.com` URL for browser testing when
+Facebook sign-in matters. Use `http://127.0.0.1:8000` as the internal local
+Django origin and for Google/GitHub local callbacks. Do not use the Vite dev
+server at `http://127.0.0.1:5173` for Django/allauth sign-in testing. If the
+Terminal scrollback moves, the active tunnel output is in
+`/private/tmp/mladis-tunnel.log`.
 
 If the Google Drive checkout is slow, clone this repo to a fast local path such
 as `~/Documents/MLADIS-dev` and copy only `airbnb_agent/.env` from the Drive
 checkout. Use GitHub branches as the source of truth between the two locations.
 
-For social sign-in work, `http://127.0.0.1:8000` is the source of truth. The
-sign-in contract and anti-regression tests live in
+For social sign-in work, the run/sign-in contract and anti-regression tests live in
 [docs/sign-in-contract.md](docs/sign-in-contract.md). Run the contract locally
 with:
 

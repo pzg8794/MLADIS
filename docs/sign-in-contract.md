@@ -6,11 +6,19 @@ or OAuth launch routes must keep these guarantees true.
 
 ## Source Of Truth
 
-- The local Django app runs at `http://127.0.0.1:8000`.
+- `./run_mladis_live.command` is the only normal local startup path for MLADIS.
+- The launcher starts Django at `http://127.0.0.1:8000` and, by default,
+  starts a Cloudflare tunnel for browser testing.
+- Use the printed `https://...trycloudflare.com` URL for browser testing when
+  Facebook sign-in matters.
+- Treat `http://127.0.0.1:8000` as the internal Django origin and the
+  Google/GitHub local callback origin, not as the Facebook browser test URL.
 - Do not use the Vite dev server at `http://127.0.0.1:5173` as the auth source
   of truth. It can preview frontend assets, but Django/allauth owns sign-in.
-- Keep only one local app server active while testing auth.
-- Use `./run_mladis_live.command` from the repo root for normal local startup.
+- Do not start extra app servers with ad hoc `python manage.py runserver`,
+  `npm run dev`, `nohup`, background shell commands, or preview scripts during
+  normal testing.
+- Keep only one launcher-managed local app server active while testing auth.
 - If the synced Google Drive path becomes slow or flaky, work from a fast clone
   such as `~/Documents/MLADIS-dev` and push changes through GitHub. Copy only
   `airbnb_agent/.env` from the Drive checkout when you need the same local
@@ -20,7 +28,9 @@ or OAuth launch routes must keep these guarantees true.
 
 - Google local origin: `SOCIAL_AUTH_GOOGLE_ORIGIN=http://127.0.0.1:8000`.
 - GitHub local origin: `SOCIAL_AUTH_GITHUB_ORIGIN=http://127.0.0.1:8000`.
-- Facebook local origin: `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://<active-tunnel>.trycloudflare.com`.
+- Facebook local origin: the launcher exports
+  `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://<active-tunnel>.trycloudflare.com` for
+  the current run after it captures the Cloudflare URL.
 - Leave `SOCIAL_AUTH_CANONICAL_ORIGIN` empty for mixed local testing. It is only
   a fallback, not the main local callback setting.
 - Keep `ACCOUNT_DEFAULT_HTTP_PROTOCOL=http` for plain local `127.0.0.1`.
@@ -47,9 +57,12 @@ GitHub:   http://127.0.0.1:8000/oauth/github/login/callback/
 Facebook: https://<active-tunnel>.trycloudflare.com/oauth/facebook/login/callback/
 ```
 
-The active Facebook tunnel host changes when the tunnel restarts. When it
-changes, update `SOCIAL_AUTH_FACEBOOK_ORIGIN` in `airbnb_agent/.env` and update
-the Meta app callback URL to match.
+The active Facebook tunnel host changes when the tunnel restarts. The launcher
+exports the active URL for the Django process it starts, even if
+`airbnb_agent/.env` still has an older quick-tunnel value. The Meta app callback
+must still allow the exact active tunnel callback while the tunnel is running.
+Use `MLADIS_SOCIAL_AUTH_FACEBOOK_ORIGIN=https://stable-host.example` only when
+testing through a stable named tunnel or domain.
 
 ## Local Test Command
 
@@ -80,24 +93,40 @@ The tests assert:
 
 ## Launcher Contract
 
-The launcher should be fast enough for repeated local testing:
+The launcher should be the one-file way to see normal code and UI changes:
 
+- `MLADIS_PUBLIC_TUNNEL` defaults to `1`.
+- The launcher captures the current Cloudflare URL before starting Django and
+  exports it as `SOCIAL_AUTH_FACEBOOK_ORIGIN` for that process unless
+  `MLADIS_SOCIAL_AUTH_FACEBOOK_ORIGIN` or an explicit shell
+  `SOCIAL_AUTH_FACEBOOK_ORIGIN` is provided.
+- `MLADIS_BUILD_FRONTEND` defaults to `1`, so React text/UI changes are rebuilt
+  before Django starts.
+- `MLADIS_RESTART_EXISTING` defaults to `1`, so stale local Django/tunnel
+  processes on the same port are stopped first.
+- `MLADIS_TUNNEL_LOG` defaults to `/private/tmp/mladis-tunnel.log`; use this
+  log to recover the current quick-tunnel URL if the Terminal scrollback moves.
 - `MLADIS_STARTUP_TIMEOUT` defaults to `60` seconds.
 - Dependency install is skipped when `requirements.txt` has not changed.
 - `collectstatic` is skipped for local startup unless `MLADIS_COLLECTSTATIC=1`.
 - Use `MLADIS_FORCE_INSTALL=1` when you intentionally want to reinstall Python
   dependencies.
+- Use `MLADIS_FORCE_NPM_INSTALL=1` when you intentionally want to reinstall
+  frontend dependencies.
 - Use `MLADIS_STARTUP_TIMEOUT=120` or higher if the repo is on a slow synced
   Drive path and first startup is still slow.
+- Use `MLADIS_PUBLIC_TUNNEL=0` only for emergency local-only debugging.
+  Facebook sign-in is expected not to work in that mode.
 
 ## Troubleshooting
 
-- Facebook says the connection is not secure: start the Cloudflare tunnel, set
-  `SOCIAL_AUTH_FACEBOOK_ORIGIN` to the active HTTPS tunnel, and save the exact
-  HTTPS callback in Meta.
+- Facebook says the connection is not secure: run `./run_mladis_live.command`,
+  use the printed HTTPS tunnel URL, and save the exact HTTPS callback in Meta.
 - Google says `redirect_uri_mismatch`: add
   `http://127.0.0.1:8000/oauth/google/login/callback/` to the Google OAuth app.
 - GitHub says `redirect_uri` is not associated: add
   `http://127.0.0.1:8000/oauth/github/login/callback/` to the GitHub OAuth app.
 - The page opens on `127.0.0.1:5173`: stop the Vite server for auth testing and
-  use `http://127.0.0.1:8000/accounts/login/`.
+  run `./run_mladis_live.command`.
+- The page opens on plain `127.0.0.1:8000` while testing Facebook: switch to the
+  printed tunnel URL from the launcher.
