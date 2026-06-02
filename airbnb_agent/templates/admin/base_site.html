@@ -6,7 +6,10 @@
 {% block extrastyle %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'bookings/admin/mladis_admin.css' %}">
+<link rel="stylesheet" href="{% static 'bookings/admin/modern_admin.css' %}">
 {% endblock %}
+
+{% block bodyclass %}{{ block.super }} modern-admin-django-page{% endblock %}
 
 {% block branding %}
 <div class="mladis-admin-brand">
@@ -25,7 +28,7 @@
 {% if has_permission %}
 <nav class="mladis-admin-shortcuts" aria-label="{% trans 'MLADIS admin shortcuts' %}">
   <a class="primary" href="{% url 'admin:bookings_bookableitem_calendar' %}">{% trans "Business calendar" %}</a>
-  <a href="{% url 'bookings:ops-dashboard' %}">{% trans "Owner dashboard" %}</a>
+  <a href="{% url 'bookings:ops-dashboard' %}">{% trans "Ops dashboard" %}</a>
   <a href="{% url 'admin:bookings_bookinginquiry_changelist' %}">{% trans "Reservations" %}</a>
   <a href="{% url 'admin:bookings_customerprofile_changelist' %}">{% trans "Customers" %}</a>
   <a href="{% url 'admin:bookings_airbnbguestrecord_changelist' %}">{% trans "Airbnb guests" %}</a>

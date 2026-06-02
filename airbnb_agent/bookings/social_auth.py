@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib.sites.models import Site
@@ -68,8 +69,12 @@ def _env_credentials(provider):
     return client_id, secret
 
 
+def get_provider_spec(provider_id):
+    return next((item for item in SOCIAL_LOGIN_PROVIDER_SPECS if item["id"] == provider_id), None)
+
+
 def is_provider_configured(provider_id):
-    provider = next((item for item in SOCIAL_LOGIN_PROVIDER_SPECS if item["id"] == provider_id), None)
+    provider = get_provider_spec(provider_id)
     if provider is None:
         return False
 
@@ -84,6 +89,69 @@ def is_provider_configured(provider_id):
         return SocialApp.objects.filter(provider=provider_id, sites__id=settings.SITE_ID).exists()
     except (OperationalError, ProgrammingError):
         return False
+
+
+def effective_social_auth_origin(request=None):
+    """Return the origin OAuth providers will see for callback generation."""
+    canonical_origin = getattr(settings, "SOCIAL_AUTH_CANONICAL_ORIGIN", "").strip().rstrip("/")
+    if canonical_origin:
+        return canonical_origin
+    if request is None:
+        return ""
+    return request_origin(request)
+
+
+def request_origin(request):
+    return f"{request.scheme}://{request.get_host()}".rstrip("/")
+
+
+def provider_auth_origin(provider_id, request=None):
+    """Return the provider-specific origin used to generate OAuth callbacks."""
+    provider_origins = getattr(settings, "SOCIAL_AUTH_PROVIDER_ORIGINS", {}) or {}
+    provider_origin = str(provider_origins.get(provider_id, "")).strip().rstrip("/")
+    if provider_origin:
+        return provider_origin
+    return effective_social_auth_origin(request)
+
+
+def provider_from_oauth_path(path):
+    parts = path.strip("/").split("/")
+    if len(parts) >= 3 and parts[0] == "oauth" and parts[2] == "login":
+        provider_id = parts[1]
+        if get_provider_spec(provider_id):
+            return provider_id
+    return ""
+
+
+def social_launch_url(provider_id, request=None):
+    launch_url = reverse("bookings:social-provider-launch", kwargs={"provider_id": provider_id})
+    if request is None:
+        return launch_url
+    next_url = request.GET.get("next", "")
+    if next_url.startswith("/"):
+        return f"{launch_url}?{urlencode({'next': next_url})}"
+    return launch_url
+
+
+def provider_needs_origin_bridge(provider_id, request=None):
+    if request is None or request.get_host() == "testserver":
+        return False
+    target_origin = provider_auth_origin(provider_id, request)
+    return bool(target_origin and request_origin(request) != target_origin)
+
+
+def is_secure_social_auth_origin(request=None):
+    return effective_social_auth_origin(request).startswith("https://")
+
+
+def provider_launch_block(provider_id, request=None):
+    """Return provider-specific launch blockers.
+
+    Facebook requires a secure callback, but local development now solves that
+    by redirecting OAuth traffic to SOCIAL_AUTH_CANONICAL_ORIGIN instead of
+    disabling the configured provider in the UI.
+    """
+    return None
 
 
 def sync_social_apps_from_env():
@@ -125,7 +193,7 @@ def sync_social_apps_from_env():
     return configured
 
 
-def get_social_login_providers():
+def get_social_login_providers(request=None):
     env_configured = set()
     admin_configured = set()
     hidden_unconfigured = set(getattr(settings, "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS", []))
@@ -143,18 +211,31 @@ def get_social_login_providers():
     for provider in SOCIAL_LOGIN_PROVIDER_SPECS:
         try:
             login_url = reverse(provider["url_name"])
+            next_url = request.GET.get("next", "") if request else ""
+            if next_url.startswith("/"):
+                login_url = f"{login_url}?{urlencode({'next': next_url})}"
+            launch_url = social_launch_url(provider["id"], request)
         except NoReverseMatch:
             login_url = ""
+            launch_url = ""
         is_configured = provider["id"] in env_configured or provider["id"] in admin_configured
         if provider["id"] in hidden_unconfigured and not is_configured:
             continue
+        block = provider_launch_block(provider["id"], request) if is_configured and login_url else None
+        is_launchable = is_configured and bool(login_url) and block is None
         providers.append(
             {
                 "id": provider["id"],
                 "label": provider["label"],
                 "button_label": f"Continue with {provider['label']}",
                 "login_url": login_url,
+                "launch_url": launch_url,
+                "auth_origin": provider_auth_origin(provider["id"], request) if login_url else "",
+                "needs_origin_bridge": provider_needs_origin_bridge(provider["id"], request) if login_url else False,
                 "is_configured": is_configured and bool(login_url),
+                "is_launchable": is_launchable,
+                "disabled_reason": block["reason"] if block else ("setup needed" if not is_configured else ""),
+                "help_text": block["help_text"] if block else "",
                 "configured_from_env": provider["id"] in env_configured,
                 "configured_from_admin": provider["id"] in admin_configured,
                 "client_id_env": provider["client_id_env"],

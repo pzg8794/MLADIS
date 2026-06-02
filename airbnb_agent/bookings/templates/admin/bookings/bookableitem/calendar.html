@@ -1,7 +1,11 @@
 {% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block bodyclass %}{{ block.super }} modern-admin-calendar-page{% endblock %}
 
 {% block extrastyle %}
 {{ block.super }}
+<link rel="stylesheet" href="{% static 'bookings/admin/modern_admin.css' %}">
 <style>
   :root {
     --calendar-ink: #17322d;
@@ -438,8 +442,55 @@
 {% endblock %}
 
 {% block content %}
-<div id="content-main">
-  <div class="calendar-shell">
+<div class="modern-admin-shell modern-admin-shell--calendar">
+  <aside class="modern-admin-sidebar">
+    <a class="modern-admin-brand" href="{% url 'admin:index' %}">
+      <span>M</span>
+      <div>
+        <strong>MLADIS</strong>
+        <small>Stay operations</small>
+      </div>
+    </a>
+    <nav aria-label="Admin calendar sections">
+      <a href="{% url 'admin:index' %}">Admin home</a>
+      <a href="{% url 'bookings:ops-dashboard' %}">Dashboard</a>
+      <a href="{% url 'bookings:ops-reservations' %}">Reservations</a>
+      <a href="{% url 'bookings:ops-reports' %}">Reports</a>
+      <a href="{% url 'bookings:ops-customers' %}">Customers</a>
+      <a href="{% url 'bookings:ops-deposits' %}">Deposits</a>
+      <a href="{% url 'bookings:ops-agent' %}">Agent</a>
+      <a class="is-active" href="{% url 'admin:bookings_bookableitem_calendar' %}">Calendar</a>
+    </nav>
+    <div class="modern-admin-sidecard">
+      <span>Calendar source of truth</span>
+      <p>Blocks, nightly prices, and reservation overlap checks still save through Django admin permissions.</p>
+    </div>
+    <a class="modern-admin-back" href="{% url 'bookings:home' %}">Back to live site</a>
+  </aside>
+
+  <main class="modern-admin-main">
+    <header class="modern-admin-topbar">
+      <div>
+        <p>Modern operations cockpit</p>
+        <h1>Business calendar</h1>
+      </div>
+      <div class="modern-admin-topbar__actions">
+        <a href="{% url 'admin:index' %}">Admin</a>
+        <a href="{% url 'admin:bookings_bookableitem_changelist' %}">Stays</a>
+        <a href="{% url 'bookings:ops-dashboard' %}">Dashboard</a>
+      </div>
+    </header>
+
+    <section class="modern-admin-calendar-summary">
+      <div>
+        <span>Calendar workspace</span>
+        <strong>{% if selected_item %}{{ selected_item.name }}{% else %}No stay selected{% endif %}</strong>
+        <p>Use the month controls, select ranges, block dates, and set nightly price overrides without leaving this workspace.</p>
+      </div>
+    </section>
+
+    <div id="content-main" class="modern-admin-calendar-content">
+      <div class="calendar-shell">
   <section class="calendar-shell__hero">
     <div>
       <p class="calendar-shell__eyebrow">Availability command center</p>
@@ -616,7 +667,9 @@
   {% else %}
   <div class="calendar-panel"><h2>No stays yet</h2><p>Create a stay in Bookable items before using the business calendar.</p></div>
   {% endif %}
-  </div>
+      </div>
+    </div>
+  </main>
 </div>
 <script>
 document.addEventListener("DOMContentLoaded", function () {

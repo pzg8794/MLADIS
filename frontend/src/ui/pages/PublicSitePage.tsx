@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { ChatKit, useChatKit } from '@openai/chatkit-react';
 import {
   ArrowUpRight,
   Bot,
@@ -18,6 +19,9 @@ import {
   Sparkles,
   Star,
   Users,
+  Clock,
+  XCircle,
+  DollarSign,
 } from 'lucide-react';
 import { AccountFactory } from '../../application/AccountFactory';
 import { PublicSiteFactory } from '../../application/PublicSiteFactory';
@@ -25,6 +29,36 @@ import { AccountReservation, AccountSnapshot, PublicSiteSnapshot, PublicStay } f
 
 type Language = 'en' | 'es';
 type LegalKind = 'business' | 'privacy' | 'terms' | 'data-deletion';
+
+
+type AdminReservation = {
+  id: number;
+  guestName: string;
+  guestEmail: string;
+  stayName: string;
+  checkIn: string;
+  checkOut: string;
+  guests: number;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  phone: string;
+  message: string;
+  totalDisplay: string;
+  createdAt: string;
+};
+
+type AdminSnapshot = {
+  reservations: AdminReservation[];
+  totalRevenue: string;
+  pendingCount: number;
+  confirmedCount: number;
+  cancelledCount: number;
+};
+
+type AuthNavState = {
+  status: 'checking' | 'anonymous' | 'authenticated';
+  name?: string;
+  isStaff?: boolean;
+};
 
 const copy = {
   en: {
@@ -172,6 +206,58 @@ function PublicNav({
   onLanguageChange: (language: Language) => void;
 }) {
   const t = copy[language];
+  const [auth, setAuth] = useState<AuthNavState>({ status: 'checking' });
+
+  useEffect(() => {
+    let active = true;
+
+    fetch('/api/account/summary/', {
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    })
+      .then(async (response) => {
+        if (!active) return;
+        const contentType = response.headers.get('content-type') || '';
+        if (!response.ok || !contentType.includes('application/json')) {
+          setAuth({ status: 'anonymous' });
+          return;
+        }
+
+        const data = await response.json() as {
+          authenticated?: boolean;
+          profile?: {
+            name?: string;
+            email?: string;
+            is_staff?: boolean;
+            is_superuser?: boolean;
+          } | null;
+          is_staff?: boolean;
+          is_superuser?: boolean;
+        };
+
+        if (!data.profile || data.authenticated === false) {
+          setAuth({ status: 'anonymous' });
+          return;
+        }
+
+        setAuth({
+          status: 'authenticated',
+          name: data.profile.name || data.profile.email,
+          isStaff: Boolean(data.profile.is_staff || data.profile.is_superuser || data.is_staff || data.is_superuser),
+        });
+      })
+      .catch(() => {
+        if (active) setAuth({ status: 'anonymous' });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const isAuthenticated = auth.status === 'authenticated';
+  const showAdmin = isAuthenticated && auth.isStaff === true;
+
   return (
     <header className="public-nav">
       <a className="public-brand" href="/">
@@ -188,8 +274,34 @@ function PublicNav({
         <button type="button" onClick={() => onLanguageChange(language === 'en' ? 'es' : 'en')}>
           <Globe2 size={16} /> {language === 'en' ? 'ES' : 'EN'}
         </button>
-        <a href="/accounts/"><Home size={16} /> {t.navAccount}</a>
-        <a href="/accounts/login/?next=/accounts/"><LogIn size={16} /> {t.signIn}</a>
+
+        {isAuthenticated ? (
+          <>
+            <a href="/accounts/" title={auth.name ? `Signed in as ${auth.name}` : 'Signed in'}>
+              <Home size={16} /> {t.navAccount}
+            </a>
+            {showAdmin && (
+              <a href="/ops/admin/">
+                <ShieldCheck size={16} /> Admin
+              </a>
+            )}
+            <form method="post" action="/accounts/logout/" className="public-nav-logout">
+              <input type="hidden" name="csrfmiddlewaretoken" value={csrfToken()} />
+              <button type="submit">
+                <LogIn size={16} /> Sign out
+              </button>
+            </form>
+          </>
+        ) : (
+          <>
+            <a href="/accounts/">
+              <Home size={16} /> {t.navAccount}
+            </a>
+            <a href="/accounts/login/?next=/accounts/">
+              <LogIn size={16} /> {auth.status === 'checking' ? 'Checking...' : t.signIn}
+            </a>
+          </>
+        )}
       </div>
     </header>
   );
@@ -218,18 +330,96 @@ function StayCard({ stay, language }: { stay: PublicStay; language: Language }) 
   );
 }
 
-function AgentBookingSection({
-  snapshot,
-  stay,
-  language,
-}: {
-  snapshot: PublicSiteSnapshot;
-  stay?: PublicStay | null;
-  language: Language;
-}) {
-  const t = copy[language];
-  const token = csrfToken();
-  const submitted = new URLSearchParams(window.location.search).get('submitted') === '1';
+function chatKitOptions(language: Language) {
+  return {
+    frameTitle: copy[language].agentTitle,
+    theme: {
+      colorScheme: 'light' as const,
+      radius: 'soft' as const,
+      density: 'compact' as const,
+    },
+    thread: { autoScroll: true },
+    history: {
+      enabled: true,
+      showDelete: false,
+      showRename: false,
+    },
+    header: {
+      title: { text: copy[language].agentTitle },
+    },
+    composer: {
+      placeholder:
+        language === 'en'
+          ? 'Ask about dates, guest count, rules, or deposit holds.'
+          : 'Pregunta por fechas, cantidad de huéspedes, reglas o depósito.',
+    },
+    startScreen: {
+      greeting: copy[language].agentText,
+      prompts:
+        language === 'en'
+          ? [
+            { label: 'Check availability', prompt: 'Do you have availability for next weekend?' },
+            { label: 'Deposit hold', prompt: 'How does the secure deposit hold work?' },
+            { label: 'Best fit', prompt: 'Which stay is best for four guests?' },
+          ]
+          : [
+            { label: 'Ver disponibilidad', prompt: 'Tienen disponibilidad para el próximo fin de semana?' },
+            { label: 'Depósito', prompt: 'Cómo funciona el depósito seguro?' },
+            { label: 'Mejor opción', prompt: 'Cuál estadía conviene para cuatro huéspedes?' },
+          ],
+    },
+  };
+}
+
+function ManagedChatKitAgent({ sessionUrl, token, language }: { sessionUrl: string; token: string; language: Language }) {
+  const { control } = useChatKit({
+    ...chatKitOptions(language),
+    api: {
+      async getClientSecret() {
+        const response = await fetch(sessionUrl, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': token,
+          },
+        });
+        const data = await response.json() as { client_secret?: string; error?: string };
+        if (!response.ok || !data.client_secret) {
+          throw new Error(data.error || 'Could not start the booking chat.');
+        }
+        return data.client_secret;
+      },
+    },
+  });
+
+  return (
+    <div className="public-agent-chatkit-shell">
+      <ChatKit control={control} className="public-agent-chatkit" />
+    </div>
+  );
+}
+
+function CustomChatKitAgent({ apiUrl, domainKey, language }: { apiUrl: string; domainKey: string; language: Language }) {
+  const { control } = useChatKit({
+    ...chatKitOptions(language),
+    api: {
+      url: apiUrl,
+      domainKey,
+      fetch(input, init) {
+        return fetch(input, { ...init, credentials: 'include' });
+      },
+    },
+  });
+
+  return (
+    <div className="public-agent-chatkit-shell">
+      <ChatKit control={control} className="public-agent-chatkit" />
+    </div>
+  );
+}
+
+function LegacyAgentPrompt({ stay, token }: { stay?: PublicStay | null; token: string }) {
   const [agentMessage, setAgentMessage] = useState('');
   const [agentReply, setAgentReply] = useState('');
   const [agentBusy, setAgentBusy] = useState(false);
@@ -265,6 +455,40 @@ function AgentBookingSection({
   }
 
   return (
+    <>
+      <form className="public-agent-prompt" onSubmit={askAgent}>
+        <label>
+          <MessageSquareText size={16} />
+          <textarea
+            name="message"
+            value={agentMessage}
+            onChange={(event) => setAgentMessage(event.target.value)}
+            placeholder="Can I bring family visitors? What are the pool hours?"
+          />
+        </label>
+        <button type="submit" disabled={agentBusy}>{agentBusy ? 'Asking...' : 'Ask agent'}</button>
+      </form>
+      {agentReply && <p className="public-agent-reply">{agentReply}</p>}
+    </>
+  );
+}
+
+function AgentBookingSection({
+  snapshot,
+  stay,
+  language,
+}: {
+  snapshot: PublicSiteSnapshot;
+  stay?: PublicStay | null;
+  language: Language;
+}) {
+  const t = copy[language];
+  const token = csrfToken();
+  const submitted = new URLSearchParams(window.location.search).get('submitted') === '1';
+  const managedChatKit = snapshot.chatKit?.mode === 'managed' ? snapshot.chatKit : null;
+  const customChatKit = snapshot.chatKit?.mode === 'custom' ? snapshot.chatKit : null;
+
+  return (
     <section id="booking" className="public-section public-booking">
       <div className="public-section__heading public-booking__intro">
         <h2>{t.bookingTitle}</h2>
@@ -274,25 +498,37 @@ function AgentBookingSection({
         <article className="public-agent-card">
           <span><Bot size={19} /> {t.agentTitle}</span>
           <p>{t.agentText}</p>
-          <form className="public-agent-prompt" onSubmit={askAgent}>
-            <label>
-              <MessageSquareText size={16} />
-              <textarea
-                name="message"
-                value={agentMessage}
-                onChange={(event) => setAgentMessage(event.target.value)}
-                placeholder="Can I bring family visitors? What are the pool hours?"
-              />
-            </label>
-            <button type="submit" disabled={agentBusy}>{agentBusy ? 'Asking...' : 'Ask agent'}</button>
-          </form>
-          {agentReply && <p className="public-agent-reply">{agentReply}</p>}
+          {managedChatKit?.sessionUrl ? (
+            <ManagedChatKitAgent sessionUrl={managedChatKit.sessionUrl} token={token} language={language} />
+          ) : customChatKit?.apiUrl && customChatKit.domainKey ? (
+            <CustomChatKitAgent apiUrl={customChatKit.apiUrl} domainKey={customChatKit.domainKey} language={language} />
+          ) : (
+            <LegacyAgentPrompt stay={stay} token={token} />
+          )}
           <div className="public-social-card">
             <strong>{t.social}</strong>
             <div>
-              <a href="/accounts/login/?next=/accounts/">Google</a>
-              <a href="/accounts/login/?next=/accounts/">Facebook</a>
-              <a href="/accounts/login/?next=/accounts/">GitHub</a>
+              {snapshot.socialProviders.length > 0 ? (
+                snapshot.socialProviders.map((provider) => (
+                  provider.isLaunchable ? (
+                    <form method="post" action={provider.loginUrl} key={provider.id}>
+                      <input type="hidden" name="csrfmiddlewaretoken" value={token} />
+                      <button type="submit">{provider.label}</button>
+                    </form>
+                  ) : (
+                    <span
+                      className="public-social-card__disabled"
+                      title={provider.helpText || provider.disabledReason}
+                      key={provider.id}
+                    >
+                      {provider.label}
+                      <small>{provider.disabledReason || 'setup needed'}</small>
+                    </span>
+                  )
+                ))
+              ) : (
+                <a href="/accounts/login/?next=/accounts/">Account login</a>
+              )}
             </div>
           </div>
         </article>
@@ -652,9 +888,12 @@ function AccountExperience({ snapshot, language }: { snapshot: PublicSiteSnapsho
             <span><Users size={16} /> {account.name}</span>
             <span><ReceiptText size={16} /> {account.reservations.length} reservations</span>
             <span><FileText size={16} /> {account.invoices.length} invoices</span>
+            {account.isStaff && <span><ShieldCheck size={16} /> Admin access</span>}
           </div>
         </div>
       </section>
+
+      {account.isStaff && <AccountAdminTools />}
 
       <section className="public-section account-modern">
         <div className="account-grid">
@@ -696,6 +935,37 @@ function AccountExperience({ snapshot, language }: { snapshot: PublicSiteSnapsho
 
       <AgentBookingSection snapshot={snapshot} stay={snapshot.stays[0]} language={language} />
     </>
+  );
+}
+
+function AccountAdminTools() {
+  const tools = [
+    { label: 'Modern dashboard', href: '/ops/dashboard/', detail: 'Metrics, deposits, agent questions, and stay performance.' },
+    { label: 'Reservations CRM', href: '/ops/reservations/', detail: 'Combined direct requests and imported Airbnb guest records.' },
+    { label: 'Reports', href: '/ops/reports/', detail: 'Modern charts for visits, bookings, deposits, feedback, and agent questions.' },
+    { label: 'Customers', href: '/ops/customers/', detail: 'Guest profiles, segments, consent, feedback, and promotion readiness.' },
+    { label: 'Deposits', href: '/ops/deposits/', detail: 'Stripe and PayPal security deposit records in a modern ledger.' },
+    { label: 'Agent workspace', href: '/ops/agent/', detail: 'Question analytics and FAQ training controls.' },
+    { label: 'Business calendar', href: '/admin/bookings/bookableitem/calendar/', detail: 'Block dates, pricing overrides, and availability review.' },
+    { label: 'Django admin', href: '/admin/', detail: 'Full source-of-truth admin tools.' },
+  ];
+  return (
+    <section className="public-section account-admin-tools">
+      <div className="public-section__heading">
+        <h2>Admin command center</h2>
+        <p>You are signed in with staff access, so the operational tools are available from the modern account area.</p>
+      </div>
+      <div>
+        {tools.map((tool) => (
+          <a href={tool.href} key={tool.label}>
+            <ShieldCheck size={18} />
+            <strong>{tool.label}</strong>
+            <span>{tool.detail}</span>
+            <ArrowUpRight size={15} />
+          </a>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -748,6 +1018,257 @@ function ReservationCancelForm({ reservation, token }: { reservation: AccountRes
   );
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Admin Experience
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AdminExperience({ language }: { language: Language }) {
+  void language;
+  const [adminData, setAdminData] = useState<AdminSnapshot | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionMessage, setActionMessage] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/admin/reservations', {
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    })
+      .then(async (response) => {
+        if (!active) return;
+        if (!response.ok) {
+          throw new Error('Failed to load admin data');
+        }
+        const data = await response.json();
+        setAdminData(data as AdminSnapshot);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleStatusChange = async (reservationId: number, newStatus: string) => {
+    setActionMessage('Updating...');
+    try {
+      const response = await fetch(`/api/admin/reservations/${reservationId}/status`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken(),
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        setActionMessage('Status updated successfully');
+        // Refresh data
+        const refreshResponse = await fetch('/api/admin/reservations', {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await refreshResponse.json();
+        setAdminData(data as AdminSnapshot);
+        setTimeout(() => setActionMessage(''), 3000);
+      } else {
+        setActionMessage('Failed to update status');
+      }
+    } catch {
+      setActionMessage('Error updating status');
+    }
+  };
+
+  if (loading) {
+    return (
+      <section className="public-section">
+        <div className="account-modern">
+          <div className="account-header">
+            <h1>Admin Dashboard</h1>
+            <p>Loading admin data...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!adminData) {
+    return (
+      <section className="public-section">
+        <div className="account-modern">
+          <div className="account-header">
+            <h1>Admin Dashboard</h1>
+            <p>Unable to load admin data. Please check your permissions.</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="public-section account-modern">
+      <div className="account-header">
+        <h1>
+          <ShieldCheck size={24} /> Admin Dashboard
+        </h1>
+        <p>Manage reservations and view system statistics</p>
+      </div>
+
+      {actionMessage && (
+        <div style={{
+          padding: 'var(--space-4)',
+          background: 'var(--color-success-highlight)',
+          color: 'var(--color-success)',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: 'var(--space-6)'
+        }}>
+          {actionMessage}
+        </div>
+      )}
+
+      {/* Stats Grid */}
+      <div className="account-stats">
+        <span>
+          <Clock size={16} /> {adminData.pendingCount} pending
+        </span>
+        <span>
+          <CheckCircle2 size={16} /> {adminData.confirmedCount} confirmed
+        </span>
+        <span>
+          <XCircle size={16} /> {adminData.cancelledCount} cancelled
+        </span>
+        <span>
+          <DollarSign size={16} /> {adminData.totalRevenue} total revenue
+        </span>
+      </div>
+
+      {/* Reservations Table */}
+      <div className="account-grid">
+        <article className="account-list" style={{ gridColumn: '1 / -1' }}>
+          <h2>All Reservations ({adminData.reservations.length})</h2>
+
+          {adminData.reservations.length === 0 ? (
+            <p>No reservations in the system yet.</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: 'var(--text-sm)'
+              }}>
+                <thead>
+                  <tr style={{
+                    borderBottom: '2px solid var(--color-divider)',
+                    textAlign: 'left'
+                  }}>
+                    <th style={{ padding: 'var(--space-3)' }}>Guest</th>
+                    <th style={{ padding: 'var(--space-3)' }}>Stay</th>
+                    <th style={{ padding: 'var(--space-3)' }}>Dates</th>
+                    <th style={{ padding: 'var(--space-3)' }}>Guests</th>
+                    <th style={{ padding: 'var(--space-3)' }}>Total</th>
+                    <th style={{ padding: 'var(--space-3)' }}>Status</th>
+                    <th style={{ padding: 'var(--space-3)' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adminData.reservations.map((reservation) => (
+                    <tr
+                      key={reservation.id}
+                      style={{
+                        borderBottom: '1px solid var(--color-divider)'
+                      }}
+                    >
+                      <td style={{ padding: 'var(--space-3)' }}>
+                        <strong>{reservation.guestName}</strong><br />
+                        <small style={{ color: 'var(--color-text-muted)' }}>
+                          {reservation.guestEmail}
+                        </small>
+                        {reservation.phone && (
+                          <><br /><small style={{ color: 'var(--color-text-muted)' }}>
+                            {reservation.phone}
+                          </small></>
+                        )}
+                      </td>
+                      <td style={{ padding: 'var(--space-3)' }}>{reservation.stayName}</td>
+                      <td style={{ padding: 'var(--space-3)' }}>
+                        {formatDate(reservation.checkIn)} → {formatDate(reservation.checkOut)}
+                      </td>
+                      <td style={{ padding: 'var(--space-3)' }}>{reservation.guests}</td>
+                      <td style={{ padding: 'var(--space-3)' }}>
+                        <strong>{reservation.totalDisplay}</strong>
+                      </td>
+                      <td style={{ padding: 'var(--space-3)' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: 'var(--space-1) var(--space-2)',
+                          borderRadius: 'var(--radius-full)',
+                          fontSize: 'var(--text-xs)',
+                          fontWeight: 500,
+                          background:
+                            reservation.status === 'confirmed' ? 'var(--color-success-highlight)' :
+                            reservation.status === 'cancelled' ? 'var(--color-error-highlight)' :
+                            'var(--color-warning-highlight)',
+                          color:
+                            reservation.status === 'confirmed' ? 'var(--color-success)' :
+                            reservation.status === 'cancelled' ? 'var(--color-error)' :
+                            'var(--color-warning)'
+                        }}>
+                          {reservation.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: 'var(--space-3)' }}>
+                        {reservation.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleStatusChange(reservation.id, 'confirmed')}
+                              style={{
+                                padding: 'var(--space-1) var(--space-3)',
+                                marginRight: 'var(--space-2)',
+                                background: 'var(--color-success)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 'var(--radius-sm)',
+                                cursor: 'pointer',
+                                fontSize: 'var(--text-xs)'
+                              }}
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(reservation.id, 'cancelled')}
+                              style={{
+                                padding: 'var(--space-1) var(--space-3)',
+                                background: 'var(--color-error)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 'var(--radius-sm)',
+                                cursor: 'pointer',
+                                fontSize: 'var(--text-xs)'
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </article>
+      </div>
+    </section>
+  );
+}
+
 export function PublicSitePage() {
   const service = useMemo(() => PublicSiteFactory.create(), []);
   const [snapshot, setSnapshot] = useState<PublicSiteSnapshot | null>(null);
@@ -784,6 +1305,7 @@ export function PublicSitePage() {
   if (stay) content = <StayDetailExperience snapshot={snapshot} stay={stay} language={language} />;
   if (path.startsWith('/about')) content = <AboutExperience snapshot={snapshot} language={language} />;
   if (legalKind) content = <LegalExperience snapshot={snapshot} kind={legalKind} />;
+    if (path.startsWith('/ops/admin')) content = <AdminExperience language={language} />;
   if (path.startsWith('/accounts')) content = <AccountExperience snapshot={snapshot} language={language} />;
 
   return (

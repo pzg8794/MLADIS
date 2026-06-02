@@ -6,15 +6,16 @@ interface DashboardLayoutProps {
 }
 
 const navItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, href: '/ops/dashboard/', active: true },
+  { label: 'Dashboard', icon: LayoutDashboard, href: '/ops/dashboard/' },
   { label: 'Reservations', icon: CalendarDays, href: '/ops/reservations/' },
   { label: 'Reports', icon: LineChart, href: '/ops/reports/' },
-  { label: 'Customers', icon: Users, href: '/admin/bookings/customerprofile/' },
-  { label: 'Deposits', icon: ReceiptText, href: '/admin/bookings/damagedeposit/' },
-  { label: 'Agent', icon: Bot, href: '/admin/bookings/agentfaq/' },
+  { label: 'Customers', icon: Users, href: '/ops/customers/' },
+  { label: 'Deposits', icon: ReceiptText, href: '/ops/deposits/' },
+  { label: 'Agent', icon: Bot, href: '/ops/agent/' },
 ];
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const pathname = window.location.pathname;
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
@@ -28,8 +29,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <nav aria-label="Dashboard sections">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isActive = pathname.startsWith(item.href.replace(/\/$/, ''));
             return (
-              <a className={item.active ? 'active' : ''} href={item.href} key={item.label}>
+              <a className={isActive ? 'active' : ''} href={item.href} key={item.label}>
                 <Icon size={18} />
                 {item.label}
               </a>

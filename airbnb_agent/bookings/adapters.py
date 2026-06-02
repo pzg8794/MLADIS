@@ -9,16 +9,21 @@ from django.utils.translation import gettext_lazy as _
 
 from .models import CustomerProfile
 from .social_auth import is_provider_configured, sync_social_apps_from_env
-from .services import AdminAccessService
 
 
 GENERATED_SOCIAL_EMAIL_DOMAIN = "users.mladis.invalid"
 
 
+def _apply_admin_access(user):
+    from .services import AdminAccessService
+
+    AdminAccessService().apply_to_user(user)
+
+
 class MLADISAccountAdapter(DefaultAccountAdapter):
     def save_user(self, request, user, form, commit=True):
         user = super().save_user(request, user, form, commit=commit)
-        AdminAccessService().apply_to_user(user)
+        _apply_admin_access(user)
         self._sync_profile(user)
         return user
 
@@ -75,7 +80,7 @@ class MLADISSocialAccountAdapter(DefaultSocialAccountAdapter):
 
     def save_user(self, request, sociallogin, form=None):
         user = super().save_user(request, sociallogin, form=form)
-        AdminAccessService().apply_to_user(user)
+        _apply_admin_access(user)
         CustomerProfile.objects.get_or_create(
             user=user,
             defaults={

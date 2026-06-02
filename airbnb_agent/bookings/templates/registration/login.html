@@ -31,18 +31,27 @@
         {% endif %}
         <div class="modern-social-grid" aria-label="{% trans 'Social login options' %}">
           {% for provider in social_login_providers %}
-            {% if provider.is_configured %}
-              <form method="post" action="{{ provider.login_url }}">
-                {% csrf_token %}
-                <button type="submit">{{ provider.button_label }}</button>
-              </form>
+            {% if provider.is_launchable %}
+              {% if provider.needs_origin_bridge %}
+                <a href="{{ provider.launch_url }}">{{ provider.button_label }}</a>
+              {% else %}
+                <form method="post" action="{{ provider.login_url }}">
+                  {% csrf_token %}
+                  <button type="submit">{{ provider.button_label }}</button>
+                </form>
+              {% endif %}
             {% else %}
-              <button class="is-disabled" type="button" disabled>{{ provider.button_label }} <span>{% trans "setup needed" %}</span></button>
+              <button class="is-disabled" type="button" disabled title="{{ provider.help_text }}">
+                {{ provider.button_label }}
+                <span>{% if provider.disabled_reason %}{{ provider.disabled_reason }}{% else %}{% trans "setup needed" %}{% endif %}</span>
+              </button>
             {% endif %}
           {% endfor %}
         </div>
-        {% if social_login_provider_count %}
+        {% if social_login_launchable_count %}
           <p class="modern-auth-note">{% trans "Choose a social provider for a faster sign-in, or use email below." %}</p>
+        {% elif social_login_provider_count %}
+          <p class="modern-auth-note">{% trans "Some social sign-in providers are configured but still need a callback route or credential refresh before they can launch." %}</p>
         {% else %}
           <p class="modern-auth-note">{% trans "Social sign-in turns on automatically after OAuth credentials are added in the environment or admin. Use email login for now." %}</p>
         {% endif %}

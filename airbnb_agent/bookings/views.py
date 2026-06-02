@@ -1,6 +1,7 @@
 import csv
 import json
-from datetime import timedelta
+from datetime import date, timedelta
+from urllib.parse import urlencode
 from uuid import uuid4
 
 from django.contrib import messages
@@ -31,6 +32,7 @@ from .forms import (
 )
 from .models import (
     AgentConversation,
+    AgentFAQ,
     AirbnbGuestRecord,
     AvailabilityBlock,
     BookableItem,
@@ -39,6 +41,7 @@ from .models import (
     BookingStatus,
     CalendarFeed,
     ClientSegment,
+    CustomerFeedback,
     CustomerProfile,
     DailyPriceOverride,
     DamageDeposit,
@@ -49,25 +52,20 @@ from .models import (
     PageVisit,
     SiteSettings,
 )
-from .services import (
-    AdminAccessService,
-    AgentRequest,
-    BookingAgentService,
-    BookingEmailService,
-    DamageDepositService,
-    DonationService,
-    PayPalAPIError,
-    PayPalDamageDepositService,
-    ReservationRequestService,
-    get_damage_deposit_service,
-)
 from .social_auth import SOCIAL_LOGIN_PROVIDER_SPECS, get_social_login_providers
+from .social_auth import get_provider_spec, provider_auth_origin, request_origin
 
 
 ops_staff_required = user_passes_test(
     lambda user: user.is_active and user.is_staff,
     login_url=reverse_lazy("bookings:login"),
 )
+
+
+def _build_openai_client(api_key):
+    from openai import OpenAI
+
+    return OpenAI(api_key=api_key)
 
 
 class HomePageView(TemplateView):
@@ -195,6 +193,19 @@ class PublicSiteSummaryAPIView(View):
                 {"title": cause.name, "description": cause.description}
                 for cause in MissionCause.objects.filter(is_active=True).order_by("sort_order", "name")[:3]
             ],
+            "social_providers": [
+                {
+                    "id": provider["id"],
+                    "label": provider["label"],
+                    "login_url": provider["login_url"],
+                    "is_configured": provider["is_configured"],
+                    "is_launchable": provider["is_launchable"],
+                    "disabled_reason": provider["disabled_reason"],
+                    "help_text": provider["help_text"],
+                }
+                for provider in get_social_login_providers(request)
+            ],
+            "chatkit": self._chatkit_payload(request),
             "generated_at": timezone.now().isoformat(),
         }
         return JsonResponse(data)
@@ -269,9 +280,57 @@ class PublicSiteSummaryAPIView(View):
             ],
         }
 
+    @staticmethod
+    def _chatkit_payload(request):
+        if settings.OPENAI_CHATKIT_WORKFLOW_ID and settings.OPENAI_API_KEY:
+            return {
+                "mode": "managed",
+                "session_url": request.build_absolute_uri(reverse("bookings:chatkit-session-api")),
+            }
+        if settings.OPENAI_CHATKIT_API_URL and settings.OPENAI_CHATKIT_DOMAIN_KEY:
+            return {
+                "mode": "custom",
+                "api_url": settings.OPENAI_CHATKIT_API_URL,
+                "domain_key": settings.OPENAI_CHATKIT_DOMAIN_KEY,
+            }
+        return None
 
-class AccountSummaryAPIView(LoginRequiredMixin, View):
+
+class ChatKitSessionAPIView(View):
+    @staticmethod
+    def _chatkit_user(request):
+        if request.user.is_authenticated:
+            return f"user:{request.user.pk}"
+
+        if request.session.session_key is None:
+            request.session.save()
+        return f"anon:{request.session.session_key}"
+
+    def post(self, request):
+        if not settings.OPENAI_CHATKIT_WORKFLOW_ID or not settings.OPENAI_API_KEY:
+            return JsonResponse({"error": "ChatKit managed sessions are not configured."}, status=503)
+
+        workflow = {"id": settings.OPENAI_CHATKIT_WORKFLOW_ID}
+        if settings.OPENAI_CHATKIT_WORKFLOW_VERSION:
+            workflow["version"] = settings.OPENAI_CHATKIT_WORKFLOW_VERSION
+
+        session = _build_openai_client(settings.OPENAI_API_KEY).beta.chatkit.sessions.create(
+            user=self._chatkit_user(request),
+            workflow=workflow,
+        )
+        return JsonResponse(
+            {
+                "client_secret": session.client_secret,
+                "expires_at": session.expires_at,
+                "session_id": session.id,
+            }
+        )
+
+
+class AccountSummaryAPIView(View):
     def get(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({"profile": None, "authenticated": False}, status=200)
         reservations = (
             BookingInquiry.objects.filter(Q(user=request.user) | Q(email__iexact=request.user.email))
             .select_related("item", "coupon", "cancellation_policy")
@@ -287,7 +346,12 @@ class AccountSummaryAPIView(LoginRequiredMixin, View):
                 "profile": {
                     "name": request.user.get_full_name() or request.user.username or request.user.email,
                     "email": request.user.email,
+                    "is_staff": request.user.is_staff or request.user.is_superuser,
+                    "is_superuser": request.user.is_superuser,
                 },
+                "authenticated": True,
+                "is_staff": request.user.is_staff or request.user.is_superuser,
+                "is_superuser": request.user.is_superuser,
                 "reservations": [self._reservation_payload(request, reservation) for reservation in reservations],
                 "invoices": [self._invoice_payload(request, invoice) for invoice in invoices],
                 "generated_at": timezone.now().isoformat(),
@@ -446,6 +510,8 @@ class BookingInquiryCreateView(View):
     def post(self, request):
         form = BookingInquiryForm(request.POST, user=request.user)
         if form.is_valid():
+            from .services import BookingEmailService, ReservationRequestService
+
             inquiry = form.save(commit=False)
             if request.user.is_authenticated:
                 inquiry.user = request.user
@@ -474,6 +540,8 @@ class SignUpView(CreateView):
     success_url = reverse_lazy("bookings:dashboard")
 
     def form_valid(self, form):
+        from .services import AdminAccessService
+
         response = super().form_valid(form)
         CustomerProfile.objects.get_or_create(
             user=self.object,
@@ -604,6 +672,8 @@ class DamageDepositCheckoutView(View):
             return render(request, "bookings/home.html", context, status=400)
 
         deposit = form.save()
+        from .services import get_damage_deposit_service
+
         service = get_damage_deposit_service(form.cleaned_data.get("payment_provider"))
         result = service.create_checkout_session(deposit, request)
         if result.success:
@@ -615,9 +685,9 @@ class DamageDepositCheckoutView(View):
 
 
 class DonationCheckoutView(View):
-    service_class = DonationService
-
     def post(self, request):
+        from .services import DonationService
+
         form = DonationForm(request.POST)
         if not form.is_valid():
             messages.error(request, "Please choose a valid donation amount and mission cause.")
@@ -626,7 +696,7 @@ class DonationCheckoutView(View):
             return render(request, "bookings/about.html", context, status=400)
 
         donation = form.save()
-        result = self.service_class().create_checkout_session(donation, request)
+        result = DonationService().create_checkout_session(donation, request)
         if result.success:
             return redirect(result.checkout_url)
 
@@ -635,14 +705,14 @@ class DonationCheckoutView(View):
 
 
 class DonationSuccessView(View):
-    service_class = DonationService
-
     def get(self, request):
+        from .services import DonationService
+
         session_id = request.GET.get("session_id", "")
         donation = None
         if session_id:
             try:
-                donation = self.service_class().sync_checkout_session(session_id)
+                donation = DonationService().sync_checkout_session(session_id)
             except stripe.StripeError:
                 donation = None
 
@@ -654,14 +724,14 @@ class DonationSuccessView(View):
 
 
 class DamageDepositSuccessView(View):
-    service_class = DamageDepositService
-
     def get(self, request):
+        from .services import DamageDepositService
+
         session_id = request.GET.get("session_id", "")
         deposit = None
         if session_id:
             try:
-                deposit = self.service_class().sync_checkout_session(session_id)
+                deposit = DamageDepositService().sync_checkout_session(session_id)
             except stripe.StripeError:
                 deposit = None
 
@@ -676,14 +746,14 @@ class DamageDepositSuccessView(View):
 
 
 class PayPalDamageDepositSuccessView(View):
-    service_class = PayPalDamageDepositService
-
     def get(self, request):
+        from .services import PayPalAPIError, PayPalDamageDepositService
+
         order_id = request.GET.get("token", "")
         deposit = None
         if order_id:
             try:
-                deposit = self.service_class().authorize_order(order_id)
+                deposit = PayPalDamageDepositService().authorize_order(order_id)
             except (PayPalAPIError, requests.RequestException):
                 deposit = None
 
@@ -701,20 +771,20 @@ class PayPalDamageDepositSuccessView(View):
 
 
 class PayPalDamageDepositCancelView(View):
-    service_class = PayPalDamageDepositService
-
     def get(self, request):
+        from .services import PayPalDamageDepositService
+
         order_id = request.GET.get("token", "")
-        self.service_class().cancel_order(order_id)
+        PayPalDamageDepositService().cancel_order(order_id)
         messages.warning(request, "The PayPal deposit authorization was canceled.")
         return redirect(reverse("bookings:home") + "#deposit")
 
 
 @method_decorator(csrf_exempt, name="dispatch")
 class StripeWebhookView(View):
-    service_class = DamageDepositService
-
     def post(self, request):
+        from .services import DamageDepositService, DonationService
+
         payload = request.body
         signature = request.headers.get("Stripe-Signature", "")
 
@@ -730,7 +800,7 @@ class StripeWebhookView(View):
         except (ValueError, stripe.SignatureVerificationError):
             return HttpResponse(status=400)
 
-        self.service_class().handle_event(event)
+        DamageDepositService().handle_event(event)
         DonationService().handle_event(event)
         return HttpResponse(status=200)
 
@@ -759,10 +829,11 @@ class OAuthDiagnosticsView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        origin = getattr(settings, "SOCIAL_AUTH_CANONICAL_ORIGIN", "") or self.request.build_absolute_uri("/")[:-1]
+        fallback_origin = getattr(settings, "SOCIAL_AUTH_CANONICAL_ORIGIN", "") or self.request.build_absolute_uri("/")[:-1]
         callback_rows = []
-        provider_status = {provider["id"]: provider for provider in get_social_login_providers()}
+        provider_status = {provider["id"]: provider for provider in get_social_login_providers(self.request)}
         for provider in SOCIAL_LOGIN_PROVIDER_SPECS:
+            origin = provider_auth_origin(provider["id"], self.request)
             callback_name = f"{provider['id']}_callback"
             callback_path = reverse(callback_name)
             callback_rows.append(
@@ -776,13 +847,56 @@ class OAuthDiagnosticsView(TemplateView):
             )
         context.update(
             {
-                "origin": origin,
+                "origin": fallback_origin,
                 "site": Site.objects.get(pk=settings.SITE_ID),
                 "callback_rows": callback_rows,
                 "account_protocol": settings.ACCOUNT_DEFAULT_HTTP_PROTOCOL,
             }
         )
         return context
+
+
+class SocialProviderLaunchView(View):
+    """Moves the browser to the provider's configured origin before posting to allauth."""
+
+    template_name = "registration/social_launch.html"
+
+    def get(self, request, provider_id):
+        provider = get_provider_spec(provider_id)
+        if provider is None:
+            messages.warning(request, "That social sign-in provider is not supported yet.")
+            return redirect("bookings:login")
+
+        status = {
+            item["id"]: item for item in get_social_login_providers(request)
+        }.get(provider_id)
+        if not status or not status.get("is_launchable"):
+            messages.warning(
+                request,
+                f"{provider['label']} sign-in still needs OAuth credentials or callback setup.",
+            )
+            return redirect("bookings:login")
+
+        target_origin = provider_auth_origin(provider_id, request)
+        current_origin = request_origin(request)
+        if request.get_host() != "testserver" and target_origin and current_origin != target_origin:
+            query_string = request.GET.urlencode()
+            launch_path = reverse("bookings:social-provider-launch", kwargs={"provider_id": provider_id})
+            separator = "?" if query_string else ""
+            return redirect(f"{target_origin}{launch_path}{separator}{query_string}")
+
+        login_url = reverse(provider["url_name"])
+        next_url = request.GET.get("next", "")
+        if next_url.startswith("/"):
+            login_url = f"{login_url}?{urlencode({'next': next_url})}"
+        return render(
+            request,
+            self.template_name,
+            {
+                "provider": provider,
+                "login_url": login_url,
+            },
+        )
 
 
 @method_decorator(ops_staff_required, name="dispatch")
@@ -814,24 +928,65 @@ class OpsReservationsView(TemplateView):
     def _reservation_customer_rows(self, apply_filter=True):
         rows = []
         records = (
-            AirbnbGuestRecord.objects.select_related("customer_profile", "item", "customer_feedback")
+            BookingInquiry.objects.select_related("customer_profile", "item", "coupon", "cancellation_policy")
             .order_by("-check_in", "guest_name", "-updated_at")
         )
         for record in records:
             profile = record.customer_profile
             email = record.email or (profile.email if profile else "")
             phone = record.phone or (profile.phone if profile else "")
-            feedback_entry = getattr(record, "customer_feedback", None)
-            feedback = (
-                feedback_entry.feedback_text
-                if feedback_entry
-                else record.feedback_summary or record.message_excerpt
-            )
             consent_status = (
                 profile.get_marketing_consent_status_display()
                 if profile
                 else MarketingConsentStatus.UNKNOWN.label
             )
+            stay_dates = ""
+            if record.check_in and record.check_out:
+                stay_dates = f"{record.check_in} – {record.check_out}"
+            rows.append(
+                {
+                    "name": record.guest_name or (profile.name if profile else "Guest"),
+                    "email": email,
+                    "phone": phone,
+                    "contact_path": self._contact_path(email, phone, ""),
+                    "profile": profile,
+                    "profile_admin_url": reverse("admin:bookings_customerprofile_change", args=[profile.pk])
+                    if profile
+                    else "",
+                    "record": record,
+                    "record_admin_url": reverse("admin:bookings_bookinginquiry_change", args=[record.pk]),
+                    "record_type": "direct",
+                    "feedback_admin_url": "",
+                    "item": record.item,
+                    "listing": record.item.name if record.item else "Flexible stay",
+                    "listing_id": "",
+                    "stay_dates": stay_dates,
+                    "guests": record.guests,
+                    "rating": "",
+                    "feedback": record.message or "",
+                    "source_subject": record.get_status_display(),
+                    "thread_url": "",
+                    "consent_status": consent_status,
+                    "segment": profile.get_segment_display() if profile else "",
+                    "updated_at": record.updated_at,
+                }
+            )
+        airbnb_records = (
+            AirbnbGuestRecord.objects.select_related("customer_profile", "item")
+            .order_by("-check_in", "guest_name", "-updated_at")
+        )
+        for record in airbnb_records:
+            profile = record.customer_profile
+            email = record.email or (profile.email if profile else "")
+            phone = record.phone or (profile.phone if profile else "")
+            consent_status = (
+                profile.get_marketing_consent_status_display()
+                if profile
+                else MarketingConsentStatus.UNKNOWN.label
+            )
+            feedback = getattr(record, "customer_feedback", None)
+            if feedback is None:
+                feedback = CustomerFeedback.objects.filter(airbnb_guest_record=record).first()
             rows.append(
                 {
                     "name": record.guest_name or (profile.name if profile else "Airbnb guest"),
@@ -844,23 +999,32 @@ class OpsReservationsView(TemplateView):
                     else "",
                     "record": record,
                     "record_admin_url": reverse("admin:bookings_airbnbguestrecord_change", args=[record.pk]),
-                    "feedback_admin_url": reverse("admin:bookings_customerfeedback_change", args=[feedback_entry.pk])
-                    if feedback_entry
+                    "record_type": "airbnb",
+                    "feedback_admin_url": reverse("admin:bookings_customerfeedback_change", args=[feedback.pk])
+                    if feedback
                     else "",
                     "item": record.item,
-                    "listing": record.item.name if record.item else record.listing_title or record.airbnb_listing_id,
+                    "listing": record.listing_title or (record.item.name if record.item else "Airbnb stay"),
                     "listing_id": record.airbnb_listing_id,
                     "stay_dates": record.stay_dates,
                     "guests": record.guests,
-                    "rating": record.rating,
-                    "feedback": feedback,
-                    "source_subject": record.source_email_subject,
+                    "rating": record.rating or "",
+                    "feedback": record.feedback_summary or record.message_excerpt or "",
+                    "source_subject": record.source_email_subject or "Airbnb import",
                     "thread_url": record.airbnb_thread_url,
                     "consent_status": consent_status,
                     "segment": profile.get_segment_display() if profile else "",
                     "updated_at": record.updated_at,
                 }
             )
+        rows.sort(
+            key=lambda row: (
+                getattr(row["record"], "check_in", None) or date.min,
+                row["updated_at"] or timezone.datetime.min,
+                row["record"].pk,
+            ),
+            reverse=True,
+        )
         selected_segment = self._selected_segment() if apply_filter else ""
         if apply_filter and selected_segment:
             rows = [row for row in rows if row["profile"] and row["profile"].segment == selected_segment]
@@ -872,7 +1036,7 @@ class OpsReservationsView(TemplateView):
         with_feedback = sum(1 for row in rows if row["feedback"] or row["rating"])
         opted_in = sum(1 for row in rows if row["consent_status"] == MarketingConsentStatus.OPTED_IN.label)
         return [
-            {"label": "Airbnb reservations", "value": len(rows), "caption": "Booked Airbnb stays linked to guests."},
+            {"label": "Reservations", "value": len(rows), "caption": "Direct and imported Airbnb stays linked to guests."},
             {"label": "With email", "value": with_email, "caption": "Direct email found in imported data."},
             {"label": "With phone", "value": with_phone, "caption": "Phone number found in imported data."},
             {"label": "With feedback", "value": with_feedback, "caption": "Feedback, rating, or message context attached."},
@@ -956,8 +1120,371 @@ class OpsReservationsView(TemplateView):
 
 
 @method_decorator(ops_staff_required, name="dispatch")
+class ModernOpsReservationsView(OpsReservationsView):
+    template_name = "bookings/modern_dashboard.html"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsDashboardView(TemplateView):
     template_name = "bookings/modern_dashboard.html"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsReservationsAPIView(View):
+    def get(self, request):
+        view = OpsReservationsView()
+        view.setup(request)
+        rows = view._reservation_customer_rows()
+        all_rows = view._reservation_customer_rows(apply_filter=False)
+        direct_count = sum(1 for row in all_rows if row["record_type"] == "direct")
+        airbnb_count = sum(1 for row in all_rows if row["record_type"] == "airbnb")
+        return JsonResponse(
+            {
+                "summary_cards": [
+                    *view._summary_cards(rows),
+                    {
+                        "label": "Direct requests",
+                        "value": direct_count,
+                        "caption": "Reservations created through MLADIS booking forms.",
+                    },
+                    {
+                        "label": "Airbnb imports",
+                        "value": airbnb_count,
+                        "caption": "Past and upcoming Airbnb guests imported into the CRM.",
+                    },
+                ],
+                "segment_options": view._segment_options(rows),
+                "selected_segment": view._selected_segment(),
+                "export_url": view._export_url(),
+                "legacy_url": reverse("bookings:ops-reservations"),
+                "rows": [self._row_payload(request, row) for row in rows],
+                "generated_at": timezone.now().isoformat(),
+            }
+        )
+
+    @staticmethod
+    def _row_payload(request, row):
+        updated_at = row["updated_at"]
+        return {
+            "id": row["record"].pk,
+            "record_type": row["record_type"],
+            "name": row["name"],
+            "email": row["email"],
+            "phone": row["phone"],
+            "contact_path": row["contact_path"],
+            "listing": row["listing"],
+            "listing_id": row["listing_id"],
+            "stay_dates": row["stay_dates"],
+            "guests": row["guests"] or "",
+            "rating": str(row["rating"] or ""),
+            "feedback": row["feedback"],
+            "source_subject": row["source_subject"],
+            "thread_url": row["thread_url"],
+            "consent_status": row["consent_status"],
+            "segment": row["segment"],
+            "record_admin_url": request.build_absolute_uri(row["record_admin_url"]),
+            "profile_admin_url": request.build_absolute_uri(row["profile_admin_url"]) if row["profile_admin_url"] else "",
+            "feedback_admin_url": request.build_absolute_uri(row["feedback_admin_url"]) if row["feedback_admin_url"] else "",
+            "updated_at": updated_at.isoformat() if updated_at else "",
+        }
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsReservationStatusAPIView(View):
+    STATUS_MAP = {
+        "new": BookingStatus.NEW,
+        "reviewing": BookingStatus.REVIEWING,
+        "quoted": BookingStatus.QUOTED,
+        "confirmed": BookingStatus.CONFIRMED,
+        "cancelled": BookingStatus.CANCELED,
+        "canceled": BookingStatus.CANCELED,
+        "declined": BookingStatus.DECLINED,
+    }
+
+    def post(self, request, pk):
+        try:
+            payload = json.loads(request.body.decode("utf-8") or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON."}, status=400)
+
+        next_status = self.STATUS_MAP.get(str(payload.get("status", "")).strip().lower())
+        if not next_status:
+            return JsonResponse({"error": "Unknown reservation status."}, status=400)
+
+        reservation = get_object_or_404(BookingInquiry, pk=pk)
+        reservation.status = next_status
+        if next_status == BookingStatus.CANCELED and not reservation.canceled_at:
+            reservation.canceled_at = timezone.now()
+            reservation.cancellation_reason = reservation.cancellation_reason or "Updated from modern reservations dashboard."
+            reservation.save(update_fields=["status", "canceled_at", "cancellation_reason", "updated_at"])
+        else:
+            reservation.save(update_fields=["status", "updated_at"])
+        return JsonResponse({"ok": True, "status": reservation.get_status_display()})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class ModernOpsCustomersView(TemplateView):
+    template_name = "bookings/modern_dashboard.html"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class ModernOpsDepositsView(TemplateView):
+    template_name = "bookings/modern_dashboard.html"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class ModernOpsAgentView(TemplateView):
+    template_name = "bookings/modern_dashboard.html"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsCustomersAPIView(View):
+    def get(self, request):
+        profiles = CustomerProfile.objects.annotate(
+            direct_reservations=Count("booking_inquiries", distinct=True),
+            airbnb_reservations=Count("airbnb_guest_records", distinct=True),
+            feedback_total=Count("feedback_entries", distinct=True),
+            invoice_total=Count("invoices", distinct=True),
+        ).order_by("-updated_at", "name", "email")
+        rows = [self._customer_payload(request, profile) for profile in profiles]
+        segment_counts = {
+            value: CustomerProfile.objects.filter(segment=value).count()
+            for value, _label in ClientSegment.choices
+        }
+        with_contact = profiles.filter(Q(email__gt="") | Q(phone__gt="")).count()
+        promotion_ready = profiles.filter(
+            marketing_consent_status=MarketingConsentStatus.OPTED_IN,
+        ).exclude(email="").count()
+        return JsonResponse(
+            {
+                "summary_cards": [
+                    self._metric("Customers", profiles.count(), "Profiles created by website bookings, social login, manual admin work, and Airbnb import."),
+                    self._metric("Promotion-ready", promotion_ready, "Guests with email and opt-in status."),
+                    self._metric("VIP + favorites", segment_counts.get(ClientSegment.VIP, 0) + segment_counts.get(ClientSegment.FAVORITE, 0), "Customers worth extra follow-up."),
+                    self._metric("Blacklisted", segment_counts.get(ClientSegment.BLACKLISTED, 0), "Requests are captured but need careful review."),
+                    self._metric("With contact", with_contact, "Profiles with email or phone available."),
+                    self._metric("With feedback", sum(1 for row in rows if row["feedback_count"]), "Profiles linked to feedback or Airbnb review notes."),
+                ],
+                "segment_options": [
+                    {"value": "", "label": "All", "count": profiles.count(), "url": reverse("bookings:ops-customers")},
+                    *[
+                        {
+                            "value": value,
+                            "label": label,
+                            "count": segment_counts.get(value, 0),
+                            "url": f"{reverse('bookings:ops-customers')}?segment={value}",
+                        }
+                        for value, label in ClientSegment.choices
+                    ],
+                ],
+                "rows": rows,
+                "admin_url": reverse("admin:bookings_customerprofile_changelist"),
+                "legacy_url": reverse("admin:bookings_customerprofile_changelist"),
+                "generated_at": timezone.now().isoformat(),
+            }
+        )
+
+    @staticmethod
+    def _metric(label, value, caption):
+        return {"label": label, "value": value, "caption": caption}
+
+    def _customer_payload(self, request, profile):
+        last_direct = profile.booking_inquiries.order_by("-check_in", "-updated_at").first()
+        last_airbnb = profile.airbnb_guest_records.order_by("-check_in", "-updated_at").first()
+        last_stay = self._latest_stay(last_direct, last_airbnb)
+        return {
+            "id": profile.pk,
+            "name": profile.name or profile.email or f"Customer {profile.pk}",
+            "email": profile.email,
+            "phone": profile.phone,
+            "segment": profile.get_segment_display(),
+            "segment_value": profile.segment,
+            "source": profile.get_source_display(),
+            "marketing_consent": profile.get_marketing_consent_status_display(),
+            "can_receive_promotions": profile.can_receive_promotions,
+            "direct_reservations": profile.direct_reservations,
+            "airbnb_reservations": profile.airbnb_reservations,
+            "feedback_count": profile.feedback_total,
+            "invoice_count": profile.invoice_total,
+            "last_stay": last_stay["label"],
+            "last_stay_sort": last_stay["sort"],
+            "notes": profile.notes[:180],
+            "admin_url": request.build_absolute_uri(reverse("admin:bookings_customerprofile_change", args=[profile.pk])),
+            "updated_at": profile.updated_at.isoformat(),
+        }
+
+    @staticmethod
+    def _latest_stay(last_direct, last_airbnb):
+        candidates = []
+        if last_direct:
+            label = last_direct.item.name if last_direct.item else "Direct MLADIS reservation"
+            date_label = f"{last_direct.check_in} to {last_direct.check_out}" if last_direct.check_in and last_direct.check_out else ""
+            candidates.append((last_direct.check_in or date.min, f"{label} · {date_label}".strip(" ·")))
+        if last_airbnb:
+            label = last_airbnb.listing_title or (last_airbnb.item.name if last_airbnb.item else "Airbnb stay")
+            candidates.append((last_airbnb.check_in or date.min, f"{label} · {last_airbnb.stay_dates}".strip(" ·")))
+        if not candidates:
+            return {"label": "No stay linked yet", "sort": ""}
+        sort_date, label = max(candidates, key=lambda item: item[0])
+        return {"label": label, "sort": sort_date.isoformat() if sort_date else ""}
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsDepositsAPIView(View):
+    ACTIVE_HOLD_STATUSES = {
+        DepositStatus.NEW,
+        DepositStatus.REQUIRES_CONFIGURATION,
+        DepositStatus.CHECKOUT_CREATED,
+        DepositStatus.REQUIRES_CAPTURE,
+    }
+
+    def get(self, request):
+        deposits = DamageDeposit.objects.select_related("item", "inquiry").order_by("-created_at")
+        active = deposits.filter(status__in=self.ACTIVE_HOLD_STATUSES)
+        captured = deposits.filter(status=DepositStatus.CAPTURED)
+        failed = deposits.filter(status=DepositStatus.FAILED)
+        rows = [self._deposit_payload(request, deposit) for deposit in deposits]
+        return JsonResponse(
+            {
+                "summary_cards": [
+                    self._metric("Deposit records", deposits.count(), "All security deposit checkout and authorization records."),
+                    self._metric("Active holds", active.count(), "New, checkout-created, configuration-needed, or authorized holds."),
+                    self._metric("Authorized", deposits.filter(status=DepositStatus.REQUIRES_CAPTURE).count(), "Holds ready for capture or release decision."),
+                    self._metric("Captured", captured.count(), "Deposits captured for damage, extra cleaning, or penalty."),
+                    self._metric("Failed", failed.count(), "Payment attempts that need follow-up."),
+                    self._metric("Active amount", self._money(active.aggregate(total=Sum("amount_cents"))["total"]), "Total value in active deposit workflow."),
+                    self._metric("Captured value", self._money(captured.aggregate(total=Sum("amount_cents"))["total"]), "Total value captured from deposits."),
+                ],
+                "status_options": [
+                    {"value": "", "label": "All", "count": deposits.count()},
+                    *[
+                        {"value": value, "label": label, "count": deposits.filter(status=value).count()}
+                        for value, label in DepositStatus.choices
+                    ],
+                ],
+                "rows": rows,
+                "admin_url": reverse("admin:bookings_damagedeposit_changelist"),
+                "generated_at": timezone.now().isoformat(),
+            }
+        )
+
+    @staticmethod
+    def _metric(label, value, caption):
+        return {"label": label, "value": value, "caption": caption}
+
+    @staticmethod
+    def _money(cents):
+        return f"${(cents or 0) / 100:,.2f}"
+
+    @staticmethod
+    def _date_label(value):
+        return value.strftime("%b %-d, %Y") if value else ""
+
+    def _deposit_payload(self, request, deposit):
+        return {
+            "id": deposit.pk,
+            "guest_name": deposit.guest_name,
+            "email": deposit.email,
+            "stay_name": deposit.item.name if deposit.item else "Flexible MLADIS stay",
+            "amount": deposit.display_amount,
+            "amount_cents": deposit.amount_cents,
+            "currency": deposit.currency.upper(),
+            "provider": deposit.get_payment_provider_display(),
+            "status": deposit.status,
+            "status_label": deposit.get_status_display(),
+            "checkout_url": deposit.checkout_url,
+            "notes": deposit.notes[:180],
+            "admin_url": request.build_absolute_uri(reverse("admin:bookings_damagedeposit_change", args=[deposit.pk])),
+            "inquiry_admin_url": request.build_absolute_uri(reverse("admin:bookings_bookinginquiry_change", args=[deposit.inquiry_id])) if deposit.inquiry_id else "",
+            "created_at": deposit.created_at.isoformat(),
+            "created_label": self._date_label(deposit.created_at),
+            "updated_at": deposit.updated_at.isoformat(),
+        }
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsAgentAPIView(View):
+    def get(self, request):
+        conversations = AgentConversation.objects.select_related("item").order_by("-updated_at")
+        faqs = AgentFAQ.objects.select_related("item").order_by("-priority", "category", "question")
+        faq_conversations = conversations.filter(metadata__agent_mode="faq").count()
+        openai_conversations = conversations.filter(metadata__agent_mode="openai").count()
+        fallback_conversations = conversations.exclude(metadata__agent_mode__in=["faq", "openai"]).count()
+        coverage = round((faq_conversations / conversations.count()) * 100) if conversations.count() else 0
+        topic_rows = list(
+            conversations.values("question_topic")
+            .annotate(total=Count("id"))
+            .order_by("-total", "question_topic")[:12]
+        )
+        max_topic_total = max([row["total"] for row in topic_rows] or [0])
+        return JsonResponse(
+            {
+                "summary_cards": [
+                    self._metric("Conversations", conversations.count(), "Agent chats captured from the website."),
+                    self._metric("FAQ coverage", f"{coverage}%", "Share answered by local FAQ before OpenAI fallback."),
+                    self._metric("OpenAI assists", openai_conversations, "Questions routed to the model layer."),
+                    self._metric("Fallback/guardrail", fallback_conversations, "Conversations needing FAQ coverage or policy review."),
+                    self._metric("Active FAQs", faqs.filter(is_active=True).count(), "Admin-managed answers available to the booking agent."),
+                    self._metric("Inactive FAQs", faqs.filter(is_active=False).count(), "Draft or disabled answers."),
+                ],
+                "topics": [
+                    {
+                        "label": (row["question_topic"] or "general").replace("_", " ").title(),
+                        "value": row["question_topic"] or "general",
+                        "total": row["total"],
+                        "width": int((row["total"] / max_topic_total) * 100) if max_topic_total else 0,
+                    }
+                    for row in topic_rows
+                ],
+                "conversations": [self._conversation_payload(request, row) for row in conversations[:30]],
+                "faqs": [self._faq_payload(request, row) for row in faqs[:80]],
+                "faq_admin_url": reverse("admin:bookings_agentfaq_changelist"),
+                "conversation_admin_url": reverse("admin:bookings_agentconversation_changelist"),
+                "generated_at": timezone.now().isoformat(),
+            }
+        )
+
+    @staticmethod
+    def _metric(label, value, caption):
+        return {"label": label, "value": value, "caption": caption}
+
+    @staticmethod
+    def _mode(row):
+        mode = (row.metadata or {}).get("agent_mode", "fallback")
+        if mode not in {"faq", "openai", "guardrail"}:
+            return "fallback"
+        return mode
+
+    def _conversation_payload(self, request, row):
+        return {
+            "id": row.pk,
+            "topic": row.question_topic or "general",
+            "mode": self._mode(row),
+            "item": row.item.name if row.item else "General MLADIS",
+            "visitor": row.visitor_name or row.visitor_email or "Website visitor",
+            "last_question": row.last_user_message[:220],
+            "last_reply": row.last_agent_reply[:220],
+            "language": row.language,
+            "admin_url": request.build_absolute_uri(reverse("admin:bookings_agentconversation_change", args=[row.pk])),
+            "updated_at": row.updated_at.isoformat(),
+        }
+
+    @staticmethod
+    def _faq_payload(request, row):
+        return {
+            "id": row.pk,
+            "question": row.question,
+            "answer": row.answer[:260],
+            "category": row.get_category_display(),
+            "keywords": row.keywords,
+            "item": row.item.name if row.item else "All stays",
+            "language": row.language,
+            "min_score": str(row.min_score),
+            "priority": row.priority,
+            "is_active": row.is_active,
+            "admin_url": request.build_absolute_uri(reverse("admin:bookings_agentfaq_change", args=[row.pk])),
+            "updated_at": row.updated_at.isoformat(),
+        }
 
 
 @method_decorator(ops_staff_required, name="dispatch")
@@ -1235,9 +1762,9 @@ class LegacyOpsDashboardView(TemplateView):
 
 
 class AgentAPIView(View):
-    service_class = BookingAgentService
-
     def post(self, request):
+        from .services import AgentRequest, BookingAgentService
+
         try:
             payload = json.loads(request.body.decode("utf-8") or "{}")
         except json.JSONDecodeError:
@@ -1257,7 +1784,7 @@ class AgentAPIView(View):
             visitor_name=str(payload.get("visitor_name", "")).strip(),
             visitor_email=str(payload.get("visitor_email", "")).strip(),
         )
-        response = self.service_class().reply(agent_request)
+        response = BookingAgentService().reply(agent_request)
         return JsonResponse(
             {
                 "reply": response.reply,

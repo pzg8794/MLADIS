@@ -1,5 +1,6 @@
 import json
 import os
+from urllib.parse import parse_qs, urlparse
 from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -597,7 +598,7 @@ class BookableItemCalendarAdminTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Business calendar")
         self.assertContains(response, reverse("admin:bookings_bookableitem_calendar"))
-        self.assertContains(response, "Owner dashboard")
+        self.assertContains(response, "Ops dashboard")
         self.assertContains(response, "Reports")
 
     def test_bookable_item_changelist_surfaces_business_calendar(self):
@@ -797,12 +798,77 @@ class MarketingPageTests(TestCase):
         self.assertTrue(payload["stays"])
         self.assertIn("https://a0.muscache.com/im/pictures/", payload["stays"][0]["image_url"])
         self.assertIn("Airbnb", payload["stays"][0]["review_label"])
+        self.assertIsNone(payload["chatkit"])
 
-    def test_legacy_home_remains_available_for_comparison(self):
-        response = self.client.get(reverse("bookings:legacy-home"))
+    @override_settings(
+        OPENAI_API_KEY="sk-test-chatkit",
+        OPENAI_CHATKIT_WORKFLOW_ID="wf_test_chatkit",
+    )
+    def test_site_summary_api_exposes_managed_chatkit_when_workflow_is_configured(self):
+        response = self.client.get(reverse("bookings:site-summary-api"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Stay close to Santo Domingo")
+        payload = response.json()
+        self.assertEqual(payload["chatkit"]["mode"], "managed")
+        self.assertEqual(
+            payload["chatkit"]["session_url"],
+            f"http://testserver{reverse('bookings:chatkit-session-api')}",
+        )
+
+    @override_settings(
+        OPENAI_CHATKIT_API_URL="https://chatkit-api.mladis.test/chatkit",
+        OPENAI_CHATKIT_DOMAIN_KEY="domain_pk_test123",
+    )
+    def test_site_summary_api_exposes_custom_chatkit_when_domain_key_is_configured(self):
+        response = self.client.get(reverse("bookings:site-summary-api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["chatkit"], {
+            "mode": "custom",
+            "api_url": "https://chatkit-api.mladis.test/chatkit",
+            "domain_key": "domain_pk_test123",
+        })
+
+    @override_settings(
+        OPENAI_API_KEY="sk-test-chatkit",
+        OPENAI_CHATKIT_WORKFLOW_ID="wf_test_chatkit",
+    )
+    @patch("bookings.views._build_openai_client")
+    def test_chatkit_session_api_returns_client_secret(self, mock_build_openai_client):
+        mock_build_openai_client.return_value.beta.chatkit.sessions.create.return_value = SimpleNamespace(
+            id="ckt_sess_123",
+            client_secret="cks_test_secret",
+            expires_at=1_800_000_000,
+        )
+
+        response = self.client.post(reverse("bookings:chatkit-session-api"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "client_secret": "cks_test_secret",
+                "expires_at": 1_800_000_000,
+                "session_id": "ckt_sess_123",
+            },
+        )
+        mock_build_openai_client.assert_called_once_with("sk-test-chatkit")
+        mock_build_openai_client.return_value.beta.chatkit.sessions.create.assert_called_once()
+        kwargs = mock_build_openai_client.return_value.beta.chatkit.sessions.create.call_args.kwargs
+        self.assertEqual(kwargs["workflow"], {"id": "wf_test_chatkit"})
+        self.assertTrue(kwargs["user"].startswith("anon:"))
+
+    def test_chatkit_session_api_rejects_unconfigured_requests(self):
+        response = self.client.post(reverse("bookings:chatkit-session-api"))
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["error"], "ChatKit managed sessions are not configured.")
+
+    def test_legacy_home_redirects_to_modern_site(self):
+        response = self.client.get(reverse("bookings:legacy-home"))
+
+        self.assertRedirects(response, reverse("bookings:home"))
 
     def test_stay_detail_displays_gallery_and_booking_form(self):
         stay = BookableItem.objects.get(slug="mladis-santo-domingo-guest-home")
@@ -814,15 +880,7 @@ class MarketingPageTests(TestCase):
         self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         legacy_response = self.client.get(reverse("bookings:legacy-stay-detail", kwargs={"slug": stay.slug}))
-
-        self.assertEqual(legacy_response.status_code, 200)
-        self.assertContains(legacy_response, "Gallery")
-        self.assertContains(legacy_response, "Airbnb review snapshot")
-        self.assertContains(legacy_response, "3 Bedrooms Vacation Home &amp; Pool G-101")
-        self.assertContains(legacy_response, "Top guest highlights")
-        self.assertContains(legacy_response, "Apartment rules")
-        self.assertContains(legacy_response, "rules-book")
-        self.assertContains(legacy_response, "Make secure deposit hold")
+        self.assertRedirects(legacy_response, stay.get_absolute_url())
 
     def test_about_serves_modern_public_site(self):
         response = self.client.get(reverse("bookings:about"))
@@ -847,8 +905,6 @@ class LegalPageTests(TestCase):
         site_settings.save(update_fields=["contact_email", "updated_at"])
 
     def test_business_page_renders_public_business_details(self):
-        site_settings = SiteSettings.current()
-
         response = self.client.get(reverse("bookings:business"))
 
         self.assertEqual(response.status_code, 200)
@@ -856,13 +912,7 @@ class LegalPageTests(TestCase):
         self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         legacy_response = self.client.get(reverse("bookings:legacy-business"))
-
-        self.assertEqual(legacy_response.status_code, 200)
-        self.assertContains(legacy_response, "Business profile")
-        self.assertContains(legacy_response, site_settings.site_name)
-        self.assertContains(legacy_response, site_settings.public_address_label)
-        self.assertContains(legacy_response, "privacy@example.com")
-        self.assertContains(legacy_response, reverse("bookings:privacy-policy"))
+        self.assertRedirects(legacy_response, reverse("bookings:business"))
 
     def test_privacy_policy_page_renders_modern_shell_and_legacy_details(self):
         response = self.client.get(reverse("bookings:privacy-policy"))
@@ -872,11 +922,7 @@ class LegalPageTests(TestCase):
         self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         legacy_response = self.client.get(reverse("bookings:legacy-privacy-policy"))
-
-        self.assertEqual(legacy_response.status_code, 200)
-        self.assertContains(legacy_response, "Privacy policy")
-        self.assertContains(legacy_response, "privacy@example.com")
-        self.assertContains(legacy_response, "Social login details")
+        self.assertRedirects(legacy_response, reverse("bookings:privacy-policy"))
 
     def test_terms_page_renders_modern_shell_and_legacy_rules(self):
         response = self.client.get(reverse("bookings:terms"))
@@ -886,10 +932,7 @@ class LegalPageTests(TestCase):
         self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         legacy_response = self.client.get(reverse("bookings:legacy-terms"))
-
-        self.assertEqual(legacy_response.status_code, 200)
-        self.assertContains(legacy_response, "Terms of service")
-        self.assertContains(legacy_response, "Payments are processed through Stripe")
+        self.assertRedirects(legacy_response, reverse("bookings:terms"))
 
     def test_data_deletion_page_renders_modern_shell_and_legacy_instructions(self):
         response = self.client.get(reverse("bookings:data-deletion"))
@@ -899,11 +942,7 @@ class LegalPageTests(TestCase):
         self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         legacy_response = self.client.get(reverse("bookings:legacy-data-deletion"))
-
-        self.assertEqual(legacy_response.status_code, 200)
-        self.assertContains(legacy_response, "Data deletion instructions")
-        self.assertContains(legacy_response, "Data deletion request")
-        self.assertContains(legacy_response, "privacy@example.com")
+        self.assertRedirects(legacy_response, reverse("bookings:data-deletion"))
 
     def test_data_deletion_callback_returns_meta_confirmation_payload(self):
         response = self.client.post(
@@ -1047,22 +1086,116 @@ class AccountReservationTests(TestCase):
 
     @override_settings(
         SOCIAL_AUTH_CANONICAL_ORIGIN="http://127.0.0.1:8000",
-        ALLOWED_HOSTS=["localhost", "127.0.0.1", "testserver"],
+        SOCIAL_AUTH_PROVIDER_ORIGINS={},
+        SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS=[],
+        ALLOWED_HOSTS=["127.0.0.1", "testserver"],
     )
-    def test_social_auth_canonical_origin_redirects_login_host(self):
-        response = self.client.get(reverse("bookings:login"), HTTP_HOST="localhost:8000")
+    def test_configured_facebook_login_remains_launchable_on_local_origin(self):
+        with patch.dict(
+            os.environ,
+            {
+                "FACEBOOK_OAUTH_CLIENT_ID": "facebook-client-id",
+                "FACEBOOK_OAUTH_CLIENT_SECRET": "facebook-client-secret",
+                "SITE_DOMAIN": "127.0.0.1:8000",
+                "SITE_NAME": "MLADIS Local",
+            },
+            clear=False,
+        ):
+            response = self.client.get(reverse("bookings:login"), HTTP_HOST="127.0.0.1:8000")
 
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], f"http://127.0.0.1:8000{reverse('bookings:login')}")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Continue with Facebook")
+        self.assertContains(response, f'action="{reverse("facebook_login")}"')
+        self.assertNotContains(response, "HTTPS required")
+
+    @override_settings(
+        SOCIAL_AUTH_CANONICAL_ORIGIN="https://mladis.localhost",
+        SOCIAL_AUTH_PROVIDER_ORIGINS={},
+        SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS=[],
+        ALLOWED_HOSTS=["mladis.localhost", "testserver"],
+    )
+    def test_configured_facebook_login_is_launchable_on_https_origin(self):
+        with patch.dict(
+            os.environ,
+            {
+                "FACEBOOK_OAUTH_CLIENT_ID": "facebook-client-id",
+                "FACEBOOK_OAUTH_CLIENT_SECRET": "facebook-client-secret",
+                "SITE_DOMAIN": "mladis.localhost",
+                "SITE_NAME": "MLADIS Local",
+            },
+            clear=False,
+        ):
+            response = self.client.get(
+                reverse("bookings:login"),
+                HTTP_HOST="mladis.localhost",
+                secure=True,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'action="{reverse("facebook_login")}"')
+        self.assertNotContains(response, "HTTPS required")
 
     @override_settings(
         SOCIAL_AUTH_CANONICAL_ORIGIN="http://127.0.0.1:8000",
+        SOCIAL_AUTH_PROVIDER_ORIGINS={},
         ALLOWED_HOSTS=["localhost", "127.0.0.1", "testserver"],
     )
-    def test_social_auth_canonical_origin_keeps_matching_host(self):
-        response = self.client.get(reverse("bookings:login"), HTTP_HOST="127.0.0.1:8000")
+    def test_social_auth_canonical_origin_does_not_redirect_login_host(self):
+        response = self.client.get(reverse("bookings:login"), HTTP_HOST="localhost:8000")
 
         self.assertEqual(response.status_code, 200)
+
+    @override_settings(
+        SOCIAL_AUTH_CANONICAL_ORIGIN="http://127.0.0.1:8000",
+        SOCIAL_AUTH_PROVIDER_ORIGINS={},
+        ALLOWED_HOSTS=["localhost", "127.0.0.1", "testserver"],
+    )
+    def test_social_auth_canonical_origin_redirects_provider_get(self):
+        response = self.client.get(reverse("google_login"), HTTP_HOST="localhost:8000")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"http://127.0.0.1:8000{reverse('google_login')}")
+
+    @override_settings(
+        SOCIAL_AUTH_CANONICAL_ORIGIN="https://gateway.example.test",
+        SOCIAL_AUTH_PROVIDER_ORIGINS={"google": "http://127.0.0.1:8000"},
+        ALLOWED_HOSTS=["127.0.0.1", "gateway.example.test", "testserver"],
+    )
+    def test_social_provider_launch_uses_provider_specific_origin(self):
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_OAUTH_CLIENT_ID": "google-client-id",
+                "GOOGLE_OAUTH_CLIENT_SECRET": "google-client-secret",
+            },
+            clear=False,
+        ):
+            response = self.client.get(
+                reverse("bookings:social-provider-launch", kwargs={"provider_id": "google"}),
+                HTTP_HOST="gateway.example.test",
+                secure=True,
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response["Location"],
+            f"http://127.0.0.1:8000{reverse('bookings:social-provider-launch', kwargs={'provider_id': 'google'})}",
+        )
+
+    def test_github_login_uses_provider_account_picker_prompt(self):
+        with patch.dict(
+            os.environ,
+            {
+                "GITHUB_OAUTH_CLIENT_ID": "github-client-id",
+                "GITHUB_OAUTH_CLIENT_SECRET": "github-client-secret",
+            },
+            clear=False,
+        ):
+            response = self.client.post(reverse("github_login"))
+
+        self.assertEqual(response.status_code, 302)
+        query = parse_qs(urlparse(response["Location"]).query)
+        self.assertEqual(query["prompt"], ["select_account"])
 
     def test_login_page_auto_configures_google_from_environment(self):
         with patch.dict(
@@ -1317,16 +1450,13 @@ class OpsDashboardTests(TestCase):
         self.assertEqual(summary_response.status_code, 200)
         self.assertEqual(summary_response.json()["agent_questions"][0]["topic"], "pricing")
 
-    def test_legacy_ops_dashboard_remains_available_for_staff(self):
+    def test_legacy_ops_dashboard_redirects_to_modern_staff_dashboard(self):
         staff = get_user_model().objects.create_user("legacy-ops", "legacy@example.com", "secret", is_staff=True)
         self.client.force_login(staff)
 
         response = self.client.get(reverse("bookings:ops-legacy-dashboard"))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Owner dashboard")
-        self.assertContains(response, "Business calendar")
-        self.assertContains(response, reverse("admin:bookings_bookableitem_calendar"))
+        self.assertRedirects(response, reverse("bookings:ops-dashboard"))
 
     def test_ops_reports_show_graphs_for_staff(self):
         staff = get_user_model().objects.create_user("reports", "reports@example.com", "secret", is_staff=True)
@@ -1349,16 +1479,87 @@ class OpsDashboardTests(TestCase):
         response = self.client.get(reverse("bookings:ops-reports"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Reporting")
-        self.assertContains(response, "Reservations by status")
-        self.assertContains(response, "Agent question topics")
-        self.assertContains(response, "Feedback by source")
-        self.assertContains(response, "Visits by day")
-        self.assertContains(response, "Business calendar")
-        self.assertContains(response, reverse("admin:bookings_bookableitem_calendar"))
+        self.assertContains(response, "MLADIS Modern Dashboard")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
-    @override_settings(SOCIAL_AUTH_CANONICAL_ORIGIN="https://mladis.com")
-    def test_oauth_diagnostics_shows_exact_callback_urls_for_staff(self):
+        api_response = self.client.get(reverse("bookings:ops-reports-api"))
+        self.assertEqual(api_response.status_code, 200)
+        payload = api_response.json()
+        chart_titles = [chart["title"] for chart in payload["charts"]]
+        self.assertIn("Reservations by status", chart_titles)
+        self.assertIn("Agent question topics", chart_titles)
+        self.assertIn("Feedback by source", chart_titles)
+        self.assertIn("Visits by day", chart_titles)
+
+        legacy_response = self.client.get(reverse("bookings:ops-legacy-reports"))
+        self.assertRedirects(legacy_response, reverse("bookings:ops-reports"))
+        self.assertEqual(payload["calendar_url"], reverse("admin:bookings_bookableitem_calendar"))
+
+    def test_modern_ops_customer_deposit_and_agent_sections_use_react_shell_and_apis(self):
+        staff = get_user_model().objects.create_user("ops-tabs", "tabs@example.com", "secret", is_staff=True)
+        self.client.force_login(staff)
+        item = BookableItem.objects.create(
+            name="G-101",
+            slug="g-101-ops-tabs",
+            category=BookingCategory.STAY,
+            short_description="Modern ops test stay.",
+        )
+        profile = CustomerProfile.objects.create(
+            name="VIP Guest",
+            email="vip-tabs@example.com",
+            segment=ClientSegment.VIP,
+            marketing_consent_status=MarketingConsentStatus.OPTED_IN,
+        )
+        inquiry = BookingInquiry.objects.create(
+            customer_profile=profile,
+            item=item,
+            guest_name="VIP Guest",
+            email="vip-tabs@example.com",
+            check_in=timezone.localdate() + timedelta(days=4),
+            check_out=timezone.localdate() + timedelta(days=6),
+            guests=2,
+        )
+        DamageDeposit.objects.create(
+            inquiry=inquiry,
+            item=item,
+            guest_name="VIP Guest",
+            email="vip-tabs@example.com",
+            status=DepositStatus.REQUIRES_CAPTURE,
+        )
+        AgentFAQ.objects.create(
+            question="How does the deposit work?",
+            answer="The deposit is a secure authorization hold.",
+            category="deposit",
+            keywords="deposit,hold",
+        )
+        AgentConversation.objects.create(
+            session_id="ops-tabs-agent",
+            item=item,
+            last_user_message="How does the deposit work?",
+            last_agent_reply="It is a secure authorization hold.",
+            question_topic="deposit",
+            metadata={"agent_mode": "faq"},
+        )
+
+        for route_name in ["ops-customers", "ops-deposits", "ops-agent"]:
+            response = self.client.get(reverse(f"bookings:{route_name}"))
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "MLADIS Modern Dashboard")
+
+        customers_payload = self.client.get(reverse("bookings:ops-customers-api")).json()
+        self.assertEqual(customers_payload["rows"][0]["name"], "VIP Guest")
+        self.assertEqual(customers_payload["rows"][0]["segment"], "VIP")
+
+        deposits_payload = self.client.get(reverse("bookings:ops-deposits-api")).json()
+        self.assertEqual(deposits_payload["rows"][0]["guest_name"], "VIP Guest")
+        self.assertEqual(deposits_payload["rows"][0]["status"], DepositStatus.REQUIRES_CAPTURE)
+
+        agent_payload = self.client.get(reverse("bookings:ops-agent-api")).json()
+        self.assertEqual(agent_payload["conversations"][0]["topic"], "deposit")
+        self.assertIn("How does the deposit work?", [row["question"] for row in agent_payload["faqs"]])
+
+    @override_settings(SOCIAL_AUTH_CANONICAL_ORIGIN="https://mladis.com", SOCIAL_AUTH_PROVIDER_ORIGINS={})
+    def test_oauth_diagnostics_displays_callback_urls(self):
         staff = get_user_model().objects.create_user("oauth", "oauth@example.com", "secret", is_staff=True)
         self.client.force_login(staff)
 
@@ -1366,6 +1567,7 @@ class OpsDashboardTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "OAuth setup")
+        self.assertContains(response, "https://mladis.com/oauth/google/login/callback/")
         self.assertContains(response, "https://mladis.com/oauth/facebook/login/callback/")
         self.assertContains(response, "https://mladis.com/oauth/github/login/callback/")
 
@@ -2331,13 +2533,18 @@ Viajeros
         response = self.client.get(reverse("bookings:ops-reservations"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Reservations")
-        self.assertContains(response, "Diana")
-        self.assertContains(response, "VIP")
-        self.assertContains(response, "diana@example.com")
-        self.assertContains(response, "Loved the pool")
-        self.assertContains(response, "Feedback")
-        self.assertContains(response, "Customer groups")
+        self.assertContains(response, "MLADIS Modern Dashboard")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+
+        api_response = self.client.get(reverse("bookings:ops-reservations-api"))
+        self.assertEqual(api_response.status_code, 200)
+        payload = api_response.json()
+        self.assertEqual(payload["rows"][0]["name"], "Diana")
+        self.assertEqual(payload["rows"][0]["segment"], "VIP")
+        self.assertEqual(payload["rows"][0]["email"], "diana@example.com")
+        self.assertIn("Loved the pool", payload["rows"][0]["feedback"])
+        self.assertTrue(payload["rows"][0]["feedback_admin_url"])
+        self.assertIn("VIP", [option["label"] for option in payload["segment_options"]])
 
     def test_ops_reservations_filters_by_customer_group_and_exports_csv(self):
         user = get_user_model().objects.create_user(
@@ -2373,10 +2580,10 @@ Viajeros
             check_out=date(2024, 9, 4),
         )
 
-        response = self.client.get(reverse("bookings:ops-reservations"), {"segment": ClientSegment.VIP})
+        response = self.client.get(reverse("bookings:ops-reservations-api"), {"segment": ClientSegment.VIP})
 
-        self.assertContains(response, "VIP Guest")
-        self.assertNotContains(response, "Favorite Guest")
+        rows = response.json()["rows"]
+        self.assertEqual([row["name"] for row in rows], ["VIP Guest"])
 
         csv_response = self.client.get(
             reverse("bookings:ops-reservations"),
@@ -2395,19 +2602,19 @@ class CalendarOpsTests(TestCase):
     def test_calendar_ops_requires_staff_login(self):
         response = self.client.get(reverse("bookings:calendar-ops"))
 
-        self.assertEqual(response.status_code, 302)
-        self.assertIn(reverse("bookings:login"), response["Location"])
-        self.assertIn("next=/ops/calendar/", response["Location"])
+        self.assertRedirects(response, reverse("admin:bookings_bookableitem_calendar"), fetch_redirect_response=False)
 
     def test_calendar_ops_loads_for_staff(self):
         user = get_user_model().objects.create_user(
             username="ops",
             password="secret",
             is_staff=True,
+            is_superuser=True,
         )
         self.client.force_login(user)
 
-        response = self.client.get(reverse("bookings:calendar-ops"))
+        response = self.client.get(reverse("bookings:calendar-ops"), follow=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Manual Airbnb iCal first")
+        self.assertContains(response, "Business calendar")
+        self.assertContains(response, "modern-admin-calendar-content")

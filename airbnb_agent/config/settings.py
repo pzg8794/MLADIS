@@ -58,11 +58,11 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "bookings.middleware.SocialAuthCanonicalOriginMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "bookings.middleware.SocialAuthCanonicalOriginMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "bookings.middleware.PageVisitMiddleware",
 ]
@@ -213,10 +213,28 @@ SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS = env_list(
     ["microsoft"],
 )
 SOCIAL_AUTH_CANONICAL_ORIGIN = os.getenv("SOCIAL_AUTH_CANONICAL_ORIGIN", "").strip().rstrip("/")
+SOCIAL_AUTH_PROVIDER_ORIGINS = {
+    "google": (
+        os.getenv("SOCIAL_AUTH_GOOGLE_ORIGIN", "").strip()
+        or os.getenv("GOOGLE_OAUTH_ORIGIN", "").strip()
+    ).rstrip("/"),
+    "facebook": (
+        os.getenv("SOCIAL_AUTH_FACEBOOK_ORIGIN", "").strip()
+        or os.getenv("FACEBOOK_OAUTH_ORIGIN", "").strip()
+    ).rstrip("/"),
+    "microsoft": (
+        os.getenv("SOCIAL_AUTH_MICROSOFT_ORIGIN", "").strip()
+        or os.getenv("MICROSOFT_OAUTH_ORIGIN", "").strip()
+    ).rstrip("/"),
+    "github": (
+        os.getenv("SOCIAL_AUTH_GITHUB_ORIGIN", "").strip()
+        or os.getenv("GITHUB_OAUTH_ORIGIN", "").strip()
+    ).rstrip("/"),
+}
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "SCOPE": ["profile", "email"],
-        "AUTH_PARAMS": {"access_type": "online"},
+        "AUTH_PARAMS": {"access_type": "online", "prompt": "select_account"},
     },
     "facebook": {
         "METHOD": "oauth2",
@@ -228,11 +246,16 @@ SOCIALACCOUNT_PROVIDERS = {
     },
     "github": {
         "SCOPE": ["user:email"],
+        "AUTH_PARAMS": {"prompt": "select_account"},
     },
 }
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_AGENT_MODEL = os.getenv("OPENAI_AGENT_MODEL", "gpt-5.4-nano").strip() or "gpt-5.4-nano"
+OPENAI_CHATKIT_API_URL = os.getenv("OPENAI_CHATKIT_API_URL", "").strip()
+OPENAI_CHATKIT_DOMAIN_KEY = os.getenv("OPENAI_CHATKIT_DOMAIN_KEY", "").strip()
+OPENAI_CHATKIT_WORKFLOW_ID = os.getenv("OPENAI_CHATKIT_WORKFLOW_ID", "").strip()
+OPENAI_CHATKIT_WORKFLOW_VERSION = os.getenv("OPENAI_CHATKIT_WORKFLOW_VERSION", "").strip()
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_API_VERSION = "2026-02-25.clover"

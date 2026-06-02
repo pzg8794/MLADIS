@@ -1,11 +1,13 @@
 import {
   AreaTile,
   MissionCauseSummary,
+  PublicChatKitConfig,
   PublicGalleryImage,
   PublicHouseRule,
   PublicReviewHighlight,
   PublicSiteSnapshot,
   PublicStay,
+  SocialLoginProvider,
 } from '../domain/models';
 import { HttpClient } from './HttpClient';
 
@@ -56,6 +58,29 @@ interface ApiMissionCause {
   description: string;
 }
 
+interface ApiSocialLoginProvider {
+  id: string;
+  label: string;
+  login_url: string;
+  is_configured: boolean;
+  is_launchable: boolean;
+  disabled_reason: string;
+  help_text: string;
+}
+
+interface ApiManagedChatKitConfig {
+  mode: 'managed';
+  session_url: string;
+}
+
+interface ApiCustomChatKitConfig {
+  mode: 'custom';
+  api_url: string;
+  domain_key: string;
+}
+
+type ApiChatKitConfig = ApiManagedChatKitConfig | ApiCustomChatKitConfig;
+
 interface ApiPublicSiteSnapshot {
   site_name: string;
   logo_url: string;
@@ -65,6 +90,8 @@ interface ApiPublicSiteSnapshot {
   stays: ApiStay[];
   area_tiles: ApiAreaTile[];
   mission_causes: ApiMissionCause[];
+  social_providers?: ApiSocialLoginProvider[];
+  chatkit?: ApiChatKitConfig | null;
   generated_at: string;
 }
 
@@ -103,6 +130,23 @@ export class ApiPublicSiteRepository implements PublicSiteRepository {
       )),
       data.area_tiles.map((tile) => new AreaTile(tile.title, tile.caption, tile.image_url)),
       data.mission_causes.map((cause) => new MissionCauseSummary(cause.title, cause.description)),
+      (data.social_providers ?? []).map((provider) => new SocialLoginProvider(
+        provider.id,
+        provider.label,
+        provider.login_url,
+        provider.is_configured,
+        provider.is_launchable,
+        provider.disabled_reason,
+        provider.help_text,
+      )),
+      data.chatkit
+        ? new PublicChatKitConfig(
+          data.chatkit.mode,
+          data.chatkit.mode === 'managed' ? data.chatkit.session_url : null,
+          data.chatkit.mode === 'custom' ? data.chatkit.api_url : null,
+          data.chatkit.mode === 'custom' ? data.chatkit.domain_key : null,
+        )
+        : null,
       data.generated_at,
       'api',
     );

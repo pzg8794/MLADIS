@@ -35,6 +35,8 @@ interface ApiAccountSnapshot {
   profile: {
     name: string;
     email: string;
+    is_staff?: boolean;
+    is_superuser?: boolean;
   };
   reservations: ApiAccountReservation[];
   invoices: ApiAccountInvoice[];
@@ -53,6 +55,8 @@ export class ApiAccountRepository implements AccountRepository {
     return new AccountSnapshot(
       data.profile.name,
       data.profile.email,
+      Boolean(data.profile.is_staff),
+      Boolean(data.profile.is_superuser),
       data.reservations.map((reservation) => new AccountReservation(
         reservation.id,
         reservation.guest_name,

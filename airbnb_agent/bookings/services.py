@@ -11,7 +11,6 @@ from django.core.mail import send_mail
 from django.db.models import F
 from django.urls import reverse
 from django.utils import timezone
-from openai import OpenAI
 import requests
 import stripe
 
@@ -46,6 +45,12 @@ APP_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAX_AGENT_SOURCE_SNIPPETS = 12
 MAX_TOTAL_AGENT_SOURCES = 6
+
+
+def _build_openai_client(api_key):
+    from openai import OpenAI
+
+    return OpenAI(api_key=api_key)
 
 
 REPO_KNOWLEDGE_HEADINGS = (
@@ -466,7 +471,7 @@ class BookingAgentService:
     def __init__(self, api_key=None, client=None):
         self.api_key = api_key if api_key is not None else settings.OPENAI_API_KEY
         self.model = settings.OPENAI_AGENT_MODEL
-        self.client = client or (OpenAI(api_key=self.api_key) if self.api_key else None)
+        self.client = client
 
     def reply(self, request: AgentRequest) -> AgentResponse:
         item = self._get_item(request.item_id)
@@ -558,7 +563,8 @@ class BookingAgentService:
         )
 
     def _openai_reply(self, request, item):
-        response = self.client.responses.create(
+        client = self.client or _build_openai_client(self.api_key)
+        response = client.responses.create(
             model=self.model,
             instructions=self._instructions(),
             input=self._prompt(request, item),

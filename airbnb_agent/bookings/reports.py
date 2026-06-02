@@ -3,9 +3,11 @@ from datetime import timedelta
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncDate
-from django.urls import reverse_lazy
+from django.http import JsonResponse
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.views import View
 from django.views.generic import TemplateView
 
 from .models import (
@@ -213,3 +215,61 @@ class OpsReportsView(TemplateView):
             width = int((row["total"] / max_total) * 100) if max_total else 0
             normalized.append({**row, "width": max(width, 3) if row["total"] else 0})
         return {"title": title, "rows": normalized, "max_total": max_total}
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class ModernOpsReportsView(TemplateView):
+    template_name = "bookings/modern_dashboard.html"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsReportsAPIView(View):
+    def get(self, request):
+        view = OpsReportsView()
+        view.setup(request)
+        context = view.get_context_data()
+        chart_keys = [
+            "reservation_status_chart",
+            "booking_category_chart",
+            "item_chart",
+            "visit_chart",
+            "agent_topic_chart",
+            "client_segment_chart",
+            "feedback_source_chart",
+            "feedback_listing_chart",
+            "booking_timeline",
+            "visit_timeline",
+            "invoice_status_chart",
+            "deposit_status_chart",
+            "donation_status_chart",
+            "coupon_status_chart",
+            "promotion_status_chart",
+            "calendar_chart",
+        ]
+        return JsonResponse(
+            {
+                "summary_cards": context["summary_cards"],
+                "charts": [
+                    {**context[key], "id": key, "category": self._category_for(key)}
+                    for key in chart_keys
+                ],
+                "report_since": context["report_since"].isoformat(),
+                "report_until": context["report_until"].isoformat(),
+                "legacy_url": reverse("bookings:ops-reports"),
+                "calendar_url": reverse("admin:bookings_bookableitem_calendar"),
+            }
+        )
+
+    @staticmethod
+    def _category_for(key):
+        if "agent" in key:
+            return "agent"
+        if "deposit" in key or "invoice" in key or "donation" in key:
+            return "money"
+        if "client" in key or "feedback" in key:
+            return "customers"
+        if "visit" in key:
+            return "traffic"
+        if "calendar" in key:
+            return "calendar"
+        return "booking"

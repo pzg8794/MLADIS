@@ -1,0 +1,46 @@
+name: Sign-In Contracts
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feature/**
+
+jobs:
+  django-signin-contracts:
+    name: Django sign-in contracts
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: airbnb_agent
+    env:
+      SECRET_KEY: signin-contract-ci-secret
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1,testserver,.trycloudflare.com
+      ACCOUNT_DEFAULT_HTTP_PROTOCOL: http
+      SOCIAL_AUTH_CANONICAL_ORIGIN: ""
+      SOCIAL_AUTH_GOOGLE_ORIGIN: http://127.0.0.1:8000
+      SOCIAL_AUTH_GITHUB_ORIGIN: http://127.0.0.1:8000
+      SOCIAL_AUTH_FACEBOOK_ORIGIN: https://facebook-contract.trycloudflare.com
+      SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS: microsoft
+      SITE_DOMAIN: 127.0.0.1:8000
+      SITE_NAME: MLADIS Local
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: airbnb_agent/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run sign-in contract checks
+        run: bash scripts/test_signin_contracts.sh

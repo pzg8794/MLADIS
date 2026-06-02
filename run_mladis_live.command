@@ -13,7 +13,9 @@ MLADIS_PUBLIC_TUNNEL="${MLADIS_PUBLIC_TUNNEL:-1}"
 MLADIS_OPEN_BROWSER="${MLADIS_OPEN_BROWSER:-1}"
 MLADIS_SERVER="${MLADIS_SERVER:-runserver}"
 MLADIS_CHECK_ONLY="${MLADIS_CHECK_ONLY:-0}"
-MLADIS_STARTUP_TIMEOUT="${MLADIS_STARTUP_TIMEOUT:-30}"
+MLADIS_STARTUP_TIMEOUT="${MLADIS_STARTUP_TIMEOUT:-60}"
+MLADIS_FORCE_INSTALL="${MLADIS_FORCE_INSTALL:-0}"
+MLADIS_COLLECTSTATIC="${MLADIS_COLLECTSTATIC:-0}"
 
 SERVER_PID=""
 
@@ -37,6 +39,31 @@ on_error() {
   echo
   echo "Something stopped the launcher before the site could stay live."
   echo "Check the lines above for the exact error."
+}
+
+file_checksum() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    cksum "$1" | awk '{print $1}'
+  fi
+}
+
+install_requirements_if_needed() {
+  local stamp_file="$VENV_DIR/.requirements.sha256"
+  local current_hash
+
+  current_hash="$(file_checksum requirements.txt)"
+  if ! truthy "$MLADIS_FORCE_INSTALL" && [[ -f "$stamp_file" ]] && [[ "$(cat "$stamp_file")" == "$current_hash" ]]; then
+    echo "Python requirements unchanged; skipping install. Set MLADIS_FORCE_INSTALL=1 to force it."
+    return
+  fi
+
+  python -m pip install --upgrade pip
+  python -m pip install -r requirements.txt
+  printf "%s\n" "$current_hash" > "$stamp_file"
 }
 
 trap cleanup EXIT INT TERM
@@ -64,6 +91,8 @@ if truthy "$MLADIS_PUBLIC_TUNNEL"; then
   export ALLOWED_HOSTS="${ALLOWED_HOSTS:-localhost,127.0.0.1,.trycloudflare.com}"
   export CSRF_TRUSTED_ORIGINS="${CSRF_TRUSTED_ORIGINS:-https://*.trycloudflare.com}"
   export SOCIAL_AUTH_CANONICAL_ORIGIN="${MLADIS_SOCIAL_AUTH_CANONICAL_ORIGIN:-}"
+  export SOCIAL_AUTH_GOOGLE_ORIGIN="${SOCIAL_AUTH_GOOGLE_ORIGIN:-http://127.0.0.1:8000}"
+  export SOCIAL_AUTH_GITHUB_ORIGIN="${SOCIAL_AUTH_GITHUB_ORIGIN:-http://127.0.0.1:8000}"
 fi
 
 if [[ ! -x "$VENV_DIR/bin/python" ]]; then
@@ -75,8 +104,7 @@ source "$VENV_DIR/bin/activate"
 
 echo
 echo "Preparing $APP_NAME..."
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+install_requirements_if_needed
 
 echo
 echo "Applying database migrations..."
@@ -94,9 +122,14 @@ echo
 echo "Checking Django configuration..."
 python manage.py check
 
-echo
-echo "Collecting static files..."
-python manage.py collectstatic --noinput --verbosity 0
+if truthy "$MLADIS_COLLECTSTATIC"; then
+  echo
+  echo "Collecting static files..."
+  python manage.py collectstatic --noinput --verbosity 0
+else
+  echo
+  echo "Skipping collectstatic for local startup. Set MLADIS_COLLECTSTATIC=1 to collect static files."
+fi
 
 if truthy "$MLADIS_CHECK_ONLY"; then
   echo
@@ -195,6 +228,7 @@ if truthy "$MLADIS_PUBLIC_TUNNEL" && command -v cloudflared >/dev/null 2>&1; the
       echo "Public live URL: $PUBLIC_URL"
       echo "For Facebook OAuth, add this callback in Meta while the tunnel is running:"
       echo "$PUBLIC_URL/oauth/facebook/login/callback/"
+      echo "Then set SOCIAL_AUTH_FACEBOOK_ORIGIN=$PUBLIC_URL in airbnb_agent/.env and restart this launcher."
       if truthy "$MLADIS_OPEN_BROWSER" && command -v open >/dev/null 2>&1; then
         open "$PUBLIC_URL" >/dev/null 2>&1 || true
       fi
