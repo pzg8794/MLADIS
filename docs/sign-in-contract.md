@@ -104,6 +104,10 @@ The launcher should be the one-file way to see normal code and UI changes:
   before Django starts.
 - `MLADIS_RESTART_EXISTING` defaults to `1`, so stale local Django/tunnel
   processes on the same port are stopped first.
+- `MLADIS_REUSE_TUNNEL` defaults to `1`, so normal UI/Django restarts keep an
+  existing Cloudflare tunnel and do not rotate the Facebook callback URL.
+- `MLADIS_CLEANUP_TUNNEL` defaults to `0`, so closing/restarting the launcher
+  does not kill the quick tunnel and force a new Facebook callback.
 - `MLADIS_TUNNEL_LOG` defaults to `/private/tmp/mladis-tunnel.log`; use this
   log to recover the current quick-tunnel URL if the Terminal scrollback moves.
 - `MLADIS_STARTUP_TIMEOUT` defaults to `60` seconds.
@@ -117,11 +121,18 @@ The launcher should be the one-file way to see normal code and UI changes:
   Drive path and first startup is still slow.
 - Use `MLADIS_PUBLIC_TUNNEL=0` only for emergency local-only debugging.
   Facebook sign-in is expected not to work in that mode.
+- Use `MLADIS_REUSE_TUNNEL=0` only when you intentionally want a new quick
+  tunnel and are ready to update Meta's Valid OAuth Redirect URIs.
+- Use `MLADIS_CLEANUP_TUNNEL=1` only when you intentionally want the launcher to
+  stop the tunnel when it exits.
 
 ## Troubleshooting
 
 - Facebook says the connection is not secure: run `./run_mladis_live.command`,
   use the printed HTTPS tunnel URL, and save the exact HTTPS callback in Meta.
+- Facebook says `URL blocked`: add the exact printed callback URL to
+  Facebook Login -> Settings -> Valid OAuth Redirect URIs, or switch to a
+  stable named tunnel/domain and use that stable callback.
 - Google says `redirect_uri_mismatch`: add
   `http://127.0.0.1:8000/oauth/google/login/callback/` to the Google OAuth app.
 - GitHub says `redirect_uri` is not associated: add

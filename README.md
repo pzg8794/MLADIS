@@ -12,7 +12,9 @@ at `http://127.0.0.1:8000`, and opens a temporary Cloudflare public URL when
 `cloudflared` is installed. For quick-tunnel runs, it exports the active tunnel
 URL as `SOCIAL_AUTH_FACEBOOK_ORIGIN` for the Django process it starts, so stale
 Facebook quick-tunnel values in `.env` do not silently steer the browser to an
-old host.
+old host. It also reuses an existing tunnel by default so normal UI/Django
+restarts do not rotate the Facebook callback URL, and it leaves the tunnel
+running unless `MLADIS_CLEANUP_TUNNEL=1`.
 
 Use the printed `https://...trycloudflare.com` URL for browser testing when
 Facebook sign-in matters. Use `http://127.0.0.1:8000` as the internal local

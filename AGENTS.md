@@ -16,12 +16,12 @@
 
 - Use `./run_mladis_live.command` from the repo root for the working local Django app. This is the only normal local startup path.
 - Do not start MLADIS with ad hoc `python manage.py runserver`, `npm run dev`, `preview_*` scripts, `nohup`, or background shell servers during normal testing.
-- The launcher builds the React frontend into Django static assets by default, runs Django setup, stops stale Django/tunnel processes on the same port, starts a Cloudflare tunnel when `MLADIS_PUBLIC_TUNNEL=1`, exports the active tunnel as `SOCIAL_AUTH_FACEBOOK_ORIGIN`, then starts Django on `http://127.0.0.1:8000`.
+- The launcher builds the React frontend into Django static assets by default, runs Django setup, stops stale Django processes on the same port, reuses an existing Cloudflare tunnel when available, exports the active tunnel as `SOCIAL_AUTH_FACEBOOK_ORIGIN`, then starts Django on `http://127.0.0.1:8000`.
 - Use the printed `https://...trycloudflare.com` URL for browser testing when Facebook sign-in matters. `http://127.0.0.1:8000` is the internal local Django origin and the Google/GitHub local callback origin.
 - Do not test Django/allauth social sign-in through the Vite dev server at `http://127.0.0.1:5173`.
 - If frontend preview servers are running in parallel, stop them before debugging auth so redirects and cookies stay easy to reason about.
 - If the Google Drive checkout is slow or Git starts hanging on ignored files, create a fast clone under `~/Documents` or `~/Desktop`, copy only `airbnb_agent/.env` if needed, and use GitHub as the synchronization point.
-- The local launcher caches dependency installs by `requirements.txt`, skips local `collectstatic` unless `MLADIS_COLLECTSTATIC=1`, builds frontend assets unless `MLADIS_BUILD_FRONTEND=0`, writes the active tunnel output to `/private/tmp/mladis-tunnel.log`, and defaults to a 60 second startup timeout.
+- The local launcher caches dependency installs by `requirements.txt`, skips local `collectstatic` unless `MLADIS_COLLECTSTATIC=1`, builds frontend assets unless `MLADIS_BUILD_FRONTEND=0`, writes the active tunnel output to `/private/tmp/mladis-tunnel.log`, keeps the existing tunnel unless `MLADIS_REUSE_TUNNEL=0`, does not clean up the tunnel unless `MLADIS_CLEANUP_TUNNEL=1`, and defaults to a 60 second startup timeout.
 
 ## Sign-In Contract
 

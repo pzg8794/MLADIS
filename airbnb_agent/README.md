@@ -27,6 +27,9 @@ when Facebook sign-in matters. The launcher exports the active quick-tunnel URL
 as `SOCIAL_AUTH_FACEBOOK_ORIGIN` for the Django process it starts unless an
 explicit shell override is provided.
 The active tunnel output is also written to `/private/tmp/mladis-tunnel.log`.
+The launcher reuses an existing Cloudflare tunnel by default so routine UI or
+Django restarts do not rotate Facebook's callback URL, and it leaves that
+tunnel running unless `MLADIS_CLEANUP_TUNNEL=1`.
 
 Useful options:
 

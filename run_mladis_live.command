@@ -22,6 +22,8 @@ MLADIS_FORCE_NPM_INSTALL="${MLADIS_FORCE_NPM_INSTALL:-0}"
 MLADIS_RESTART_EXISTING="${MLADIS_RESTART_EXISTING:-1}"
 MLADIS_TUNNEL_STARTUP_TIMEOUT="${MLADIS_TUNNEL_STARTUP_TIMEOUT:-45}"
 MLADIS_TUNNEL_LOG="${MLADIS_TUNNEL_LOG:-/private/tmp/mladis-tunnel.log}"
+MLADIS_REUSE_TUNNEL="${MLADIS_REUSE_TUNNEL:-1}"
+MLADIS_CLEANUP_TUNNEL="${MLADIS_CLEANUP_TUNNEL:-0}"
 
 SERVER_PID=""
 TUNNEL_PID=""
@@ -41,7 +43,7 @@ cleanup() {
     kill "$TUNNEL_TAIL_PID" >/dev/null 2>&1 || true
     wait "$TUNNEL_TAIL_PID" >/dev/null 2>&1 || true
   fi
-  if [[ -n "$TUNNEL_PID" ]] && kill -0 "$TUNNEL_PID" >/dev/null 2>&1; then
+  if truthy "$MLADIS_CLEANUP_TUNNEL" && [[ -n "$TUNNEL_PID" ]] && kill -0 "$TUNNEL_PID" >/dev/null 2>&1; then
     echo
     echo "Stopping $APP_NAME public tunnel..."
     kill "$TUNNEL_PID" >/dev/null 2>&1 || true
@@ -210,8 +212,12 @@ stop_existing_processes() {
   if truthy "$MLADIS_PUBLIC_TUNNEL"; then
     pids="$(pgrep -f "cloudflared tunnel --url $LOCAL_URL" || true)"
     if [[ -n "$pids" ]]; then
-      echo "Stopping existing Cloudflare tunnel for $LOCAL_URL..."
-      kill $pids >/dev/null 2>&1 || true
+      if truthy "$MLADIS_REUSE_TUNNEL"; then
+        echo "Existing Cloudflare tunnel found; keeping it so the Facebook callback URL does not rotate."
+      else
+        echo "Stopping existing Cloudflare tunnel for $LOCAL_URL..."
+        kill $pids >/dev/null 2>&1 || true
+      fi
     fi
   fi
 }
@@ -244,6 +250,27 @@ start_public_tunnel_if_needed() {
     echo "Cloudflared is not available. The site will run local-only at $LOCAL_URL."
     echo "Facebook OAuth will not work from local-only mode."
     return
+  fi
+
+  local existing_tunnel_pids
+  existing_tunnel_pids="$(pgrep -f "cloudflared tunnel --url $LOCAL_URL" || true)"
+  if truthy "$MLADIS_REUSE_TUNNEL" && [[ -n "$existing_tunnel_pids" ]]; then
+    PUBLIC_URL="$(grep -aEo 'https://[A-Za-z0-9.-]+\.trycloudflare\.com' "$TUNNEL_LOG" 2>/dev/null | tail -n 1 || true)"
+    if [[ -n "$PUBLIC_URL" ]]; then
+      local facebook_origin
+      facebook_origin="${MLADIS_SOCIAL_AUTH_FACEBOOK_ORIGIN:-${SOCIAL_AUTH_FACEBOOK_ORIGIN:-$PUBLIC_URL}}"
+      export SOCIAL_AUTH_FACEBOOK_ORIGIN="$facebook_origin"
+      echo
+      echo "Reusing existing Cloudflare tunnel."
+      echo "Public live URL: $PUBLIC_URL"
+      echo "Facebook OAuth origin for this run: $SOCIAL_AUTH_FACEBOOK_ORIGIN"
+      echo "For Facebook OAuth, the Meta callback must allow:"
+      echo "$SOCIAL_AUTH_FACEBOOK_ORIGIN/oauth/facebook/login/callback/"
+      return
+    fi
+    echo
+    echo "Existing Cloudflare tunnel found, but $TUNNEL_LOG does not contain a public URL."
+    echo "Starting a fresh tunnel so the launcher can recover the active callback."
   fi
 
   : > "$TUNNEL_LOG"
