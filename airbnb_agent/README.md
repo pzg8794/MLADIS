@@ -21,15 +21,12 @@ The launcher uses `airbnb_agent/.env`, creates or reuses `.venv`, installs
 requirements when `requirements.txt` changes, builds the React UI into Django
 static assets, runs migrations, syncs OAuth apps, runs Django checks, stops
 stale Django/tunnel processes on the same port, starts Django at
-`http://127.0.0.1:8000`, and starts a temporary Cloudflare tunnel when
-`cloudflared` is installed. The printed tunnel URL is the browser URL to use
-when Facebook sign-in matters. The launcher exports the active quick-tunnel URL
-as `SOCIAL_AUTH_FACEBOOK_ORIGIN` for the Django process it starts unless an
-explicit shell override is provided.
-The active tunnel output is also written to `/private/tmp/mladis-tunnel.log`.
-The launcher reuses an existing Cloudflare tunnel by default so routine UI or
-Django restarts do not rotate Facebook's callback URL, and it leaves that
-tunnel running unless `MLADIS_CLEANUP_TUNNEL=1`.
+`http://127.0.0.1:8000`, and starts the stable Cloudflare named tunnel
+`https://local.mladis.com` when `cloudflared` is installed and authorized. Use
+`https://local.mladis.com` as the browser URL when Facebook sign-in matters. The
+launcher exports `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com` for the
+Django process it starts unless an explicit shell override is provided. The
+named-tunnel output is also written to `/private/tmp/mladis-tunnel.log`.
 
 Useful options:
 
@@ -72,9 +69,9 @@ middleware, or social launch routes, run:
 bash scripts/test_signin_contracts.sh
 ```
 
-Use the printed `https://...trycloudflare.com` URL for browser testing when
-Facebook sign-in matters. `http://127.0.0.1:8000` is the internal Django origin
-and the Google/GitHub local callback origin. Do not test Django/allauth login
+Use `https://local.mladis.com` for browser testing when Facebook sign-in
+matters. `http://127.0.0.1:8000` is the internal Django origin and the
+Google/GitHub local callback origin. Do not test Django/allauth login
 through the Vite dev server at `http://127.0.0.1:5173`.
 
 The full contract is documented in
@@ -168,14 +165,14 @@ knowledge over time. Without a key, it falls back to setup-mode replies.
 - Social providers are scaffolded with django-allauth. By default, `.env` is the source of truth for Google, Facebook, Microsoft, and GitHub credentials; set `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK=True` only if you intentionally want `/admin/socialaccount/socialapp/` rows to enable providers without matching env vars.
 - Environment-based setup auto-syncs `SocialApp` records for the current `SITE_ID` when the login/signup page loads or a provider login starts.
 - Local env variables: `SITE_DOMAIN`, `SITE_NAME`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `USE_X_FORWARDED_PROTO`, `ACCOUNT_DEFAULT_HTTP_PROTOCOL`, `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK`, `SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS`, `SOCIAL_AUTH_CANONICAL_ORIGIN`, `SOCIAL_AUTH_GOOGLE_ORIGIN`, `SOCIAL_AUTH_FACEBOOK_ORIGIN`, `SOCIAL_AUTH_MICROSOFT_ORIGIN`, `SOCIAL_AUTH_GITHUB_ORIGIN`, `MLADIS_AGENT_ADMIN_EMAIL`, `MLADIS_AGENT_ADMIN_NAME`, `MLADIS_AGENT_ADMIN_PHONE`, `MLADIS_AGENT_ADMIN_USERNAME`, `MLADIS_AGENT_ADMIN_PASSWORD`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_CLIENT_ID`, `FACEBOOK_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_SCOPE`, `MICROSOFT_OAUTH_CLIENT_ID`, `MICROSOFT_OAUTH_CLIENT_SECRET`, `MICROSOFT_OAUTH_TENANT`, `MICROSOFT_OAUTH_LOGIN_URL`, `MICROSOFT_GRAPH_URL`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`.
-- Keep provider callback URLs aligned with the provider-specific origin vars. For example, use `SOCIAL_AUTH_GOOGLE_ORIGIN=http://127.0.0.1:8000` and `SOCIAL_AUTH_GITHUB_ORIGIN=http://127.0.0.1:8000` locally, while `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://<active-tunnel>.trycloudflare.com` gives Facebook the HTTPS callback it requires.
+- Keep provider callback URLs aligned with the provider-specific origin vars. For example, use `SOCIAL_AUTH_GOOGLE_ORIGIN=http://127.0.0.1:8000` and `SOCIAL_AUTH_GITHUB_ORIGIN=http://127.0.0.1:8000` locally, while `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com` gives Facebook the stable HTTPS callback it requires.
 - `SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS=microsoft` hides Microsoft from the login/signup UI until its client ID and secret exist.
 - `SOCIAL_AUTH_CANONICAL_ORIGIN` is now only a fallback. Leave it empty for mixed local testing so Google/GitHub do not inherit the temporary Facebook tunnel origin.
 - Microsoft local callback URL for Azure App Registration: `http://127.0.0.1:8000/oauth/microsoft/login/callback/`. Use `MICROSOFT_OAUTH_TENANT=common` for consumer + work accounts, `organizations` for work/school accounts, or the tenant ID if your Azure app is single-tenant.
 - Keep `ACCOUNT_DEFAULT_HTTP_PROTOCOL=http` for plain local `127.0.0.1` logins. When requests come through Cloudflare Tunnel, `USE_X_FORWARDED_PROTO=True` lets Django/allauth keep the tunnel callback on `https` without forcing local callbacks to `https`.
-- Facebook local development needs an HTTPS callback. A quick tunnel such as Cloudflare Tunnel works with `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://<active-tunnel>.trycloudflare.com`, `SITE_DOMAIN=127.0.0.1:8000`, `ALLOWED_HOSTS=localhost,127.0.0.1,.trycloudflare.com`, `CSRF_TRUSTED_ORIGINS=https://*.trycloudflare.com`, and `USE_X_FORWARDED_PROTO=True`.
-- For the current Meta app, `FACEBOOK_OAUTH_SCOPE=public_profile` is the working local default. If Meta later approves `email`, update the scope to `public_profile,email` and re-save the active tunnel callback URL plus app domain in Meta.
-- Meta basic settings can use the new public policy pages in this app: `https://<current-host>/privacy/` and `https://<current-host>/terms/`. For Facebook data deletion, use the callback URL option with `https://<current-host>/data-deletion/callback/`; the human-facing instructions page stays at `https://<current-host>/data-deletion/`. For the current Cloudflare tunnel, replace `<current-host>` with the active `.trycloudflare.com` hostname before saving the fields in Meta.
+- Facebook local development needs an HTTPS callback. The normal local callback is `https://local.mladis.com/oauth/facebook/login/callback/`, backed by the `mladis-local` Cloudflare named tunnel. Use `ALLOWED_HOSTS=localhost,127.0.0.1,local.mladis.com`, `CSRF_TRUSTED_ORIGINS=https://local.mladis.com`, and `USE_X_FORWARDED_PROTO=True`.
+- For the current Meta app, `FACEBOOK_OAUTH_SCOPE=public_profile` is the working local default. If Meta later approves `email`, update the scope to `public_profile,email` and keep the stable local and production callback URLs allow-listed in Meta.
+- Meta basic settings can use the new public policy pages in this app: `https://mladis.com/privacy/` and `https://mladis.com/terms/`. For Facebook data deletion, use the callback URL option with `https://mladis.com/data-deletion/callback/`; the human-facing instructions page stays at `https://mladis.com/data-deletion/`. For local testing, Meta should allow `https://local.mladis.com/oauth/facebook/login/callback/`; for production, it should allow `https://mladis.com/oauth/facebook/login/callback/`.
 
 ## Damage Deposit Flow
 

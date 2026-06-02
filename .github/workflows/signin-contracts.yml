@@ -17,12 +17,12 @@ jobs:
     env:
       SECRET_KEY: signin-contract-ci-secret
       DEBUG: "True"
-      ALLOWED_HOSTS: localhost,127.0.0.1,testserver,.trycloudflare.com
+      ALLOWED_HOSTS: localhost,127.0.0.1,testserver,local.mladis.com
       ACCOUNT_DEFAULT_HTTP_PROTOCOL: http
       SOCIAL_AUTH_CANONICAL_ORIGIN: ""
       SOCIAL_AUTH_GOOGLE_ORIGIN: http://127.0.0.1:8000
       SOCIAL_AUTH_GITHUB_ORIGIN: http://127.0.0.1:8000
-      SOCIAL_AUTH_FACEBOOK_ORIGIN: https://facebook-contract.trycloudflare.com
+      SOCIAL_AUTH_FACEBOOK_ORIGIN: https://local.mladis.com
       SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS: microsoft
       SITE_DOMAIN: 127.0.0.1:8000
       SITE_NAME: MLADIS Local

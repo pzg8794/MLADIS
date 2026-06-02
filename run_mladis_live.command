@@ -20,6 +20,10 @@ MLADIS_COLLECTSTATIC="${MLADIS_COLLECTSTATIC:-0}"
 MLADIS_BUILD_FRONTEND="${MLADIS_BUILD_FRONTEND:-1}"
 MLADIS_FORCE_NPM_INSTALL="${MLADIS_FORCE_NPM_INSTALL:-0}"
 MLADIS_RESTART_EXISTING="${MLADIS_RESTART_EXISTING:-1}"
+MLADIS_TUNNEL_MODE="${MLADIS_TUNNEL_MODE:-named}"
+MLADIS_TUNNEL_NAME="${MLADIS_TUNNEL_NAME:-mladis-local}"
+MLADIS_LOCAL_PUBLIC_HOSTNAME="${MLADIS_LOCAL_PUBLIC_HOSTNAME:-local.mladis.com}"
+MLADIS_LOCAL_PUBLIC_ORIGIN="${MLADIS_LOCAL_PUBLIC_ORIGIN:-https://$MLADIS_LOCAL_PUBLIC_HOSTNAME}"
 MLADIS_TUNNEL_STARTUP_TIMEOUT="${MLADIS_TUNNEL_STARTUP_TIMEOUT:-45}"
 MLADIS_TUNNEL_LOG="${MLADIS_TUNNEL_LOG:-/private/tmp/mladis-tunnel.log}"
 MLADIS_REUSE_TUNNEL="${MLADIS_REUSE_TUNNEL:-1}"
@@ -138,11 +142,24 @@ fi
 
 if truthy "$MLADIS_PUBLIC_TUNNEL"; then
   export USE_X_FORWARDED_PROTO="${USE_X_FORWARDED_PROTO:-True}"
-  export ALLOWED_HOSTS="${ALLOWED_HOSTS:-localhost,127.0.0.1,.trycloudflare.com}"
-  export CSRF_TRUSTED_ORIGINS="${CSRF_TRUSTED_ORIGINS:-https://*.trycloudflare.com}"
   export SOCIAL_AUTH_CANONICAL_ORIGIN="${MLADIS_SOCIAL_AUTH_CANONICAL_ORIGIN:-}"
   export SOCIAL_AUTH_GOOGLE_ORIGIN="${SOCIAL_AUTH_GOOGLE_ORIGIN:-http://127.0.0.1:8000}"
   export SOCIAL_AUTH_GITHUB_ORIGIN="${SOCIAL_AUTH_GITHUB_ORIGIN:-http://127.0.0.1:8000}"
+  case "$MLADIS_TUNNEL_MODE" in
+    named)
+      export ALLOWED_HOSTS="${ALLOWED_HOSTS:-localhost,127.0.0.1,$MLADIS_LOCAL_PUBLIC_HOSTNAME}"
+      export CSRF_TRUSTED_ORIGINS="${CSRF_TRUSTED_ORIGINS:-$MLADIS_LOCAL_PUBLIC_ORIGIN}"
+      export SOCIAL_AUTH_FACEBOOK_ORIGIN="${MLADIS_SOCIAL_AUTH_FACEBOOK_ORIGIN:-${SOCIAL_AUTH_FACEBOOK_ORIGIN:-$MLADIS_LOCAL_PUBLIC_ORIGIN}}"
+      ;;
+    quick)
+      export ALLOWED_HOSTS="${ALLOWED_HOSTS:-localhost,127.0.0.1,.trycloudflare.com}"
+      export CSRF_TRUSTED_ORIGINS="${CSRF_TRUSTED_ORIGINS:-https://*.trycloudflare.com}"
+      ;;
+    *)
+      echo "Unknown MLADIS_TUNNEL_MODE=$MLADIS_TUNNEL_MODE. Use named or quick."
+      exit 1
+      ;;
+  esac
 fi
 
 if [[ ! -x "$VENV_DIR/bin/python" ]]; then
@@ -209,7 +226,7 @@ stop_existing_processes() {
     fi
   fi
 
-  if truthy "$MLADIS_PUBLIC_TUNNEL"; then
+  if truthy "$MLADIS_PUBLIC_TUNNEL" && [[ "$MLADIS_TUNNEL_MODE" == "quick" ]]; then
     pids="$(pgrep -f "cloudflared tunnel --url $LOCAL_URL" || true)"
     if [[ -n "$pids" ]]; then
       if truthy "$MLADIS_REUSE_TUNNEL"; then
@@ -240,7 +257,72 @@ wait_for_public_url() {
   return 1
 }
 
-start_public_tunnel_if_needed() {
+wait_for_named_tunnel() {
+  local deadline=$((SECONDS + MLADIS_TUNNEL_STARTUP_TIMEOUT))
+
+  while (( SECONDS < deadline )); do
+    if [[ -n "$TUNNEL_PID" ]] && ! kill -0 "$TUNNEL_PID" >/dev/null 2>&1; then
+      return 1
+    fi
+    if grep -aqE 'Registered tunnel connection|Connection .* registered|serving tunnel' "$TUNNEL_LOG" 2>/dev/null; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  [[ -n "$TUNNEL_PID" ]] && kill -0 "$TUNNEL_PID" >/dev/null 2>&1
+}
+
+start_named_tunnel() {
+  PUBLIC_URL="$MLADIS_LOCAL_PUBLIC_ORIGIN"
+
+  if ! cloudflared tunnel info "$MLADIS_TUNNEL_NAME" >/dev/null 2>&1; then
+    echo
+    echo "The stable Cloudflare tunnel '$MLADIS_TUNNEL_NAME' is not ready yet."
+    echo "Complete Cloudflare login, then run these once:"
+    echo "  cloudflared tunnel create $MLADIS_TUNNEL_NAME"
+    echo "  cloudflared tunnel route dns $MLADIS_TUNNEL_NAME $MLADIS_LOCAL_PUBLIC_HOSTNAME"
+    echo
+    echo "Do not switch back to a random trycloudflare URL for normal Facebook testing."
+    exit 1
+  fi
+
+  local existing_named_pids
+  existing_named_pids="$(pgrep -f "cloudflared.*tunnel.*run.*$MLADIS_TUNNEL_NAME" || true)"
+  if [[ -n "$existing_named_pids" ]]; then
+    echo
+    echo "Reusing stable Cloudflare tunnel '$MLADIS_TUNNEL_NAME'."
+    echo "Public live URL: $PUBLIC_URL"
+    echo "Facebook OAuth origin for this run: $SOCIAL_AUTH_FACEBOOK_ORIGIN"
+    echo "Facebook callback URL does not rotate:"
+    echo "$SOCIAL_AUTH_FACEBOOK_ORIGIN/oauth/facebook/login/callback/"
+    return
+  fi
+
+  : > "$TUNNEL_LOG"
+  echo
+  echo "Starting stable Cloudflare tunnel '$MLADIS_TUNNEL_NAME'..."
+  echo "Public live URL: $PUBLIC_URL"
+  echo "Tunnel log: $TUNNEL_LOG"
+  tail -n +1 -f "$TUNNEL_LOG" &
+  TUNNEL_TAIL_PID="$!"
+  cloudflared tunnel run --url "$LOCAL_URL" "$MLADIS_TUNNEL_NAME" >> "$TUNNEL_LOG" 2>&1 &
+  TUNNEL_PID="$!"
+
+  if ! wait_for_named_tunnel; then
+    echo
+    echo "The stable Cloudflare tunnel did not start within ${MLADIS_TUNNEL_STARTUP_TIMEOUT}s."
+    echo "Check $TUNNEL_LOG. If Cloudflare is not authorized yet, run cloudflared tunnel login."
+    exit 1
+  fi
+
+  echo
+  echo "Facebook OAuth origin for this run: $SOCIAL_AUTH_FACEBOOK_ORIGIN"
+  echo "Facebook callback URL does not rotate:"
+  echo "$SOCIAL_AUTH_FACEBOOK_ORIGIN/oauth/facebook/login/callback/"
+}
+
+start_quick_tunnel() {
   if ! truthy "$MLADIS_PUBLIC_TUNNEL"; then
     return
   fi
@@ -276,7 +358,7 @@ start_public_tunnel_if_needed() {
   : > "$TUNNEL_LOG"
   echo
   echo "Starting public Cloudflare tunnel..."
-  echo "Use the public URL printed below for browser testing when Facebook login matters."
+  echo "Quick tunnel mode is an emergency fallback. It is not the normal Facebook OAuth contract."
   echo "Tunnel log: $TUNNEL_LOG"
   tail -n +1 -f "$TUNNEL_LOG" &
   TUNNEL_TAIL_PID="$!"
@@ -299,6 +381,28 @@ start_public_tunnel_if_needed() {
   echo "Facebook OAuth origin for this run: $SOCIAL_AUTH_FACEBOOK_ORIGIN"
   echo "For Facebook OAuth, the Meta callback must allow:"
   echo "$SOCIAL_AUTH_FACEBOOK_ORIGIN/oauth/facebook/login/callback/"
+}
+
+start_public_tunnel_if_needed() {
+  if ! truthy "$MLADIS_PUBLIC_TUNNEL"; then
+    return
+  fi
+
+  if ! command -v cloudflared >/dev/null 2>&1; then
+    echo
+    echo "Cloudflared is not available. The site will run local-only at $LOCAL_URL."
+    echo "Facebook OAuth will not work from local-only mode."
+    return
+  fi
+
+  case "$MLADIS_TUNNEL_MODE" in
+    named) start_named_tunnel ;;
+    quick) start_quick_tunnel ;;
+    *)
+      echo "Unknown MLADIS_TUNNEL_MODE=$MLADIS_TUNNEL_MODE. Use named or quick."
+      exit 1
+      ;;
+  esac
 }
 
 is_server_live() {

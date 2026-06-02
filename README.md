@@ -8,20 +8,30 @@ Run `./run_mladis_live.command` from this folder, or double-click it in Finder.
 This is the only normal way to run the local MLADIS site. It uses
 `airbnb_agent/.env`, builds the React UI into Django static assets, prepares the
 Django app, stops stale Django/tunnel processes on the same port, starts Django
-at `http://127.0.0.1:8000`, and opens a temporary Cloudflare public URL when
-`cloudflared` is installed. For quick-tunnel runs, it exports the active tunnel
-URL as `SOCIAL_AUTH_FACEBOOK_ORIGIN` for the Django process it starts, so stale
-Facebook quick-tunnel values in `.env` do not silently steer the browser to an
-old host. It also reuses an existing tunnel by default so normal UI/Django
-restarts do not rotate the Facebook callback URL, and it leaves the tunnel
-running unless `MLADIS_CLEANUP_TUNNEL=1`.
+at `http://127.0.0.1:8000`, and opens the stable Cloudflare named-tunnel URL
+`https://local.mladis.com` when `cloudflared` is installed and authorized. It
+exports `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com` for the Django
+process it starts, so normal UI/Django restarts do not rotate the Facebook
+callback URL.
 
-Use the printed `https://...trycloudflare.com` URL for browser testing when
-Facebook sign-in matters. Use `http://127.0.0.1:8000` as the internal local
+Use `https://local.mladis.com` for browser testing when Facebook sign-in
+matters. Use `http://127.0.0.1:8000` as the internal local
 Django origin and for Google/GitHub local callbacks. Do not use the Vite dev
 server at `http://127.0.0.1:5173` for Django/allauth sign-in testing. If the
-Terminal scrollback moves, the active tunnel output is in
+Terminal scrollback moves, the named-tunnel output is in
 `/private/tmp/mladis-tunnel.log`.
+
+One-time Cloudflare setup for the stable local URL:
+
+```bash
+cloudflared tunnel login
+cloudflared tunnel create mladis-local
+cloudflared tunnel route dns mladis-local local.mladis.com
+```
+
+Cloudflare must manage the `mladis.com` DNS zone for `local.mladis.com` to
+resolve publicly. For this zone, Cloudflare assigned
+`olof.ns.cloudflare.com` and `ophelia.ns.cloudflare.com`.
 
 If the Google Drive checkout is slow, clone this repo to a fast local path such
 as `~/Documents/MLADIS-dev` and copy only `airbnb_agent/.env` from the Drive

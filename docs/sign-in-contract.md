@@ -8,9 +8,9 @@ or OAuth launch routes must keep these guarantees true.
 
 - `./run_mladis_live.command` is the only normal local startup path for MLADIS.
 - The launcher starts Django at `http://127.0.0.1:8000` and, by default,
-  starts a Cloudflare tunnel for browser testing.
-- Use the printed `https://...trycloudflare.com` URL for browser testing when
-  Facebook sign-in matters.
+  starts the stable Cloudflare named tunnel for `https://local.mladis.com`.
+- Use `https://local.mladis.com` for browser testing when Facebook sign-in
+  matters.
 - Treat `http://127.0.0.1:8000` as the internal Django origin and the
   Google/GitHub local callback origin, not as the Facebook browser test URL.
 - Do not use the Vite dev server at `http://127.0.0.1:5173` as the auth source
@@ -28,9 +28,9 @@ or OAuth launch routes must keep these guarantees true.
 
 - Google local origin: `SOCIAL_AUTH_GOOGLE_ORIGIN=http://127.0.0.1:8000`.
 - GitHub local origin: `SOCIAL_AUTH_GITHUB_ORIGIN=http://127.0.0.1:8000`.
-- Facebook local origin: the launcher exports
-  `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://<active-tunnel>.trycloudflare.com` for
-  the current run after it captures the Cloudflare URL.
+- Facebook local origin:
+  `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com`.
+- Production origin: `https://mladis.com`.
 - Leave `SOCIAL_AUTH_CANONICAL_ORIGIN` empty for mixed local testing. It is only
   a fallback, not the main local callback setting.
 - Keep `ACCOUNT_DEFAULT_HTTP_PROTOCOL=http` for plain local `127.0.0.1`.
@@ -54,15 +54,21 @@ Register these exact callbacks for local testing:
 ```txt
 Google:   http://127.0.0.1:8000/oauth/google/login/callback/
 GitHub:   http://127.0.0.1:8000/oauth/github/login/callback/
-Facebook: https://<active-tunnel>.trycloudflare.com/oauth/facebook/login/callback/
+Facebook: https://local.mladis.com/oauth/facebook/login/callback/
 ```
 
-The active Facebook tunnel host changes when the tunnel restarts. The launcher
-exports the active URL for the Django process it starts, even if
-`airbnb_agent/.env` still has an older quick-tunnel value. The Meta app callback
-must still allow the exact active tunnel callback while the tunnel is running.
-Use `MLADIS_SOCIAL_AUTH_FACEBOOK_ORIGIN=https://stable-host.example` only when
-testing through a stable named tunnel or domain.
+Register these exact callbacks for production:
+
+```txt
+Google:   https://mladis.com/oauth/google/login/callback/
+GitHub:   https://mladis.com/oauth/github/login/callback/
+Facebook: https://mladis.com/oauth/facebook/login/callback/
+```
+
+If `www.mladis.com` is allowed to start provider login before redirecting to the
+apex domain, register matching `https://www.mladis.com/oauth/.../callback/`
+URLs too. Random `trycloudflare.com` callbacks are not part of the normal
+contract and should not be added to provider dashboards for routine testing.
 
 ## Local Test Command
 
@@ -87,7 +93,8 @@ The tests assert:
 - Microsoft stays hidden while unconfigured.
 - Google OAuth uses the local callback and `prompt=select_account`.
 - GitHub OAuth uses the local callback and `prompt=select_account`.
-- Facebook OAuth uses the HTTPS tunnel callback.
+- Facebook OAuth uses the stable HTTPS local callback.
+- Production diagnostics use `https://mladis.com` callbacks.
 - `/ops/oauth/` renders the staff OAuth diagnostics page with exact callbacks.
 - The local launcher keeps the safer startup defaults and remains shell-valid.
 
@@ -96,20 +103,22 @@ The tests assert:
 The launcher should be the one-file way to see normal code and UI changes:
 
 - `MLADIS_PUBLIC_TUNNEL` defaults to `1`.
-- The launcher captures the current Cloudflare URL before starting Django and
-  exports it as `SOCIAL_AUTH_FACEBOOK_ORIGIN` for that process unless
-  `MLADIS_SOCIAL_AUTH_FACEBOOK_ORIGIN` or an explicit shell
-  `SOCIAL_AUTH_FACEBOOK_ORIGIN` is provided.
+- `MLADIS_TUNNEL_MODE` defaults to `named`.
+- `MLADIS_TUNNEL_NAME` defaults to `mladis-local`.
+- `MLADIS_LOCAL_PUBLIC_HOSTNAME` defaults to `local.mladis.com`.
+- `MLADIS_LOCAL_PUBLIC_ORIGIN` defaults to `https://local.mladis.com`.
+- The launcher exports `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com`
+  for that process unless `MLADIS_SOCIAL_AUTH_FACEBOOK_ORIGIN` or an explicit
+  shell `SOCIAL_AUTH_FACEBOOK_ORIGIN` is provided.
 - `MLADIS_BUILD_FRONTEND` defaults to `1`, so React text/UI changes are rebuilt
   before Django starts.
 - `MLADIS_RESTART_EXISTING` defaults to `1`, so stale local Django/tunnel
   processes on the same port are stopped first.
-- `MLADIS_REUSE_TUNNEL` defaults to `1`, so normal UI/Django restarts keep an
-  existing Cloudflare tunnel and do not rotate the Facebook callback URL.
-- `MLADIS_CLEANUP_TUNNEL` defaults to `0`, so closing/restarting the launcher
-  does not kill the quick tunnel and force a new Facebook callback.
-- `MLADIS_TUNNEL_LOG` defaults to `/private/tmp/mladis-tunnel.log`; use this
-  log to recover the current quick-tunnel URL if the Terminal scrollback moves.
+- The named Cloudflare tunnel routes `local.mladis.com` to
+  `http://127.0.0.1:8000`, so normal UI/Django restarts do not rotate the
+  Facebook callback URL.
+- `MLADIS_TUNNEL_LOG` defaults to `/private/tmp/mladis-tunnel.log`; use this log
+  to inspect named-tunnel startup if the Terminal scrollback moves.
 - `MLADIS_STARTUP_TIMEOUT` defaults to `60` seconds.
 - Dependency install is skipped when `requirements.txt` has not changed.
 - `collectstatic` is skipped for local startup unless `MLADIS_COLLECTSTATIC=1`.
@@ -121,23 +130,43 @@ The launcher should be the one-file way to see normal code and UI changes:
   Drive path and first startup is still slow.
 - Use `MLADIS_PUBLIC_TUNNEL=0` only for emergency local-only debugging.
   Facebook sign-in is expected not to work in that mode.
-- Use `MLADIS_REUSE_TUNNEL=0` only when you intentionally want a new quick
-  tunnel and are ready to update Meta's Valid OAuth Redirect URIs.
-- Use `MLADIS_CLEANUP_TUNNEL=1` only when you intentionally want the launcher to
-  stop the tunnel when it exits.
+- Use `MLADIS_TUNNEL_MODE=quick` only for emergency debugging when the named
+  tunnel is unavailable. Quick-tunnel callbacks rotate and must not become the
+  documented local Facebook process.
+
+One-time Cloudflare setup for stable local Facebook testing:
+
+```bash
+cloudflared tunnel login
+cloudflared tunnel create mladis-local
+cloudflared tunnel route dns mladis-local local.mladis.com
+```
+
+This requires the Cloudflare account to manage the `mladis.com` DNS zone.
+For this zone, Cloudflare assigned:
+
+```txt
+olof.ns.cloudflare.com
+ophelia.ns.cloudflare.com
+```
+
+Replace the current Google nameservers with those Cloudflare nameservers at the
+domain registrar/DNS provider before expecting `local.mladis.com` to resolve
+from normal browsers.
 
 ## Troubleshooting
 
-- Facebook says the connection is not secure: run `./run_mladis_live.command`,
-  use the printed HTTPS tunnel URL, and save the exact HTTPS callback in Meta.
-- Facebook says `URL blocked`: add the exact printed callback URL to
-  Facebook Login -> Settings -> Valid OAuth Redirect URIs, or switch to a
-  stable named tunnel/domain and use that stable callback.
+- Facebook says the connection is not secure: run `./run_mladis_live.command`
+  and open `https://local.mladis.com`, not plain `http://127.0.0.1:8000`.
+- Facebook says `URL blocked`: confirm Meta has
+  `https://local.mladis.com/oauth/facebook/login/callback/` and
+  `https://mladis.com/oauth/facebook/login/callback/` in Facebook Login ->
+  Settings -> Valid OAuth Redirect URIs.
 - Google says `redirect_uri_mismatch`: add
   `http://127.0.0.1:8000/oauth/google/login/callback/` to the Google OAuth app.
 - GitHub says `redirect_uri` is not associated: add
   `http://127.0.0.1:8000/oauth/github/login/callback/` to the GitHub OAuth app.
 - The page opens on `127.0.0.1:5173`: stop the Vite server for auth testing and
   run `./run_mladis_live.command`.
-- The page opens on plain `127.0.0.1:8000` while testing Facebook: switch to the
-  printed tunnel URL from the launcher.
+- The page opens on plain `127.0.0.1:8000` while testing Facebook: switch to
+  `https://local.mladis.com`.

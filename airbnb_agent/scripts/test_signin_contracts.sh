@@ -17,12 +17,12 @@ export DATABASE_NAME="${DATABASE_NAME:-}"
 export DATABASE_USER="${DATABASE_USER:-}"
 export DATABASE_PASSWORD="${DATABASE_PASSWORD:-}"
 export DATABASE_HOST="${DATABASE_HOST:-}"
-export ALLOWED_HOSTS="${ALLOWED_HOSTS:-localhost,127.0.0.1,testserver,.trycloudflare.com}"
+export ALLOWED_HOSTS="${ALLOWED_HOSTS:-localhost,127.0.0.1,testserver,local.mladis.com}"
 export ACCOUNT_DEFAULT_HTTP_PROTOCOL="${ACCOUNT_DEFAULT_HTTP_PROTOCOL:-http}"
 export SOCIAL_AUTH_CANONICAL_ORIGIN="${SOCIAL_AUTH_CANONICAL_ORIGIN:-}"
 export SOCIAL_AUTH_GOOGLE_ORIGIN="${SOCIAL_AUTH_GOOGLE_ORIGIN:-http://127.0.0.1:8000}"
 export SOCIAL_AUTH_GITHUB_ORIGIN="${SOCIAL_AUTH_GITHUB_ORIGIN:-http://127.0.0.1:8000}"
-export SOCIAL_AUTH_FACEBOOK_ORIGIN="${SOCIAL_AUTH_FACEBOOK_ORIGIN:-https://facebook-contract.trycloudflare.com}"
+export SOCIAL_AUTH_FACEBOOK_ORIGIN="${SOCIAL_AUTH_FACEBOOK_ORIGIN:-https://local.mladis.com}"
 export SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS="${SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS:-microsoft}"
 export SITE_DOMAIN="${SITE_DOMAIN:-127.0.0.1:8000}"
 export SITE_NAME="${SITE_NAME:-MLADIS Local}"
@@ -36,18 +36,21 @@ test ! -e ../preview_mladis_ui.command
 grep -q 'MLADIS_PUBLIC_TUNNEL="${MLADIS_PUBLIC_TUNNEL:-1}"' ../run_mladis_live.command
 grep -q 'MLADIS_BUILD_FRONTEND="${MLADIS_BUILD_FRONTEND:-1}"' ../run_mladis_live.command
 grep -q 'MLADIS_RESTART_EXISTING="${MLADIS_RESTART_EXISTING:-1}"' ../run_mladis_live.command
+grep -q 'MLADIS_TUNNEL_MODE="${MLADIS_TUNNEL_MODE:-named}"' ../run_mladis_live.command
+grep -q 'MLADIS_TUNNEL_NAME="${MLADIS_TUNNEL_NAME:-mladis-local}"' ../run_mladis_live.command
+grep -q 'MLADIS_LOCAL_PUBLIC_HOSTNAME="${MLADIS_LOCAL_PUBLIC_HOSTNAME:-local.mladis.com}"' ../run_mladis_live.command
+grep -q 'MLADIS_LOCAL_PUBLIC_ORIGIN="${MLADIS_LOCAL_PUBLIC_ORIGIN:-https://$MLADIS_LOCAL_PUBLIC_HOSTNAME}"' ../run_mladis_live.command
 grep -q 'MLADIS_TUNNEL_STARTUP_TIMEOUT="${MLADIS_TUNNEL_STARTUP_TIMEOUT:-45}"' ../run_mladis_live.command
 grep -q 'MLADIS_TUNNEL_LOG="${MLADIS_TUNNEL_LOG:-/private/tmp/mladis-tunnel.log}"' ../run_mladis_live.command
-grep -q 'MLADIS_REUSE_TUNNEL="${MLADIS_REUSE_TUNNEL:-1}"' ../run_mladis_live.command
-grep -q 'MLADIS_CLEANUP_TUNNEL="${MLADIS_CLEANUP_TUNNEL:-0}"' ../run_mladis_live.command
 grep -q 'MLADIS_STARTUP_TIMEOUT="${MLADIS_STARTUP_TIMEOUT:-60}"' ../run_mladis_live.command
 grep -q 'MLADIS_COLLECTSTATIC="${MLADIS_COLLECTSTATIC:-0}"' ../run_mladis_live.command
 grep -q 'install_requirements_if_needed' ../run_mladis_live.command
 grep -q 'start_public_tunnel_if_needed' ../run_mladis_live.command
-grep -q 'grep -aEo' ../run_mladis_live.command
-grep -q 'Reusing existing Cloudflare tunnel.' ../run_mladis_live.command
+grep -q 'start_named_tunnel' ../run_mladis_live.command
+grep -q 'cloudflared tunnel run --url "$LOCAL_URL" "$MLADIS_TUNNEL_NAME"' ../run_mladis_live.command
+grep -q 'cloudflared tunnel route dns $MLADIS_TUNNEL_NAME $MLADIS_LOCAL_PUBLIC_HOSTNAME' ../run_mladis_live.command
 grep -q 'Facebook callback URL does not rotate.' ../run_mladis_live.command
 grep -q 'npm run build:django' ../run_mladis_live.command
 grep -q 'export SOCIAL_AUTH_FACEBOOK_ORIGIN="$facebook_origin"' ../run_mladis_live.command
-grep -q 'Use the public URL printed below for browser testing when Facebook login matters.' ../run_mladis_live.command
+grep -q 'Quick tunnel mode is an emergency fallback.' ../run_mladis_live.command
 grep -q 'Tunnel log: $TUNNEL_LOG' ../run_mladis_live.command

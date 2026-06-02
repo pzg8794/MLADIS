@@ -35,13 +35,13 @@ SIGNIN_ENV = {
 
 
 SIGNIN_SETTINGS = {
-    "ALLOWED_HOSTS": ["127.0.0.1", "localhost", "testserver", ".trycloudflare.com"],
+    "ALLOWED_HOSTS": ["127.0.0.1", "localhost", "testserver", "local.mladis.com"],
     "ACCOUNT_DEFAULT_HTTP_PROTOCOL": "http",
     "SOCIAL_AUTH_CANONICAL_ORIGIN": "",
     "SOCIAL_AUTH_PROVIDER_ORIGINS": {
         "google": "http://127.0.0.1:8000",
         "github": "http://127.0.0.1:8000",
-        "facebook": "https://facebook-contract.trycloudflare.com",
+        "facebook": "https://local.mladis.com",
         "microsoft": "",
     },
     "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS": ["microsoft"],
@@ -116,22 +116,23 @@ class SignInContractTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(
             response["Location"],
-            "https://facebook-contract.trycloudflare.com/accounts/social/facebook/?next=%2Faccounts%2F",
+            "https://local.mladis.com/accounts/social/facebook/?next=%2Faccounts%2F",
         )
 
-    def test_facebook_tunnel_oauth_uses_https_callback(self):
+    def test_facebook_stable_local_oauth_uses_https_callback(self):
         query = self._oauth_redirect_query(
             "facebook_login",
-            host="facebook-contract.trycloudflare.com",
+            host="local.mladis.com",
             secure=True,
         )
 
         self.assertEqual(
             query["redirect_uri"],
-            ["https://facebook-contract.trycloudflare.com/oauth/facebook/login/callback/"],
+            ["https://local.mladis.com/oauth/facebook/login/callback/"],
         )
 
     @override_settings(
+        ALLOWED_HOSTS=["127.0.0.1", "localhost", "testserver", ".trycloudflare.com"],
         SOCIAL_AUTH_PROVIDER_ORIGINS={
             "google": "http://127.0.0.1:8000",
             "github": "http://127.0.0.1:8000",
@@ -163,4 +164,28 @@ class SignInContractTests(TestCase):
         self.assertTemplateUsed(response, "bookings/oauth_diagnostics.html")
         self.assertContains(response, "http://127.0.0.1:8000/oauth/google/login/callback/")
         self.assertContains(response, "http://127.0.0.1:8000/oauth/github/login/callback/")
-        self.assertContains(response, "https://facebook-contract.trycloudflare.com/oauth/facebook/login/callback/")
+        self.assertContains(response, "https://local.mladis.com/oauth/facebook/login/callback/")
+
+    @override_settings(
+        ALLOWED_HOSTS=["127.0.0.1", "localhost", "testserver", "mladis.com"],
+        ACCOUNT_DEFAULT_HTTP_PROTOCOL="https",
+        SOCIAL_AUTH_CANONICAL_ORIGIN="https://mladis.com",
+        SOCIAL_AUTH_PROVIDER_ORIGINS={
+            "google": "",
+            "github": "",
+            "facebook": "",
+            "microsoft": "",
+        },
+    )
+    def test_production_oauth_contract_uses_mladis_domain(self):
+        self._sync_env_apps()
+        staff = get_user_model().objects.create_user("prod-oauth", "prod-oauth@example.com", "secret", is_staff=True)
+        self.client.force_login(staff)
+
+        with patch.dict(os.environ, SIGNIN_ENV, clear=False):
+            response = self.client.get(reverse("bookings:oauth-diagnostics"), HTTP_HOST="mladis.com", secure=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "https://mladis.com/oauth/google/login/callback/")
+        self.assertContains(response, "https://mladis.com/oauth/facebook/login/callback/")
+        self.assertContains(response, "https://mladis.com/oauth/github/login/callback/")
