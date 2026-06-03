@@ -18,3 +18,14 @@ If a document needs a signature:
 The NYS DOS Articles packet contains a typed organizer signature line for Piter Zacari Garcia Bautista. It is part of the official filing receipt packet, but it is not a reusable handwritten signature asset.
 
 Use the signature text only as evidence of the filed Articles of Organization. Do not extract it into a reusable signature stamp.
+
+## Owner-Provided Drive Signature Source
+
+The owner provided a Google Drive source file for future signing assistance. Metadata verified on 2026-06-03:
+
+- Drive title: `MY SIGNATURE.jpg`
+- Drive file ID: `0B6-Wz8uQfNpHVTZjTWdUY281Zm8`
+- MIME type: `image/jpeg`
+- Modified time: `2026-06-03T07:56:07.932Z`
+
+Do not download, duplicate, transform, or apply this signature source unless the owner explicitly authorizes signing a specific document in the current thread. The long sharing URL and the image bytes should live in the future secure vault, not in Git.

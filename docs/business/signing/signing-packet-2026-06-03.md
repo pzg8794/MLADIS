@@ -31,6 +31,8 @@ Do not apply, reuse, paste, or stamp a signature unless the owner explicitly app
 
 Reusable signature images stay outside Git. The official NYS DOS Articles packet contains a typed organizer signature line, but it is not a reusable signature stamp.
 
+The owner has identified a Google Drive file titled `MY SIGNATURE.jpg` as the future signature source. Its file ID is recorded in `docs/business/signing/README.md`; the image itself is not stored in Git.
+
 ## After Signing
 
 1. Save signed copies in private business records.
