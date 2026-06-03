@@ -34,6 +34,10 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 | Medium | Prepare MLADIS LLC contractor ratification/assignment | 2026-06-03 | Done | Draft bridge document is in `docs/business/operations/contractor-ratification-and-assignment-draft.md`; signing still pending. |
 | Medium | Configure `mladis.com` business email and DNS records | Before customer-facing launch | In progress | Keep Google Workspace MX/SPF/DKIM/DMARC stable before using a `@mladis.com` mailbox for production emails. |
 | Medium | Store production secrets in a proper secret manager | Before live payments/agents | Todo | Stripe, OpenAI, SMTP, OAuth, and calendar credentials must stay out of Git. |
+| Medium | Create funding-readiness tracker and data-room checklist | 2026-06-03 | Done | Package is in `docs/business/funding-readiness/`; keep it updated after every funding/compliance action. |
+| Medium | Build lender/grant/investor data room | After EIN and bank account | Todo | Use `docs/business/funding-readiness/data-room-index.md` as the checklist. Keep sensitive files outside public app assets. |
+| Medium | Prepare first business plan and financial forecast | After bookkeeping setup | Todo | Needs revenue history, direct-booking plan, expense assumptions, and use-of-funds model. |
+| Medium | Register SAM.gov / UEI only if a federal grant or contract target is selected | After EIN | Todo | Do not register until the business email, EIN, and responsible-party data are ready. |
 | Low | Evaluate MWBE certification or other NY business incentives | Later | Todo | NYBE links to MWBE and incentive resources; revisit once core operations are stable. |
 
 ## Publication Workplan

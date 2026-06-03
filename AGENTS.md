@@ -49,6 +49,9 @@
 - Use `docs/business/` as the private source of truth for MLADIS LLC formation facts, post-formation deadlines, and administrative records.
 - Do not copy private legal addresses, government portal references, transaction IDs, tax IDs, bank details, or owner contact details from `docs/business/` into public frontend pages or customer emails.
 - If app features need legal-business facts, model them explicitly behind admin-only access instead of reading directly from the Markdown docs.
+- The current business goal is to make MLADIS LLC fundable for government programs, CDFIs, banks, SBA-backed lenders, grants, and later private investors. The active tracker is `docs/business/funding-readiness/`.
+- After any business-formation, compliance, banking, bookkeeping, certification, grant, lender, investor, or government-funding work, update `docs/business/mladis-llc-next-steps.md` and the matching file under `docs/business/funding-readiness/`.
+- Do not submit EIN, SAM.gov, grants, loans, bank accounts, certification applications, or investor materials without explicit owner approval in the current thread. Prepare packets and drafts; leave SSN, EIN, tax, bank, and identity fields for the owner or a secure official portal.
 
 ## Deposit Operations
 

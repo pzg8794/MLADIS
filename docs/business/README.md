@@ -12,6 +12,7 @@ These records are meant to give the MLADIS app, agents, and future automation wo
 - [Operations roles](operations/README.md): private operating-role notes for people helping run MLADIS business branches.
 - [Publication package](publication/README.md): Queens County Clerk publication workflow, email draft, notice draft, and completion checklist.
 - [EIN and banking package](ein-and-banking/README.md): EIN worksheet, bank checklist, and bookkeeping starter categories.
+- [Funding readiness package](funding-readiness/README.md): fundable-company goal, todo list, data-room index, and lender/grant/certification readiness notes.
 
 ## Data Handling Rules
 
