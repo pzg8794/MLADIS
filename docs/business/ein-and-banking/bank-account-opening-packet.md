@@ -14,6 +14,8 @@ Use this as the working packet for opening the first MLADIS LLC business bank ac
 | EIN confirmation letter | Private CP 575 PDF, not committed to Git |
 | Owner government ID | Needed at bank onboarding only |
 
+Private note: the Google Drive vault version of this bank packet includes the EIN value. This GitHub version intentionally does not.
+
 ## Bank-Ready Business Summary
 
 | Field | Value |
@@ -77,3 +79,9 @@ Sources:
 
 - IRS EIN page: https://www.irs.gov/businesses/employer-identification-number
 - FinCEN BOI page: https://www.fincen.gov/beneficial-ownership-information-reporting
+
+## Private Drive Version
+
+The bank-ready private version with EIN details is stored outside Git at:
+
+`/Users/pitergarcia/Library/CloudStorage/GoogleDrive-garciapiterz@gmail.com/.shortcut-targets-by-id/1pY_fQ54nHKvFABNRGYAr5bQ3su_tUDAi/DataScience/AIRBNB/MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/05-banking/bank-account-opening-packet.md`

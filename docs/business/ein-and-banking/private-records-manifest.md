@@ -13,7 +13,7 @@ Folder structure:
 | Folder | Purpose |
 | --- | --- |
 | `01-formation/` | Formation receipt, Articles packet, and NYBE confirmation. |
-| `02-tax-ein/` | IRS EIN confirmation letter. |
+| `02-tax-ein/` | IRS EIN confirmation letter and private EIN reference file. |
 | `03-governance/` | Signed operating agreement and signed initial member consent. |
 | `04-diana-operations/` | Diana operations acknowledgment and contractor/source agreements. |
 | `05-banking/` | Bank account opening packet and private next-step checklist. |
@@ -28,6 +28,7 @@ Folder structure:
 | File | Purpose | Git status |
 | --- | --- | --- |
 | `MLADIS-EIN_CONFIRMATION-CP_575_G.pdf` | IRS EIN confirmation letter | Do not commit |
+| `MLADIS_EIN_INFO_PRIVATE.md` | Private EIN reference for bank, tax, CPA, payment processor, and government forms | Do not commit |
 | `MLADIS_LLC-FilingReceipt-And-Articles.pdf` | Formation receipt and Articles copy for bank/publication use | Safe repo copy also exists |
 | `MLADIS_LLC_Operating_Agreement_EXECUTED_2026-06-03.pdf` | Signed governance document | Repo copy exists; keep final signed copy private too |
 | `MLADIS_LLC_Initial_Member_Consent_EXECUTED_2026-06-03.pdf` | Signed authority / banking consent | Repo copy exists; keep final signed copy private too |
@@ -36,6 +37,18 @@ Folder structure:
 | `bank-account-opening-packet.md` | Bank onboarding guide | Safe Git copy also exists |
 | `BANK_ACCOUNT_NEXT_STEPS_PRIVATE.md` | Private next-step checklist for opening the bank account | Do not commit unless sanitized first |
 | `queens-publication-email-ready-to-send.md` | Sent publication request record | Safe Git copy also exists |
+
+## Private EIN Path For Agents
+
+When an authorized MLADIS agent needs the EIN for a bank, CPA, tax, payroll, payment processor, or government workflow, use the private Google Drive vault file:
+
+`/Users/pitergarcia/Library/CloudStorage/GoogleDrive-garciapiterz@gmail.com/.shortcut-targets-by-id/1pY_fQ54nHKvFABNRGYAr5bQ3su_tUDAi/DataScience/AIRBNB/MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/02-tax-ein/MLADIS_EIN_INFO_PRIVATE.md`
+
+Do not copy the EIN value into GitHub, app fixtures, screenshots, chat logs, public documents, or customer-facing systems.
+
+The private bank packet that includes the EIN value is:
+
+`/Users/pitergarcia/Library/CloudStorage/GoogleDrive-garciapiterz@gmail.com/.shortcut-targets-by-id/1pY_fQ54nHKvFABNRGYAr5bQ3su_tUDAi/DataScience/AIRBNB/MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/05-banking/bank-account-opening-packet.md`
 
 ## Rules
 
