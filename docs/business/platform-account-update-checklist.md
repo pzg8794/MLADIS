@@ -41,7 +41,10 @@ Reference documents in the private vault:
    - Note: Airbnb may require an official bank account in the LLC name to set the payee as MLADIS LLC.
 4. **Host profile name:** Account → Personal info → Name.
    - Consider using `MLADIS LLC` or `MLADIS Vacation Rentals` as the display name. This is visible to guests.
-5. **Status:** ☐ Not done
+5. **Status:**
+   - ✅ W-9 submitted (2026-06-03) — IRS validation pending (up to 10 business days)
+   - ☐ Payout method — pending LLC bank account
+   - ☐ Host profile display name
 
 ---
 
@@ -149,7 +152,10 @@ When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any pay
 | Date | Platform | Action | Done by |
 | --- | --- | --- | --- |
 | 2026-06-03 | Booking app (code) | `site_name` default + seed updated to "MLADIS LLC" | Copilot |
-| | Airbnb | W-9, payout, host profile name | |
+| 2026-06-03 | Airbnb | W-9 Form submitted — MLADIS LLC, EIN 42-2932522, Queens NY 11375; IRS validation pending | Copilot |
+| | Airbnb | Payout method update — pending LLC bank account | |
+| | Airbnb | Host profile display name | |
+| | Squarespace | Billing + WHOIS registrant name | |
 | | Squarespace | Billing + WHOIS registrant name | |
 | | Cloudflare | Account/org name | |
 | | Dropbox Sign | Org name + billing | |
