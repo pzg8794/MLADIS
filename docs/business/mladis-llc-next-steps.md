@@ -7,14 +7,18 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 - MLADIS LLC appears in New York Business Express as `Approved/Issued`.
 - Articles of Organization application `DOS1336-2026-029778` was submitted and approved on 2026-06-03.
 - The portal shows the $200 formation payment and transaction ID in the confirmation/status history.
+- The NYBE status page says the Department of State item has been filed and approved.
+- The downloaded application confirmation is archived at `docs/business/source-documents/MLADIS_LLC-Confirmation.pdf`.
 - No optional copies, certificate of status, optional registered agent, or optional service-of-process email were selected during formation.
 
 ## Immediate Checklist
 
 | Priority | Item | Target date | Status | Notes |
 | --- | --- | --- | --- | --- |
-| High | Download or print the NYBE filing acknowledgement | ASAP | Todo | Use NYBE Recent Activity or the acknowledgement link from the profile. Keep a copy outside the repo if it contains sensitive/payment details. |
-| High | Verify the official Department of State filing receipt details | ASAP | Todo | The NY DOS page says the filing receipt is proof of filing and no duplicate receipt is issued to replace a lost or destroyed one. |
+| High | Save NYBE application confirmation | 2026-06-03 | Done | Archived at `docs/business/source-documents/MLADIS_LLC-Confirmation.pdf`. This is not the filing acknowledgement. |
+| High | Verify portal filing status | 2026-06-03 | Done | NYBE status history shows `Approved/Issued` and says the Department of State item has been filed and approved. |
+| High | Download or print the NYBE filing acknowledgement | ASAP | Todo | Use NYBE Recent Activity or the `View Acknowledgement` link from the profile/status page. Keep a copy outside the repo if it contains sensitive/payment details. |
+| High | Verify the official Department of State filing receipt details | ASAP | Todo | NY DOS says the filing receipt is proof of filing and no duplicate receipt is issued to replace a lost or destroyed one. The acknowledgement/receipt file still needs to be saved. |
 | High | Draft and sign the MLADIS LLC operating agreement | 2026-09-01 | Todo | NY DOS says members must adopt a written operating agreement before, at, or within 90 days after filing Articles of Organization. |
 | High | Start the New York publication process | 2026-10-01 | Todo | NY DOS says most LLCs must publish in two county-clerk-designated newspapers for six consecutive weeks within 120 days after the Articles become effective, then file Certificate of Publication. |
 | High | Apply for an IRS EIN | After filing receipt is saved | Todo | Use the official IRS EIN Assistant. Do not use third-party EIN services. |
@@ -36,6 +40,18 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 6. Store the filed Certificate of Publication and affidavits in the private business records folder, not in public website assets.
 
 Target deadline from 2026-06-03 plus 120 days: 2026-10-01.
+
+## How To Check Whether Filing Happened
+
+The downloaded `MLADIS_LLC-Confirmation.pdf` alone means the application was submitted and paid. It does not by itself mean the Department of State accepted the filing.
+
+The filing is considered approved in NYBE when the status page shows:
+
+- `Approved/Issued`
+- `Approved Date: 06/03/2026`
+- `An item submitted using the New York Business Express portal to the New York Department of State has been filed and approved.`
+
+The remaining evidence task is to save the filing acknowledgement or filing receipt from the `View Acknowledgement` link.
 
 ## Operating Agreement Workplan
 

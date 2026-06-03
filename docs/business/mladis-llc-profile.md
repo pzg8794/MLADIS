@@ -81,9 +81,15 @@ These links require the authenticated New York Business Express account.
 - Confirmation: `https://www.businessexpress.ny.gov/app/dashboard/confirmation?submitAppId=2887321`
 - Acknowledgement render endpoint shown in NYBE: `https://www.businessexpress.ny.gov/cc/BusinessExpress/render?lsiId=4098807`
 
+## Archived Source Documents
+
+- [NYBE application confirmation PDF](source-documents/MLADIS_LLC-Confirmation.pdf)
+
 ## Source Notes
 
 - NYBE status history showed both `Submitted` and `Approved/Issued` statuses on 2026-06-03.
+- On 2026-06-03, the live NYBE status history said: `An item submitted using the New York Business Express portal to the New York Department of State has been filed and approved.`
+- The downloaded `MLADIS_LLC-Confirmation.pdf` is an application confirmation, not the filing acknowledgement. It proves submission/payment, while the NYBE `Approved/Issued` status proves the state filing has been approved.
 - NYBE status history says the filing acknowledgement will be emailed to the filer email address and can also be viewed or printed from Recent Activity.
-- The acknowledgement render endpoint was visible in NYBE, but the direct render URL was blocked by Chrome automation during capture. Use the NYBE dashboard manually if a PDF/print copy is needed.
+- The acknowledgement render endpoint was visible in NYBE, but the direct render URL was blocked by Chrome automation during capture. Use the NYBE dashboard manually if the acknowledgement PDF is needed.
 - `TM-0864201` appeared in a dashboard column labeled `FEIN/SSN/TFs`. It is recorded here as a NYBE dashboard reference only and should not be treated as an IRS EIN unless independently confirmed.
