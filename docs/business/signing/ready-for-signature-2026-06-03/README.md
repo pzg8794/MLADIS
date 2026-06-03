@@ -15,12 +15,12 @@ Private ready-for-signature packet for MLADIS LLC.
 
 | File | SHA-256 |
 | --- | --- |
-| `MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_READY_FOR_SIGNATURE.docx` | `beefb7452787f90b96543ec0a07c374a4c3d6c5802a6114f5d5ec1c609175937` |
-| `MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_READY_FOR_SIGNATURE.pdf` | `9d4e08938551d0335a23c12e261e1ee86a21b961da96cbc0b082698bc0dd8a10` |
-| `MLADIS_LLC_Initial_Member_Consent_READY_FOR_SIGNATURE.docx` | `ac623f5fa7b4a4e0506d5253187e684cf5156481b4f5c56bfb6464a82b8db6e9` |
-| `MLADIS_LLC_Initial_Member_Consent_READY_FOR_SIGNATURE.pdf` | `74096359b1eb0454a386440281e2bb183a1f549d237d1c7baafec3d4ace51666` |
-| `MLADIS_LLC_Operating_Agreement_READY_FOR_SIGNATURE.docx` | `0567e29ba4a8e2dd730d32a4b4342c493c664446f1be973a6acb9ed2cc955ca6` |
-| `MLADIS_LLC_Operating_Agreement_READY_FOR_SIGNATURE.pdf` | `7fd950add53566df6ea110377ec7dbe8fdc326154ce676607d4ec4457c2462b7` |
+| [MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_READY_FOR_SIGNATURE.docx](MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_READY_FOR_SIGNATURE.docx) | `beefb7452787f90b96543ec0a07c374a4c3d6c5802a6114f5d5ec1c609175937` |
+| [MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_READY_FOR_SIGNATURE.pdf](MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_READY_FOR_SIGNATURE.pdf) | `9d4e08938551d0335a23c12e261e1ee86a21b961da96cbc0b082698bc0dd8a10` |
+| [MLADIS_LLC_Initial_Member_Consent_READY_FOR_SIGNATURE.docx](MLADIS_LLC_Initial_Member_Consent_READY_FOR_SIGNATURE.docx) | `ac623f5fa7b4a4e0506d5253187e684cf5156481b4f5c56bfb6464a82b8db6e9` |
+| [MLADIS_LLC_Initial_Member_Consent_READY_FOR_SIGNATURE.pdf](MLADIS_LLC_Initial_Member_Consent_READY_FOR_SIGNATURE.pdf) | `74096359b1eb0454a386440281e2bb183a1f549d237d1c7baafec3d4ace51666` |
+| [MLADIS_LLC_Operating_Agreement_READY_FOR_SIGNATURE.docx](MLADIS_LLC_Operating_Agreement_READY_FOR_SIGNATURE.docx) | `0567e29ba4a8e2dd730d32a4b4342c493c664446f1be973a6acb9ed2cc955ca6` |
+| [MLADIS_LLC_Operating_Agreement_READY_FOR_SIGNATURE.pdf](MLADIS_LLC_Operating_Agreement_READY_FOR_SIGNATURE.pdf) | `7fd950add53566df6ea110377ec7dbe8fdc326154ce676607d4ec4457c2462b7` |
 
 ## Signing Instructions
 
@@ -33,3 +33,5 @@ Private ready-for-signature packet for MLADIS LLC.
 ## After Signatures
 
 Save the completed signed PDFs and Dropbox Sign audit trail in private company records. Do not commit reusable signature images, identity documents, EIN letters, SSNs, bank records, tax returns, or payment credentials.
+
+Use [after-signing-guide.md](after-signing-guide.md) for the exact storage and usage steps.

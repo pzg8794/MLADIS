@@ -14,30 +14,30 @@ MLADIS LLC is formed and approved in NYBE, but it is not yet fundable-ready.
 
 The strongest current assets are:
 
-- Formation confirmation and approval status documented in `docs/business/`.
-- Draft operating agreement and initial member consent.
-- Draft Queens publication package.
-- EIN worksheet and bank checklist.
-- Archived Diana contractor agreement for vacation-rental operations.
+- Formation confirmation and approval status documented in [docs/business](../).
+- Ready-for-signature governance packet in [ready-for-signature-2026-06-03](../signing/ready-for-signature-2026-06-03/).
+- Private EIN and bank packet split documented in [private-records-manifest.md](../ein-and-banking/private-records-manifest.md).
+- Queens publication designation request sent record in [publication](../publication/).
+- Archived Diana contractor agreement for vacation-rental operations in [source-documents](../source-documents/).
 - MLADIS website/product work already underway in the main application.
 
 The main blockers are:
 
-- Operating agreement and initial member consent still need signatures.
-- EIN still needs to be obtained from IRS.gov.
+- Final e-sign completion/audit trail still needs to be saved after Dropbox Sign.
 - Business bank account and bookkeeping system are not live yet.
-- Publication process has not started.
+- Queens publication response/newspaper designations are pending.
 - Financial statements, business plan, and use-of-funds model are not yet prepared.
 
 ## Active Files
 
-- `funding-readiness-todo.md` - master checklist.
-- `data-room-index.md` - documents to gather before lenders, grants, or investors.
-- `funding-tracks.md` - realistic funding paths and what each one needs.
-- `business-plan-outline.md` - first funder-facing business plan structure.
-- `use-of-funds-worksheet.md` - funding amount and category worksheet.
-- `metrics-and-financial-inputs.md` - data needed for forecasts, lenders, and investors.
-- `source-links.md` - official source links for agents to re-check.
+- [funding-readiness-todo.md](funding-readiness-todo.md) - master checklist.
+- [data-room-index.md](data-room-index.md) - documents to gather before lenders, grants, or investors.
+- [funding-tracks.md](funding-tracks.md) - realistic funding paths and what each one needs.
+- [bank-credit-loan-and-grant-guide.md](bank-credit-loan-and-grant-guide.md) - bank shortlist, credit sequence, and loan/grant program guide.
+- [business-plan-outline.md](business-plan-outline.md) - first funder-facing business plan structure.
+- [use-of-funds-worksheet.md](use-of-funds-worksheet.md) - funding amount and category worksheet.
+- [metrics-and-financial-inputs.md](metrics-and-financial-inputs.md) - data needed for forecasts, lenders, and investors.
+- [source-links.md](source-links.md) - official source links for agents to re-check.
 
 ## Agent Rules
 
