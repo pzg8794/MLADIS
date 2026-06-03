@@ -61,7 +61,9 @@ Reference documents in the private vault:
    - Address: `109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375`
    - Email: `garciapiterz@gmail.com` (update to `garcp37@mladis.com` after Workspace DNS is verified)
    - Phone: `631-575-4841`
-4. **Status:** ☐ Not done
+4. **Status:**
+   - ✅ WHOIS registrant updated (2026-06-03) — Organization: MLADIS LLC, Phone: 631-575-4841, Address: 109-19 72nd Rd. APT 5H, Forest Hills, NY 11375; confirmation email pending from Squarespace/ICANN
+   - ☐ Billing info — not done
 
 ---
 
@@ -155,8 +157,8 @@ When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any pay
 | 2026-06-03 | Airbnb | W-9 Form submitted — MLADIS LLC, EIN 42-2932522, Queens NY 11375; IRS validation pending | Copilot |
 | | Airbnb | Payout method update — pending LLC bank account | |
 | | Airbnb | Host profile display name | |
-| | Squarespace | Billing + WHOIS registrant name | |
-| | Squarespace | Billing + WHOIS registrant name | |
+| 2026-06-03 | Squarespace | WHOIS registrant updated — Organization: MLADIS LLC, Phone: 631-575-4841, Address corrected; ICANN confirmation email pending | Copilot |
+| | Squarespace | Billing contact name — not done | |
 | | Cloudflare | Account/org name | |
 | | Dropbox Sign | Org name + billing | |
 | | Google Workspace | Org name | |
