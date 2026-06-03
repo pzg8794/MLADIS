@@ -14,6 +14,7 @@ from django.db.models import Count, Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django.utils import timezone
+from django.templatetags.static import static
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -164,7 +165,7 @@ class ModernAccountView(LoginRequiredMixin, TemplateView):
 class PublicSiteSummaryAPIView(View):
     def get(self, request):
         settings_obj = SiteSettings.current()
-        logo_url = settings_obj.logo_display_url
+        logo_url = settings_obj.logo_display_url or static("bookings/brand/mladis-connected-intelligence.png")
         if settings_obj.logo:
             try:
                 if not settings_obj.logo.storage.exists(settings_obj.logo.name):

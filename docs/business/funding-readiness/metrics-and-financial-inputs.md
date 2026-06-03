@@ -68,3 +68,7 @@ Private checklist for building lender-grade financials, forecasts, and investor 
 - Use-of-funds model.
 - Lender one-page summary.
 - Investor metrics page.
+
+## Implementation Note
+
+The owner has already started the bookkeeping/booking system. Treat this file as the data contract for the future OOP cleanup inside MLADIS rather than a request to set up a separate throwaway accounting workflow.

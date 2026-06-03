@@ -7,7 +7,7 @@ Private publication workflow for MLADIS LLC.
 - LLC formation approved: 2026-06-03
 - County: Queens
 - Publication deadline target: 2026-10-01
-- Current blocker: save the official filing acknowledgement or Department of State filing receipt, then send it to the Queens County Clerk for newspaper designation.
+- Current next action: send the official filing receipt/Articles packet to the Queens County Clerk for newspaper designation.
 
 ## Official Process Summary
 
@@ -35,4 +35,4 @@ New York Department of State publication filing:
 
 ## Do Not Skip
 
-Do not send the application confirmation PDF alone unless the County Clerk accepts it. The official Queens County Clerk page asks for the original filing receipt from the Department of State. The NYBE status page has a `View Acknowledgement` link that should be saved first.
+Do not send the application confirmation PDF alone unless the County Clerk accepts it. The official Queens County Clerk page asks for the original filing receipt from the Department of State. Use `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf` as the filing receipt packet.

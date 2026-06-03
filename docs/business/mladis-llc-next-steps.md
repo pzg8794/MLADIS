@@ -9,6 +9,7 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 - The portal shows the $200 formation payment and transaction ID in the confirmation/status history.
 - The NYBE status page says the Department of State item has been filed and approved.
 - The downloaded application confirmation is archived at `docs/business/source-documents/MLADIS_LLC-Confirmation.pdf`.
+- The official NYS DOS filing receipt and Articles packet is archived at `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`.
 - No optional copies, certificate of status, optional registered agent, or optional service-of-process email were selected during formation.
 
 ## Immediate Checklist
@@ -17,17 +18,17 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 | --- | --- | --- | --- | --- |
 | High | Save NYBE application confirmation | 2026-06-03 | Done | Archived at `docs/business/source-documents/MLADIS_LLC-Confirmation.pdf`. This is not the filing acknowledgement. |
 | High | Verify portal filing status | 2026-06-03 | Done | NYBE status history shows `Approved/Issued` and says the Department of State item has been filed and approved. |
-| High | Download or print the NYBE filing acknowledgement | ASAP | Todo | Use NYBE Recent Activity or the `View Acknowledgement` link from the profile/status page. Keep a copy outside the repo if it contains sensitive/payment details. |
-| High | Verify the official Department of State filing receipt details | ASAP | Todo | NY DOS says the filing receipt is proof of filing and no duplicate receipt is issued to replace a lost or destroyed one. The acknowledgement/receipt file still needs to be saved. |
+| High | Download or print the NYBE filing acknowledgement | 2026-06-03 | Done | Archived as `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`. |
+| High | Verify the official Department of State filing receipt details | 2026-06-03 | Done | Receipt shows DOS ID `7932124`, file number `260603000036`, and authentication number `100010406121`. |
 | High | Draft MLADIS LLC operating agreement package | 2026-06-03 | Done | Draft package is in `docs/business/operating-agreement/`. |
 | High | Sign MLADIS LLC operating agreement and initial member consent | 2026-09-01 | Todo | NY DOS says members must adopt a written operating agreement before, at, or within 90 days after filing Articles of Organization. |
 | High | Prepare Queens publication package | 2026-06-03 | Done | Draft package is in `docs/business/publication/`. |
 | High | Start the New York publication process | 2026-10-01 | Todo | Send the filing acknowledgement/receipt to Queens County Clerk, receive newspaper designations, publish for six weeks, collect affidavits, then file Certificate of Publication. |
 | High | Prepare IRS EIN worksheet | 2026-06-03 | Done | Worksheet is in `docs/business/ein-and-banking/ein-worksheet.md`. |
-| High | Apply for an IRS EIN | After filing receipt is saved | Todo | Use the official IRS EIN Assistant. Do not use third-party EIN services. |
+| High | Apply for an IRS EIN | After signing governance docs | Todo | Use the official IRS EIN Assistant. Do not use third-party EIN services. |
 | High | Open a business bank account | After EIN | Todo | Keep MLADIS income, deposits, reimbursements, and expenses separate from personal accounts. |
 | Medium | Create bookkeeping starter chart of accounts | 2026-06-03 | Done | Draft chart is in `docs/business/ein-and-banking/bookkeeping-chart-of-accounts.md`; review with CPA before tax filing. |
-| Medium | Implement bookkeeping system in selected tool | After bank account | Todo | Track lodging revenue, deposits/holds, refunds, platform fees, cleaning, repairs, charitable donations, software, hosting, advertising, taxes, and owner contributions/distributions. |
+| Medium | Implement bookkeeping system in selected tool | After OOP booking-system cleanup | In progress | Owner started a bookkeeping/booking system. Leave final cleanup for the MLADIS OOP integration phase, then track lodging revenue, deposits/holds, refunds, fees, cleaning, repairs, donations, software, hosting, advertising, taxes, and owner contributions/distributions. |
 | Medium | Decide tax/accounting treatment with a CPA | Before first tax filing | Todo | A single-member LLC is often disregarded for federal tax by default, but verify based on MLADIS ownership and future AI/business plans. |
 | Medium | Confirm sales tax, hotel occupancy, short-term rental, and local compliance obligations | Before direct bookings go live | Todo | Airbnb platform compliance does not automatically cover direct-booking obligations. |
 | Medium | Archive Diana contractor agreement | 2026-06-03 | Done | Signed contractor agreement is archived in `docs/business/source-documents/contractor-agreements/`. |
@@ -61,7 +62,7 @@ The filing is considered approved in NYBE when the status page shows:
 - `Approved Date: 06/03/2026`
 - `An item submitted using the New York Business Express portal to the New York Department of State has been filed and approved.`
 
-The remaining evidence task is to save the filing acknowledgement or filing receipt from the `View Acknowledgement` link.
+That evidence is now archived in `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`.
 
 ## Operating Agreement Workplan
 

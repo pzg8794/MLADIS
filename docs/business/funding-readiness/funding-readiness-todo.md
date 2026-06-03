@@ -6,7 +6,7 @@ Private operating checklist for preparing MLADIS LLC for government and financia
 
 | Priority | Task | Status | Owner action needed | Notes |
 | --- | --- | --- | --- | --- |
-| High | Save NYBE filing acknowledgement/receipt | Todo | Download/print from NYBE | Formation confirmation is archived, but filing acknowledgement still needs to be saved. |
+| High | Save NYBE filing acknowledgement/receipt | Done | None | Filing receipt and Articles packet is archived in `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`. |
 | High | Sign operating agreement | Todo | Review and sign | Draft exists in `docs/business/operating-agreement/`. |
 | High | Sign initial member consent | Todo | Review and sign | Authorizes EIN, banking, payments, records, and contractor/vendor actions. |
 | High | Sign contractor ratification/assignment for Diana | Todo | Review and sign with Diana if used | Bridges Piter's existing contractor agreement to MLADIS LLC operations. |
@@ -17,9 +17,9 @@ Private operating checklist for preparing MLADIS LLC for government and financia
 
 | Priority | Task | Status | Owner action needed | Notes |
 | --- | --- | --- | --- | --- |
-| High | Apply for EIN at IRS.gov | Todo | Enter SSN/ITIN only on IRS.gov | Worksheet exists in `docs/business/ein-and-banking/ein-worksheet.md`. |
+| High | Apply for EIN at IRS.gov | Todo | Enter SSN/ITIN only on IRS.gov | Worksheet exists in `docs/business/ein-and-banking/ein-worksheet.md`; sign governance docs first. |
 | High | Open business bank account | Todo | Complete bank KYC | Needs EIN, formation proof, operating agreement, owner ID, business address. |
-| High | Configure accounting/bookkeeping tool | Todo | Pick tool and connect bank | Use starter chart of accounts already drafted. |
+| High | Configure accounting/bookkeeping tool | In progress | Finish after MLADIS OOP booking-system cleanup | Owner started the system; final accounting integration should wait until the booking system has a strong stable OOP base. |
 | High | Create business document vault outside public app assets | Todo | Choose secure storage | Store EIN letter, bank docs, tax returns, IDs, statements outside repo or encrypted/private storage. |
 | Medium | Establish business credit basics | Todo | Open accounts responsibly | Use business bank, payment processors, business email, and vendor records consistently. |
 

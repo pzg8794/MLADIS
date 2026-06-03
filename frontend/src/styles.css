@@ -92,16 +92,26 @@ button {
   padding-bottom: 8px;
 }
 
-.dashboard-brand > span {
+.dashboard-brand > span,
+.dashboard-brand > img {
   display: grid;
   place-items: center;
   width: 46px;
   height: 46px;
   border-radius: var(--radius);
+}
+
+.dashboard-brand > span {
   color: #082f2f;
   font-weight: 950;
   background: linear-gradient(135deg, #f8d27a, #63e6be);
   box-shadow: 0 16px 38px rgba(99, 230, 190, 0.24);
+}
+
+.dashboard-brand > img {
+  object-fit: contain;
+  background: #ffffff;
+  box-shadow: 0 16px 38px rgba(99, 230, 190, 0.16);
 }
 
 .dashboard-brand strong,
@@ -2763,7 +2773,8 @@ button {
     overflow: hidden;
   }
 
-  .dashboard-brand > span {
+  .dashboard-brand > span,
+  .dashboard-brand > img {
     width: 44px;
     height: 44px;
   }

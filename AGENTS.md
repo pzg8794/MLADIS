@@ -52,6 +52,8 @@
 - The current business goal is to make MLADIS LLC fundable for government programs, CDFIs, banks, SBA-backed lenders, grants, and later private investors. The active tracker is `docs/business/funding-readiness/`.
 - After any business-formation, compliance, banking, bookkeeping, certification, grant, lender, investor, or government-funding work, update `docs/business/mladis-llc-next-steps.md` and the matching file under `docs/business/funding-readiness/`.
 - Do not submit EIN, SAM.gov, grants, loans, bank accounts, certification applications, or investor materials without explicit owner approval in the current thread. Prepare packets and drafts; leave SSN, EIN, tax, bank, and identity fields for the owner or a secure official portal.
+- Never commit reusable signature images, signature stamps, identity documents, EIN letters, SSNs, bank records, or tax returns. If the owner asks for help signing a document, require explicit per-document authorization and keep any reusable signature asset outside Git.
+- Use `docs/business/brand-assets/` as the source for official MLADIS brand/logo assets when preparing business packets, invoices, website assets, dashboards, pitch materials, or customer-facing MLADIS collateral. Do not replace these with placeholder logos when a suitable asset exists there.
 
 ## Deposit Operations
 

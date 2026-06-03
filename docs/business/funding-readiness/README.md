@@ -23,7 +23,6 @@ The strongest current assets are:
 
 The main blockers are:
 
-- Final NY filing acknowledgement/receipt still needs to be saved.
 - Operating agreement and initial member consent still need signatures.
 - EIN still needs to be obtained from IRS.gov.
 - Business bank account and bookkeeping system are not live yet.

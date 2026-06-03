@@ -5,6 +5,7 @@ Private business source documents for MLADIS LLC. Keep these files out of public
 ## Current Files
 
 - `MLADIS_LLC-Confirmation.pdf` - NYBE application confirmation downloaded on 2026-06-03. This confirms submission/payment for the Articles of Organization application, but it is not the same artifact as the filing acknowledgement.
+- `MLADIS_LLC-FilingReceipt-And-Articles.pdf` - official NYS DOS filing receipt and Articles of Organization packet downloaded on 2026-06-03.
 - `contractor-agreements/Diana_Sori_Garcia_Bautista_Independent_Contractor_Agreement_Signed.pdf` - signed independent contractor agreement for vacation-rental management operations, copied from the workspace `Independent Contractor/` folder.
 - `contractor-agreements/Diana_Sori_Garcia_Bautista_Independent_Contractor_Agreement_English.pdf` - English short-form contractor agreement, copied from the workspace `Independent Contractor/` folder.
 - `contractor-agreements/Diana_Sori_Garcia_Bautista_Independent_Contractor_Agreement_Spanish.pdf` - Spanish short-form contractor agreement, copied from the workspace `Independent Contractor/` folder.
@@ -13,6 +14,4 @@ The contractor PDFs are private business records. The signed agreement may conta
 
 ## Still Needed
 
-- NYBE filing acknowledgement for application `DOS1336-2026-029778`.
-- Any Department of State filing receipt or certificate/receipt generated after approval.
 - Future Certificate of Publication package after the newspaper-publication process is completed.

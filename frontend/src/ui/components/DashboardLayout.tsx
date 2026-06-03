@@ -1,5 +1,6 @@
 import { Bot, CalendarDays, Home, LayoutDashboard, LineChart, ReceiptText, Search, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { ReactNode } from 'react';
+import brandLogoUrl from '../../assets/mladis-connected-intelligence.png';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -20,7 +21,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
         <div className="dashboard-brand">
-          <span>M</span>
+          <img src={brandLogoUrl} alt="MLADIS" />
           <div>
             <strong>MLADIS</strong>
             <small>Stay operations</small>

@@ -19,6 +19,11 @@ Private operations record. Last captured from New York Business Express on 2026-
 | Application name | Articles of Organization Domestic Limited Liability Company |
 | Application type | Initial Application |
 | Application ID | DOS1336-2026-029778 |
+| DOS ID | 7932124 |
+| DOS file date | 2026-06-03 |
+| DOS file number | 260603000036 |
+| DOS transaction number | 202606030000059-5943069 |
+| DOS authentication number | 100010406121 |
 | Date submitted | 2026-06-03 |
 | Submission timestamp shown on confirmation | 2026-06-03 02:07 AM |
 | Approved date | 2026-06-03 |
@@ -84,12 +89,12 @@ These links require the authenticated New York Business Express account.
 ## Archived Source Documents
 
 - [NYBE application confirmation PDF](source-documents/MLADIS_LLC-Confirmation.pdf)
+- [NYS DOS filing receipt and Articles of Organization PDF](source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf)
 
 ## Source Notes
 
 - NYBE status history showed both `Submitted` and `Approved/Issued` statuses on 2026-06-03.
 - On 2026-06-03, the live NYBE status history said: `An item submitted using the New York Business Express portal to the New York Department of State has been filed and approved.`
-- The downloaded `MLADIS_LLC-Confirmation.pdf` is an application confirmation, not the filing acknowledgement. It proves submission/payment, while the NYBE `Approved/Issued` status proves the state filing has been approved.
-- NYBE status history says the filing acknowledgement will be emailed to the filer email address and can also be viewed or printed from Recent Activity.
-- The acknowledgement render endpoint was visible in NYBE, but the direct render URL was blocked by Chrome automation during capture. Use the NYBE dashboard manually if the acknowledgement PDF is needed.
+- The downloaded `MLADIS_LLC-Confirmation.pdf` is the application confirmation. It proves submission/payment.
+- The downloaded `MLADIS_LLC-FilingReceipt-And-Articles.pdf` is the official NYS DOS filing receipt and Articles packet. It includes DOS ID `7932124`, file number `260603000036`, and authentication number `100010406121`.
 - `TM-0864201` appeared in a dashboard column labeled `FEIN/SSN/TFs`. It is recorded here as a NYBE dashboard reference only and should not be treated as an IRS EIN unless independently confirmed.

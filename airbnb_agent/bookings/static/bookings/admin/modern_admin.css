@@ -100,15 +100,24 @@ a {
   gap: 12px;
 }
 
-.modern-admin-brand > span {
+.modern-admin-brand > span,
+.modern-admin-brand > img {
   display: grid;
   width: 46px;
   height: 46px;
   place-items: center;
   border-radius: 14px;
+}
+
+.modern-admin-brand > span {
   color: #073331;
   background: linear-gradient(135deg, #f8d27a, #75f0c8);
   font-weight: 950;
+}
+
+.modern-admin-brand > img {
+  object-fit: contain;
+  background: #ffffff;
 }
 
 .modern-admin-brand strong,
@@ -586,8 +595,9 @@ body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-bra
 
 body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-mark {
   border-radius: 14px;
+  object-fit: contain;
   color: #073331;
-  background: linear-gradient(135deg, #f8d27a, #75f0c8);
+  background: #ffffff;
   box-shadow: none;
 }
 
