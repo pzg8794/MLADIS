@@ -14,6 +14,7 @@ Private status page. This is the current "read, sign, and click it away" center.
 | Diana contractor agreement archived | Done | `docs/business/source-documents/contractor-agreements/` |
 | Diana Founding Operations Pillar acknowledgment draft | Done | `docs/business/operations/mladis-bookings-founding-operations-pillar-acknowledgment.md` |
 | B-1 business visitor process package | Done | `docs/business/immigration/` |
+| Execution-ready signed package | Done | `docs/business/signing/execution-ready-2026-06-03/` |
 | Printable signing DOCX files | Done | `docs/business/signing/printable/` |
 | Brand/logo assets archived and wired into app/admin | Done | `docs/business/brand-assets/` and app static assets |
 | Funding-readiness tracker and data-room checklist | Done | `docs/business/funding-readiness/` |
@@ -21,15 +22,23 @@ Private status page. This is the current "read, sign, and click it away" center.
 | Queens publication email draft | Done | `docs/business/publication/queens-county-clerk-publication-request-email.md` |
 | Signature source pointer | Done | `docs/business/signing/README.md` records the Drive file metadata, not the signature image |
 
-## Ready For You To Read And Sign
+## Dated And Signed By Piter
 
-| Step | Document | Printable copy | Signer(s) |
+| Step | Document | Executed copy | Status |
 | --- | --- | --- | --- |
-| 1 | Operating Agreement | `docs/business/signing/printable/MLADIS_LLC_Operating_Agreement_DRAFT.docx` | Piter Zacari Garcia Bautista |
-| 2 | Initial Written Consent | `docs/business/signing/printable/MLADIS_LLC_Initial_Member_Consent.docx` | Piter Zacari Garcia Bautista |
-| 3 | MLADIS Bookings Founding Operations Pillar Acknowledgment | `docs/business/signing/printable/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_DRAFT.docx` | Piter individually, Piter for MLADIS LLC, Diana Sori Garcia Bautista |
+| 1 | Operating Agreement | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Operating_Agreement_EXECUTED_2026-06-03.pdf` | Signed by Piter on 2026-06-03 |
+| 2 | Initial Written Consent | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Initial_Member_Consent_EXECUTED_2026-06-03.pdf` | Signed by Piter on 2026-06-03 |
+| 3 | MLADIS Bookings Founding Operations Pillar Acknowledgment | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.pdf` | Signed by Piter/MLADIS on 2026-06-03; Diana signature pending |
 
-Important: signing help requires explicit per-document approval in the current thread. Do not apply the Drive signature source automatically. Do not apply Diana's signature unless Diana separately authorizes it.
+Important: Diana's signature is still pending. Do not apply Diana's signature unless Diana separately authorizes it.
+
+## Ready To Send To Diana
+
+| Item | Path |
+| --- | --- |
+| Piter-signed Diana acknowledgment PDF | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.pdf` |
+| Piter-signed Diana acknowledgment DOCX | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.docx` |
+| Email / e-sign cover note | `docs/business/signing/execution-ready-2026-06-03/email-to-diana.md` |
 
 ## Ready For You To Click In Official Portals
 
@@ -60,10 +69,9 @@ Important: signing help requires explicit per-document approval in the current t
 
 ## Best Next Order
 
-1. Review/sign Operating Agreement.
-2. Review/sign Initial Written Consent.
-3. Review/sign Diana acknowledgment if Diana approves her signing role.
-4. Apply for EIN on IRS.gov.
-5. Open business bank account.
-6. Send Queens publication designation email with the filing receipt attached.
-7. Come back to MLADIS bookkeeping/OOP integration after governance and EIN are stable.
+1. Email/e-sign the Diana acknowledgment for Diana review and acceptance.
+2. Save Diana's returned signed copy in private business records.
+3. Apply for EIN on IRS.gov.
+4. Open business bank account.
+5. Send Queens publication designation email with the filing receipt attached.
+6. Come back to MLADIS bookkeeping/OOP integration after governance and EIN are stable.

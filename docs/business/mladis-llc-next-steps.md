@@ -21,7 +21,7 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 | High | Download or print the NYBE filing acknowledgement | 2026-06-03 | Done | Archived as `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`. |
 | High | Verify the official Department of State filing receipt details | 2026-06-03 | Done | Receipt shows DOS ID `7932124`, file number `260603000036`, and authentication number `100010406121`. |
 | High | Draft MLADIS LLC operating agreement package | 2026-06-03 | Done | Draft package is in `docs/business/operating-agreement/`. |
-| High | Sign MLADIS LLC operating agreement and initial member consent | 2026-09-01 | Todo | NY DOS says members must adopt a written operating agreement before, at, or within 90 days after filing Articles of Organization. |
+| High | Sign MLADIS LLC operating agreement and initial member consent | 2026-06-03 | Done | Execution-ready copies signed by Piter are in `docs/business/signing/execution-ready-2026-06-03/`. |
 | High | Prepare Queens publication package | 2026-06-03 | Done | Draft package is in `docs/business/publication/`. |
 | High | Start the New York publication process | 2026-10-01 | Todo | Send the filing acknowledgement/receipt to Queens County Clerk, receive newspaper designations, publish for six weeks, collect affidavits, then file Certificate of Publication. |
 | High | Prepare IRS EIN worksheet | 2026-06-03 | Done | Worksheet is in `docs/business/ein-and-banking/ein-worksheet.md`. |
@@ -32,7 +32,7 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 | Medium | Decide tax/accounting treatment with a CPA | Before first tax filing | Todo | A single-member LLC is often disregarded for federal tax by default, but verify based on MLADIS ownership and future AI/business plans. |
 | Medium | Confirm sales tax, hotel occupancy, short-term rental, and local compliance obligations | Before direct bookings go live | Todo | Airbnb platform compliance does not automatically cover direct-booking obligations. |
 | Medium | Archive Diana contractor agreement | 2026-06-03 | Done | Signed contractor agreement is archived in `docs/business/source-documents/contractor-agreements/`. |
-| Medium | Prepare Diana operations acknowledgment | 2026-06-03 | Done | Preferred signing draft is in `docs/business/operations/mladis-bookings-founding-operations-pillar-acknowledgment.md`; Diana's signature requires Diana's approval. |
+| Medium | Prepare Diana operations acknowledgment | 2026-06-03 | In progress | Piter/MLADIS signed execution copy is in `docs/business/signing/execution-ready-2026-06-03/`; send to Diana for review/acceptance. |
 | Medium | Prepare B-1 business visitor process package | 2026-06-03 | Done | Templates and official source links are in `docs/business/immigration/`; completed sensitive visa-history answers stay outside Git. |
 | Medium | Configure `mladis.com` business email and DNS records | Before customer-facing launch | In progress | Keep Google Workspace MX/SPF/DKIM/DMARC stable before using a `@mladis.com` mailbox for production emails. |
 | Medium | Store production secrets in a proper secret manager | Before live payments/agents | Todo | Stripe, OpenAI, SMTP, OAuth, and calendar credentials must stay out of Git. |

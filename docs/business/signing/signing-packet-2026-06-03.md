@@ -2,13 +2,13 @@
 
 Private signing packet index. Not legal advice.
 
-## Ready For Owner Review And Signature
+## Signed / Ready For Counterparty Review
 
 | Document | Path | Signer(s) | Status |
 | --- | --- | --- | --- |
-| Operating Agreement | `docs/business/operating-agreement/MLADIS_LLC_Operating_Agreement_DRAFT.md` | Piter Zacari Garcia Bautista | Ready for review/signature |
-| Initial Written Consent | `docs/business/operating-agreement/initial-member-consent.md` | Piter Zacari Garcia Bautista | Ready for review/signature |
-| MLADIS Bookings Founding Operations Pillar Acknowledgment And Services Understanding | `docs/business/operations/mladis-bookings-founding-operations-pillar-acknowledgment.md` | Piter individually, Piter for MLADIS LLC, Diana Sori Garcia Bautista | Ready for review/signature if Diana approves her signing role |
+| Operating Agreement | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Operating_Agreement_EXECUTED_2026-06-03.pdf` | Piter Zacari Garcia Bautista | Electronically signed by Piter on 2026-06-03 |
+| Initial Written Consent | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Initial_Member_Consent_EXECUTED_2026-06-03.pdf` | Piter Zacari Garcia Bautista | Electronically signed by Piter on 2026-06-03 |
+| MLADIS Bookings Founding Operations Pillar Acknowledgment And Services Understanding | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.pdf` | Piter individually, Piter for MLADIS LLC, Diana Sori Garcia Bautista | Signed by Piter/MLADIS on 2026-06-03; Diana review/signature pending |
 
 ## Printable Copies
 
@@ -17,6 +17,15 @@ Private signing packet index. Not legal advice.
 | Operating Agreement | `docs/business/signing/printable/MLADIS_LLC_Operating_Agreement_DRAFT.docx` |
 | Initial Written Consent | `docs/business/signing/printable/MLADIS_LLC_Initial_Member_Consent.docx` |
 | MLADIS Bookings Founding Operations Pillar Acknowledgment And Services Understanding | `docs/business/signing/printable/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_DRAFT.docx` |
+
+## Execution-Ready Copies
+
+| Document | Markdown | DOCX | PDF |
+| --- | --- | --- | --- |
+| Operating Agreement | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Operating_Agreement_EXECUTED_2026-06-03.md` | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Operating_Agreement_EXECUTED_2026-06-03.docx` | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Operating_Agreement_EXECUTED_2026-06-03.pdf` |
+| Initial Written Consent | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Initial_Member_Consent_EXECUTED_2026-06-03.md` | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Initial_Member_Consent_EXECUTED_2026-06-03.docx` | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Initial_Member_Consent_EXECUTED_2026-06-03.pdf` |
+| Diana Acknowledgment | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.md` | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.docx` | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.pdf` |
+| Diana email cover note | `docs/business/signing/execution-ready-2026-06-03/email-to-diana.md` | N/A | N/A |
 
 ## Already Archived Formation Evidence
 
@@ -35,7 +44,8 @@ The owner has identified a Google Drive file titled `MY SIGNATURE.jpg` as the fu
 
 ## After Signing
 
-1. Save signed copies in private business records.
-2. Update `docs/business/mladis-llc-next-steps.md`.
-3. Update `docs/business/funding-readiness/data-room-index.md`.
-4. Use signed governance docs plus the filing receipt to proceed with EIN and banking.
+1. Send Diana the Piter-signed acknowledgment through an e-sign link or email attachment.
+2. Save Diana's returned signed copy in private business records.
+3. Update `docs/business/mladis-llc-next-steps.md`.
+4. Update `docs/business/funding-readiness/data-room-index.md`.
+5. Use signed governance docs plus the filing receipt to proceed with EIN and banking.

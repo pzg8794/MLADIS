@@ -8,9 +8,9 @@ Private checklist. Some items should be stored outside Git or in encrypted/priva
 | --- | --- | --- |
 | Articles / NYBE application confirmation | Done | Archived in `docs/business/source-documents/MLADIS_LLC-Confirmation.pdf`. |
 | NY filing acknowledgement / filing receipt | Done | Archived in `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`. |
-| Operating agreement | Draft ready | Signed copy should be stored privately; public app must not expose it. |
-| Initial member consent | Draft ready | Signed copy should be stored privately. |
-| Diana operations acknowledgment | Draft ready | Signed copy should be stored privately. |
+| Operating agreement | Signed by Piter | Execution-ready copy is in `docs/business/signing/execution-ready-2026-06-03/`; final private vault copy should be retained. |
+| Initial member consent | Signed by Piter | Execution-ready copy is in `docs/business/signing/execution-ready-2026-06-03/`; final private vault copy should be retained. |
+| Diana operations acknowledgment | Piter signed; Diana pending | Send for Diana review/acceptance, then store returned signed copy privately. |
 | Business visitor process package | Template ready | Keep blank templates in Git; completed visa-history answers stay outside Git. |
 | Certificate of Publication and affidavits | Todo | Store after publication process completes. |
 | EIN confirmation letter | Todo | Store outside Git or encrypted/private storage. |
