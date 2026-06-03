@@ -15,7 +15,7 @@ from docx.shared import Inches, Pt, RGBColor
 
 
 ROOT = Path(__file__).resolve().parents[4]
-OUT_DIR = ROOT / "docs/business/signing/polished-2026-06-03"
+OUT_DIR = ROOT / "docs/business/signing/ready-for-signature-2026-06-03"
 LOGO = ROOT / "docs/business/brand-assets/images/mladis-connected-intelligence.png"
 
 INK = "182131"
@@ -49,7 +49,7 @@ class DocSpec:
 SPECS = (
     DocSpec(
         source="docs/business/operating-agreement/MLADIS_LLC_Operating_Agreement_DRAFT.md",
-        stem="MLADIS_LLC_Operating_Agreement_POLISHED_DRAFT",
+        stem="MLADIS_LLC_Operating_Agreement_READY_FOR_SIGNATURE",
         display_title="Operating Agreement",
         subtitle="MLADIS LLC",
         doc_code="MLADIS-GOV-001",
@@ -59,7 +59,7 @@ SPECS = (
     ),
     DocSpec(
         source="docs/business/operating-agreement/initial-member-consent.md",
-        stem="MLADIS_LLC_Initial_Member_Consent_POLISHED_DRAFT",
+        stem="MLADIS_LLC_Initial_Member_Consent_READY_FOR_SIGNATURE",
         display_title="Initial Written Consent",
         subtitle="Sole Member Resolutions",
         doc_code="MLADIS-GOV-002",
@@ -69,12 +69,12 @@ SPECS = (
     ),
     DocSpec(
         source="docs/business/operations/mladis-bookings-founding-operations-pillar-acknowledgment.md",
-        stem="MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_POLISHED_DRAFT",
+        stem="MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_READY_FOR_SIGNATURE",
         display_title="Founding Operations Pillar Acknowledgment",
         subtitle="MLADIS Bookings Services Understanding",
         doc_code="MLADIS-BKG-001",
         parties="Piter Zacari Garcia Bautista, MLADIS LLC, and Diana Sori Garcia Bautista",
-        prepared_for="Diana review and Dropbox Sign acceptance",
+        prepared_for="Diana signature and Dropbox Sign acceptance",
         signers=(
             SignerBlock("Piter Zacari Garcia Bautista", "Piter Zacari Garcia Bautista", "Individually"),
             SignerBlock("MLADIS LLC", "Piter Zacari Garcia Bautista", "Sole Member, MLADIS LLC"),
@@ -228,7 +228,7 @@ def add_header_footer(doc: Document, spec: DocSpec) -> None:
         footer = section.footer
         p = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        r = p.add_run("Private company record - draft for review and e-signature")
+        r = p.add_run("Private company record - ready for signature")
         set_run(r, size=8, color=MUTED)
 
 
@@ -257,14 +257,13 @@ def add_cover(doc: Document, spec: DocSpec) -> None:
     subtitle.paragraph_format.space_after = Pt(18)
     add_bottom_border(subtitle, ACCENT, "12")
 
-    table = doc.add_table(rows=4, cols=2)
-    set_table_width(table, [2250, 6500])
     rows = [
         ("Document code", spec.doc_code),
         ("Prepared for", spec.prepared_for),
         ("Parties / signer context", spec.parties),
-        ("Date", "June ___, 2026"),
     ]
+    table = doc.add_table(rows=len(rows), cols=2)
+    set_table_width(table, [2250, 6500])
     for row, (label, value) in zip(table.rows, rows):
         for cell in row.cells:
             cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
@@ -280,7 +279,7 @@ def add_cover(doc: Document, spec: DocSpec) -> None:
     doc.add_paragraph()
     note = doc.add_paragraph()
     note.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = note.add_run("Draft for owner/counterparty review. Not legal, tax, accounting, or immigration advice.")
+    r = note.add_run("Prepared for execution through the approved MLADIS e-signature workflow.")
     set_run(r, size=9.5, color=MUTED, bold=True)
     note.paragraph_format.space_before = Pt(6)
 
@@ -303,6 +302,16 @@ def parse_source(path: Path) -> list[tuple[str, str | list[str]]]:
         if not line:
             flush_table()
             continue
+        if line.startswith("Draft for review"):
+            continue
+        if line.startswith("Not legal"):
+            continue
+        if line.startswith("Do not sign"):
+            continue
+        line = line.replace("as of ____________, 2026", "as of June 3, 2026")
+        line = line.replace("dated ____________, 2026", "dated June 3, 2026")
+        line = line.replace("entered into as of ____________, 2026", "entered into as of June 3, 2026")
+        line = line.replace("This Operating Agreement is entered into as of ____________, 2026", "This Operating Agreement is entered into as of June 3, 2026")
         if line.startswith("# "):
             continue
         if line.startswith("## ") and "signature" in line.lower():
@@ -378,12 +387,9 @@ def add_body(doc: Document, spec: DocSpec) -> None:
         elif kind == "h2":
             doc.add_paragraph(text, style="Heading 2")
         elif kind == "p":
-            if "Not legal" in text or text.startswith("Draft for review"):
-                add_note_box(doc, text)
-            else:
-                p = doc.add_paragraph()
-                r = p.add_run(text)
-                set_run(r, size=10.5, color=INK)
+            p = doc.add_paragraph()
+            r = p.add_run(text)
+            set_run(r, size=10.5, color=INK)
         elif kind == "bullet":
             p = doc.add_paragraph(style="List Bullet")
             r = p.add_run(text)
@@ -460,9 +466,9 @@ def write_readme(outputs: list[Path]) -> None:
     rows = []
     for path in outputs:
         rows.append(f"| `{path.name}` | `{sha256(path)}` |")
-    readme = f"""# Polished Signing Packet - 2026-06-03
+    readme = f"""# Ready For Signature Packet - 2026-06-03
 
-Private polished signing packet for MLADIS LLC. These files replace the rough direct-export PDFs for owner review and Dropbox Sign field placement.
+Private ready-for-signature packet for MLADIS LLC.
 
 ## Status
 
@@ -470,7 +476,7 @@ Private polished signing packet for MLADIS LLC. These files replace the rough di
 - Visual system: branded MLADIS legal/business packet
 - Signature images: none embedded
 - Intended signing tool: Dropbox Sign under `garcp37@mladis.com`
-- Send status: not sent
+- Status: ready for signature field placement and sending
 
 ## Files
 

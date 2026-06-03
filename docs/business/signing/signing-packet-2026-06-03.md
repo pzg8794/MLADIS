@@ -6,14 +6,14 @@ Private signing packet index. Not legal advice.
 
 | Document | Path | Signer(s) | Status |
 | --- | --- | --- | --- |
-| Polished signing package | `docs/business/signing/polished-2026-06-03/` | Piter Zacari Garcia Bautista; Diana Sori Garcia Bautista | Branded DOCX/PDF package rendered and visually reviewed; use these files for Dropbox Sign |
-| Operating Agreement | `docs/business/signing/polished-2026-06-03/MLADIS_LLC_Operating_Agreement_POLISHED_DRAFT.pdf` | Piter Zacari Garcia Bautista | To be executed through Dropbox Sign |
-| Initial Written Consent | `docs/business/signing/polished-2026-06-03/MLADIS_LLC_Initial_Member_Consent_POLISHED_DRAFT.pdf` | Piter Zacari Garcia Bautista | To be executed through Dropbox Sign |
-| MLADIS Bookings Founding Operations Pillar Acknowledgment And Services Understanding | `docs/business/signing/polished-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_POLISHED_DRAFT.pdf` | Piter individually, Piter for MLADIS LLC, Diana Sori Garcia Bautista | To be executed through Dropbox Sign after fields are placed and reviewed |
+| Ready-for-signature package | `docs/business/signing/ready-for-signature-2026-06-03/` | Piter Zacari Garcia Bautista; Diana Sori Garcia Bautista | Branded DOCX/PDF package rendered, scanned, and visually reviewed; use these files for Dropbox Sign |
+| Operating Agreement | `docs/business/signing/ready-for-signature-2026-06-03/MLADIS_LLC_Operating_Agreement_READY_FOR_SIGNATURE.pdf` | Piter Zacari Garcia Bautista | To be executed through Dropbox Sign |
+| Initial Written Consent | `docs/business/signing/ready-for-signature-2026-06-03/MLADIS_LLC_Initial_Member_Consent_READY_FOR_SIGNATURE.pdf` | Piter Zacari Garcia Bautista | To be executed through Dropbox Sign |
+| MLADIS Bookings Founding Operations Pillar Acknowledgment And Services Understanding | `docs/business/signing/ready-for-signature-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_READY_FOR_SIGNATURE.pdf` | Piter individually, Piter for MLADIS LLC, Diana Sori Garcia Bautista | To be executed through Dropbox Sign after fields are placed and reviewed |
 
-## Earlier Dropbox Upload
+## Earlier Dropbox Uploads
 
-The earlier `docs/business/signing/dropbox-sign-upload-2026-06-03/` package was uploaded to Dropbox Sign before the design pass. It remains useful as a checkpoint, but the polished package above should replace it before any signature request is sent.
+Earlier rough/design-pass upload folders were removed from the active signing path to avoid accidentally sending files with stale placeholder wording. Use only the ready-for-signature package above.
 
 ## Interim Typed-Signature Records
 

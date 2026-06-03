@@ -18,17 +18,17 @@ If a document needs a signature:
 For counterparty contracts and any document requiring more than the owner signature, use the MLADIS-owned Dropbox Sign account instead of typed `/s/` signatures.
 
 - Account: `garcp37@mladis.com`
-- Current polished package: `docs/business/signing/polished-2026-06-03/`
-- Current Dropbox checkpoint: an earlier rough package is uploaded to Dropbox Sign, and both signer entries are added.
+- Current ready-for-signature package: `docs/business/signing/ready-for-signature-2026-06-03/`
+- Current Dropbox checkpoint: both signer entries were added, but the uploaded files must be replaced with the ready-for-signature PDFs before sending.
 - Piter signer: `Piter Zacari Garcia Bautista <garcp37@mladis.com>`.
 - Diana signer: `Diana Sori Garcia Bautista <garciabdianas@gmail.com>`.
-- Required before sending: replace the earlier upload with the polished PDFs, place signature/date fields, and review the final recipients and fields in Dropbox Sign.
+- Required before sending: upload the ready-for-signature PDFs, place signature/date fields, and review the final recipients and fields in Dropbox Sign.
 
 Typed `/s/` copies may be kept as interim internal records, but the preferred final execution package is the e-sign copy plus its audit trail from the signing platform.
 
 ## Polished Packet Generation
 
-Use `docs/business/signing/scripts/generate_polished_signing_packet.py` to regenerate the branded DOCX files from the source Markdown records. Render the DOCX files to PDF/page PNGs and visually inspect them before using them for signatures.
+Use `docs/business/signing/scripts/generate_polished_signing_packet.py` to regenerate the branded DOCX files from the source Markdown records. Render the DOCX files to PDF/page PNGs, scan the generated files for leftover placeholder language, and visually inspect them before using them for signatures.
 
 ## Current Signature Source Note
 

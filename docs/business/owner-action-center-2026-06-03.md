@@ -9,14 +9,14 @@ Private status page. This is the current "read, sign, and click it away" center.
 | LLC formation submitted | Done | `docs/business/source-documents/MLADIS_LLC-Confirmation.pdf` |
 | NYS DOS filing receipt and Articles archived | Done | `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf` |
 | Filing receipt details captured | Done | DOS ID `7932124`, file number `260603000036`, authentication number `100010406121` |
-| Operating agreement draft | Done | `docs/business/operating-agreement/MLADIS_LLC_Operating_Agreement_DRAFT.md` |
-| Initial member consent draft | Done | `docs/business/operating-agreement/initial-member-consent.md` |
+| Operating agreement source | Done | `docs/business/operating-agreement/MLADIS_LLC_Operating_Agreement_DRAFT.md` |
+| Initial member consent source | Done | `docs/business/operating-agreement/initial-member-consent.md` |
 | Diana contractor agreement archived | Done | `docs/business/source-documents/contractor-agreements/` |
-| Diana Founding Operations Pillar acknowledgment draft | Done | `docs/business/operations/mladis-bookings-founding-operations-pillar-acknowledgment.md` |
+| Diana Founding Operations Pillar acknowledgment source | Done | `docs/business/operations/mladis-bookings-founding-operations-pillar-acknowledgment.md` |
 | B-1 business visitor process package | Done | `docs/business/immigration/` |
 | Execution-ready typed-signature package | Done | `docs/business/signing/execution-ready-2026-06-03/` |
-| Polished signing package | Done | `docs/business/signing/polished-2026-06-03/` |
-| Dropbox Sign upload package | In progress | `docs/business/signing/dropbox-sign-upload-2026-06-03/` |
+| Ready-for-signature package | Done | `docs/business/signing/ready-for-signature-2026-06-03/` |
+| Dropbox Sign request | In progress | Signer entries added; replace uploaded files with ready-for-signature PDFs before sending |
 | Printable signing DOCX files | Done | `docs/business/signing/printable/` |
 | Brand/logo assets archived and wired into app/admin | Done | `docs/business/brand-assets/` and app static assets |
 | Funding-readiness tracker and data-room checklist | Done | `docs/business/funding-readiness/` |
@@ -39,7 +39,7 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 | Item | Status |
 | --- | --- |
 | Account | Created with Google sign-in under `garcp37@mladis.com` |
-| Upload package | Earlier rough package uploaded to Dropbox Sign on 2026-06-03; replace with polished package before sending |
+| Upload package | Replace any earlier Dropbox Sign uploads with the ready-for-signature PDFs before sending |
 | Piter signer | Added as `Piter Zacari Garcia Bautista <garcp37@mladis.com>` |
 | Diana signer | Added as `Diana Sori Garcia Bautista <garciabdianas@gmail.com>` |
 | Send status | Do not send until signature/date fields are placed and reviewed |
@@ -48,10 +48,10 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 
 | Item | Path |
 | --- | --- |
-| Polished signing package | `docs/business/signing/polished-2026-06-03/` |
-| Operating Agreement PDF for e-sign | `docs/business/signing/polished-2026-06-03/MLADIS_LLC_Operating_Agreement_POLISHED_DRAFT.pdf` |
-| Initial Member Consent PDF for e-sign | `docs/business/signing/polished-2026-06-03/MLADIS_LLC_Initial_Member_Consent_POLISHED_DRAFT.pdf` |
-| Diana acknowledgment PDF for e-sign | `docs/business/signing/polished-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_POLISHED_DRAFT.pdf` |
+| Ready-for-signature package | `docs/business/signing/ready-for-signature-2026-06-03/` |
+| Operating Agreement PDF for e-sign | `docs/business/signing/ready-for-signature-2026-06-03/MLADIS_LLC_Operating_Agreement_READY_FOR_SIGNATURE.pdf` |
+| Initial Member Consent PDF for e-sign | `docs/business/signing/ready-for-signature-2026-06-03/MLADIS_LLC_Initial_Member_Consent_READY_FOR_SIGNATURE.pdf` |
+| Diana acknowledgment PDF for e-sign | `docs/business/signing/ready-for-signature-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_READY_FOR_SIGNATURE.pdf` |
 | Interim Piter-signed Diana acknowledgment PDF | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.pdf` |
 | Email / e-sign cover note | `docs/business/signing/execution-ready-2026-06-03/email-to-diana.md` |
 
@@ -84,7 +84,7 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 
 ## Best Next Order
 
-1. Replace the earlier Dropbox Sign draft files with the polished signing package.
+1. Replace any earlier Dropbox Sign files with the ready-for-signature PDFs.
 2. Place and review signature/date fields in Dropbox Sign.
 3. Save the completed signed PDFs and audit trail in private business records.
 4. Apply for EIN on IRS.gov.
