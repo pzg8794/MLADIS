@@ -8,7 +8,7 @@ Private signing packet index. Not legal advice.
 | --- | --- | --- | --- |
 | Operating Agreement | `docs/business/operating-agreement/MLADIS_LLC_Operating_Agreement_DRAFT.md` | Piter Zacari Garcia Bautista | Ready for review/signature |
 | Initial Written Consent | `docs/business/operating-agreement/initial-member-consent.md` | Piter Zacari Garcia Bautista | Ready for review/signature |
-| Contractor Ratification And Assignment | `docs/business/operations/contractor-ratification-and-assignment-draft.md` | Piter individually, Piter for MLADIS LLC, Diana Sori Garcia Bautista | Ready for review/signature if the parties want to bridge the existing contractor agreement to MLADIS LLC |
+| MLADIS Bookings Founding Operations Pillar Acknowledgment And Services Understanding | `docs/business/operations/mladis-bookings-founding-operations-pillar-acknowledgment.md` | Piter individually, Piter for MLADIS LLC, Diana Sori Garcia Bautista | Ready for review/signature if Diana approves her signing role |
 
 ## Printable Copies
 
@@ -16,7 +16,7 @@ Private signing packet index. Not legal advice.
 | --- | --- |
 | Operating Agreement | `docs/business/signing/printable/MLADIS_LLC_Operating_Agreement_DRAFT.docx` |
 | Initial Written Consent | `docs/business/signing/printable/MLADIS_LLC_Initial_Member_Consent.docx` |
-| Contractor Ratification And Assignment | `docs/business/signing/printable/MLADIS_LLC_Contractor_Ratification_Assignment_DRAFT.docx` |
+| MLADIS Bookings Founding Operations Pillar Acknowledgment And Services Understanding | `docs/business/signing/printable/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_DRAFT.docx` |
 
 ## Already Archived Formation Evidence
 

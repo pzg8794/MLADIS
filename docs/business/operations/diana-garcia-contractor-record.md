@@ -45,7 +45,7 @@ The archived PDFs were copied into MLADIS from the workspace `Independent Contra
 
 ## MLADIS LLC Bridge
 
-The existing signed agreement names Piter Zacari Garcia Bautista personally as the client. Since MLADIS LLC now exists, prepare a ratification/assignment or replacement agreement before treating the contractor relationship as directly between Diana and MLADIS LLC.
+The existing signed agreement names Piter Zacari Garcia Bautista personally as the client. Since MLADIS LLC now exists, the preferred current signing draft is `mladis-bookings-founding-operations-pillar-acknowledgment.md`, which recognizes Diana's MLADIS Bookings role while keeping the company single-member and immigration-safe.
 
 Use [contractor-ratification-and-assignment-draft.md](contractor-ratification-and-assignment-draft.md) as the next draft.
 

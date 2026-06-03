@@ -31,7 +31,7 @@ Ownership in a U.S. LLC does not by itself grant a visa, work authorization, or 
 
 Potential paths to discuss with an immigration attorney:
 
-- B-1 business visitor: may cover meetings, negotiations, consultations, and similar business activities, but not U.S. employment.
+- B-1 business visitor: may cover meetings, negotiations, consultations, and similar business activities, but not employment or productive labor physically performed in the United States.
 - E-2 treaty investor: requires nationality of a treaty country and a substantial active investment. The Dominican Republic does not appear as an E treaty country on the State Department treaty-country table, and the Dominican Republic reciprocity page lists E-1 as `No Treaty`; verify E-2 directly before relying on this path.
 - L-1 intracompany transferee: requires a qualifying U.S. and foreign organization relationship and qualifying employment abroad, typically at least one continuous year in the prior three years for the foreign company/affiliate.
 

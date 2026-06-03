@@ -11,7 +11,7 @@ Private legal-operations drafts for MLADIS LLC.
 ## Files
 
 - `MLADIS_LLC_Operating_Agreement_DRAFT.md` - draft single-member operating agreement.
-- `initial-member-consent.md` - first written consent approving the agreement, EIN application, bank account setup, and core operating controls.
+- `initial-member-consent.md` - first written consent approving the agreement, EIN application, bank account setup, Diana recognition, temporary business visitor invitations, and core operating controls.
 - `future-member-admission-notes.md` - notes for possibly adding a future member, including a non-U.S. family member.
 
 ## Before Signing

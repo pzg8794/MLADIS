@@ -9,7 +9,7 @@ Private operating checklist for preparing MLADIS LLC for government and financia
 | High | Save NYBE filing acknowledgement/receipt | Done | None | Filing receipt and Articles packet is archived in `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`. |
 | High | Sign operating agreement | Todo | Review and sign | Draft exists in `docs/business/operating-agreement/`. |
 | High | Sign initial member consent | Todo | Review and sign | Authorizes EIN, banking, payments, records, and contractor/vendor actions. |
-| High | Sign contractor ratification/assignment for Diana | Todo | Review and sign with Diana if used | Bridges Piter's existing contractor agreement to MLADIS LLC operations. |
+| High | Sign Diana operations acknowledgment if used | Todo | Review and sign with Diana if Diana approves | Recognizes Diana's MLADIS Bookings role while keeping MLADIS LLC single-member. |
 | High | Start Queens publication process | Todo | Send package after receipt is saved | Deadline target from formation date is 2026-10-01. |
 | Medium | File Certificate of Publication | Todo | Submit after six weeks of newspaper publication | Store affidavits and filed certificate privately. |
 
