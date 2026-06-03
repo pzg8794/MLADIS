@@ -2,7 +2,18 @@
 
 Private signing packet index. Not legal advice.
 
-## Signed / Ready For Counterparty Review
+## Official E-Sign Package
+
+| Document | Path | Signer(s) | Status |
+| --- | --- | --- | --- |
+| Dropbox Sign upload package | `docs/business/signing/dropbox-sign-upload-2026-06-03/` | Piter Zacari Garcia Bautista; Diana Sori Garcia Bautista | Uploaded to MLADIS Dropbox Sign account; Piter and Diana signer entries added; field placement pending; request not sent |
+| Operating Agreement | `docs/business/signing/dropbox-sign-upload-2026-06-03/MLADIS_LLC_Operating_Agreement_DRAFT.pdf` | Piter Zacari Garcia Bautista | To be executed through Dropbox Sign |
+| Initial Written Consent | `docs/business/signing/dropbox-sign-upload-2026-06-03/MLADIS_LLC_Initial_Member_Consent.pdf` | Piter Zacari Garcia Bautista | To be executed through Dropbox Sign |
+| MLADIS Bookings Founding Operations Pillar Acknowledgment And Services Understanding | `docs/business/signing/dropbox-sign-upload-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_DRAFT.pdf` | Piter individually, Piter for MLADIS LLC, Diana Sori Garcia Bautista | To be executed through Dropbox Sign after fields are placed and reviewed |
+
+## Interim Typed-Signature Records
+
+These files are retained as internal record copies from the earlier execution-ready pass. For counterparty signing, prefer the Dropbox Sign workflow above.
 
 | Document | Path | Signer(s) | Status |
 | --- | --- | --- | --- |
@@ -44,8 +55,10 @@ The owner has identified a Google Drive file titled `MY SIGNATURE.jpg` as the fu
 
 ## After Signing
 
-1. Send Diana the Piter-signed acknowledgment through an e-sign link or email attachment.
-2. Save Diana's returned signed copy in private business records.
-3. Update `docs/business/mladis-llc-next-steps.md`.
-4. Update `docs/business/funding-readiness/data-room-index.md`.
-5. Use signed governance docs plus the filing receipt to proceed with EIN and banking.
+1. Place signature/date fields for Piter and Diana.
+2. Review recipients and fields in Dropbox Sign.
+3. Send the Dropbox Sign request only after owner review.
+4. Save the completed signed PDFs and audit trail in private business records.
+5. Update `docs/business/mladis-llc-next-steps.md`.
+6. Update `docs/business/funding-readiness/data-room-index.md`.
+7. Use signed governance docs plus the filing receipt to proceed with EIN and banking.

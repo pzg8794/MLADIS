@@ -14,7 +14,8 @@ Private status page. This is the current "read, sign, and click it away" center.
 | Diana contractor agreement archived | Done | `docs/business/source-documents/contractor-agreements/` |
 | Diana Founding Operations Pillar acknowledgment draft | Done | `docs/business/operations/mladis-bookings-founding-operations-pillar-acknowledgment.md` |
 | B-1 business visitor process package | Done | `docs/business/immigration/` |
-| Execution-ready signed package | Done | `docs/business/signing/execution-ready-2026-06-03/` |
+| Execution-ready typed-signature package | Done | `docs/business/signing/execution-ready-2026-06-03/` |
+| Dropbox Sign upload package | In progress | `docs/business/signing/dropbox-sign-upload-2026-06-03/` |
 | Printable signing DOCX files | Done | `docs/business/signing/printable/` |
 | Brand/logo assets archived and wired into app/admin | Done | `docs/business/brand-assets/` and app static assets |
 | Funding-readiness tracker and data-room checklist | Done | `docs/business/funding-readiness/` |
@@ -32,12 +33,23 @@ Private status page. This is the current "read, sign, and click it away" center.
 
 Important: Diana's signature is still pending. Do not apply Diana's signature unless Diana separately authorizes it.
 
-## Ready To Send To Diana
+## Dropbox Sign Status
+
+| Item | Status |
+| --- | --- |
+| Account | Created with Google sign-in under `garcp37@mladis.com` |
+| Upload package | Uploaded to Dropbox Sign on 2026-06-03 |
+| Piter signer | Added as `Piter Zacari Garcia Bautista <garcp37@mladis.com>` |
+| Diana signer | Added as `Diana Sori Garcia Bautista <garciabdianas@gmail.com>` |
+| Send status | Do not send until signature/date fields are placed and reviewed |
+
+## Ready For Field Placement In Dropbox Sign
 
 | Item | Path |
 | --- | --- |
-| Piter-signed Diana acknowledgment PDF | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.pdf` |
-| Piter-signed Diana acknowledgment DOCX | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.docx` |
+| Dropbox Sign upload package | `docs/business/signing/dropbox-sign-upload-2026-06-03/` |
+| Diana acknowledgment PDF for e-sign | `docs/business/signing/dropbox-sign-upload-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_DRAFT.pdf` |
+| Interim Piter-signed Diana acknowledgment PDF | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.pdf` |
 | Email / e-sign cover note | `docs/business/signing/execution-ready-2026-06-03/email-to-diana.md` |
 
 ## Ready For You To Click In Official Portals
@@ -69,8 +81,8 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 
 ## Best Next Order
 
-1. Email/e-sign the Diana acknowledgment for Diana review and acceptance.
-2. Save Diana's returned signed copy in private business records.
+1. Place and review signature/date fields in Dropbox Sign.
+2. Save the completed signed PDFs and audit trail in private business records.
 3. Apply for EIN on IRS.gov.
 4. Open business bank account.
 5. Send Queens publication designation email with the filing receipt attached.

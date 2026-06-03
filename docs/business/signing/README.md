@@ -13,6 +13,19 @@ If a document needs a signature:
 3. Any reusable signature image must stay outside Git in a private local vault, password manager, or other secure storage.
 4. The final signed copy should be stored in private business records and committed only if it does not expose sensitive identity, tax, bank, or reusable signature assets.
 
+## Official E-Sign Workflow
+
+For counterparty contracts and any document requiring more than the owner signature, use the MLADIS-owned Dropbox Sign account instead of typed `/s/` signatures.
+
+- Account: `garcp37@mladis.com`
+- Current upload package: `docs/business/signing/dropbox-sign-upload-2026-06-03/`
+- Current status: the three clean PDFs are uploaded to Dropbox Sign, and both signer entries are added.
+- Piter signer: `Piter Zacari Garcia Bautista <garcp37@mladis.com>`.
+- Diana signer: `Diana Sori Garcia Bautista <garciabdianas@gmail.com>`.
+- Required before sending: place signature/date fields and review the final recipients and fields in Dropbox Sign.
+
+Typed `/s/` copies may be kept as interim internal records, but the preferred final execution package is the e-sign copy plus its audit trail from the signing platform.
+
 ## Current Signature Source Note
 
 The NYS DOS Articles packet contains a typed organizer signature line for Piter Zacari Garcia Bautista. It is part of the official filing receipt packet, but it is not a reusable handwritten signature asset.
@@ -29,3 +42,13 @@ The owner provided a Google Drive source file for future signing assistance. Met
 - Modified time: `2026-06-03T07:56:07.932Z`
 
 Do not download, duplicate, transform, or apply this signature source unless the owner explicitly authorizes signing a specific document in the current thread. The long sharing URL and the image bytes should live in the future secure vault, not in Git.
+
+## Diana Prior Signature Evidence
+
+Diana's prior signature appears in the archived independent contractor agreement:
+
+- `docs/business/source-documents/contractor-agreements/Diana_Sori_Garcia_Bautista_Independent_Contractor_Agreement_Signed.pdf`
+- SHA-256: `43da771c435382c9590662dc1b8e54b28c5e7865d15c25bf8d5d4ad5539fc1fa`
+- Signature dates recorded in the contractor record: Piter `2025-04-07`; Diana `2025-04-10`
+
+Use this only as source evidence of the earlier contractor arrangement. Do not crop, extract, copy, or reuse Diana's signature for a new MLADIS document unless Diana separately authorizes that exact method for that exact document.
