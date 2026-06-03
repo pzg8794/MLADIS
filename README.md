@@ -65,6 +65,7 @@ options.
 - `sources/SolOriensV` - submodule for `pzg8794/MLADIS-SolOriensV`.
 - `sources/DR-Apartments` - submodule for `pzg8794/MLADIS-DR-Apartments`.
 - `docs/drive-sources.md` - Drive source inventory and import policy.
+- `docs/business/` - private MLADIS LLC formation record and business operations checklist.
 - `docs/live-vm-deployment.md` - live VM hosting and one-file deploy runbook.
 - `docs/sign-in-contract.md` - social sign-in setup, callback rules, and CI contract.
 

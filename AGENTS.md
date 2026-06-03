@@ -44,6 +44,12 @@
 - Google Cloud owner grants for external automation identities can land as `roles/resourcemanager.projectOwnerInvitee`; treat that as a pending owner invitation and complete the mailbox acceptance step before assuming active owner access.
 - PayPal business access is managed under Business Settings -> Manage Users; for full automation coverage, invite the account as an `Other user` and grant all permissions, then finish activation from the email invitation.
 
+## Business Operations
+
+- Use `docs/business/` as the private source of truth for MLADIS LLC formation facts, post-formation deadlines, and administrative records.
+- Do not copy private legal addresses, government portal references, transaction IDs, tax IDs, bank details, or owner contact details from `docs/business/` into public frontend pages or customer emails.
+- If app features need legal-business facts, model them explicitly behind admin-only access instead of reading directly from the Markdown docs.
+
 ## Deposit Operations
 
 - Keep Stripe and PayPal deposit lifecycle behavior aligned at the admin layer whenever practical.
