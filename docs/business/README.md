@@ -8,6 +8,10 @@ These records are meant to give the MLADIS app, agents, and future automation wo
 
 - [MLADIS LLC profile](mladis-llc-profile.md): legal identity, portal references, filing facts, responsible people, and operational contact information.
 - [MLADIS LLC next steps](mladis-llc-next-steps.md): post-formation checklist, deadlines, and source links.
+- [Operating agreement package](operating-agreement/README.md): single-member operating agreement draft, initial member consent, and future member notes.
+- [Operations roles](operations/README.md): private operating-role notes for people helping run MLADIS business branches.
+- [Publication package](publication/README.md): Queens County Clerk publication workflow, email draft, notice draft, and completion checklist.
+- [EIN and banking package](ein-and-banking/README.md): EIN worksheet, bank checklist, and bookkeeping starter categories.
 
 ## Data Handling Rules
 

@@ -19,13 +19,19 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 | High | Verify portal filing status | 2026-06-03 | Done | NYBE status history shows `Approved/Issued` and says the Department of State item has been filed and approved. |
 | High | Download or print the NYBE filing acknowledgement | ASAP | Todo | Use NYBE Recent Activity or the `View Acknowledgement` link from the profile/status page. Keep a copy outside the repo if it contains sensitive/payment details. |
 | High | Verify the official Department of State filing receipt details | ASAP | Todo | NY DOS says the filing receipt is proof of filing and no duplicate receipt is issued to replace a lost or destroyed one. The acknowledgement/receipt file still needs to be saved. |
-| High | Draft and sign the MLADIS LLC operating agreement | 2026-09-01 | Todo | NY DOS says members must adopt a written operating agreement before, at, or within 90 days after filing Articles of Organization. |
-| High | Start the New York publication process | 2026-10-01 | Todo | NY DOS says most LLCs must publish in two county-clerk-designated newspapers for six consecutive weeks within 120 days after the Articles become effective, then file Certificate of Publication. |
+| High | Draft MLADIS LLC operating agreement package | 2026-06-03 | Done | Draft package is in `docs/business/operating-agreement/`. |
+| High | Sign MLADIS LLC operating agreement and initial member consent | 2026-09-01 | Todo | NY DOS says members must adopt a written operating agreement before, at, or within 90 days after filing Articles of Organization. |
+| High | Prepare Queens publication package | 2026-06-03 | Done | Draft package is in `docs/business/publication/`. |
+| High | Start the New York publication process | 2026-10-01 | Todo | Send the filing acknowledgement/receipt to Queens County Clerk, receive newspaper designations, publish for six weeks, collect affidavits, then file Certificate of Publication. |
+| High | Prepare IRS EIN worksheet | 2026-06-03 | Done | Worksheet is in `docs/business/ein-and-banking/ein-worksheet.md`. |
 | High | Apply for an IRS EIN | After filing receipt is saved | Todo | Use the official IRS EIN Assistant. Do not use third-party EIN services. |
 | High | Open a business bank account | After EIN | Todo | Keep MLADIS income, deposits, reimbursements, and expenses separate from personal accounts. |
-| Medium | Create bookkeeping system and chart of accounts | After bank account | Todo | Track lodging revenue, deposits/holds, refunds, platform fees, cleaning, repairs, charitable donations, software, hosting, advertising, taxes, and owner contributions/distributions. |
+| Medium | Create bookkeeping starter chart of accounts | 2026-06-03 | Done | Draft chart is in `docs/business/ein-and-banking/bookkeeping-chart-of-accounts.md`; review with CPA before tax filing. |
+| Medium | Implement bookkeeping system in selected tool | After bank account | Todo | Track lodging revenue, deposits/holds, refunds, platform fees, cleaning, repairs, charitable donations, software, hosting, advertising, taxes, and owner contributions/distributions. |
 | Medium | Decide tax/accounting treatment with a CPA | Before first tax filing | Todo | A single-member LLC is often disregarded for federal tax by default, but verify based on MLADIS ownership and future AI/business plans. |
 | Medium | Confirm sales tax, hotel occupancy, short-term rental, and local compliance obligations | Before direct bookings go live | Todo | Airbnb platform compliance does not automatically cover direct-booking obligations. |
+| Medium | Archive Diana contractor agreement | 2026-06-03 | Done | Signed contractor agreement is archived in `docs/business/source-documents/contractor-agreements/`. |
+| Medium | Prepare MLADIS LLC contractor ratification/assignment | 2026-06-03 | Done | Draft bridge document is in `docs/business/operations/contractor-ratification-and-assignment-draft.md`; signing still pending. |
 | Medium | Configure `mladis.com` business email and DNS records | Before customer-facing launch | In progress | Keep Google Workspace MX/SPF/DKIM/DMARC stable before using a `@mladis.com` mailbox for production emails. |
 | Medium | Store production secrets in a proper secret manager | Before live payments/agents | Todo | Stripe, OpenAI, SMTP, OAuth, and calendar credentials must stay out of Git. |
 | Low | Evaluate MWBE certification or other NY business incentives | Later | Todo | NYBE links to MWBE and incentive resources; revisit once core operations are stable. |
