@@ -1133,7 +1133,7 @@ class PageVisit(models.Model):
 
 
 class SiteSettings(models.Model):
-    site_name = models.CharField(max_length=80, default="MLADIS")
+    site_name = models.CharField(max_length=80, default="MLADIS LLC")
     logo = models.FileField(upload_to="site/", blank=True)
     logo_url = models.URLField(blank=True, max_length=1000)
     contact_email = models.EmailField(blank=True)

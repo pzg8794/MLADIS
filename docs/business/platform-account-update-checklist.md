@@ -1,0 +1,157 @@
+# MLADIS LLC — Platform & Account Update Checklist
+
+Created: 2026-06-03. Use this after LLC formation and EIN issuance to update every platform with the confirmed legal identity.
+
+## Confirmed Entity Info (use exactly as shown)
+
+| Field | Value |
+| --- | --- |
+| Legal business name | MLADIS LLC |
+| EIN | 42-2932522 |
+| Entity type | Domestic Limited Liability Company |
+| State of formation | New York |
+| Formation date | June 3, 2026 |
+| DOS ID | 7932124 |
+| Business address | 109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375 |
+| Business phone | 631-575-4841 |
+| Current business email | garciapiterz@gmail.com |
+| Future business email | garcp37@mladis.com (use once Google Workspace DNS is stable) |
+| Domain | mladis.com |
+
+Reference documents in the private vault:
+- Articles / Filing Receipt: `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/01-formation/MLADIS_LLC-FilingReceipt-And-Articles.pdf`
+- EIN Confirmation (CP 575 G): `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/02-tax-ein/MLADIS-EIN_CONFIRMATION-CP_575_G.pdf`
+
+---
+
+## 1. Airbnb Host Account
+
+**What to update:** W-9 / tax info, payout recipient, and host profile display name.
+
+**Steps:**
+1. Go to [airbnb.com](https://www.airbnb.com) → log in as host.
+2. **Tax info (W-9):** Account → Taxes → Add/Edit tax info.
+   - Taxpayer type: **Business**
+   - Legal name: `MLADIS LLC`
+   - EIN: `42-2932522`
+   - Business address: `109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375`
+   - Save and submit the W-9.
+3. **Payout method:** Account → Payments & Payouts → Payout methods.
+   - If a payout is tied to a personal name, update the payee name to `MLADIS LLC` or add a new business payout method once the MLADIS LLC bank account is open.
+   - Note: Airbnb may require an official bank account in the LLC name to set the payee as MLADIS LLC.
+4. **Host profile name:** Account → Personal info → Name.
+   - Consider using `MLADIS LLC` or `MLADIS Vacation Rentals` as the display name. This is visible to guests.
+5. **Status:** ☐ Not done
+
+---
+
+## 2. Squarespace (Domain Registrar for mladis.com)
+
+**What to update:** Billing/account contact name; domain registrant name for WHOIS.
+
+**Steps:**
+1. Go to [account.squarespace.com](https://account.squarespace.com) → log in.
+2. **Billing info:** Account → Billing → Update billing name and address to `MLADIS LLC`, address `109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375`.
+3. **Domain contact / WHOIS registrant:** Domains → mladis.com → Edit contact info.
+   - Organization: `MLADIS LLC`
+   - Name: `Piter Zacari Garcia Bautista`
+   - Address: `109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375`
+   - Email: `garciapiterz@gmail.com` (update to `garcp37@mladis.com` after Workspace DNS is verified)
+   - Phone: `631-575-4841`
+4. **Status:** ☐ Not done
+
+---
+
+## 3. Cloudflare (DNS for mladis.com)
+
+**What to update:** Account/organization name shown in the Cloudflare dashboard.
+
+**Steps:**
+1. Go to [dash.cloudflare.com](https://dash.cloudflare.com) → log in.
+2. Click the account name (top left) → Account Settings → Name.
+   - Update to `MLADIS LLC` if currently set to a personal name or placeholder.
+3. Billing profile: My Profile → Billing → update billing name to `MLADIS LLC`.
+4. No DNS record changes are required for the LLC update itself — the nameservers (`olof.ns.cloudflare.com`, `ophelia.ns.cloudflare.com`) stay the same.
+5. **Status:** ☐ Not done
+
+---
+
+## 4. Dropbox Sign (E-signature platform)
+
+**What to update:** Organization/team name and billing name.
+
+**Account:** `garcp37@mladis.com`
+
+**Steps:**
+1. Go to [sign.dropbox.com](https://sign.dropbox.com) → log in with `garcp37@mladis.com`.
+2. Settings → Account → Organization name → set to `MLADIS LLC`.
+3. Billing → confirm billing name is `MLADIS LLC`.
+4. Confirm both signers are set correctly for the pending Diana acknowledgment:
+   - Piter: `Piter Zacari Garcia Bautista <garcp37@mladis.com>`
+   - Diana: `Diana Sori Garcia Bautista <garciabdianas@gmail.com>`
+5. **Status:** ☐ Not done
+
+---
+
+## 5. MLADIS Booking App — Django SiteSettings (mladis.com)
+
+**What to update:** `SiteSettings.site_name` (currently `"MLADIS"` → `"MLADIS LLC"`) and `contact_email`.
+
+**Via Django Admin (recommended for live/deployed instance):**
+1. Go to `https://mladis.com/admin/` → log in as staff.
+2. Navigate to Bookings → Site Settings → (pk=1 record).
+3. Update:
+   - **Site name:** `MLADIS LLC`
+   - **Contact email:** `garcp37@mladis.com` (once Google Workspace DNS is stable; otherwise keep `garciapiterz@gmail.com`)
+4. Save.
+
+**Source code — model default and seed migration were also updated** (see `bookings/models.py` `site_name` default and migration `0007_seed_booking_platform.py`) to `"MLADIS LLC"` so fresh databases reflect the correct name.
+
+5. **Status:** ☐ Not done (admin update) / ✅ Code default updated (2026-06-03)
+
+---
+
+## 6. Google Workspace Admin (garcp37@mladis.com)
+
+**What to update:** Organization name in Google Workspace admin console.
+
+**Steps:**
+1. Go to [admin.google.com](https://admin.google.com) → log in with `garcp37@mladis.com`.
+2. Account → Account settings → Organization name → set to `MLADIS LLC`.
+3. Contact info → Primary domain contact → update address and phone to match MLADIS LLC info above.
+4. **Status:** ☐ Not done
+
+---
+
+## 7. Bank Account (when opened)
+
+The LLC bank account has not been opened yet. When opening:
+- Account name: **MLADIS LLC** (exactly as shown on Articles)
+- EIN: `42-2932522`
+- Bring: Articles / Filing Receipt, Signed Operating Agreement, Signed Initial Member Consent, EIN confirmation letter (CP 575 G), owner ID.
+- Reference: `docs/business/ein-and-banking/bank-account-opening-packet.md`
+- **Status:** ☐ Not done — pending
+
+---
+
+## 8. Future Platforms (add as needed)
+
+When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any payment/OTA platform:
+- Always use **MLADIS LLC** as the legal business name.
+- Always use EIN **42-2932522** for W-9 / tax forms.
+- Always use the business address: **109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375**.
+- Keep the signed Operating Agreement and EIN letter on hand — most platforms will ask for them during business verification.
+
+---
+
+## Update Log
+
+| Date | Platform | Action | Done by |
+| --- | --- | --- | --- |
+| 2026-06-03 | Booking app (code) | `site_name` default + seed updated to "MLADIS LLC" | Copilot |
+| | Airbnb | W-9, payout, host profile name | |
+| | Squarespace | Billing + WHOIS registrant name | |
+| | Cloudflare | Account/org name | |
+| | Dropbox Sign | Org name + billing | |
+| | Google Workspace | Org name | |
+| | Bank account | Open + fund | |

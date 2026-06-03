@@ -25,7 +25,8 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 | High | Prepare Queens publication package | 2026-06-03 | Done | Draft package is in `docs/business/publication/`. |
 | High | Start the New York publication process | 2026-10-01 | Todo | Send the filing acknowledgement/receipt to Queens County Clerk, receive newspaper designations, publish for six weeks, collect affidavits, then file Certificate of Publication. |
 | High | Prepare IRS EIN worksheet | 2026-06-03 | Done | Worksheet is in `docs/business/ein-and-banking/ein-worksheet.md`. |
-| High | Apply for an IRS EIN | After signing governance docs | Todo | Use the official IRS EIN Assistant. Do not use third-party EIN services. |
+| High | Apply for an IRS EIN | 2026-06-03 | Done | EIN 42-2932522 issued. CP 575 G letter stored in private vault at `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/02-tax-ein/`. |
+| High | Update all business accounts/profiles with MLADIS LLC + EIN | 2026-06-03 | In progress | See `docs/business/platform-account-update-checklist.md` for Airbnb, Squarespace, Cloudflare, Dropbox Sign, Google Workspace, booking app, and bank. |
 | High | Open a business bank account | After EIN | Todo | Keep MLADIS income, deposits, reimbursements, and expenses separate from personal accounts. |
 | Medium | Create bookkeeping starter chart of accounts | 2026-06-03 | Done | Draft chart is in `docs/business/ein-and-banking/bookkeeping-chart-of-accounts.md`; review with CPA before tax filing. |
 | Medium | Implement bookkeeping system in selected tool | After OOP booking-system cleanup | In progress | Owner started a bookkeeping/booking system. Leave final cleanup for the MLADIS OOP integration phase, then track lodging revenue, deposits/holds, refunds, fees, cleaning, repairs, donations, software, hosting, advertising, taxes, and owner contributions/distributions. |
