@@ -5,7 +5,8 @@ Use this after the Queens County Clerk assigns the designated newspapers.
 ## Step 1 - Get Designations
 
 - [x] Save NYBE filing acknowledgement or Department of State filing receipt.
-- [ ] Send publication designation request to Queens County Clerk.
+- [x] Send publication designation request to Queens County Clerk at `QCC-LLC@nycourts.gov`.
+  - Sent from `garcp37@mladis.com` on 2026-06-03 with `MLADIS_LLC-FilingReceipt-And-Articles.pdf` attached.
 - [ ] Save the County Clerk designation response/letter.
 - [ ] Record designated daily newspaper: ______________________________
 - [ ] Record designated weekly newspaper: _____________________________

@@ -13,7 +13,7 @@ Private checklist. Some items should be stored outside Git or in encrypted/priva
 | Diana operations acknowledgment | Piter signed; Diana pending | Send for Diana review/acceptance, then store returned signed copy privately. |
 | Business visitor process package | Template ready | Keep blank templates in Git; completed visa-history answers stay outside Git. |
 | Certificate of Publication and affidavits | Todo | Store after publication process completes. |
-| EIN confirmation letter | Todo | Store outside Git or encrypted/private storage. |
+| EIN confirmation letter | Done | Stored outside Git in private business records. Do not commit EIN value or CP 575 letter. |
 
 ## Folder 2 - Ownership, Identity, And Authority
 
@@ -22,7 +22,7 @@ Private checklist. Some items should be stored outside Git or in encrypted/priva
 | Owner resume / founder bio | Todo | Public-safe version can be committed later. |
 | Owner ID documents | Todo | Never commit. |
 | Proof of address if required | Todo | Never commit unless redacted and intentionally private. |
-| Bank signature card / bank letter | Todo | Store outside Git. |
+| Bank signature card / bank letter | In progress | Bank package prepared in `docs/business/ein-and-banking/`; final bank records stay outside Git. |
 | Admin/agent authority notes | In progress | Keep non-sensitive summaries in `AGENTS.md` and admin docs. |
 
 ## Folder 3 - Financial Records

@@ -12,6 +12,11 @@ Private business source documents for MLADIS LLC. Keep these files out of public
 
 The contractor PDFs are private business records. The signed agreement may contain payment-transfer details and should not be linked from public pages, app bundles, customer emails, or generated public documentation.
 
+## Sensitive Records Stored Outside Git
+
+- IRS EIN confirmation letter: issued on 2026-06-03 and stored in the private Google Drive business-record vault. Do not commit the EIN value or CP 575 letter to Git.
+- Private business vault manifest: `docs/business/ein-and-banking/private-records-manifest.md`.
+
 ## Still Needed
 
 - Future Certificate of Publication package after the newspaper-publication process is completed.

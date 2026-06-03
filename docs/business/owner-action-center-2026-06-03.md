@@ -20,9 +20,11 @@ Private status page. This is the current "read, sign, and click it away" center.
 | Printable signing DOCX files | Done | `docs/business/signing/printable/` |
 | Brand/logo assets archived and wired into app/admin | Done | `docs/business/brand-assets/` and app static assets |
 | Funding-readiness tracker and data-room checklist | Done | `docs/business/funding-readiness/` |
-| EIN worksheet | Done | `docs/business/ein-and-banking/ein-worksheet.md` |
-| Queens publication email draft | Done | `docs/business/publication/queens-county-clerk-publication-request-email.md` |
+| EIN issued | Done | IRS confirmation letter stored in the private Google Drive business-record vault outside Git |
+| Bank account opening packet | Done | `docs/business/ein-and-banking/bank-account-opening-packet.md` |
+| Queens publication designation request | Sent | Sent from `garcp37@mladis.com` on 2026-06-03 with `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf` attached |
 | Signature source pointer | Done | `docs/business/signing/README.md` records the Drive file metadata, not the signature image |
+| Private Google Drive vault | Done | See `docs/business/ein-and-banking/private-records-manifest.md`; private files live outside the Git repo |
 
 ## Dated And Signed By Piter
 
@@ -59,9 +61,9 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 
 | Step | Action | Prepared support | Official place |
 | --- | --- | --- | --- |
-| 4 | Apply for EIN | `docs/business/ein-and-banking/ein-worksheet.md` | IRS EIN Assistant: https://www.irs.gov/ein |
-| 5 | Open business bank account | `docs/business/ein-and-banking/bank-account-checklist.md` | Bank or fintech chosen by owner |
-| 6 | Request Queens newspaper designations | `docs/business/publication/queens-county-clerk-publication-request-email.md` | Queens County Clerk Publications page: https://ww2.nycourts.gov/COURTS/11jd/queensclerk/publications.shtml |
+| 4 | Apply for EIN | Completed; private CP 575 letter saved in Google Drive outside Git | IRS EIN Assistant: https://www.irs.gov/ein |
+| 5 | Open business bank account | `docs/business/ein-and-banking/bank-account-opening-packet.md` | Bank or fintech chosen by owner |
+| 6 | Wait for Queens newspaper designations | Request sent on 2026-06-03; track the response in `docs/business/publication/publication-completion-checklist.md` | Email response from `QCC-LLC@nycourts.gov` |
 | 7 | Start publication once newspapers are assigned | `docs/business/publication/llc-publication-notice-draft.md` | Designated daily and weekly newspapers |
 
 ## Prepared For Future Diana Business Visitor Planning
@@ -87,7 +89,7 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 1. Replace any earlier Dropbox Sign files with the ready-for-signature PDFs.
 2. Place and review signature/date fields in Dropbox Sign.
 3. Save the completed signed PDFs and audit trail in private business records.
-4. Apply for EIN on IRS.gov.
-5. Open business bank account.
-6. Send Queens publication designation email with the filing receipt attached.
+4. Open business bank account using the private EIN confirmation letter and bank packet.
+5. Track the Queens County Clerk designation response and save it in private records.
+6. Track the assigned newspapers and six-week publication run.
 7. Come back to MLADIS bookkeeping/OOP integration after governance and EIN are stable.

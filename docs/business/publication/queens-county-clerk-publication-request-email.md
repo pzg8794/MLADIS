@@ -1,14 +1,14 @@
 # Queens County Clerk Publication Designation Request
 
-Draft email. Send after the official filing acknowledgement or filing receipt is saved.
+Sent email record. The request was sent from `garcp37@mladis.com` on 2026-06-03 with the official NYS Department of State filing receipt / Articles packet attached.
 
 ## To
 
-Use the email address listed on the official Queens County Clerk Publications page:
+QCC-LLC@nycourts.gov
 
-https://ww2.nycourts.gov/COURTS/11jd/queensclerk/publications.shtml
+Official source: https://www.nycourts.gov/courts/11th-judicial-district/queens-county-clerks-office/queens-county-clerks-office-publications-llcpllcsla
 
-If the email is hidden by browser protection, call 718-298-0601 and ask for the correct email address for LLC publication designations.
+Phone fallback: 718-298-0601.
 
 ## Subject
 
@@ -26,7 +26,11 @@ Entity type: Domestic Limited Liability Company
 
 Department of State application ID: DOS1336-2026-029778
 
-Date submitted/approved: June 3, 2026
+DOS ID: 7932124
+
+DOS file number: 260603000036
+
+Date filed/approved: June 3, 2026
 
 County office location: Queens County
 
@@ -46,5 +50,10 @@ MLADIS LLC
 
 ## Attachments
 
-- Required: Department of State filing receipt or NYBE filing acknowledgement.
-- Optional: Application confirmation PDF, only if useful as supplemental context.
+- Required: `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`
+- Optional: `docs/business/source-documents/MLADIS_LLC-Confirmation.pdf`, only if useful as supplemental context.
+
+## Send Notes
+
+- Do not attach the EIN confirmation letter. The Queens publication request does not need it.
+- The official Queens County Clerk page says the Clerk assigns newspapers from a rotating list and requests a copy of the original Department of State filing receipt for email designation requests.

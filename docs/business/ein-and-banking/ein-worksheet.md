@@ -2,6 +2,8 @@
 
 Use this worksheet before starting the official IRS EIN Assistant. The IRS tool must be completed in one session and should be handled on `irs.gov`.
 
+Status update: MLADIS LLC's EIN was issued on 2026-06-03. The EIN value and IRS CP 575 confirmation letter must stay in private records and out of Git.
+
 ## Confirmed Business Information
 
 | IRS prompt area | Prepared answer |
@@ -14,8 +16,8 @@ Use this worksheet before starting the official IRS EIN Assistant. The IRS tool 
 | Number of LLC members | 1 |
 | Responsible party | Piter Zacari Garcia Bautista |
 | Responsible party SSN/ITIN | Enter only on IRS.gov |
-| Mailing address | 109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375 |
-| Physical/principal address | Confirm before submitting; current business record uses the same address |
+| Mailing address | IRS EIN filing used a separate private mailing address; use the CP 575 letter for bank verification |
+| Physical/principal address | 109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375 |
 | Reason for applying | Started a new business |
 | First date wages paid | None, unless employees are being hired now |
 | Has employees now? | No, unless this changed |
@@ -32,7 +34,7 @@ Use this worksheet before starting the official IRS EIN Assistant. The IRS tool 
 
 ## After EIN Is Issued
 
-- [ ] Save IRS EIN confirmation letter in private records outside public app assets.
+- [x] Save IRS EIN confirmation letter in private records outside public app assets.
 - [ ] Record EIN in a secure password manager or private business vault, not in Git.
 - [ ] Update bank, Stripe/PayPal, payment processors, tax systems, and business email provider as needed.
-- [ ] Update this repo only with non-sensitive status, for example: `EIN issued and stored in private vault`.
+- [x] Update this repo only with non-sensitive status, for example: `EIN issued and stored in private vault`.
