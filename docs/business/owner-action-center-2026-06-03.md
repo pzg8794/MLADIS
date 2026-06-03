@@ -15,6 +15,7 @@ Private status page. This is the current "read, sign, and click it away" center.
 | Diana Founding Operations Pillar acknowledgment draft | Done | `docs/business/operations/mladis-bookings-founding-operations-pillar-acknowledgment.md` |
 | B-1 business visitor process package | Done | `docs/business/immigration/` |
 | Execution-ready typed-signature package | Done | `docs/business/signing/execution-ready-2026-06-03/` |
+| Polished signing package | Done | `docs/business/signing/polished-2026-06-03/` |
 | Dropbox Sign upload package | In progress | `docs/business/signing/dropbox-sign-upload-2026-06-03/` |
 | Printable signing DOCX files | Done | `docs/business/signing/printable/` |
 | Brand/logo assets archived and wired into app/admin | Done | `docs/business/brand-assets/` and app static assets |
@@ -38,7 +39,7 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 | Item | Status |
 | --- | --- |
 | Account | Created with Google sign-in under `garcp37@mladis.com` |
-| Upload package | Uploaded to Dropbox Sign on 2026-06-03 |
+| Upload package | Earlier rough package uploaded to Dropbox Sign on 2026-06-03; replace with polished package before sending |
 | Piter signer | Added as `Piter Zacari Garcia Bautista <garcp37@mladis.com>` |
 | Diana signer | Added as `Diana Sori Garcia Bautista <garciabdianas@gmail.com>` |
 | Send status | Do not send until signature/date fields are placed and reviewed |
@@ -47,8 +48,10 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 
 | Item | Path |
 | --- | --- |
-| Dropbox Sign upload package | `docs/business/signing/dropbox-sign-upload-2026-06-03/` |
-| Diana acknowledgment PDF for e-sign | `docs/business/signing/dropbox-sign-upload-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_DRAFT.pdf` |
+| Polished signing package | `docs/business/signing/polished-2026-06-03/` |
+| Operating Agreement PDF for e-sign | `docs/business/signing/polished-2026-06-03/MLADIS_LLC_Operating_Agreement_POLISHED_DRAFT.pdf` |
+| Initial Member Consent PDF for e-sign | `docs/business/signing/polished-2026-06-03/MLADIS_LLC_Initial_Member_Consent_POLISHED_DRAFT.pdf` |
+| Diana acknowledgment PDF for e-sign | `docs/business/signing/polished-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_POLISHED_DRAFT.pdf` |
 | Interim Piter-signed Diana acknowledgment PDF | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.pdf` |
 | Email / e-sign cover note | `docs/business/signing/execution-ready-2026-06-03/email-to-diana.md` |
 
@@ -81,9 +84,10 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 
 ## Best Next Order
 
-1. Place and review signature/date fields in Dropbox Sign.
-2. Save the completed signed PDFs and audit trail in private business records.
-3. Apply for EIN on IRS.gov.
-4. Open business bank account.
-5. Send Queens publication designation email with the filing receipt attached.
-6. Come back to MLADIS bookkeeping/OOP integration after governance and EIN are stable.
+1. Replace the earlier Dropbox Sign draft files with the polished signing package.
+2. Place and review signature/date fields in Dropbox Sign.
+3. Save the completed signed PDFs and audit trail in private business records.
+4. Apply for EIN on IRS.gov.
+5. Open business bank account.
+6. Send Queens publication designation email with the filing receipt attached.
+7. Come back to MLADIS bookkeeping/OOP integration after governance and EIN are stable.
