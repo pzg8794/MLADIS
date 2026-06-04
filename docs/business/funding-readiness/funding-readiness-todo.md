@@ -17,10 +17,10 @@ Private operating checklist for preparing MLADIS LLC for government and financia
 
 | Priority | Task | Status | Owner action needed | Notes |
 | --- | --- | --- | --- | --- |
-| High | Apply for EIN at IRS.gov | Todo | Enter SSN/ITIN only on IRS.gov | Worksheet exists in `docs/business/ein-and-banking/ein-worksheet.md`; sign governance docs first. |
+| High | Apply for EIN at IRS.gov | Done | None | EIN issued on 2026-06-03; CP 575 letter and private EIN reference are stored outside Git in the private business-record vault. |
 | High | Open business bank account | Todo | Complete bank KYC | Needs EIN, formation proof, operating agreement, owner ID, business address. |
 | High | Configure accounting/bookkeeping tool | In progress | Finish after MLADIS OOP booking-system cleanup | Owner started the system; final accounting integration should wait until the booking system has a strong stable OOP base. |
-| High | Create business document vault outside public app assets | Todo | Choose secure storage | Store EIN letter, bank docs, tax returns, IDs, statements outside repo or encrypted/private storage. |
+| High | Create business document vault outside public app assets | Done | Keep saving sensitive records there | Private Google Drive vault is documented in `docs/business/ein-and-banking/private-records-manifest.md`; keep EIN letter, bank docs, tax returns, IDs, and statements outside Git. |
 | Medium | Establish business credit basics | Todo | Open accounts responsibly | Use business bank, payment processors, business email, and vendor records consistently. |
 
 ## Phase 3 - Financial Records
@@ -41,6 +41,7 @@ Private operating checklist for preparing MLADIS LLC for government and financia
 | High | Write first MLADIS business plan | Template ready | Approve business direction | Template exists in `business-plan-outline.md`; content still needs revenue/strategy details. |
 | High | Prepare use-of-funds plan | Template ready | Choose funding amount and purpose | Worksheet exists in `use-of-funds-worksheet.md`; numbers still need approval. |
 | Medium | Prepare lender one-page summary | Todo | Approve public-safe numbers | For banks, CDFIs, SBA lender conversations. |
+| Medium | Maintain financial-institution resume guide | Done | Resume here when owner has time | Ordered guide exists in `financial-institution-resume-plan.md` for bank account, Airbnb exports, P&L, forecast, lender one-pager, use-of-funds, and lender/CDFI/SBA conversations. |
 | Medium | Prepare pitch deck outline | Todo | Approve investor story | For later private investors; use business plan and metrics files first. |
 | Medium | Prepare capability statement | Todo | Approve service categories | Useful for MWBE/government contracting if MLADIS sells services. |
 

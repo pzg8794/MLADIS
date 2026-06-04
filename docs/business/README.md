@@ -15,7 +15,7 @@ These records are meant to give the MLADIS app, agents, and future automation wo
 - [Business visitor package](immigration/README.md): B-1-aligned planning process, Diana visit policy, invitation template, travel packet checklist, and official source links.
 - [Publication package](publication/README.md): Queens County Clerk publication workflow, email draft, notice draft, and completion checklist.
 - [EIN and banking package](ein-and-banking/README.md): EIN worksheet, bank checklist, and bookkeeping starter categories.
-- [Funding readiness package](funding-readiness/README.md): fundable-company goal, todo list, data-room index, and lender/grant/certification readiness notes.
+- [Funding readiness package](funding-readiness/README.md): fundable-company goal, resume plan, todo list, data-room index, and lender/grant/certification readiness notes.
 - [Signing controls](signing/README.md): rules for signing assistance and why reusable signature assets stay outside Git.
 
 ## Data Handling Rules

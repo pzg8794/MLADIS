@@ -31,6 +31,7 @@ The main blockers are:
 ## Active Files
 
 - [funding-readiness-todo.md](funding-readiness-todo.md) - master checklist.
+- [financial-institution-resume-plan.md](financial-institution-resume-plan.md) - ordered resume guide for bank account opening, Airbnb/revenue exports, P&L, forecast, lender one-pager, use-of-funds, and bank/CDFI/SBA conversations.
 - [data-room-index.md](data-room-index.md) - documents to gather before lenders, grants, or investors.
 - [funding-tracks.md](funding-tracks.md) - realistic funding paths and what each one needs.
 - [bank-credit-loan-and-grant-guide.md](bank-credit-loan-and-grant-guide.md) - bank shortlist, credit sequence, and loan/grant program guide.

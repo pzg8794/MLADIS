@@ -85,6 +85,17 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 | SAM.gov / Grants.gov | Needs EIN and a target grant/contract first | Revisit after EIN, business email, and funding target are selected |
 | MWBE certification | Needs signed governance, EIN, bank/accounting records, and owner document packet | Revisit after the money infrastructure phase |
 
+## Financial Institution Resume Guide
+
+Use `docs/business/funding-readiness/financial-institution-resume-plan.md` when resuming the bank/funding path. It covers the open items outside Diana signing and Queens publication:
+
+1. Open business bank account.
+2. Export Airbnb payouts/reservations and build revenue history.
+3. Build expense history.
+4. Build monthly P&L and cash-flow forecast.
+5. Create lender one-pager and use-of-funds plan.
+6. Talk to banks, CDFIs, SBA/NYC/NYS support, or grant/funding advisors with a clean packet.
+
 ## Best Next Order
 
 1. Replace any earlier Dropbox Sign files with the ready-for-signature PDFs.
