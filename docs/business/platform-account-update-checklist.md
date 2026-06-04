@@ -44,7 +44,7 @@ Reference documents in the private vault:
 5. **Status:**
    - ✅ W-9 submitted (2026-06-03) — IRS validation pending (up to 10 business days)
    - ☐ Payout method — pending LLC bank account
-   - ☐ Host profile display name
+   - ✅ Preferred first name set to `MLADIS LLC` (2026-06-04)
 
 ---
 
@@ -77,7 +77,7 @@ Reference documents in the private vault:
    - Update to `MLADIS LLC` if currently set to a personal name or placeholder.
 3. Billing profile: My Profile → Billing → update billing name to `MLADIS LLC`.
 4. No DNS record changes are required for the LLC update itself — the nameservers (`olof.ns.cloudflare.com`, `ophelia.ns.cloudflare.com`) stay the same.
-5. **Status:** ☐ Not done — **⚠️ MANUAL ACTION REQUIRED** — Cloudflare dashboard does not render in automated browser (CSP + Bot Management blocks script execution); log in at [dash.cloudflare.com](https://dash.cloudflare.com) manually and update Account Settings → Name → `MLADIS LLC`.
+5. **Status:** ✅ Done — 2026-06-04 — Account renamed to `MLADIS LLC` via Cloudflare API (`PUT /accounts/{id}`) using a custom token with `Account Settings:Edit` permission. API confirmed `"success": true, "name": "MLADIS LLC"`.
 
 ---
 
@@ -156,10 +156,10 @@ When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any pay
 | 2026-06-03 | Booking app (code) | `site_name` default + seed updated to "MLADIS LLC" | Copilot |
 | 2026-06-03 | Airbnb | W-9 Form submitted — MLADIS LLC, EIN 42-2932522, Queens NY 11375; IRS validation pending | Copilot |
 | | Airbnb | Payout method update — pending LLC bank account | |
-| | Airbnb | Host profile display name | |
+| 2026-06-04 | Airbnb | Preferred first name set to `MLADIS LLC` (Account → Personal Info) | Copilot |
 | 2026-06-03 | Squarespace | WHOIS registrant updated — Organization: MLADIS LLC, Phone: 631-575-4841, Address corrected; ICANN confirmation email pending | Copilot |
 | | Squarespace | Billing contact name — not done | |
-| | Cloudflare | Account/org name | |
+| 2026-06-04 | Cloudflare | Account name renamed to `MLADIS LLC` via API (PUT /accounts/{id}, token: MLADIS Account Rename) | Copilot |
 | ✅ | Dropbox Sign | Company name (Profile) | 2026-06-04 |
 | ✅ | Google Workspace | Org name (Profile → Name) | 2026-06-04 |
 | ✅ | Django live DB | SiteSettings pk=1: site_name → 'MLADIS LLC', contact_email → 'garcp37@mladis.com' | 2026-06-04 |
