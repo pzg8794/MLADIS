@@ -192,7 +192,7 @@ python -m pip install -r requirements.txt
 echo "Running Django deploy steps..."
 python manage.py migrate --noinput
 python manage.py sync_socialapps
-python manage.py provision_agent_admin
+bash scripts/ensure_agent_admin_credentials.sh
 python manage.py collectstatic --noinput
 python manage.py check
 

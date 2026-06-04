@@ -183,8 +183,8 @@ echo "Syncing social login apps from .env..."
 python manage.py sync_socialapps
 
 echo
-echo "Provisioning optional agent admin from .env..."
-python manage.py provision_agent_admin
+echo "Ensuring dedicated agent admin credentials and access..."
+bash scripts/ensure_agent_admin_credentials.sh
 
 echo
 echo "Checking Django configuration..."

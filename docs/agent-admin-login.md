@@ -20,11 +20,32 @@ MLADIS_AGENT_ADMIN_PASSWORD
 
 Local credentials live in `airbnb_agent/.env` or the local runtime environment. Live credentials live in the VM/runtime environment. Never print these values in terminal output, commit them, paste them into docs, or include them in screenshots.
 
-If `MLADIS_AGENT_ADMIN_PASSWORD` is omitted, the account is provisioned for social-login automation only. In that mode, the agent must sign in with a configured social provider whose account email matches `MLADIS_AGENT_ADMIN_EMAIL`.
+If `MLADIS_AGENT_ADMIN_PASSWORD` is omitted, agents must not ask the owner to invent one. Run the helper below; it creates a strong random password in the runtime `.env`, keeps the value hidden, and provisions the Django user.
 
 ## Provision Or Refresh
 
-The normal launcher/deploy flow should provision the account automatically. To refresh it manually:
+The normal launcher/deploy flow provisions the account automatically through:
+
+```bash
+cd airbnb_agent
+bash scripts/ensure_agent_admin_credentials.sh
+```
+
+That helper:
+
+- Creates missing `MLADIS_AGENT_ADMIN_*` values with the dedicated `agent@mladis.com` identity.
+- Generates `MLADIS_AGENT_ADMIN_PASSWORD` if it is missing.
+- Does not print the password.
+- Runs `python manage.py provision_agent_admin`.
+
+To rotate the password without printing it:
+
+```bash
+cd airbnb_agent
+MLADIS_ROTATE_AGENT_ADMIN_PASSWORD=1 bash scripts/ensure_agent_admin_credentials.sh
+```
+
+To refresh the Django records without changing credentials:
 
 ```bash
 cd airbnb_agent
@@ -79,13 +100,15 @@ After login, verify:
 If the agent admin login fails:
 
 1. Confirm the app was started with `./run_mladis_live.command`.
-2. Confirm the relevant `.env` file has `MLADIS_AGENT_ADMIN_EMAIL`.
-3. If password login is expected, confirm `MLADIS_AGENT_ADMIN_PASSWORD` exists without printing it.
-4. Rerun `python manage.py provision_agent_admin`.
+2. Run `cd airbnb_agent && bash scripts/ensure_agent_admin_credentials.sh`.
+3. Confirm the relevant `.env` file has `MLADIS_AGENT_ADMIN_EMAIL` without printing secret values.
+4. If password login is expected, confirm `MLADIS_AGENT_ADMIN_PASSWORD` exists without printing it.
 5. If using social login, confirm the provider account email exactly matches `MLADIS_AGENT_ADMIN_EMAIL`.
 6. For Facebook local testing, use `https://local.mladis.com`, not plain `127.0.0.1`.
 
 Do not create a random one-off superuser unless the owner explicitly asks. If a temporary emergency user is created, document it and remove or rotate it afterward.
+
+Do not ask the owner to type an agent admin password. Either use the existing runtime secret, rotate it with the helper, or use the configured social-login account.
 
 ## Security Notes
 
