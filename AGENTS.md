@@ -38,8 +38,11 @@
 
 ## Access Provisioning
 
+- Read `docs/agent-admin-login.md` before using, changing, rotating, or debugging the dedicated automation/agent admin account.
 - Provision automation or agent admin access as a dedicated Django user plus a matching `AdminAccess` record keyed to the same email; do not reuse owner credentials for routine automation.
 - Use `python manage.py provision_agent_admin` with `MLADIS_AGENT_ADMIN_*` `.env` values to create or refresh that dedicated Django user and `AdminAccess` record.
+- The one-file launcher and deploy flow are expected to run `provision_agent_admin`; if admin login fails, check the `.env` variables and rerun the command instead of creating ad hoc users.
+- For browser testing, log in at `/accounts/login/` or `/admin/` using the dedicated agent admin identity from `.env`; never print, paste, or commit the password.
 - For external systems such as Google Workspace, Google Cloud, Stripe, and PayPal, each dedicated automation identity should enroll its own MFA method; do not reuse the owner account's authenticator setup for automation access.
 - Google Cloud owner grants for external automation identities can land as `roles/resourcemanager.projectOwnerInvitee`; treat that as a pending owner invitation and complete the mailbox acceptance step before assuming active owner access.
 - PayPal business access is managed under Business Settings -> Manage Users; for full automation coverage, invite the account as an `Other user` and grant all permissions, then finish activation from the email invitation.

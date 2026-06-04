@@ -158,6 +158,7 @@ knowledge over time. Without a key, it falls back to setup-mode replies.
 - Seeded owner/admin access: `Piter Garcia <garciapiterz@gmail.com>`, business phone `631-575-4841`.
 - Seeded admin access: `Diana Garcia <garciabdianas@gmail.com>`.
 - Optional automation/agent admin access is provisioned from `.env` by `python manage.py provision_agent_admin`.
+- Dedicated automation/admin login instructions are documented in `../docs/agent-admin-login.md`.
 - Set `MLADIS_AGENT_ADMIN_EMAIL`, `MLADIS_AGENT_ADMIN_NAME`, `MLADIS_AGENT_ADMIN_PHONE`, `MLADIS_AGENT_ADMIN_USERNAME`, and optionally `MLADIS_AGENT_ADMIN_PASSWORD`. If no password is set, the user is created for social-login automation only.
 - Any password, Google, Facebook, Microsoft, or GitHub login with that email is promoted to staff/superuser by the `AdminAccess` table.
 - Manual `AdminAccess` entries in `/admin/` also work immediately on the current live database.
