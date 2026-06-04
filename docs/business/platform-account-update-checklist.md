@@ -77,7 +77,7 @@ Reference documents in the private vault:
    - Update to `MLADIS LLC` if currently set to a personal name or placeholder.
 3. Billing profile: My Profile → Billing → update billing name to `MLADIS LLC`.
 4. No DNS record changes are required for the LLC update itself — the nameservers (`olof.ns.cloudflare.com`, `ophelia.ns.cloudflare.com`) stay the same.
-5. **Status:** ☐ Not done
+5. **Status:** ☐ Not done — **⚠️ MANUAL ACTION REQUIRED** — Cloudflare dashboard does not render in automated browser (CSP + Bot Management blocks script execution); log in at [dash.cloudflare.com](https://dash.cloudflare.com) manually and update Account Settings → Name → `MLADIS LLC`.
 
 ---
 
@@ -94,7 +94,7 @@ Reference documents in the private vault:
 4. Confirm both signers are set correctly for the pending Diana acknowledgment:
    - Piter: `Piter Zacari Garcia Bautista <garcp37@mladis.com>`
    - Diana: `Diana Sori Garcia Bautista <garciabdianas@gmail.com>`
-5. **Status:** ☐ Not done
+5. **Status:** ✅ Done — 2026-06-04 — Profile → Company name set to `MLADIS LLC` (saved successfully). Receipt address requires paid plan (Free account — skipped). Billing: no card on file (Free plan).
 
 ---
 
@@ -112,7 +112,7 @@ Reference documents in the private vault:
 
 **Source code — model default and seed migration were also updated** (see `bookings/models.py` `site_name` default and migration `0007_seed_booking_platform.py`) to `"MLADIS LLC"` so fresh databases reflect the correct name.
 
-5. **Status:** ☐ Not done (admin update) / ✅ Code default updated (2026-06-03)
+5. **Status:** ✅ Done — 2026-06-04 — Live DB updated via Django shell over SSH: `site_name` → `'MLADIS LLC'`, `contact_email` → `'garcp37@mladis.com'` (SiteSettings pk=1, confirmed).
 
 ---
 
@@ -124,7 +124,7 @@ Reference documents in the private vault:
 1. Go to [admin.google.com](https://admin.google.com) → log in with `garcp37@mladis.com`.
 2. Account → Account settings → Organization name → set to `MLADIS LLC`.
 3. Contact info → Primary domain contact → update address and phone to match MLADIS LLC info above.
-4. **Status:** ☐ Not done
+4. **Status:** ✅ Done — 2026-06-04 — Account settings → Profile → Name changed from 'MLADIS' to 'MLADIS LLC' (saved successfully, toast confirmed).
 
 ---
 
@@ -160,6 +160,7 @@ When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any pay
 | 2026-06-03 | Squarespace | WHOIS registrant updated — Organization: MLADIS LLC, Phone: 631-575-4841, Address corrected; ICANN confirmation email pending | Copilot |
 | | Squarespace | Billing contact name — not done | |
 | | Cloudflare | Account/org name | |
-| | Dropbox Sign | Org name + billing | |
-| | Google Workspace | Org name | |
+| ✅ | Dropbox Sign | Company name (Profile) | 2026-06-04 |
+| ✅ | Google Workspace | Org name (Profile → Name) | 2026-06-04 |
+| ✅ | Django live DB | SiteSettings pk=1: site_name → 'MLADIS LLC', contact_email → 'garcp37@mladis.com' | 2026-06-04 |
 | | Bank account | Open + fund | |
