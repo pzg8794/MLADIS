@@ -16,6 +16,65 @@ Last updated: 2026-06-04. Tracks every platform, subscription, and service used 
 
 ---
 
+## Critical Deferred Transfer Backlog
+
+Status: **deferred until the MLADIS web application is robust/completed**.
+
+This section is a critical future to-do list. Do not transfer, cancel, downgrade, rotate, or reconfigure external services while the web application is still being stabilized unless the owner explicitly approves that specific action in the current thread.
+
+When this backlog is resumed, implement **one service transfer at a time**. Do not batch migrate accounts. Do not cancel cost items until the replacement path, backup/export, smoke test, rollback path, and evidence are complete.
+
+### Required Transfer Checklist For Every Service
+
+| Step | Requirement |
+| --- | --- |
+| 1 | Confirm the web app is stable enough for this specific account/service change. |
+| 2 | Record the current owner/login, current billing owner, current plan/tier, renewal/cost trigger, and current admins. |
+| 3 | Export or screenshot current settings, billing, users, domains, DNS, OAuth callbacks, webhooks, API keys metadata, recovery options, and other service-specific configuration. |
+| 4 | Store private exports/screenshots in the MLADIS private business-record vault, not Git. |
+| 5 | Add the MLADIS Workspace identity or alias as admin/owner before removing personal access. |
+| 6 | Verify login/access from the MLADIS-owned identity. |
+| 7 | Transfer ownership and/or billing only after access is confirmed. |
+| 8 | Rotate secrets only after the new owner/control identity is confirmed. |
+| 9 | Run the smoke test listed for that service. |
+| 10 | Record rollback path and 24-72 hour monitoring result when the service touches production, payments, DNS, OAuth, email, or bookings. |
+| 11 | Update this inventory with evidence before moving to the next service. |
+
+### Deferred Transfer Queue
+
+| Priority | Service group | Examples | Future action | Required smoke test | Status |
+| --- | --- | --- | --- | --- | --- |
+| Critical | Domains / DNS | Squarespace, Cloudflare, GoDaddy legacy domains | Centralize DNS/domain ownership under MLADIS-controlled identity; preserve mail records and OAuth callback domains. | `mladis.com`, `www.mladis.com`, `local.mladis.com`, Google Workspace mail, and OAuth callbacks still work. | Deferred |
+| Critical | Hosting / infrastructure | Google Cloud project `mledis`, GCE VM, static IP, Caddy, systemd, future Cloud Run/Cloud SQL/Secret Manager/GCS | Move/administer cloud ownership and billing through MLADIS-controlled identity; do not disrupt live VM. | Site health check, admin login, deploy pipeline, static/media access, and VM service status pass. | Deferred |
+| Critical | Code / CI | GitHub repos, private submodules, GitHub Actions, deploy credentials | Ensure MLADIS-controlled admins, protected branches, CI secrets, and submodule access are documented. | Clone/pull submodules, run sign-in contract CI, and deploy dry-run/check path still work. | Deferred |
+| Critical | OAuth / sign-in | Google OAuth, Facebook Developer App, GitHub OAuth, Microsoft/Azure app | Transfer or re-create provider apps under MLADIS-controlled account only after callback inventory is complete. | Google, Facebook, GitHub, and any enabled Microsoft login flows pass local/production callback checks. | Deferred |
+| Critical | Payments | Stripe, PayPal Developer, PayPal Business, webhooks | Move payment ownership/billing/tax profile after bank account and webhooks are ready; preserve deposit/donation behavior. | Deposit hold, release/capture admin flow, donation checkout, webhook verification, and payment admin records pass. | Deferred |
+| High | Email / Workspace | Google Workspace, Gmail, SMTP sender, aliases/groups | Use Workspace aliases/groups for `admin@`, `billing@`, `support@`, `bookings@`, `legal@`, `finance@`, and `tech@` where possible to avoid extra paid seats. | Booking inquiry email, admin email, password/social auth email flow, and DNS mail records pass. | Deferred |
+| High | Business records / documents | Google Drive private vault, source Drive folders, Dropbox Sign | Keep private records in Drive and public-safe tracker in Git; move document/e-sign ownership to MLADIS identity. | Signed-document retrieval, Drive folder access, and Dropbox Sign send/audit-trail workflow pass. | Deferred |
+| High | Rental operations | Airbnb host, Ring, DR bank/payment support | Transfer what can safely move to MLADIS identity; keep platform access and property security uninterrupted. | Airbnb host access, payout/tax profile, listing visibility, message access, and Ring camera access pass. | Deferred |
+| Medium | Marketing | Meta Business Suite, Facebook Page, Instagram/WhatsApp if connected | Keep Meta assets under MLADIS business control; complete WhatsApp/Instagram only when verification is available. | Facebook page loads, Meta app login works, ad/page access remains, and contact details are correct. | Deferred |
+| Medium | Government / compliance | NYBE/NYS DOS, IRS, Queens publication, SAM.gov, Grants.gov, MWBE if later used | Track portal ownership/contact identity without exposing tax or identity data in Git. | Portal access verified and private records saved; no public docs expose EIN/SSN/bank/ID details. | Deferred |
+| Medium | Legacy / cost cuts | GoDaddy hosting/PHP support, unused domains, duplicate subscriptions, mixed-use subscriptions | Aggressively cancel or downgrade only after confirming no active dependency and saving receipts/exports. | Domains still resolve as intended, no active website/email breaks, receipts saved, and cost summary updated. | Deferred |
+
+### Future Inventory Columns To Add Before Migration Starts
+
+Before any transfer begins, expand the tables below or create a dedicated transfer table with:
+
+- Current owner/login.
+- Desired MLADIS owner/login.
+- Billing owner/payment method.
+- Renewal date or cost trigger.
+- MFA/recovery status.
+- Data/export location.
+- Backup/export required.
+- Smoke test required.
+- Rollback path.
+- Risk level.
+- Transfer status.
+- Evidence link.
+
+---
+
 ## 1. Core Business & Hosting
 
 | Service | Login email | Cost | Plan/Tier | Purpose | Migration status |
