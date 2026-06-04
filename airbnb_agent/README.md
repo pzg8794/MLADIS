@@ -161,6 +161,8 @@ knowledge over time. Without a key, it falls back to setup-mode replies.
 - Dedicated automation/admin login instructions are documented in `../docs/agent-admin-login.md`.
 - Use `bash scripts/ensure_agent_admin_credentials.sh` to create missing `MLADIS_AGENT_ADMIN_*` `.env` values, generate a hidden random password when needed, and run `python manage.py provision_agent_admin`.
 - `MLADIS_AGENT_ADMIN_EMAIL`, `MLADIS_AGENT_ADMIN_NAME`, `MLADIS_AGENT_ADMIN_PHONE`, `MLADIS_AGENT_ADMIN_USERNAME`, and `MLADIS_AGENT_ADMIN_PASSWORD` are runtime secrets/configuration. Do not commit or print them.
+- Agents should log in with `MLADIS_AGENT_ADMIN_EMAIL`. `MLADIS_AGENT_ADMIN_USERNAME` is only a preferred Django username and may differ on a live database if the preferred username was already taken.
+- The owner should not be asked to know, invent, or type the agent admin password; the helper creates or rotates the hidden runtime secret.
 - Any password, Google, Facebook, Microsoft, or GitHub login with that email is promoted to staff/superuser by the `AdminAccess` table.
 - Manual `AdminAccess` entries in `/admin/` also work immediately on the current live database.
 - Local test user created for this workspace: username `piter`. Change the password in `/admin/` before sharing or deploying.

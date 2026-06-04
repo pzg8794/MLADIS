@@ -20,6 +20,8 @@ MLADIS_AGENT_ADMIN_PASSWORD
 
 Local credentials live in `airbnb_agent/.env` or the local runtime environment. Live credentials live in the VM/runtime environment. Never print these values in terminal output, commit them, paste them into docs, or include them in screenshots.
 
+Use `MLADIS_AGENT_ADMIN_EMAIL` as the stable login identity. `MLADIS_AGENT_ADMIN_USERNAME` is only the preferred Django username and may be uniquified by Django if an older user already owns the preferred value. Email login is the durable path for agents.
+
 If `MLADIS_AGENT_ADMIN_PASSWORD` is omitted, agents must not ask the owner to invent one. Run the helper below; it creates a strong random password in the runtime `.env`, keeps the value hidden, and provisions the Django user.
 
 ## Provision Or Refresh
@@ -60,6 +62,8 @@ That command creates or updates:
 - Staff/superuser access.
 - A linked `CustomerProfile` marked as VIP.
 
+If the preferred username is already taken, the provisioning command may create a unique username such as `mladis-agent-2`. That is fine. Browser login should still use the email from `MLADIS_AGENT_ADMIN_EMAIL`.
+
 ## Local Login
 
 Start the app with the one approved launcher from the repo root:
@@ -74,6 +78,8 @@ Use these URLs:
 - Facebook OAuth testing: [https://local.mladis.com/accounts/login/](https://local.mladis.com/accounts/login/)
 
 Do not use the Vite dev server at `http://127.0.0.1:5173` for Django/allauth sign-in testing.
+
+For password/admin testing, use the configured email plus the hidden runtime password. Do not ask Piter to know or type that password; read it only from the local runtime when an automated browser test needs to submit it, and never print it.
 
 ## Production Login
 
@@ -102,7 +108,7 @@ If the agent admin login fails:
 1. Confirm the app was started with `./run_mladis_live.command`.
 2. Run `cd airbnb_agent && bash scripts/ensure_agent_admin_credentials.sh`.
 3. Confirm the relevant `.env` file has `MLADIS_AGENT_ADMIN_EMAIL` without printing secret values.
-4. If password login is expected, confirm `MLADIS_AGENT_ADMIN_PASSWORD` exists without printing it.
+4. If password login is expected, confirm `MLADIS_AGENT_ADMIN_PASSWORD` exists without printing it, then log in with `MLADIS_AGENT_ADMIN_EMAIL`.
 5. If using social login, confirm the provider account email exactly matches `MLADIS_AGENT_ADMIN_EMAIL`.
 6. For Facebook local testing, use `https://local.mladis.com`, not plain `127.0.0.1`.
 

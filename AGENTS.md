@@ -43,7 +43,8 @@
 - Use `bash airbnb_agent/scripts/ensure_agent_admin_credentials.sh` to create missing `MLADIS_AGENT_ADMIN_*` `.env` values, generate a hidden random password when needed, and provision the Django user/AdminAccess record.
 - Use `python manage.py provision_agent_admin` only when the `.env` values already exist and you only need to refresh Django records.
 - The one-file launcher and deploy flow are expected to run `ensure_agent_admin_credentials.sh`; if admin login fails, run that helper instead of asking the owner for a password or creating ad hoc users.
-- For browser testing, log in at `/accounts/login/` or `/admin/` using the dedicated agent admin identity from `.env`; never print, paste, or commit the password.
+- For browser testing, log in at `/accounts/login/` or `/admin/` with `MLADIS_AGENT_ADMIN_EMAIL` as the stable identity; `MLADIS_AGENT_ADMIN_USERNAME` is only a preferred username and may be uniquified if it is already taken.
+- Never ask the owner to know, invent, or type the agent admin password. Use the hidden runtime secret from `.env` only when automation needs to submit it, and never print, paste, screenshot, or commit it.
 - For external systems such as Google Workspace, Google Cloud, Stripe, and PayPal, each dedicated automation identity should enroll its own MFA method; do not reuse the owner account's authenticator setup for automation access.
 - Google Cloud owner grants for external automation identities can land as `roles/resourcemanager.projectOwnerInvitee`; treat that as a pending owner invitation and complete the mailbox acceptance step before assuming active owner access.
 - PayPal business access is managed under Business Settings -> Manage Users; for full automation coverage, invite the account as an `Other user` and grant all permissions, then finish activation from the email invitation.
