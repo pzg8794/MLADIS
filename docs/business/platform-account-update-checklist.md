@@ -139,7 +139,24 @@ The LLC bank account has not been opened yet. When opening:
 
 ---
 
-## 8. Future Platforms (add as needed)
+## 8. Meta Business Suite (Facebook / Instagram)
+
+**What to update:** Business portfolio name (was "Body Transformation").
+
+**Account:** `garciapiterz@gmail.com`  
+**Business Portfolio ID:** `2115472558905606`
+
+**Steps:**
+1. Go to [business.facebook.com](https://business.facebook.com/latest/settings/business_info?business_id=2115472558905606).
+2. Under **Business portfolio info** → click **Edit**.
+3. Business name field → set to `Mladis LLC` (Meta policy requires title-case; all-caps "MLADIS LLC" is rejected).
+4. Click **Save**.
+5. Optionally update the Legal business name field under **Business details** once Meta's business verification is completed.
+6. **Status:** ✅ Done — 2026-06-04 — Business portfolio name changed from "Body Transformation" to `Mladis LLC`. Confirmed via "Changes saved" toast; page headings updated live. Note: Meta requires title-case — "MLADIS LLC" was rejected by Meta naming policy; "Mladis LLC" was accepted.
+
+---
+
+## 9. Future Platforms (add as needed)
 
 When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any payment/OTA platform:
 - Always use **MLADIS LLC** as the legal business name.
@@ -163,4 +180,5 @@ When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any pay
 | ✅ | Dropbox Sign | Company name (Profile) | 2026-06-04 |
 | ✅ | Google Workspace | Org name (Profile → Name) | 2026-06-04 |
 | ✅ | Django live DB | SiteSettings pk=1: site_name → 'MLADIS LLC', contact_email → 'garcp37@mladis.com' | 2026-06-04 |
+| 2026-06-04 | Meta Business Suite | Business portfolio name changed from "Body Transformation" → `Mladis LLC` (title-case required by Meta policy) | Copilot |
 | | Bank account | Open + fund | |
