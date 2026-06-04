@@ -51,7 +51,7 @@ Last updated: 2026-06-04. Tracks every platform, subscription, and service used 
 | Service | Login email | Cost | Plan/Tier | Purpose | Migration status |
 | --- | --- | --- | --- | --- | --- |
 | **Meta Business Suite** | garciapiterz@gmail.com | Ad spend variable (no fixed fee) | Free (organic) + Ads | Business portfolio, ad settings, Instagram/Facebook business management | ✅ Portfolio name = Mladis LLC (2026-06-04) |
-| **Facebook Page** | garciapiterz@gmail.com | Free | Facebook Page | Public-facing business page for MLADIS | ✅ Renamed from `Body Transformation` to `Mladis LLC`; live URL = `facebook.com/mladis.connected` |
+| **Facebook Page** | garciapiterz@gmail.com | Free | Facebook Page | Public-facing business page for MLADIS | ✅ Renamed from `Body Transformation` to `Mladis LLC`; live URL = `facebook.com/mladis.connected`; bio/contact info updated; cover = MLADIS Connected Intelligence artwork |
 
 ---
 
@@ -108,7 +108,7 @@ Last updated: 2026-06-04. Tracks every platform, subscription, and service used 
 
 - **GCE billing account**: Linked to `garciapiterz@gmail.com` Google account. To migrate billing to MLADIS LLC, create a billing account under the Google Workspace org (`garcp37@mladis.com`) and transfer the project.
 - **Meta naming policy**: Meta rejects all-caps business names (e.g., "MLADIS LLC"). Use "Mladis LLC" in Meta Business Suite and on the Facebook Page. Legal name remains MLADIS LLC everywhere else.
-- **Facebook Page branding**: Page renamed live to `Mladis LLC` at `https://www.facebook.com/mladis.connected/`. Cover photo updated to the sunset pool image from Downloads on 2026-06-04. Profile picture is still the legacy image and should be replaced with an MLADIS logo next.
+- **Facebook Page branding**: Page renamed live to `Mladis LLC` at `https://www.facebook.com/mladis.connected/`. Bio updated to the MLADIS umbrella positioning, public contact info now shows the MLADIS address / phone / email / website, languages are set to English + Spanish, founding date is set to 3 June 2026, and the cover photo now uses the MLADIS Connected Intelligence artwork. WhatsApp remains pending because Meta requires a verification code sent to `+1 631-575-4841`.
 - **GoDaddy login**: Uses `pzg8794@rit.edu` — receipts paid via PayPal. Consider migrating billing to `garciapiterz@gmail.com` or a MLADIS LLC email.
 - **Dropbox Sign free tier**: 3 documents/month. If rental contract volume increases, upgrade to a paid plan and update billing to MLADIS LLC.
 

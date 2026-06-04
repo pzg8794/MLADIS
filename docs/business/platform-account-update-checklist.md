@@ -153,10 +153,19 @@ The LLC bank account has not been opened yet. When opening:
 4. Click **Save**.
 5. Open the linked **Primary Page** and switch into the Page profile.
 6. Facebook Settings → Page setup → **Name** → change the Page name from `Body Transformation` to `Mladis LLC`.
-7. Update the cover photo with the sunset pool image from Downloads.
-8. Optionally update the profile picture to an MLADIS logo (still pending).
-9. Optionally update the Legal business name field under **Business details** once Meta's business verification is completed.
-10. **Status:** ✅ Done — 2026-06-04 — Business portfolio name changed from "Body Transformation" to `Mladis LLC`. Primary Facebook Page also changed from `Body Transformation` to `Mladis LLC`, now live at `https://www.facebook.com/mladis.connected/`. Cover photo updated. Note: Meta requires title-case — "MLADIS LLC" was rejected by Meta naming policy; "Mladis LLC" was accepted.
+7. Update the Page bio to MLADIS umbrella branding and fill the public About/contact fields.
+   - Bio: `MLADIS LLC is a connected business ecosystem where hospitality, fitness and technology learn from each other to grow smarter together.`
+   - Address: `109-19 72nd Rd Apt 5H, Queens, NY, United States, 11375`
+   - Phone: `+1 631-575-4841`
+   - Public email: `garcp37@mladis.com`
+   - Website: `https://mladis.com/`
+   - Languages: `English language (United States)` and `Spanish language`
+   - Founding date: `3 June 2026`
+8. Update the cover photo to the MLADIS Connected Intelligence artwork (brain / neuron network concept).
+9. Keep the current MLADIS profile picture/logo.
+10. WhatsApp connection remains optional until the phone verification code can be completed from the device receiving `+1 631-575-4841`.
+11. Optionally update the Legal business name field under **Business details** once Meta's business verification is completed.
+12. **Status:** ✅ Done — 2026-06-04 — Business portfolio name changed from "Body Transformation" to `Mladis LLC`. Primary Facebook Page also changed from `Body Transformation` to `Mladis LLC`, now live at `https://www.facebook.com/mladis.connected/`. Page bio and About/contact info were updated with the MLADIS business details, and the cover photo was changed to the MLADIS Connected Intelligence artwork. WhatsApp setup is still pending phone verification. Note: Meta requires title-case — "MLADIS LLC" was rejected by Meta naming policy; "Mladis LLC" was accepted.
 
 ---
 
@@ -186,5 +195,7 @@ When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any pay
 | ✅ | Django live DB | SiteSettings pk=1: site_name → 'MLADIS LLC', contact_email → 'garcp37@mladis.com' | 2026-06-04 |
 | 2026-06-04 | Meta Business Suite | Business portfolio name changed from "Body Transformation" → `Mladis LLC` (title-case required by Meta policy) | Copilot |
 | 2026-06-04 | Facebook Page | Public Page renamed from `Body Transformation` → `Mladis LLC`; live URL now `facebook.com/mladis.connected` | Copilot |
-| 2026-06-04 | Facebook Page | Cover photo updated to sunset pool image from Downloads | Copilot |
+| 2026-06-04 | Facebook Page | Public bio refreshed; address, phone, email, website, languages, and founding date added to About/contact info | Copilot |
+| 2026-06-04 | Facebook Page | Cover photo updated to MLADIS Connected Intelligence artwork; current MLADIS profile image retained | Copilot |
+| 2026-06-04 | Facebook Page | WhatsApp setup opened but left pending because Meta requires a phone verification code | Copilot |
 | | Bank account | Open + fund | |
