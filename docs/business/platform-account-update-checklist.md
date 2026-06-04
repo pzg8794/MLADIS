@@ -139,9 +139,9 @@ The LLC bank account has not been opened yet. When opening:
 
 ---
 
-## 8. Meta Business Suite (Facebook / Instagram)
+## 8. Meta Business Suite + Facebook Page
 
-**What to update:** Business portfolio name (was "Body Transformation").
+**What to update:** Business portfolio name and public Facebook Page branding.
 
 **Account:** `garciapiterz@gmail.com`  
 **Business Portfolio ID:** `2115472558905606`
@@ -151,8 +151,12 @@ The LLC bank account has not been opened yet. When opening:
 2. Under **Business portfolio info** → click **Edit**.
 3. Business name field → set to `Mladis LLC` (Meta policy requires title-case; all-caps "MLADIS LLC" is rejected).
 4. Click **Save**.
-5. Optionally update the Legal business name field under **Business details** once Meta's business verification is completed.
-6. **Status:** ✅ Done — 2026-06-04 — Business portfolio name changed from "Body Transformation" to `Mladis LLC`. Confirmed via "Changes saved" toast; page headings updated live. Note: Meta requires title-case — "MLADIS LLC" was rejected by Meta naming policy; "Mladis LLC" was accepted.
+5. Open the linked **Primary Page** and switch into the Page profile.
+6. Facebook Settings → Page setup → **Name** → change the Page name from `Body Transformation` to `Mladis LLC`.
+7. Update the cover photo with the sunset pool image from Downloads.
+8. Optionally update the profile picture to an MLADIS logo (still pending).
+9. Optionally update the Legal business name field under **Business details** once Meta's business verification is completed.
+10. **Status:** ✅ Done — 2026-06-04 — Business portfolio name changed from "Body Transformation" to `Mladis LLC`. Primary Facebook Page also changed from `Body Transformation` to `Mladis LLC`, now live at `https://www.facebook.com/mladis.connected/`. Cover photo updated. Note: Meta requires title-case — "MLADIS LLC" was rejected by Meta naming policy; "Mladis LLC" was accepted.
 
 ---
 
@@ -181,4 +185,6 @@ When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any pay
 | ✅ | Google Workspace | Org name (Profile → Name) | 2026-06-04 |
 | ✅ | Django live DB | SiteSettings pk=1: site_name → 'MLADIS LLC', contact_email → 'garcp37@mladis.com' | 2026-06-04 |
 | 2026-06-04 | Meta Business Suite | Business portfolio name changed from "Body Transformation" → `Mladis LLC` (title-case required by Meta policy) | Copilot |
+| 2026-06-04 | Facebook Page | Public Page renamed from `Body Transformation` → `Mladis LLC`; live URL now `facebook.com/mladis.connected` | Copilot |
+| 2026-06-04 | Facebook Page | Cover photo updated to sunset pool image from Downloads | Copilot |
 | | Bank account | Open + fund | |

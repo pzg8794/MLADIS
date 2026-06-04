@@ -50,7 +50,8 @@ Last updated: 2026-06-04. Tracks every platform, subscription, and service used 
 
 | Service | Login email | Cost | Plan/Tier | Purpose | Migration status |
 | --- | --- | --- | --- | --- | --- |
-| **Meta Business Suite** | garciapiterz@gmail.com | Ad spend variable (no fixed fee) | Free (organic) + Ads | Facebook and Instagram marketing for MLADIS properties | ✅ Portfolio name = Mladis LLC (2026-06-04) — note Meta requires title-case |
+| **Meta Business Suite** | garciapiterz@gmail.com | Ad spend variable (no fixed fee) | Free (organic) + Ads | Business portfolio, ad settings, Instagram/Facebook business management | ✅ Portfolio name = Mladis LLC (2026-06-04) |
+| **Facebook Page** | garciapiterz@gmail.com | Free | Facebook Page | Public-facing business page for MLADIS | ✅ Renamed from `Body Transformation` to `Mladis LLC`; live URL = `facebook.com/mladis.connected` |
 
 ---
 
@@ -106,6 +107,26 @@ Last updated: 2026-06-04. Tracks every platform, subscription, and service used 
 ## Notes
 
 - **GCE billing account**: Linked to `garciapiterz@gmail.com` Google account. To migrate billing to MLADIS LLC, create a billing account under the Google Workspace org (`garcp37@mladis.com`) and transfer the project.
-- **Meta naming policy**: Meta rejects all-caps business names (e.g., "MLADIS LLC"). Use "Mladis LLC" in Meta Business Suite. Legal name remains MLADIS LLC everywhere else.
+- **Meta naming policy**: Meta rejects all-caps business names (e.g., "MLADIS LLC"). Use "Mladis LLC" in Meta Business Suite and on the Facebook Page. Legal name remains MLADIS LLC everywhere else.
+- **Facebook Page branding**: Page renamed live to `Mladis LLC` at `https://www.facebook.com/mladis.connected/`. Cover photo updated to the sunset pool image from Downloads on 2026-06-04. Profile picture is still the legacy image and should be replaced with an MLADIS logo next.
 - **GoDaddy login**: Uses `pzg8794@rit.edu` — receipts paid via PayPal. Consider migrating billing to `garciapiterz@gmail.com` or a MLADIS LLC email.
 - **Dropbox Sign free tier**: 3 documents/month. If rental contract volume increases, upgrade to a paid plan and update billing to MLADIS LLC.
+
+---
+
+## Direct Access URLs
+
+| Service | URL | Notes |
+| --- | --- | --- |
+| Google Workspace Admin | `https://admin.google.com/` | Admin login: `garcp37@mladis.com` |
+| Google Drive | `https://drive.google.com/` | Workspace + personal storage |
+| Google Cloud Console | `https://console.cloud.google.com/` | Billing/account currently under `garciapiterz@gmail.com` |
+| Airbnb Host Account | `https://www.airbnb.com/account-settings/` | Tax/W-9 and payouts |
+| Cloudflare Dashboard | `https://dash.cloudflare.com/` | Account renamed to MLADIS LLC |
+| Squarespace Account | `https://account.squarespace.com/settings/profile` | Domain registrar for `mladis.com` |
+| Dropbox Sign | `https://app.hellosign.com/` | Login: `garcp37@mladis.com` |
+| Meta Business Suite | `https://business.facebook.com/latest/settings/business_info?business_id=2115472558905606` | Portfolio = `Mladis LLC` |
+| Facebook Page | `https://www.facebook.com/mladis.connected/` | Public Page = `Mladis LLC` |
+| PayPal Developer | `https://developer.paypal.com/dashboard/applications/live` | Payment integration dashboard |
+| MLADIS Booking App | `https://mladis.com/` | Public site |
+| MLADIS Booking Admin | `https://mladis.com/admin/` | Django admin |
