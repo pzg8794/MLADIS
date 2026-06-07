@@ -297,6 +297,20 @@ function legalKindFromPath(): LegalKind | null {
   return null;
 }
 
+function scrollToBookingSection() {
+  const bookingSection = document.getElementById('booking');
+  if (!bookingSection) return false;
+  bookingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  window.setTimeout(() => bookingSection.scrollIntoView({ block: 'start' }), 120);
+  return true;
+}
+
+function handleBookingLinkClick(event: { preventDefault: () => void }) {
+  if (!scrollToBookingSection()) return;
+  event.preventDefault();
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#booking`);
+}
+
 function formatDate(value: string) {
   if (!value) return '';
   const [year, month, day] = value.split('-').map(Number);
@@ -353,7 +367,7 @@ function PublicNav({
         <a href="/#stays">{t.navStays}</a>
         <a href="/#area">{t.navArea}</a>
         <a href="/about/">{t.navAbout}</a>
-        <a href="/#booking">{t.navBooking}</a>
+        <a href="#booking" onClick={handleBookingLinkClick}>{t.navBooking}</a>
       </nav>
       <div className="public-nav__actions">
         <button type="button" onClick={() => onLanguageChange(language === 'en' ? 'es' : 'en')}>
@@ -992,7 +1006,7 @@ function HomeExperience({ snapshot, userContext, language }: { snapshot: PublicS
           <h1>{t.heroTitle}</h1>
           <p>{t.heroText}</p>
           <div className="public-hero__actions">
-            <a href="#booking">{t.primary} <ArrowUpRight size={17} /></a>
+            <a href="#booking" onClick={handleBookingLinkClick}>{t.primary} <ArrowUpRight size={17} /></a>
             <a href="#stays">{t.secondary}</a>
           </div>
           <div className="public-proof-strip">
@@ -1115,7 +1129,7 @@ function StayDetailExperience({ snapshot, userContext, stay, language }: { snaps
             <span><ShieldCheck size={16} /> {snapshot.depositAmount} deposit hold</span>
           </div>
           <div className="public-hero__actions">
-            <a href="#booking">{t.primary} <ArrowUpRight size={17} /></a>
+            <a href="#booking" onClick={handleBookingLinkClick}>{t.primary} <ArrowUpRight size={17} /></a>
             <a href={stay.airbnbUrl} target="_blank" rel="noreferrer">View on Airbnb</a>
           </div>
         </div>
@@ -1730,6 +1744,28 @@ export function PublicSitePage() {
 
     return () => {
       active = false;
+    };
+  }, [snapshot]);
+
+  useEffect(() => {
+    if (!snapshot) return undefined;
+    const scrollFromHash = window.setTimeout(() => {
+      if (window.location.hash === '#booking') scrollToBookingSection();
+    }, 80);
+
+    function handleBookingAnchorClick(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest<HTMLAnchorElement>('a[href="#booking"], a[href="/#booking"]');
+      if (!anchor) return;
+      if (!scrollToBookingSection()) return;
+      event.preventDefault();
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#booking`);
+    }
+
+    document.addEventListener('click', handleBookingAnchorClick);
+    return () => {
+      window.clearTimeout(scrollFromHash);
+      document.removeEventListener('click', handleBookingAnchorClick);
     };
   }, [snapshot]);
 
