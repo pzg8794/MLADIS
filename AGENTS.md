@@ -109,6 +109,14 @@
 - Every functional customer, booking, request, payment, agent, invoice, promotion, cancellation, or admin-action object needs a data-store path. Prefer a transactional model plus export collection; add a live `object_events` JSONL log for lifecycle actions where possible.
 - If `MLADIS_DATASTORE_ROOT` is configured, reservation and deposit workflows should append live object events without blocking the customer if the data-store write fails.
 
+## Maintenance Operations
+
+- Read `docs/maintenance-mvc-architecture.md` before adding or changing property maintenance, cleaning, repair, bill, photo-evidence, or maintenance-document automation.
+- Do not raw-merge `feature/maintenance-events-mvc` into the current app. Transplant the maintenance domain into the current modern MLADIS branch so the modern frontend, admin shell, data lake, OAuth, payments, and deployment contracts are preserved.
+- Maintenance work must model `MaintenanceEvent` as the aggregate root and `MaintenancePhoto` as child evidence records. The required core event attributes are title, cost, time, and pictures.
+- Use the Django database as the maintenance source of truth, and export maintenance records/photos/document payloads through the Drive-backed JSON/JSONL data-store contract. Do not make Drive JSON files the live transaction database.
+- Cleaning is a maintenance work type, not a separate ad hoc workflow, unless a later design explicitly creates a separate cleaning lifecycle.
+
 ## Calendar Operations
 
 - The business calendar is managed from `BookableItem` admin via the custom calendar view, not from the legacy feed-setup page.
