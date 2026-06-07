@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, BarChart3, CalendarDays, Search, Sparkles } from 'lucide-react';
+import { CSSProperties, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, BarChart3, CalendarDays, ChevronRight, Search, Sparkles } from 'lucide-react';
 import { OpsWorkspaceFactory } from '../../application/OpsWorkspaceFactory';
 import { OpsChart, OpsReportsSnapshot } from '../../domain/models';
 
@@ -19,29 +19,80 @@ function readableDate(value: string) {
 }
 
 function ChartCard({ chart }: { chart: OpsChart }) {
+  const isTimeline = chart.id.includes('timeline');
   return (
-    <article className="ops-chart-card" data-report-card>
-      <div className="ops-card-heading">
+    <details className={`ops-chart-card ops-expand-card ${isTimeline ? 'ops-chart-card--timeline' : ''}`} data-report-card>
+      <summary className="ops-card-heading">
+        <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
         <div>
-          <span>{chart.category}</span>
+          <span>Report</span>
           <h3>{chart.title}</h3>
         </div>
         <strong>{chart.maxTotal}</strong>
-      </div>
-      <div className="ops-chart-bars">
-        {chart.rows.length === 0 && <p>No data captured yet.</p>}
-        {chart.rows.map((row) => (
-          <div className="ops-chart-row" key={`${chart.id}-${row.label}`}>
-            <span>{row.label}</span>
-            <div>
-              <i style={{ width: `${row.width}%` }} />
+      </summary>
+      {isTimeline ? (
+        <div className="ops-timeline-chart">
+          {chart.rows.length === 0 && <p>No data captured yet.</p>}
+          {chart.rows.map((row) => (
+            <div className="ops-timeline-day" key={`${chart.id}-${row.label}`}>
+              <i style={{ height: `${row.width}%` }} />
+              <strong>{row.total}</strong>
+              <span>{row.label}</span>
             </div>
-            <strong>{row.total}</strong>
-          </div>
-        ))}
-      </div>
-    </article>
+          ))}
+        </div>
+      ) : (
+        <div className="ops-chart-bars">
+          {chart.rows.length === 0 && <p>No data captured yet.</p>}
+          {chart.rows.map((row) => (
+            <div className="ops-chart-row" key={`${chart.id}-${row.label}`}>
+              <span>{row.label}</span>
+              <div>
+                <i style={{ width: `${row.width}%` }} />
+              </div>
+              <strong>{row.total}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+    </details>
   );
+}
+
+type ReportChartGroup = {
+  key: string;
+  label: string;
+  tone: string;
+  charts: OpsChart[];
+};
+
+const reportGroupMeta: Record<string, { label: string; tone: string }> = {
+  booking: { label: 'Booking', tone: '#6f55b5' },
+  money: { label: 'Money', tone: '#0b78b6' },
+  customers: { label: 'Customers', tone: '#087b2d' },
+  traffic: { label: 'Traffic', tone: '#c95705' },
+  agent: { label: 'Agent', tone: '#b4235c' },
+  calendar: { label: 'Calendar', tone: '#2563eb' },
+};
+
+const reportGroupOrder = ['booking', 'money', 'customers', 'traffic', 'agent', 'calendar'];
+
+function groupReportCharts(charts: OpsChart[]): ReportChartGroup[] {
+  const grouped = new Map<string, OpsChart[]>();
+  charts.forEach((chart) => {
+    const key = chart.category || 'booking';
+    grouped.set(key, [...(grouped.get(key) || []), chart]);
+  });
+
+  const orderedKeys = [
+    ...reportGroupOrder.filter((key) => grouped.has(key)),
+    ...Array.from(grouped.keys()).filter((key) => !reportGroupOrder.includes(key)).sort(),
+  ];
+
+  return orderedKeys.map((key) => {
+    const meta = reportGroupMeta[key] || { label: key.charAt(0).toUpperCase() + key.slice(1), tone: '#6f55b5' };
+    return { key, label: meta.label, tone: meta.tone, charts: grouped.get(key) || [] };
+  });
 }
 
 export function OpsReportsPage() {
@@ -75,6 +126,7 @@ export function OpsReportsPage() {
       return matchesFilter && matchesSearch;
     });
   }, [filter, search, snapshot]);
+  const chartGroups = useMemo(() => groupReportCharts(charts), [charts]);
 
   if (error) {
     return <section className="dashboard-error"><AlertCircle /> {error}</section>;
@@ -89,23 +141,13 @@ export function OpsReportsPage() {
       <section className="ops-hero ops-hero--reports">
         <div>
           <span><BarChart3 size={16} /> Modern reports</span>
-          <h2>Every signal we track, cleaned up into fast visual cards.</h2>
-          <p>Reservations, visits, agent questions, feedback, invoices, deposits, donations, coupons, promotions, listings, and calendar setup all stay connected to Django data.</p>
+          <h2>Reports</h2>
+          <p>Reservations, revenue, customers, visits, agent questions, campaigns, and calendar health.</p>
         </div>
         <div className="ops-hero-actions">
           <a href={snapshot.calendarUrl}><CalendarDays size={16} /> Business calendar</a>
           <a href="/ops/admin/"><BarChart3 size={16} /> Admin command</a>
         </div>
-      </section>
-
-      <section className="ops-metric-grid">
-        {snapshot.summaryCards.map((card) => (
-          <article key={card.label}>
-            <span>{card.label}</span>
-            <strong>{card.value}</strong>
-            <p>{card.caption}</p>
-          </article>
-        ))}
       </section>
 
       <section className="ops-toolbar">
@@ -123,8 +165,29 @@ export function OpsReportsPage() {
         </div>
       </section>
 
-      <section className="ops-chart-grid">
-        {charts.map((chart) => <ChartCard chart={chart} key={chart.id} />)}
+      <section className="ops-report-category-groups" aria-label="Report groups">
+        {chartGroups.map((group) => (
+          <details className="ops-report-group ops-expand-card" key={group.key} style={{ '--report-tone': group.tone } as CSSProperties}>
+            <summary className="ops-card-heading">
+              <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
+              <div>
+                <span>Report group</span>
+                <h3>{group.label}</h3>
+              </div>
+              <strong>{group.charts.length}</strong>
+            </summary>
+            <div className="ops-report-category-group__cards">
+              {group.charts.map((chart) => <ChartCard chart={chart} key={chart.id} />)}
+            </div>
+          </details>
+        ))}
+        {chartGroups.length === 0 && (
+          <article className="ops-empty-state">
+            <BarChart3 size={28} />
+            <h3>No reports match this view.</h3>
+            <p>Clear the search or choose another report category.</p>
+          </article>
+        )}
       </section>
     </main>
   );

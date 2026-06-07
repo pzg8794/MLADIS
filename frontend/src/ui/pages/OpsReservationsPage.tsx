@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowDownToLine,
   CalendarDays,
+  ChevronRight,
   CheckCircle2,
   Filter,
   MessageSquareText,
@@ -14,6 +15,8 @@ import {
 } from 'lucide-react';
 import { OpsReservationsFactory } from '../../application/OpsReservationsFactory';
 import { OpsReservationRow, OpsReservationsSnapshot } from '../../domain/models';
+import { OpsListModal } from '../components/OpsListModal';
+import { formatStayName } from '../helpers/stayNames';
 
 function csrfToken() {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
@@ -44,6 +47,8 @@ export function OpsReservationsPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [actionMessage, setActionMessage] = useState('');
+  const [isListOpen, setIsListOpen] = useState(false);
+  const [visibleLimit, setVisibleLimit] = useState(2);
 
   const loadSnapshot = useCallback(() => {
     service
@@ -74,6 +79,11 @@ export function OpsReservationsPage() {
     ));
   }, [search, snapshot]);
 
+  const visibleRows = useMemo(() => {
+    if (visibleLimit <= 0) return filteredRows;
+    return filteredRows.slice(0, visibleLimit);
+  }, [filteredRows, visibleLimit]);
+
   async function updateStatus(row: OpsReservationRow, status: 'reviewing' | 'confirmed' | 'cancelled') {
     setActionMessage(`Updating ${row.name}...`);
     const response = await fetch(`/api/ops/reservations/${row.id}/status/`, {
@@ -86,13 +96,59 @@ export function OpsReservationsPage() {
       body: JSON.stringify({ status }),
     });
     if (!response.ok) {
-      setActionMessage('Could not update that reservation. Check the Django admin record.');
+      setActionMessage('Could not update that reservation. Check the admin record.');
       return;
     }
     setActionMessage(`Updated ${row.name}.`);
     loadSnapshot();
     window.setTimeout(() => setActionMessage(''), 2500);
   }
+
+  const renderReservationRow = (row: OpsReservationRow) => (
+    <details className="ops-res-row ops-expand-card" data-segment={row.segmentValue || 'average'} key={`${row.recordType}-${row.id}`}>
+      <summary className="ops-res-summary">
+        <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
+        <div className="ops-res-row__guest">
+          <span className={`ops-res-source ops-res-source--${row.recordType}`}>{sourceLabel(row)}</span>
+          <h3>{row.name}</h3>
+          <p>{contactLabel(row)}</p>
+        </div>
+        <div className="ops-res-row__stay">
+          <strong>{formatStayName(row.listing)}</strong>
+          <span>{compactDate(row.stayDates)}</span>
+          <small>{row.guests ? `${row.guests} guests` : 'Guest count pending'} {row.listingId ? `· ${row.listingId}` : ''}</small>
+        </div>
+        <div className="ops-res-row__feedback">
+          <span className={`ops-status-pill ops-status-pill--${row.segmentValue || 'average'}`}>{row.segment || 'Average'}</span>
+          <p>{row.consentStatus}</p>
+        </div>
+      </summary>
+      <div className="ops-expand-details ops-res-details">
+        <div>
+          <span>Feedback</span>
+          <p>{row.feedback || row.sourceSubject || 'No feedback captured yet.'}</p>
+          {row.rating && <strong><Star size={14} /> {row.rating}</strong>}
+        </div>
+        <div>
+          <span>Record links</span>
+          <p>{row.updatedAt ? `Updated ${new Date(row.updatedAt).toLocaleString()}` : 'Update time pending'}</p>
+        </div>
+        <div className="ops-res-row__actions">
+          {row.recordType === 'direct' && (
+            <>
+              <button type="button" onClick={() => updateStatus(row, 'reviewing')}><MessageSquareText size={14} /> Review</button>
+              <button type="button" onClick={() => updateStatus(row, 'confirmed')}><CheckCircle2 size={14} /> Confirm</button>
+              <button type="button" onClick={() => updateStatus(row, 'cancelled')}><XCircle size={14} /> Cancel</button>
+            </>
+          )}
+          {row.threadUrl && <a href={row.threadUrl} target="_blank" rel="noreferrer">Airbnb thread</a>}
+          <a href={row.recordAdminUrl}>Record</a>
+          {row.profileAdminUrl && <a href={row.profileAdminUrl}>Profile</a>}
+          {row.feedbackAdminUrl && <a href={row.feedbackAdminUrl}>Feedback</a>}
+        </div>
+      </div>
+    </details>
+  );
 
   if (error) {
     return <section className="dashboard-error"><AlertCircle /> {error}</section>;
@@ -115,8 +171,8 @@ export function OpsReservationsPage() {
       <section className="ops-res-modern__hero">
         <div>
           <span><CalendarDays size={16} /> Modern reservations CRM</span>
-          <h2>Reservations, Airbnb guests, feedback, and customer groups in one view.</h2>
-          <p>This page replaces the old reservations table. It combines direct MLADIS requests with imported Airbnb guest records, then keeps profile, feedback, and consent links close by.</p>
+          <h2>Reservations CRM</h2>
+          <p>Direct requests, Airbnb guests, feedback, and customer groups in one compact workflow.</p>
         </div>
         <div className="ops-res-modern__actions">
           <a href={snapshot.exportUrl}><ArrowDownToLine size={16} /> Export CSV</a>
@@ -147,7 +203,12 @@ export function OpsReservationsPage() {
         <div className="ops-res-segment-row" aria-label="Customer group filters">
           <span><Filter size={15} /> Groups</span>
           {snapshot.segmentOptions.map((segment) => (
-            <a className={segment.value === snapshot.selectedSegment ? 'is-active' : ''} href={segment.url} key={segment.value || 'all'}>
+            <a
+              className={segment.value === snapshot.selectedSegment ? 'is-active' : ''}
+              data-segment={segment.value || 'all'}
+              href={segment.url}
+              key={segment.value || 'all'}
+            >
               {segment.label}
               <small>{segment.count}</small>
             </a>
@@ -161,9 +222,22 @@ export function OpsReservationsPage() {
         <div className="ops-res-list__header">
           <div>
             <h3>{filteredRows.length} guests shown</h3>
-            <p>{snapshot.rows.length} total records available in the current segment.</p>
+            <p>{visibleRows.length} visible here. {snapshot.rows.length} total records available in the current segment.</p>
           </div>
-          <span><ShieldCheck size={15} /> Consent-aware CRM</span>
+          <div className="ops-card-heading__actions">
+            <label className="ops-inline-select">
+              Show
+              <select value={visibleLimit} onChange={(event) => setVisibleLimit(Number(event.target.value))} aria-label="Reservations visible on page">
+                <option value={2}>2</option>
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={0}>All</option>
+              </select>
+            </label>
+            <button type="button" onClick={() => setIsListOpen(true)}><Search size={15} /> Open list</button>
+            <span><ShieldCheck size={15} /> Consent-aware CRM</span>
+          </div>
         </div>
 
         {filteredRows.length === 0 && (
@@ -174,39 +248,19 @@ export function OpsReservationsPage() {
           </article>
         )}
 
-        {filteredRows.map((row) => (
-          <article className="ops-res-row" key={`${row.recordType}-${row.id}`}>
-            <div className="ops-res-row__guest">
-              <span className={`ops-res-source ops-res-source--${row.recordType}`}>{sourceLabel(row)}</span>
-              <h3>{row.name}</h3>
-              <p>{contactLabel(row)}</p>
-              <small>{row.segment || 'Average'} · {row.consentStatus}</small>
-            </div>
-            <div className="ops-res-row__stay">
-              <strong>{row.listing}</strong>
-              <span>{compactDate(row.stayDates)}</span>
-              <small>{row.guests ? `${row.guests} guests` : 'Guest count pending'} {row.listingId ? `· ${row.listingId}` : ''}</small>
-            </div>
-            <div className="ops-res-row__feedback">
-              {row.rating && <span><Star size={14} /> {row.rating}</span>}
-              <p>{row.feedback || row.sourceSubject || 'No feedback captured yet.'}</p>
-            </div>
-            <div className="ops-res-row__actions">
-              {row.recordType === 'direct' && (
-                <>
-                  <button type="button" onClick={() => updateStatus(row, 'reviewing')}><MessageSquareText size={14} /> Review</button>
-                  <button type="button" onClick={() => updateStatus(row, 'confirmed')}><CheckCircle2 size={14} /> Confirm</button>
-                  <button type="button" onClick={() => updateStatus(row, 'cancelled')}><XCircle size={14} /> Cancel</button>
-                </>
-              )}
-              {row.threadUrl && <a href={row.threadUrl} target="_blank" rel="noreferrer">Airbnb thread</a>}
-              <a href={row.recordAdminUrl}>Record</a>
-              {row.profileAdminUrl && <a href={row.profileAdminUrl}>Profile</a>}
-              {row.feedbackAdminUrl && <a href={row.feedbackAdminUrl}>Feedback</a>}
-            </div>
-          </article>
-        ))}
+        <div className="ops-list-scroll">
+          {visibleRows.map(renderReservationRow)}
+        </div>
       </section>
+
+      <OpsListModal
+        isOpen={isListOpen}
+        title={`${filteredRows.length} guests shown`}
+        subtitle="Scroll the full reservation and imported Airbnb customer list."
+        onClose={() => setIsListOpen(false)}
+      >
+        {filteredRows.map(renderReservationRow)}
+      </OpsListModal>
     </main>
   );
 }

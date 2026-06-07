@@ -21,18 +21,18 @@ class AdminHealthItem {
 }
 
 const shortcuts = [
-  new AdminShortcut('Django admin home', 'Open the protected source-of-truth admin console.', '/admin/', ShieldCheck, 'blue'),
+  new AdminShortcut('Admin tools', 'Open the protected editing console.', '/admin/', ShieldCheck, 'blue'),
   new AdminShortcut('Reservations', 'Review booking requests, guest notes, coupons, and confirmations.', '/ops/reservations/', CalendarDays, 'teal'),
   new AdminShortcut('Customers', 'Manage customer profiles, Airbnb imports, and marketing consent.', '/ops/customers/', Users, 'violet'),
   new AdminShortcut('Damage deposits', 'Review Stripe and PayPal authorization holds.', '/ops/deposits/', CreditCard, 'amber'),
   new AdminShortcut('Agent workspace', 'Edit local FAQ answers and learn from customer questions.', '/ops/agent/', Bot, 'rose'),
-  new AdminShortcut('Business calendar', 'Block dates, set overrides, and audit availability.', '/admin/bookings/bookableitem/calendar/', Database, 'teal'),
+  new AdminShortcut('Business calendar', 'Block dates, set overrides, and audit availability.', '/ops/calendar/', Database, 'teal'),
   new AdminShortcut('Reports', 'Open the modern reporting dashboard.', '/ops/reports/', FileText, 'blue'),
   new AdminShortcut('OAuth setup', 'Check Google/Airbnb-connected setup diagnostics.', '/ops/oauth/', KeyRound, 'violet'),
 ];
 
 const healthItems = [
-  new AdminHealthItem('Admin source of truth', 'Django protected', 'Mutations still happen in Django until React APIs are finalized.'),
+  new AdminHealthItem('Protected records', 'Permissioned', 'Sensitive edits stay behind staff controls until the APIs are finalized.'),
   new AdminHealthItem('Booking mutations', 'Locked down', 'No React-side payment/deposit mutations in this prototype.'),
   new AdminHealthItem('Agent FAQ layer', 'Needs review', 'Confirm AgentFAQ exists in admin and can be edited.', 'review'),
   new AdminHealthItem('Static deployment', 'Build required', 'Run npm build before copying frontend assets.', 'attention'),
@@ -45,10 +45,10 @@ export function AdminPage() {
         <div>
           <span><ShieldCheck size={16} /> Staff operations</span>
           <h2>Admin command center</h2>
-          <p>A modern control layer for the Django admin tools. Keep Django as the source of truth while the new dashboard grows section by section.</p>
+          <p>Modern shortcuts for protected edits, daily ops, reporting, and booking control.</p>
         </div>
         <a href="/admin/" className="admin-primary-link">
-          Open Django admin
+          Open admin
           <ExternalLink size={16} />
         </a>
       </section>
@@ -83,20 +83,6 @@ export function AdminPage() {
             </a>
           );
         })}
-      </section>
-
-      <section className="admin-checklist">
-        <div>
-          <h3>Before replacing the old admin experience</h3>
-          <p>Use this checklist to avoid another deploy where the code changed but the live workflow did not.</p>
-        </div>
-        <ol>
-          <li>Run the React build and verify the compiled static assets changed.</li>
-          <li>Confirm /ops/admin/ loads for staff users.</li>
-          <li>Confirm every shortcut opens the correct Django admin or ops page.</li>
-          <li>Confirm AgentFAQ is visible/editable in Django admin.</li>
-          <li>Keep payment/deposit captures inside Django admin until API permissions are designed.</li>
-        </ol>
       </section>
     </main>
   );

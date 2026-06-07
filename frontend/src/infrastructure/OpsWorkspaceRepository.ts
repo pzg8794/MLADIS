@@ -5,6 +5,13 @@ import {
   OpsAgentTopic,
   OpsChart,
   OpsChartRow,
+  OpsCalendarDay,
+  OpsCalendarEvent,
+  OpsCalendarEventType,
+  OpsCalendarSnapshot,
+  OpsCalendarStay,
+  OpsCalendarStayRow,
+  OpsCalendarViewMode,
   OpsCustomerRow,
   OpsCustomersSnapshot,
   OpsDepositRow,
@@ -157,11 +164,111 @@ interface ApiOpsAgentSnapshot {
   generated_at: string;
 }
 
+interface ApiOpsCalendarStay {
+  id: number;
+  name: string;
+  slug: string;
+  subtitle: string;
+  default_price: string;
+  is_configured: boolean;
+  feed_label: string;
+  feed_status: string;
+  last_checked_at: string;
+}
+
+interface ApiOpsCalendarDay {
+  date: string;
+  day: number;
+  weekday: string;
+  label: string;
+  in_month: boolean;
+  is_today: boolean;
+  status: string;
+  reservation_count: number;
+  block_count: number;
+  has_price_override: boolean;
+  price_display: string;
+  price_source: string;
+  price_label: string;
+}
+
+interface ApiOpsCalendarEvent {
+  id: string;
+  record_id: number;
+  type: OpsCalendarEventType;
+  title: string;
+  subtitle: string;
+  item_id: number;
+  item_name: string;
+  start: string;
+  end: string;
+  range_label: string;
+  status: string;
+  guest_label: string;
+  amount: string;
+  admin_url: string;
+}
+
+interface ApiOpsCalendarSnapshot {
+  view: OpsCalendarViewMode;
+  focus_date: string;
+  month_label: string;
+  visible_start: string;
+  visible_end: string;
+  previous_date: string;
+  next_date: string;
+  selected_item_id: number | null;
+  stays: ApiOpsCalendarStay[];
+  summary_cards: ApiOpsMetric[];
+  weeks: ApiOpsCalendarDay[][];
+  week_days: ApiOpsCalendarDay[];
+  stay_rows: ApiOpsCalendarStayRow[];
+  events: ApiOpsCalendarEvent[];
+  agenda: ApiOpsCalendarEvent[];
+  admin_records_url: string;
+  generated_at: string;
+}
+
+interface ApiOpsCalendarStayRow {
+  stay: ApiOpsCalendarStay;
+  week_days: ApiOpsCalendarDay[];
+  weeks: ApiOpsCalendarDay[][];
+  events: ApiOpsCalendarEvent[];
+}
+
+export interface OpsCalendarQuery {
+  itemId?: number | null;
+  view?: OpsCalendarViewMode;
+  date?: string;
+}
+
+export interface OpsCalendarBlockInput {
+  item: number;
+  start_date: string;
+  end_date: string;
+  reason: string;
+  notes: string;
+}
+
+export interface OpsCalendarPriceInput {
+  item: number;
+  start_date: string;
+  end_date: string;
+  nightly_price: string;
+  label: string;
+  notes: string;
+}
+
 export interface OpsWorkspaceRepository {
   getReports(): Promise<OpsReportsSnapshot>;
   getCustomers(): Promise<OpsCustomersSnapshot>;
   getDeposits(): Promise<OpsDepositsSnapshot>;
   getAgent(): Promise<OpsAgentSnapshot>;
+  getCalendar(query: OpsCalendarQuery): Promise<OpsCalendarSnapshot>;
+  createCalendarBlock(input: OpsCalendarBlockInput): Promise<void>;
+  deleteCalendarBlock(id: number): Promise<void>;
+  createCalendarPrice(input: OpsCalendarPriceInput): Promise<void>;
+  deleteCalendarPrice(id: number): Promise<void>;
 }
 
 export class ApiOpsWorkspaceRepository implements OpsWorkspaceRepository {
@@ -277,8 +384,112 @@ export class ApiOpsWorkspaceRepository implements OpsWorkspaceRepository {
       data.generated_at,
     );
   }
+
+  async getCalendar(query: OpsCalendarQuery): Promise<OpsCalendarSnapshot> {
+    const params = new URLSearchParams();
+    if (query.itemId) params.set('item', String(query.itemId));
+    if (query.view) params.set('view', query.view);
+    if (query.date) params.set('date', query.date);
+    const path = params.toString() ? `/api/ops/calendar/?${params}` : '/api/ops/calendar/';
+    const data = await this.http.get<ApiOpsCalendarSnapshot>(path);
+    return new OpsCalendarSnapshot(
+      data.view,
+      data.focus_date,
+      data.month_label,
+      data.visible_start,
+      data.visible_end,
+      data.previous_date,
+      data.next_date,
+      data.selected_item_id,
+      data.stays.map(toCalendarStay),
+      data.summary_cards.map(toMetric),
+      data.weeks.map((week) => week.map(toCalendarDay)),
+      data.week_days.map(toCalendarDay),
+      data.stay_rows.map(toCalendarStayRow),
+      data.events.map(toCalendarEvent),
+      data.agenda.map(toCalendarEvent),
+      data.admin_records_url,
+      data.generated_at,
+    );
+  }
+
+  async createCalendarBlock(input: OpsCalendarBlockInput): Promise<void> {
+    await this.http.post('/api/ops/calendar/blocks/', input);
+  }
+
+  async deleteCalendarBlock(id: number): Promise<void> {
+    await this.http.delete('/api/ops/calendar/blocks/', { id });
+  }
+
+  async createCalendarPrice(input: OpsCalendarPriceInput): Promise<void> {
+    await this.http.post('/api/ops/calendar/prices/', input);
+  }
+
+  async deleteCalendarPrice(id: number): Promise<void> {
+    await this.http.delete('/api/ops/calendar/prices/', { id });
+  }
+}
+
+function toCalendarStayRow(item: ApiOpsCalendarStayRow): OpsCalendarStayRow {
+  return new OpsCalendarStayRow(
+    toCalendarStay(item.stay),
+    item.week_days.map(toCalendarDay),
+    item.weeks.map((week) => week.map(toCalendarDay)),
+    item.events.map(toCalendarEvent),
+  );
 }
 
 function toMetric(item: ApiOpsMetric): OpsMetric {
   return new OpsMetric(item.label, String(item.value), item.caption);
+}
+
+function toCalendarStay(item: ApiOpsCalendarStay): OpsCalendarStay {
+  return new OpsCalendarStay(
+    item.id,
+    item.name,
+    item.slug,
+    item.subtitle,
+    item.default_price,
+    item.is_configured,
+    item.feed_label,
+    item.feed_status,
+    item.last_checked_at,
+  );
+}
+
+function toCalendarDay(item: ApiOpsCalendarDay): OpsCalendarDay {
+  return new OpsCalendarDay(
+    item.date,
+    item.day,
+    item.weekday,
+    item.label,
+    item.in_month,
+    item.is_today,
+    item.status,
+    item.reservation_count,
+    item.block_count,
+    item.has_price_override,
+    item.price_display,
+    item.price_source,
+    item.price_label,
+  );
+}
+
+function toCalendarEvent(item: ApiOpsCalendarEvent): OpsCalendarEvent {
+  return new OpsCalendarEvent(
+    item.id,
+    item.record_id,
+    item.type,
+    item.title,
+    item.subtitle,
+    item.item_id,
+    item.item_name,
+    item.start,
+    item.end,
+    item.range_label,
+    item.status,
+    item.guest_label,
+    item.amount,
+    item.admin_url,
+  );
 }

@@ -5,79 +5,70 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#eef3f4">
-    <title>{{ site_header|default:_('MLADIS Admin') }}</title>
+    <title>{{ site_header|default:_('Admin') }}</title>
     <link rel="stylesheet" href="{% static 'bookings/admin/modern_admin.css' %}">
   </head>
   <body class="modern-admin-body">
     <div class="modern-admin-shell">
       <aside class="modern-admin-sidebar">
-        <a class="modern-admin-brand" href="{% url 'admin:index' %}">
-          <img src="{% static 'bookings/brand/mladis-connected-intelligence.png' %}" alt="" aria-hidden="true">
+        <a class="modern-admin-brand" href="{% url 'bookings:home' %}">
+          {% if site_settings.logo_display_url %}
+            <img src="{{ site_settings.logo_display_url }}" alt="" aria-hidden="true">
+          {% else %}
+            <img src="{% static 'bookings/brand/mladis-connected-intelligence.png' %}" alt="" aria-hidden="true">
+          {% endif %}
           <div>
             <strong>MLADIS</strong>
-            <small>{% trans "Admin operations" %}</small>
+            <small>{% trans "Operations" %}</small>
           </div>
         </a>
         <nav aria-label="{% trans 'Admin sections' %}">
-          <a class="is-active" href="{% url 'admin:index' %}">{% trans "Admin home" %}</a>
-          <a href="{% url 'bookings:ops-dashboard' %}">{% trans "Dashboard" %}</a>
-          <a href="{% url 'bookings:ops-reservations' %}">{% trans "Reservations" %}</a>
-          <a href="{% url 'bookings:ops-reports' %}">{% trans "Reports" %}</a>
-          <a href="{% url 'bookings:ops-customers' %}">{% trans "Customers" %}</a>
-          <a href="{% url 'bookings:ops-deposits' %}">{% trans "Deposits" %}</a>
-          <a href="{% url 'bookings:ops-agent' %}">{% trans "Agent" %}</a>
-          <a href="{% url 'admin:bookings_bookableitem_calendar' %}">{% trans "Calendar" %}</a>
+          <a href="{% url 'bookings:ops-dashboard' %}">{% include "admin/includes/rail_icon.html" with icon="dashboard" %}<span class="modern-admin-nav-label">{% trans "Dashboard" %}</span></a>
+          <a class="is-active" href="{% url 'admin:index' %}">{% include "admin/includes/rail_icon.html" with icon="admin" %}<span class="modern-admin-nav-label">{% trans "Admin" %}</span></a>
+          <a href="{% url 'admin:bookings_sitesettings_change' 1 %}">{% include "admin/includes/rail_icon.html" with icon="settings" %}<span class="modern-admin-nav-label">{% trans "Brand settings" %}</span></a>
+          <a href="{% url 'bookings:ops-reservations' %}">{% include "admin/includes/rail_icon.html" with icon="reservations" %}<span class="modern-admin-nav-label">{% trans "Reservations" %}</span></a>
+          <a href="{% url 'bookings:calendar-ops' %}">{% include "admin/includes/rail_icon.html" with icon="calendar" %}<span class="modern-admin-nav-label">{% trans "Calendar" %}</span></a>
+          <a href="{% url 'bookings:ops-stays' %}">{% include "admin/includes/rail_icon.html" with icon="stays" %}<span class="modern-admin-nav-label">{% trans "Stay portfolio" %}</span></a>
+          <a href="{% url 'bookings:ops-reports' %}">{% include "admin/includes/rail_icon.html" with icon="reports" %}<span class="modern-admin-nav-label">{% trans "Reports" %}</span></a>
+          <a href="{% url 'bookings:ops-customers' %}">{% include "admin/includes/rail_icon.html" with icon="customers" %}<span class="modern-admin-nav-label">{% trans "Customers" %}</span></a>
+          <a href="{% url 'bookings:ops-deposits' %}">{% include "admin/includes/rail_icon.html" with icon="deposits" %}<span class="modern-admin-nav-label">{% trans "Deposits" %}</span></a>
+          <a href="{% url 'bookings:ops-agent' %}">{% include "admin/includes/rail_icon.html" with icon="agent" %}<span class="modern-admin-nav-label">{% trans "Agent" %}</span></a>
         </nav>
         <div class="modern-admin-sidecard">
-          <span>{% trans "Source of truth" %}</span>
-          <p>{% trans "Django still owns protected edits, payments, calendar records, and publishing controls." %}</p>
+          <span>{% trans "Protected controls" %}</span>
+          <p>{% trans "Sensitive edits, payments, calendar records, and publishing controls stay permissioned." %}</p>
         </div>
-        <a class="modern-admin-back" href="{% url 'bookings:home' %}">{% trans "Back to live site" %}</a>
+        <a class="modern-admin-back" href="{% url 'bookings:business' %}">{% include "admin/includes/rail_icon.html" with icon="business" %}<span class="modern-admin-nav-label">{% trans "Business profile" %}</span></a>
       </aside>
 
       <main class="modern-admin-main">
-        <header class="modern-admin-topbar">
-          <div>
-            <p>{% trans "Modern operations cockpit" %}</p>
-            <h1>{% blocktranslate with username=user.get_short_name|default:user.get_username %}Welcome back, {{ username }}{% endblocktranslate %}</h1>
-          </div>
-          <div class="modern-admin-topbar__actions">
-            <a href="{% url 'bookings:ops-dashboard' %}">{% trans "Ops dashboard" %}</a>
-            <a href="{% url 'admin:password_change' %}">{% trans "Password" %}</a>
-            <form method="post" action="{% url 'admin:logout' %}">
-              {% csrf_token %}
-              <button type="submit">{% trans "Sign out" %}</button>
-            </form>
-          </div>
-        </header>
-
         <section class="modern-admin-hero">
           <div>
-            <span>{% trans "Admin command center" %}</span>
-            <h2>{% trans "The same source-of-truth admin, now shaped like the modern MLADIS dashboard." %}</h2>
-            <p>{% trans "Use the modern ops tabs for daily work, or jump into Django records when you need to edit protected data directly." %}</p>
+            <h2>{% trans "Admin command center" %}</h2>
+            <p>{% trans "Protected records, ops tabs, calendar, reports, and booking controls." %}</p>
           </div>
           <div class="modern-admin-hero__actions">
-            <a href="{% url 'admin:bookings_bookableitem_calendar' %}">{% trans "Business calendar" %}</a>
-            <a href="{% url 'bookings:ops-reservations' %}">{% trans "Reservations CRM" %}</a>
+            <a href="{% url 'bookings:calendar-ops' %}">{% trans "Calendar" %}</a>
+            <a href="{% url 'bookings:ops-reservations' %}">{% trans "Reservations" %}</a>
+            <a href="{% url 'admin:password_change' %}">{% trans "Password" %}</a>
           </div>
         </section>
 
         <section class="modern-admin-metrics" aria-label="{% trans 'Admin summary' %}">
           <article>
-            <span>{% trans "Admin apps" %}</span>
+            <span>{% trans "Record groups" %}</span>
             <strong>{{ app_list|length }}</strong>
-            <p>{% trans "Permission-aware Django app groups available to this account." %}</p>
+            <p>{% trans "Permission-aware groups available to this account." %}</p>
           </article>
           <article>
-            <span>{% trans "Fast path" %}</span>
-            <strong>{% trans "Modern" %}</strong>
+            <span>{% trans "Workspaces" %}</span>
+            <strong>{% trans "Ready" %}</strong>
             <p>{% trans "Daily reports, reservations, customers, deposits, and agent work are in the left menu." %}</p>
           </article>
           <article>
-            <span>{% trans "Protected edits" %}</span>
-            <strong>{% trans "Django" %}</strong>
-            <p>{% trans "Detailed model edits still go through admin permission checks and audit logs." %}</p>
+            <span>{% trans "Audit checks" %}</span>
+            <strong>{% trans "Secure" %}</strong>
+            <p>{% trans "Detailed edits use permission checks and audit logs." %}</p>
           </article>
           <article>
             <span>{% trans "Calendar" %}</span>
@@ -92,7 +83,7 @@
             <strong>{% trans "Booking requests and Airbnb guest CRM" %}</strong>
             <p>{% trans "Review guests, feedback, status, segments, and direct reservation actions." %}</p>
           </a>
-          <a class="modern-admin-shortcut modern-admin-shortcut--blue" href="{% url 'admin:bookings_bookableitem_calendar' %}">
+          <a class="modern-admin-shortcut modern-admin-shortcut--blue" href="{% url 'bookings:calendar-ops' %}">
             <span>{% trans "Business calendar" %}</span>
             <strong>{% trans "Availability, blocks, and nightly pricing" %}</strong>
             <p>{% trans "Use the modern calendar to block days, set price overrides, and inspect the month." %}</p>
@@ -107,42 +98,90 @@
             <strong>{% trans "Question analytics and FAQ training" %}</strong>
             <p>{% trans "Turn repeated customer questions into better booking-agent answers." %}</p>
           </a>
+          <a class="modern-admin-shortcut modern-admin-shortcut--blue" href="{% url 'admin:bookings_sitesettings_change' 1 %}">
+            <span>{% trans "Brand" %}</span>
+            <strong>{% trans "Upload logo and public settings" %}</strong>
+            <p>{% trans "Replace the site logo, public site name, contact email, and location label." %}</p>
+          </a>
         </section>
 
         <section class="modern-admin-grid">
           <div class="modern-admin-apps">
             <div class="modern-admin-section-heading">
               <div>
-                <span>{% trans "Django records" %}</span>
-                <h2>{% trans "Source-of-truth models" %}</h2>
+                <span>{% trans "Business records" %}</span>
+                <h2>{% trans "Records and controls" %}</h2>
               </div>
-              <a href="{% url 'admin:app_list' app_label='bookings' %}">{% trans "Bookings app" %}</a>
+              <a href="{% url 'admin:app_list' app_label='bookings' %}">{% trans "Booking records" %}</a>
             </div>
 
             {% for app in app_list %}
-              <article class="modern-admin-app-card">
-                <div class="modern-admin-app-card__heading">
+              <details class="modern-admin-app-card modern-admin-expand-block modern-admin-app-card--{{ app.app_label|default:app.name|slugify }}">
+                <summary class="modern-admin-app-card__heading">
+                  <span class="modern-admin-chevron" aria-hidden="true">›</span>
                   <div>
                     <span>{{ app.name }}</span>
                     <h3>{{ app.name }}</h3>
                   </div>
-                  <a href="{{ app.app_url }}">{% trans "Open app" %}</a>
-                </div>
-                <div class="modern-admin-model-list">
-                  {% for model in app.models %}
-                    <div>
-                      {% if model.admin_url %}
-                        <a href="{{ model.admin_url }}">{{ model.name }}</a>
-                      {% else %}
-                        <strong>{{ model.name }}</strong>
-                      {% endif %}
-                      {% if model.add_url %}
-                        <a href="{{ model.add_url }}">{% trans "Add" %}</a>
-                      {% endif %}
-                    </div>
-                  {% endfor %}
-                </div>
-              </article>
+                  <a href="{{ app.app_url }}">{% trans "Open" %}</a>
+                </summary>
+
+                {% if app.app_label == "bookings" %}
+                  <div class="modern-admin-model-groups">
+                    <section class="modern-admin-model-group modern-admin-model-group--calendar">
+                      <h4>{% trans "Reservations & calendar" %}</h4>
+                      <div class="modern-admin-model-list">
+                        {% for model in app.models %}
+                          {% if model.object_name == "BookableItem" or model.object_name == "BookingInquiry" or model.object_name == "AirbnbGuestRecord" or model.object_name == "AvailabilityBlock" or model.object_name == "CalendarFeed" or model.object_name == "DailyPriceOverride" or model.object_name == "CancellationPolicy" %}
+                            {% include "admin/includes/model_card.html" with model=model %}
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </section>
+                    <section class="modern-admin-model-group modern-admin-model-group--money">
+                      <h4>{% trans "Customers, money & offers" %}</h4>
+                      <div class="modern-admin-model-list">
+                        {% for model in app.models %}
+                          {% if model.object_name == "CustomerProfile" or model.object_name == "CustomerFeedback" or model.object_name == "Coupon" or model.object_name == "Promotion" or model.object_name == "Invoice" or model.object_name == "DamageDeposit" or model.object_name == "Donation" or model.object_name == "ExtraBillTemplate" %}
+                            {% include "admin/includes/model_card.html" with model=model %}
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </section>
+                    <section class="modern-admin-model-group modern-admin-model-group--agent">
+                      <h4>{% trans "Agent & content" %}</h4>
+                      <div class="modern-admin-model-list">
+                        {% for model in app.models %}
+                          {% if model.object_name == "AgentFAQ" or model.object_name == "AgentConversation" or model.object_name == "AgentKnowledgeSource" or model.object_name == "GuestReviewHighlight" or model.object_name == "HouseRule" or model.object_name == "MissionCause" or model.object_name == "SiteContentBlock" or model.object_name == "SiteSettings" %}
+                            {% include "admin/includes/model_card.html" with model=model %}
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </section>
+                    <section class="modern-admin-model-group modern-admin-model-group--system">
+                      <h4>{% trans "System & access" %}</h4>
+                      <div class="modern-admin-model-list">
+                        {% for model in app.models %}
+                          {% if model.object_name == "AdminAccess" or model.object_name == "PageVisit" %}
+                            {% include "admin/includes/model_card.html" with model=model %}
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </section>
+                  </div>
+                {% else %}
+                  <div class="modern-admin-model-groups">
+                    <section class="modern-admin-model-group modern-admin-model-group--system">
+                      <h4>{{ app.name }}</h4>
+                      <div class="modern-admin-model-list">
+                        {% for model in app.models %}
+                          {% include "admin/includes/model_card.html" with model=model %}
+                        {% endfor %}
+                      </div>
+                    </section>
+                  </div>
+                {% endif %}
+              </details>
             {% empty %}
               <article class="modern-admin-empty">
                 <h3>{% trans "No admin apps available" %}</h3>
@@ -151,13 +190,14 @@
             {% endfor %}
           </div>
 
-          <aside class="modern-admin-activity">
-            <div class="modern-admin-section-heading">
+          <details class="modern-admin-activity modern-admin-expand-block">
+            <summary class="modern-admin-section-heading">
+              <span class="modern-admin-chevron" aria-hidden="true">›</span>
               <div>
                 <span>{% trans "Audit trail" %}</span>
-                <h2>{% trans "Recent actions" %}</h2>
+                <h2>{% trans "Latest changes" %}</h2>
               </div>
-            </div>
+            </summary>
             {% get_admin_log 10 as admin_log for_user user %}
             {% if admin_log %}
               <div class="modern-admin-action-list">
@@ -176,10 +216,10 @@
             {% else %}
               <div class="modern-admin-empty">
                 <h3>{% trans "No recent actions yet" %}</h3>
-                <p>{% trans "Changes you make in Django admin will appear here." %}</p>
+                <p>{% trans "Protected changes will appear here." %}</p>
               </div>
             {% endif %}
-          </aside>
+          </details>
         </section>
       </main>
     </div>

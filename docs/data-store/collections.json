@@ -1,0 +1,151 @@
+{
+  "schema_version": "1.0",
+  "drive_folder_id": "1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn",
+  "drive_folder_url": "https://drive.google.com/drive/folders/1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn",
+  "collections": [
+    {
+      "key": "object_events",
+      "zone": "bronze",
+      "subject": "app_events",
+      "entity_type": "object_event",
+      "source_model": "multiple",
+      "pii_classification": "private"
+    },
+    {
+      "key": "subscriptions",
+      "zone": "silver",
+      "subject": "accounts",
+      "entity_type": "subscription",
+      "source_model": "auth.User",
+      "pii_classification": "private"
+    },
+    {
+      "key": "customer_profiles",
+      "zone": "silver",
+      "subject": "customers",
+      "entity_type": "customer_profile",
+      "source_model": "bookings.CustomerProfile",
+      "pii_classification": "private"
+    },
+    {
+      "key": "airbnb_guest_records",
+      "zone": "silver",
+      "subject": "customers",
+      "entity_type": "airbnb_guest_record",
+      "source_model": "bookings.AirbnbGuestRecord",
+      "pii_classification": "private"
+    },
+    {
+      "key": "customer_feedback",
+      "zone": "silver",
+      "subject": "customers",
+      "entity_type": "customer_feedback",
+      "source_model": "bookings.CustomerFeedback",
+      "pii_classification": "private"
+    },
+    {
+      "key": "booking_requests",
+      "zone": "silver",
+      "subject": "requests",
+      "entity_type": "booking_request",
+      "source_model": "bookings.BookingInquiry",
+      "pii_classification": "private"
+    },
+    {
+      "key": "reservations",
+      "zone": "silver",
+      "subject": "bookings",
+      "entity_type": "reservation",
+      "source_model": "bookings.BookingInquiry",
+      "pii_classification": "private"
+    },
+    {
+      "key": "agent_conversations",
+      "zone": "silver",
+      "subject": "agent",
+      "entity_type": "agent_conversation",
+      "source_model": "bookings.AgentConversation",
+      "pii_classification": "private"
+    },
+    {
+      "key": "agent_faq",
+      "zone": "silver",
+      "subject": "agent",
+      "entity_type": "agent_faq",
+      "source_model": "bookings.AgentFAQ",
+      "pii_classification": "internal"
+    },
+    {
+      "key": "page_visits",
+      "zone": "bronze",
+      "subject": "app_events",
+      "entity_type": "page_visit",
+      "source_model": "bookings.PageVisit",
+      "pii_classification": "private"
+    },
+    {
+      "key": "damage_deposits",
+      "zone": "silver",
+      "subject": "payments",
+      "entity_type": "damage_deposit",
+      "source_model": "bookings.DamageDeposit",
+      "pii_classification": "private"
+    },
+    {
+      "key": "reservation_payment_holds",
+      "zone": "silver",
+      "subject": "payments",
+      "entity_type": "reservation_payment_hold",
+      "source_model": "bookings.ReservationPaymentHold",
+      "pii_classification": "private"
+    },
+    {
+      "key": "donations",
+      "zone": "silver",
+      "subject": "payments",
+      "entity_type": "donation",
+      "source_model": "bookings.Donation",
+      "pii_classification": "private"
+    },
+    {
+      "key": "invoices",
+      "zone": "silver",
+      "subject": "payments",
+      "entity_type": "invoice",
+      "source_model": "bookings.Invoice",
+      "pii_classification": "private"
+    },
+    {
+      "key": "promotions",
+      "zone": "silver",
+      "subject": "marketing",
+      "entity_type": "promotion",
+      "source_model": "bookings.Promotion",
+      "pii_classification": "internal"
+    },
+    {
+      "key": "inventory",
+      "zone": "silver",
+      "subject": "content",
+      "entity_type": "bookable_item",
+      "source_model": "bookings.BookableItem",
+      "pii_classification": "internal"
+    },
+    {
+      "key": "availability_blocks",
+      "zone": "silver",
+      "subject": "bookings",
+      "entity_type": "availability_block",
+      "source_model": "bookings.AvailabilityBlock",
+      "pii_classification": "internal"
+    },
+    {
+      "key": "daily_price_overrides",
+      "zone": "silver",
+      "subject": "bookings",
+      "entity_type": "daily_price_override",
+      "source_model": "bookings.DailyPriceOverride",
+      "pii_classification": "internal"
+    }
+  ]
+}

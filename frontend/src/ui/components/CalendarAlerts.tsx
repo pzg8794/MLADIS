@@ -1,5 +1,6 @@
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, ChevronRight } from 'lucide-react';
 import { CalendarAlert } from '../../domain/models';
+import { formatStayName } from '../helpers/stayNames';
 
 interface CalendarAlertsProps {
   alerts: CalendarAlert[];
@@ -7,23 +8,27 @@ interface CalendarAlertsProps {
 
 export function CalendarAlerts({ alerts }: CalendarAlertsProps) {
   return (
-    <article className="dashboard-panel panel-large">
-      <header className="panel-heading">
+    <details className="dashboard-panel panel-large dashboard-collapse-card">
+      <summary className="panel-heading dashboard-panel-summary">
+        <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
         <span className="panel-heading__icon"><AlertCircle size={19} /></span>
         <div>
-          <h2>Calendar alerts</h2>
-          <p>Blocks, overrides, and reminders that protect booking quality.</p>
+          <h2>Calendar work queue</h2>
+          <p>Active blocks, price overrides, and feed setup warnings.</p>
         </div>
-      </header>
+        <a className="panel-action-link" href="/ops/calendar/" onClick={(event) => event.stopPropagation()}>
+          Open calendar <ArrowUpRight size={14} />
+        </a>
+      </summary>
       <div className="calendar-alerts">
         {alerts.map((alert) => (
           <div className={`calendar-alert calendar-alert--${alert.severity}`} key={alert.id}>
             <strong>{alert.label}</strong>
-            <span>{alert.stayName}</span>
+            <span>{formatStayName(alert.stayName)}</span>
             <small>{alert.dateRange}</small>
           </div>
         ))}
       </div>
-    </article>
+    </details>
   );
 }

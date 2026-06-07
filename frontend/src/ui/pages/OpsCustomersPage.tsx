@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ExternalLink, Mail, Search, Send, ShieldCheck, Users } from 'lucide-react';
+import { AlertCircle, ChevronRight, ExternalLink, Mail, Search, Send, ShieldCheck, Users } from 'lucide-react';
 import { OpsWorkspaceFactory } from '../../application/OpsWorkspaceFactory';
-import { OpsCustomersSnapshot } from '../../domain/models';
+import { OpsCustomerRow, OpsCustomersSnapshot } from '../../domain/models';
+import { OpsListModal } from '../components/OpsListModal';
 
 function contact(row: { email: string; phone: string }) {
   if (row.email && row.phone) return `${row.email} · ${row.phone}`;
@@ -16,6 +17,8 @@ export function OpsCustomersPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState(new URLSearchParams(window.location.search).get('segment') || '');
+  const [isListOpen, setIsListOpen] = useState(false);
+  const [visibleLimit, setVisibleLimit] = useState(2);
 
   useEffect(() => {
     let mounted = true;
@@ -50,6 +53,47 @@ export function OpsCustomersPage() {
     });
   }, [search, segment, snapshot]);
 
+  const visibleRows = useMemo(() => {
+    if (visibleLimit <= 0) return rows;
+    return rows.slice(0, visibleLimit);
+  }, [rows, visibleLimit]);
+
+  const renderCustomerRow = (row: OpsCustomerRow) => (
+    <details className="ops-data-row ops-data-row--customers ops-expand-card" data-segment={row.segmentValue || 'average'} key={row.id}>
+      <summary className="ops-data-summary">
+        <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
+        <div>
+          <span className={`ops-status-pill ops-status-pill--${row.segmentValue || 'average'}`}>{row.segment}</span>
+          <h3>{row.name}</h3>
+          <p>{contact(row)}</p>
+        </div>
+        <div>
+          <strong>{row.lastStay}</strong>
+          <p>{row.source} · {row.marketingConsent}</p>
+        </div>
+        <div className="ops-mini-stats">
+          <span>{row.directReservations} direct</span>
+          <span>{row.airbnbReservations} Airbnb</span>
+        </div>
+      </summary>
+      <div className="ops-expand-details">
+        <div className="ops-mini-stats">
+          <span>{row.feedbackCount} feedback</span>
+          <span>{row.invoiceCount} invoices</span>
+        </div>
+        <div>
+          <span>Notes</span>
+          <p>{row.notes || 'No notes captured yet.'}</p>
+        </div>
+        <div className="ops-row-actions">
+          {row.email && <a href={`mailto:${row.email}`}><Mail size={14} /> Email</a>}
+          {row.canReceivePromotions && <a href="/admin/bookings/promotion/add/"><Send size={14} /> Promote</a>}
+          <a href={row.adminUrl}>Profile</a>
+        </div>
+      </div>
+    </details>
+  );
+
   if (error) {
     return <section className="dashboard-error"><AlertCircle /> {error}</section>;
   }
@@ -63,8 +107,8 @@ export function OpsCustomersPage() {
       <section className="ops-hero ops-hero--customers">
         <div>
           <span><Users size={16} /> Modern customer CRM</span>
-          <h2>Guests, feedback, segments, and promotion readiness in one modern view.</h2>
-          <p>This replaces the raw customer admin jump with a clean CRM layer while Django remains the editable source of truth.</p>
+          <h2>Customers CRM</h2>
+          <p>Guest profiles, feedback, groups, and promotion readiness in one compact view.</p>
         </div>
         <div className="ops-hero-actions">
           <a href={snapshot.adminUrl}><ExternalLink size={16} /> Customer admin</a>
@@ -89,7 +133,7 @@ export function OpsCustomersPage() {
         </label>
         <div className="ops-chip-row">
           {snapshot.segmentOptions.map((option) => (
-            <button className={segment === option.value ? 'is-active' : ''} key={option.value || 'all'} onClick={() => setSegment(option.value)} type="button">
+            <button className={segment === option.value ? 'is-active' : ''} data-segment={option.value || 'all'} key={option.value || 'all'} onClick={() => setSegment(option.value)} type="button">
               {option.label}
               <small>{option.count}</small>
             </button>
@@ -102,8 +146,22 @@ export function OpsCustomersPage() {
           <div>
             <span>Customer list</span>
             <h3>{rows.length} customers shown</h3>
+            <p>{visibleRows.length} visible here. Open the full list for scrolling.</p>
           </div>
-          <strong>{snapshot.rows.length}</strong>
+          <div className="ops-card-heading__actions">
+            <label className="ops-inline-select">
+              Show
+              <select value={visibleLimit} onChange={(event) => setVisibleLimit(Number(event.target.value))} aria-label="Customers visible on page">
+                <option value={2}>2</option>
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={0}>All</option>
+              </select>
+            </label>
+            <button type="button" onClick={() => setIsListOpen(true)}><Search size={15} /> Open list</button>
+            <strong>{snapshot.rows.length}</strong>
+          </div>
         </div>
 
         {rows.length === 0 && (
@@ -114,31 +172,19 @@ export function OpsCustomersPage() {
           </article>
         )}
 
-        {rows.map((row) => (
-          <article className="ops-data-row ops-data-row--customers" key={row.id}>
-            <div>
-              <span className={`ops-status-pill ops-status-pill--${row.segmentValue}`}>{row.segment}</span>
-              <h3>{row.name}</h3>
-              <p>{contact(row)}</p>
-            </div>
-            <div>
-              <strong>{row.lastStay}</strong>
-              <p>{row.source} · {row.marketingConsent}</p>
-            </div>
-            <div className="ops-mini-stats">
-              <span>{row.directReservations} direct</span>
-              <span>{row.airbnbReservations} Airbnb</span>
-              <span>{row.feedbackCount} feedback</span>
-              <span>{row.invoiceCount} invoices</span>
-            </div>
-            <div className="ops-row-actions">
-              {row.email && <a href={`mailto:${row.email}`}><Mail size={14} /> Email</a>}
-              {row.canReceivePromotions && <a href="/admin/bookings/promotion/add/"><Send size={14} /> Promote</a>}
-              <a href={row.adminUrl}>Profile</a>
-            </div>
-          </article>
-        ))}
+        <div className="ops-list-scroll">
+          {visibleRows.map(renderCustomerRow)}
+        </div>
       </section>
+
+      <OpsListModal
+        isOpen={isListOpen}
+        title={`${rows.length} customers shown`}
+        subtitle="Scroll customer profiles, consent state, history, and actions without stretching the page."
+        onClose={() => setIsListOpen(false)}
+      >
+        {rows.map(renderCustomerRow)}
+      </OpsListModal>
     </main>
   );
 }

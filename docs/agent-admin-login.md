@@ -35,7 +35,7 @@ bash scripts/ensure_agent_admin_credentials.sh
 
 That helper:
 
-- Creates missing `MLADIS_AGENT_ADMIN_*` values with the dedicated `agent@mladis.com` identity.
+- Creates missing `MLADIS_AGENT_ADMIN_*` values with the dedicated `agent-admin@mladis.com` identity.
 - Generates `MLADIS_AGENT_ADMIN_PASSWORD` if it is missing.
 - Does not print the password.
 - Runs `python manage.py provision_agent_admin`.

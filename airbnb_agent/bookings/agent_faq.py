@@ -125,6 +125,7 @@ def install_agent_faq_patch():
                 }
             )
             conversation = AgentConversation.objects.create(
+                user_id=request.user_id,
                 session_id=request.session_id,
                 item=item,
                 visitor_name=request.visitor_name,

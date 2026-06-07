@@ -7,13 +7,17 @@
     <meta name="theme-color" content="#eef3f4">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="available-languages" content="en,es">
+    <meta name="application-name" content="MLADIS Modern Stays">
+    {% if site_settings.logo_display_url %}
+      <meta name="mladis-logo-url" content="{{ site_settings.logo_display_url }}">
+    {% endif %}
     <link rel="icon" href="{% static 'frontend/modern-dashboard/favicon.svg' %}" type="image/svg+xml">
-    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}">
+    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}?v=logo-icons-reports-v1">
     <script src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js" async></script>
     <title>MLADIS — Vacation Stays in Santo Domingo Norte</title>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="{% static 'frontend/modern-dashboard/assets/app.js' %}"></script>
+    <script type="module" src="{% static 'frontend/modern-dashboard/assets/app.js' %}?v=logo-icons-reports-v1"></script>
   </body>
 </html>

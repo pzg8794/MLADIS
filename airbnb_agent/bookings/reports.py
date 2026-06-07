@@ -69,8 +69,7 @@ class OpsReportsView(TemplateView):
                     self._card("Clients", clients.count(), "Customer profiles and segments."),
                     self._card("Feedback entries", feedback.count(), "Guest feedback linked to profiles, stays, and reservation records."),
                     self._card("Active listings", listings.filter(is_active=True).count(), "Bookable stays, services, experiences, and transport."),
-                    self._card("Coupons", coupons.count(), "Discount codes managed by admins."),
-                    self._card("Promotions", promotions.count(), "Campaigns created from the admin."),
+                    self._card("Coupons + promos", coupons.count() + promotions.count(), "Discount codes and campaigns managed together."),
                     self._card("Invoices", invoices.count(), "Draft, sent, paid, and canceled invoices."),
                     self._card("Invoice value", self._money(invoices.aggregate(total=Sum("total_cents"))["total"]), "Total invoice value tracked."),
                     self._card("Deposits", deposits.count(), "Damage deposit checkout records."),
@@ -142,13 +141,7 @@ class OpsReportsView(TemplateView):
                     "Donations by status",
                     transform=lambda value: str(value).replace("_", " ").title(),
                 ),
-                "coupon_status_chart": self._boolean_chart(coupons, "is_active", "Coupons by status", "Active", "Inactive"),
-                "promotion_status_chart": self._query_chart(
-                    promotions.values("status").annotate(total=Count("id")).order_by("-total", "status"),
-                    "status",
-                    "Promotions by status",
-                    transform=str.title,
-                ),
+                "campaign_status_chart": self._campaign_status_chart(coupons, promotions),
                 "calendar_chart": self._calendar_chart(),
             }
         )
@@ -207,6 +200,16 @@ class OpsReportsView(TemplateView):
         ]
         return self._with_widths("Calendar setup coverage", rows)
 
+    def _campaign_status_chart(self, coupons, promotions):
+        rows = [
+            {"label": "Active coupons", "total": coupons.filter(is_active=True).count()},
+            {"label": "Inactive coupons", "total": coupons.filter(is_active=False).count()},
+        ]
+        for row in promotions.values("status").annotate(total=Count("id")).order_by("-total", "status"):
+            label = str(row.get("status") or "unassigned").replace("_", " ").title()
+            rows.append({"label": f"{label} promotions", "total": row.get("total", 0)})
+        return self._with_widths("Coupons and promotions", rows)
+
     @staticmethod
     def _with_widths(title, rows):
         max_total = max([row["total"] for row in rows] or [0])
@@ -242,8 +245,7 @@ class OpsReportsAPIView(View):
             "invoice_status_chart",
             "deposit_status_chart",
             "donation_status_chart",
-            "coupon_status_chart",
-            "promotion_status_chart",
+            "campaign_status_chart",
             "calendar_chart",
         ]
         return JsonResponse(
@@ -256,7 +258,7 @@ class OpsReportsAPIView(View):
                 "report_since": context["report_since"].isoformat(),
                 "report_until": context["report_until"].isoformat(),
                 "legacy_url": reverse("bookings:ops-reports"),
-                "calendar_url": reverse("admin:bookings_bookableitem_calendar"),
+                "calendar_url": reverse("bookings:calendar-ops"),
             }
         )
 
@@ -264,7 +266,7 @@ class OpsReportsAPIView(View):
     def _category_for(key):
         if "agent" in key:
             return "agent"
-        if "deposit" in key or "invoice" in key or "donation" in key:
+        if "deposit" in key or "invoice" in key or "donation" in key or "campaign" in key:
             return "money"
         if "client" in key or "feedback" in key:
             return "customers"

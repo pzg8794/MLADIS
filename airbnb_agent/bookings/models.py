@@ -1,5 +1,6 @@
 from decimal import Decimal
 from datetime import datetime, time, timedelta
+import re
 from uuid import uuid4
 
 from django.conf import settings
@@ -113,6 +114,26 @@ class AgentFAQCategory(models.TextChoices):
     GENERAL = "general", "General"
 
 
+def format_stay_display_name(value, *, separator=", "):
+    clean = re.sub(r"\s+", " ", value or "").strip()
+    clean = re.sub(r"^MLADIS\s*[-–—]\s*", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"\bBedrooms?\b", "Beds", clean, flags=re.IGNORECASE)
+    unit_match = re.search(r"\b([A-Z])[-\s]?(\d{3}|All)\b", clean, flags=re.IGNORECASE)
+    bed_match = re.search(r"\b(\d+)\s+Beds?\b", clean, flags=re.IGNORECASE)
+    title = re.sub(r"\b[A-Z][-\s]?(?:\d{3}|All)\b", "", clean, flags=re.IGNORECASE)
+    title = re.sub(r"\b\d+\s+Beds?\b", "", title, flags=re.IGNORECASE)
+    title = re.sub(r"\(?\bapartments?\b\)?", "", title, flags=re.IGNORECASE)
+    title = re.sub(r"\s*[-–—]\s*", " ", title)
+    title = re.sub(r"\s+", " ", title).strip() or "Vacation Home & Pool"
+    if not bed_match:
+        return clean
+    property_type = "Apts" if bed_match.group(1) == "6" and not unit_match else "Apt"
+    unit = ""
+    if unit_match:
+        unit = f"{unit_match.group(1).upper()}-{unit_match.group(2)}"
+    return separator.join(part for part in [f"{bed_match.group(1)} Beds {property_type}", title, unit] if part)
+
+
 class CancellationPolicy(models.Model):
     name = models.CharField(max_length=120)
     slug = models.SlugField(unique=True)
@@ -129,7 +150,11 @@ class CancellationPolicy(models.Model):
         verbose_name_plural = "cancellation policies"
 
     def __str__(self):
-        return self.name
+        return self.business_display_name
+
+    @property
+    def business_display_name(self):
+        return format_stay_display_name(self.name)
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -391,7 +416,11 @@ class BookableItem(models.Model):
         ordering = ["category", "name"]
 
     def __str__(self):
-        return self.name
+        return self.business_display_name
+
+    @property
+    def business_display_name(self):
+        return format_stay_display_name(self.name)
 
     def get_absolute_url(self):
         if self.category == BookingCategory.STAY:
@@ -684,11 +713,20 @@ class BookingInquiry(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        item_name = self.item.name if self.item else "Any booking"
+        item_name = self.item.business_display_name if self.item else "Any booking"
         return f"{self.guest_name} - {item_name}"
 
     @property
+    def request_key(self):
+        if not self.pk:
+            return "MLADIS-REQ-PENDING"
+        created = self.created_at or timezone.now()
+        return f"MLADIS-REQ-{created:%Y%m%d}-{self.pk:06d}"
+
+    @property
     def nights(self):
+        if not self.check_in or not self.check_out:
+            return 0
         return max((self.check_out - self.check_in).days, 0)
 
     @property
@@ -700,8 +738,20 @@ class BookingInquiry(models.Model):
         return self._display_money(self.discount_cents)
 
     @property
+    def display_deposit(self):
+        return self._display_money(self.deposit_cents)
+
+    @property
     def display_total(self):
         return self._display_money(self.total_cents)
+
+    @property
+    def reservation_payment_cents(self):
+        return max(self.subtotal_cents - self.discount_cents, 0)
+
+    @property
+    def display_reservation_payment(self):
+        return self._display_money(self.reservation_payment_cents)
 
     @property
     def can_customer_cancel(self):
@@ -824,6 +874,61 @@ class DamageDeposit(models.Model):
     def __str__(self):
         item_name = self.item.name if self.item else "booking"
         return f"{self.display_amount} deposit for {item_name}"
+
+    @property
+    def amount(self):
+        return self.amount_cents / 100
+
+    @property
+    def display_amount(self):
+        return f"${self.amount:,.0f} {self.currency.upper()}"
+
+
+class ReservationPaymentHold(models.Model):
+    inquiry = models.ForeignKey(
+        BookingInquiry,
+        on_delete=models.SET_NULL,
+        related_name="payment_holds",
+        null=True,
+        blank=True,
+    )
+    item = models.ForeignKey(
+        BookableItem,
+        on_delete=models.SET_NULL,
+        related_name="payment_holds",
+        null=True,
+        blank=True,
+    )
+    guest_name = models.CharField(max_length=160)
+    email = models.EmailField()
+    amount_cents = models.PositiveIntegerField(default=0)
+    currency = models.CharField(max_length=3, default="usd")
+    payment_provider = models.CharField(
+        max_length=20,
+        choices=DepositProvider.choices,
+        default=DepositProvider.STRIPE,
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=DepositStatus.choices,
+        default=DepositStatus.NEW,
+    )
+    stripe_checkout_session_id = models.CharField(max_length=255, blank=True)
+    stripe_payment_intent_id = models.CharField(max_length=255, blank=True)
+    checkout_url = models.URLField(blank=True, max_length=1000)
+    capture_after = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "reservation payment hold"
+        verbose_name_plural = "reservation payment holds"
+
+    def __str__(self):
+        item_name = self.item.business_display_name if self.item else "booking"
+        return f"{self.display_amount} reservation hold for {item_name}"
 
     @property
     def amount(self):
@@ -1086,6 +1191,13 @@ class CalendarFeed(models.Model):
 
 
 class AgentConversation(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="agent_conversations",
+        null=True,
+        blank=True,
+    )
     session_id = models.CharField(max_length=80, db_index=True)
     item = models.ForeignKey(
         BookableItem,
@@ -1137,9 +1249,25 @@ class SiteSettings(models.Model):
     logo = models.FileField(upload_to="site/", blank=True)
     logo_url = models.URLField(blank=True, max_length=1000)
     contact_email = models.EmailField(blank=True)
+    request_notifications_email = models.BooleanField(
+        default=True,
+        help_text="Send new reservation requests to admin email recipients.",
+    )
+    request_notifications_sms = models.BooleanField(
+        default=False,
+        help_text="Future channel flag. Requires an SMS provider before messages can be sent.",
+    )
+    request_notifications_whatsapp = models.BooleanField(
+        default=False,
+        help_text="Future channel flag. Requires a WhatsApp provider before messages can be sent.",
+    )
     public_address_label = models.CharField(
         max_length=220,
         default="Santo Domingo Norte, Dominican Republic",
+    )
+    agent_question_limit = models.PositiveSmallIntegerField(
+        default=5,
+        help_text="Maximum public agent questions per signed-in user. Use 0 for unlimited.",
     )
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1150,9 +1278,32 @@ class SiteSettings(models.Model):
     def __str__(self):
         return self.site_name
 
+    def uploaded_logo_is_displayable(self):
+        if not self.logo:
+            return False
+
+        name = self.logo.name.lower()
+        if "test-logo" in name:
+            return False
+        try:
+            if not self.logo.storage.exists(self.logo.name):
+                return False
+            with self.logo.storage.open(self.logo.name, "rb") as logo_file:
+                header = logo_file.read(512)
+        except (OSError, ValueError):
+            return False
+
+        if not header:
+            return False
+        if name.endswith(".svg"):
+            return b"<svg" in header.lower()
+        if header.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"GIF87a", b"GIF89a")):
+            return True
+        return header.startswith(b"RIFF") and header[8:12] == b"WEBP"
+
     @property
     def logo_display_url(self):
-        if self.logo:
+        if self.uploaded_logo_is_displayable():
             return self.logo.url
         return self.logo_url
 

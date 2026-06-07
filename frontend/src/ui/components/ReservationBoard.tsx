@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, CalendarCheck2 } from 'lucide-react';
+import { ArrowRight, CalendarCheck2, ChevronRight } from 'lucide-react';
 import { ReservationSummary } from '../../domain/models';
 import { StatusBadge } from './StatusBadge';
 import { StatusBadgePresenter } from './StatusBadgePresenter';
+import { formatStayName } from '../helpers/stayNames';
 
 interface ReservationBoardProps {
   reservations: ReservationSummary[];
@@ -19,14 +20,15 @@ export function ReservationBoard({ reservations }: ReservationBoardProps) {
   }), [filter, reservations]);
 
   return (
-    <article className="dashboard-panel panel-large reservation-board" data-testid="reservation-board">
-      <header className="panel-heading">
+    <details className="dashboard-panel panel-large reservation-board dashboard-collapse-card" data-testid="reservation-board">
+      <summary className="panel-heading dashboard-panel-summary">
+        <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
         <span className="panel-heading__icon"><CalendarCheck2 size={19} /></span>
         <div>
           <h2>Reservation command center</h2>
-          <p>Prioritize guest requests, calendar confidence, and upcoming arrivals.</p>
+          <p>Latest booking requests. Arrows open the protected reservation record.</p>
         </div>
-        <div className="segmented-control" aria-label="Reservation filter">
+        <div className="segmented-control" aria-label="Reservation filter" onClick={(event) => event.stopPropagation()}>
           {[
             ['all', 'All'],
             ['attention', 'Needs review'],
@@ -37,25 +39,25 @@ export function ReservationBoard({ reservations }: ReservationBoardProps) {
             </button>
           ))}
         </div>
-      </header>
+      </summary>
       <div className="reservation-list">
         {filteredReservations.map((reservation) => (
           <div className={reservation.actionRequired ? 'reservation-row is-priority' : 'reservation-row'} key={reservation.id}>
             <div>
               <strong>{reservation.guestName}</strong>
-              <span>{reservation.stayName}</span>
+              <span>{formatStayName(reservation.stayName)}</span>
             </div>
             <div>
               <strong>{reservation.checkIn} - {reservation.checkOut}</strong>
               <span>{reservation.guests} guests</span>
             </div>
             <StatusBadge label={StatusBadgePresenter.labelForStatus(reservation.status)} tone={StatusBadgePresenter.toneForStatus(reservation.status)} />
-            <button className="icon-button" type="button" aria-label={`Review ${reservation.guestName}`}>
+            <a className="icon-button" href={reservation.adminUrl || '/ops/reservations/'} aria-label={`Review ${reservation.guestName}`}>
               <ArrowRight size={17} />
-            </button>
+            </a>
           </div>
         ))}
       </div>
-    </article>
+    </details>
   );
 }

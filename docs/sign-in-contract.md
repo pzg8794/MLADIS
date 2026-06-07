@@ -19,6 +19,10 @@ or OAuth launch routes must keep these guarantees true.
   `npm run dev`, `nohup`, background shell commands, or preview scripts during
   normal testing.
 - Keep only one launcher-managed local app server active while testing auth.
+- During active MLADIS UI/app work, keep that launcher-managed local server
+  live for the owner. If an agent stops or restarts it to apply changes, the
+  agent must bring it back through `./run_mladis_live.command` and verify
+  `/healthz` before reporting that the work is ready.
 - If the synced Google Drive path becomes slow or flaky, work from a fast clone
   such as `~/Documents/MLADIS-dev` and push changes through GitHub. Copy only
   `airbnb_agent/.env` from the Drive checkout when you need the same local
@@ -102,6 +106,9 @@ The tests assert:
 
 The launcher should be the one-file way to see normal code and UI changes:
 
+- Code/UI changes are not ready for owner testing unless the local site is live
+  at `http://127.0.0.1:8000` and, when the named tunnel is available,
+  `https://local.mladis.com`.
 - `MLADIS_PUBLIC_TUNNEL` defaults to `1`.
 - `MLADIS_TUNNEL_MODE` defaults to `named`.
 - `MLADIS_TUNNEL_NAME` defaults to `mladis-local`.

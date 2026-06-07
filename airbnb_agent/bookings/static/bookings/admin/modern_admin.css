@@ -98,6 +98,8 @@ a {
   display: flex;
   align-items: center;
   gap: 12px;
+  color: inherit;
+  text-decoration: none;
 }
 
 .modern-admin-brand > span,
@@ -572,7 +574,7 @@ body.modern-admin-django-page:not(.modern-admin-calendar-page) #header {
   top: 14px;
   z-index: 40;
   display: grid !important;
-  grid-template-columns: minmax(240px, 0.6fr) minmax(0, 1fr) !important;
+  grid-template-columns: minmax(240px, 0.42fr) minmax(0, 1fr) auto !important;
   gap: 16px;
   align-items: center !important;
   justify-content: stretch !important;
@@ -586,6 +588,88 @@ body.modern-admin-django-page:not(.modern-admin-calendar-page) #header {
     linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)),
     var(--modern-admin-sidebar);
   box-shadow: var(--modern-admin-shadow);
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page):has(.mladis-admin-left-rail) #header {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  margin: 12px 12px 10px 224px;
+  padding: 10px 12px;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page):has(.mladis-admin-left-rail) #user-tools {
+  grid-column: 2;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page):has(.mladis-admin-left-rail) div.breadcrumbs {
+  margin: 0 12px 10px 224px;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page):has(.mladis-admin-left-rail) #main {
+  margin: 0 12px 20px 224px;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail {
+  position: fixed;
+  inset: 12px auto 12px 12px;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 200px;
+  padding: 10px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #ecfeff;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+    var(--modern-admin-sidebar);
+  box-shadow: var(--modern-admin-shadow);
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail a {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 8px 9px;
+  border-radius: 8px;
+  color: rgba(236, 254, 255, 0.74);
+  font-size: 0.84rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.modern-admin-rail-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: rgba(232, 242, 241, 0.82);
+}
+
+svg.modern-admin-rail-icon:not([stroke]) {
+  fill: currentColor;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail a:hover,
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail a.primary {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail__brand {
+  gap: 9px;
+  margin-bottom: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff !important;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail__brand img {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #fff;
 }
 
 body.modern-admin-django-page:not(.modern-admin-calendar-page) #branding,
@@ -608,6 +692,7 @@ body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-bra
 }
 
 body.modern-admin-django-page:not(.modern-admin-calendar-page) #user-tools {
+  grid-column: 3;
   justify-self: end;
   color: rgba(236, 254, 255, 0.76);
   font-size: 0.78rem;
@@ -615,7 +700,13 @@ body.modern-admin-django-page:not(.modern-admin-calendar-page) #user-tools {
 }
 
 body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-shortcuts {
-  display: none;
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
 }
 
 body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-shortcuts a {
@@ -791,6 +882,12 @@ body.modern-admin-django-page:not(.modern-admin-calendar-page) a:visited {
     grid-template-columns: 1fr;
   }
 
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) #user-tools,
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-shortcuts {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
   body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-shortcuts {
     justify-content: flex-start;
   }
@@ -859,5 +956,836 @@ body.modern-admin-django-page:not(.modern-admin-calendar-page) a:visited {
   .modern-admin-hero h2,
   .modern-admin-calendar-content .calendar-shell__hero h1 {
     font-size: 2.35rem;
+  }
+}
+
+/* Compact admin pass aligned with the modern calendar surface. */
+.modern-admin-hero {
+  min-height: 148px;
+  align-items: center;
+  padding: 18px;
+}
+
+.modern-admin-hero h2 {
+  max-width: 780px;
+  font-size: clamp(1.9rem, 3vw, 2.75rem);
+  line-height: 1;
+}
+
+.modern-admin-hero p {
+  max-width: 720px;
+  margin-top: 8px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.modern-admin-hero__actions {
+  align-content: center;
+}
+
+.modern-admin-metrics article {
+  min-height: 108px;
+  padding: 12px;
+}
+
+.modern-admin-metrics strong {
+  font-size: clamp(1.5rem, 2.6vw, 2.05rem);
+}
+
+.modern-admin-metrics p {
+  font-size: 0.78rem;
+  line-height: 1.32;
+}
+
+.modern-admin-shortcut {
+  min-height: 118px;
+  padding: 14px;
+}
+
+.modern-admin-metrics article,
+.modern-admin-shortcut,
+.modern-admin-app-card,
+.modern-admin-model-card {
+  position: relative;
+  overflow: hidden;
+  border-left: 6px solid var(--admin-tone, #6f55b5);
+}
+
+.modern-admin-metrics article:nth-child(1),
+.modern-admin-shortcut-grid a:nth-child(1) {
+  --admin-tone: #6f55b5;
+  background: linear-gradient(135deg, rgba(111, 85, 181, 0.16), var(--modern-admin-panel));
+}
+
+.modern-admin-metrics article:nth-child(2),
+.modern-admin-shortcut-grid a:nth-child(2) {
+  --admin-tone: #0b78b6;
+  background: linear-gradient(135deg, rgba(11, 120, 182, 0.14), var(--modern-admin-panel));
+}
+
+.modern-admin-metrics article:nth-child(3),
+.modern-admin-shortcut-grid a:nth-child(3) {
+  --admin-tone: #c95705;
+  background: linear-gradient(135deg, rgba(201, 87, 5, 0.14), var(--modern-admin-panel));
+}
+
+.modern-admin-metrics article:nth-child(4),
+.modern-admin-shortcut-grid a:nth-child(4) {
+  --admin-tone: #087b2d;
+  background: linear-gradient(135deg, rgba(8, 123, 45, 0.14), var(--modern-admin-panel));
+}
+
+.modern-admin-app-card--bookings {
+  --admin-tone: #6f55b5;
+  background:
+    linear-gradient(135deg, rgba(111, 85, 181, 0.12), rgba(255, 255, 255, 0.82)),
+    var(--modern-admin-panel);
+}
+
+.modern-admin-model-card:nth-child(4n + 1) { --admin-tone: #6f55b5; }
+.modern-admin-model-card:nth-child(4n + 2) { --admin-tone: #0b78b6; }
+.modern-admin-model-card:nth-child(4n + 3) { --admin-tone: #c95705; }
+.modern-admin-model-card:nth-child(4n + 4) { --admin-tone: #087b2d; }
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .module h2,
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .module caption,
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .inline-group h2 {
+  color: var(--modern-admin-ink);
+  background: linear-gradient(135deg, rgba(111, 85, 181, 0.14), rgba(117, 240, 200, 0.16));
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.28fr);
+  gap: 14px;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-form,
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter {
+  overflow: hidden;
+  border: 1px solid var(--modern-admin-line);
+  border-radius: var(--modern-admin-radius);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter {
+  position: sticky;
+  top: 116px;
+  align-self: start;
+  max-height: calc(100vh - 140px);
+  padding: 12px;
+  overflow: auto;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter h2 {
+  margin: 0 0 10px;
+  padding: 0;
+  color: var(--modern-admin-ink);
+  background: transparent;
+  font-size: 1.05rem;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter h3.modern-admin-filter-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--modern-admin-line);
+  border-radius: 13px;
+  color: var(--modern-admin-ink);
+  background: rgba(248, 250, 252, 0.9);
+  cursor: pointer;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter h3.modern-admin-filter-toggle::after {
+  content: "+";
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9px;
+  color: #ffffff;
+  background: #6f55b5;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter h3.modern-admin-filter-toggle[aria-expanded="true"]::after {
+  content: "-";
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter details.modern-admin-filter-details {
+  margin: 8px 0;
+  border: 1px solid var(--modern-admin-line);
+  border-radius: 13px;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter details.modern-admin-filter-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 12px;
+  color: var(--modern-admin-ink);
+  cursor: pointer;
+  font-weight: 950;
+  list-style: none;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter details.modern-admin-filter-details summary::-webkit-details-marker {
+  display: none;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter details.modern-admin-filter-details summary::after {
+  content: "+";
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9px;
+  color: #ffffff;
+  background: #6f55b5;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter details.modern-admin-filter-details[open] summary::after {
+  content: "-";
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter details.modern-admin-filter-details ul {
+  padding: 0 10px 10px;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter .is-collapsed {
+  display: none !important;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter ul {
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter li {
+  border-radius: 11px;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter li.selected {
+  background: rgba(117, 240, 200, 0.18);
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #toolbar,
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-search {
+  border-radius: var(--modern-admin-radius);
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #result_list {
+  color: var(--modern-admin-ink);
+  background: #ffffff;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #result_list tbody th,
+body.modern-admin-django-page:not(.modern-admin-calendar-page) #result_list tbody td {
+  color: var(--modern-admin-ink);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+@media (max-width: 1180px) {
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist {
+    grid-template-columns: 1fr;
+  }
+
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter {
+    position: static;
+    max-height: none;
+  }
+}
+
+/* Lean admin command center pass aligned to the modern calendar UI. */
+:root {
+  --modern-admin-radius: 8px;
+  --modern-admin-radius-lg: 8px;
+}
+
+.modern-admin-shell {
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+}
+
+.modern-admin-sidebar {
+  top: 10px;
+  height: calc(100vh - 20px);
+  gap: 10px;
+  padding: 10px;
+}
+
+.modern-admin-sidebar nav {
+  gap: 4px;
+}
+
+.modern-admin-sidebar nav a,
+.modern-admin-back {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.modern-admin-sidecard {
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.modern-admin-main {
+  gap: 8px;
+}
+
+.modern-admin-topbar {
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.modern-admin-topbar h1 {
+  font-size: clamp(1.25rem, 2vw, 1.85rem);
+}
+
+.modern-admin-hero {
+  min-height: 62px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.modern-admin-hero::before {
+  display: none;
+}
+
+.modern-admin-hero h2 {
+  margin-top: 0;
+  font-size: clamp(1.22rem, 1.75vw, 1.6rem);
+}
+
+.modern-admin-hero p {
+  margin-top: 3px;
+  font-size: 0.74rem;
+  line-height: 1.24;
+}
+
+.modern-admin-hero__actions {
+  display: flex;
+  gap: 7px;
+}
+
+.modern-admin-hero__actions a,
+.modern-admin-topbar__actions a,
+.modern-admin-topbar__actions button,
+.modern-admin-section-heading a,
+.modern-admin-app-card__heading a,
+.modern-admin-model-add {
+  min-height: 32px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+}
+
+.modern-admin-metrics {
+  gap: 8px;
+}
+
+.modern-admin-metrics article {
+  min-height: 68px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border-left-width: 5px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+}
+
+.modern-admin-metrics strong {
+  font-size: clamp(1.25rem, 2.1vw, 1.72rem);
+}
+
+.modern-admin-metrics p {
+  font-size: 0.64rem;
+  line-height: 1.15;
+}
+
+.modern-admin-shortcut-grid {
+  gap: 8px;
+}
+
+.modern-admin-shortcut {
+  min-height: 92px;
+  gap: 5px;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.modern-admin-shortcut strong {
+  font-size: 0.92rem;
+}
+
+.modern-admin-shortcut p {
+  font-size: 0.74rem;
+  line-height: 1.26;
+}
+
+.modern-admin-grid {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.modern-admin-apps,
+.modern-admin-activity {
+  gap: 8px;
+}
+
+.modern-admin-section-heading {
+  align-items: center;
+}
+
+.modern-admin-section-heading h2 {
+  font-size: 1.18rem;
+}
+
+.modern-admin-app-card,
+.modern-admin-activity {
+  padding: 0;
+  border-radius: 8px;
+}
+
+.modern-admin-expand-block > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.modern-admin-expand-block > summary::-webkit-details-marker,
+.modern-admin-model-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.modern-admin-app-card__heading,
+.modern-admin-activity > .modern-admin-section-heading {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 54px;
+  margin: 0;
+  padding: 10px;
+}
+
+.modern-admin-chevron {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: #ffffff;
+  background: var(--admin-tone, #6f55b5);
+  transition: transform 0.16s ease;
+}
+
+.modern-admin-expand-block[open] > summary .modern-admin-chevron,
+.modern-admin-model-card[open] > summary .modern-admin-chevron {
+  transform: rotate(90deg);
+}
+
+.modern-admin-model-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.modern-admin-model-group {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--modern-admin-line);
+  border-left: 6px solid var(--admin-tone, #6f55b5);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.modern-admin-app-card:not(.modern-admin-app-card--bookings) .modern-admin-model-group {
+  grid-column: 1 / -1;
+}
+
+.modern-admin-model-group h4 {
+  margin: 0;
+  color: var(--modern-admin-ink);
+  font-size: 0.84rem;
+}
+
+.modern-admin-model-group--calendar { --admin-tone: #6f55b5; }
+.modern-admin-model-group--money { --admin-tone: #0b78b6; }
+.modern-admin-model-group--agent { --admin-tone: #c95705; }
+.modern-admin-model-group--system { --admin-tone: #087b2d; }
+
+.modern-admin-model-list {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.modern-admin-model-card {
+  padding: 0;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--admin-tone, #6f55b5) 12%, transparent), rgba(255, 255, 255, 0.92)),
+    #fff;
+}
+
+.modern-admin-model-card > summary {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 7px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.modern-admin-model-card__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 7px 7px 38px;
+}
+
+.modern-admin-model-title {
+  overflow: hidden;
+  color: var(--modern-admin-ink);
+  font-size: 0.84rem;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.modern-admin-app-card--sites {
+  --admin-tone: #0b78b6;
+}
+
+.modern-admin-app-card--social-accounts,
+.modern-admin-app-card--socialaccount,
+.modern-admin-app-card--social-accounts {
+  --admin-tone: #c95705;
+}
+
+.modern-admin-app-card:not(.modern-admin-app-card--bookings) .modern-admin-model-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.modern-admin-model-card__details a {
+  min-height: 28px;
+  padding: 5px 8px;
+  border: 1px solid var(--modern-admin-line);
+  border-radius: 8px;
+  color: var(--modern-admin-ink);
+  background: rgba(255, 255, 255, 0.84);
+  font-size: 0.74rem;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.modern-admin-action-list {
+  gap: 7px;
+  padding: 0 10px 10px;
+}
+
+.modern-admin-action-list article {
+  padding: 8px;
+  border-radius: 8px;
+}
+
+@media (max-width: 1180px) {
+  .modern-admin-shell,
+  .modern-admin-model-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .modern-admin-sidebar {
+    position: static;
+    height: auto;
+  }
+}
+
+/* Final density correction for the custom admin home. */
+.modern-admin-topbar {
+  min-height: 58px;
+  padding: 8px 10px;
+}
+
+.modern-admin-topbar p {
+  font-size: 0.68rem;
+}
+
+.modern-admin-topbar h1 {
+  margin-top: 0;
+  font-size: clamp(1rem, 1.55vw, 1.35rem);
+}
+
+.modern-admin-hero {
+  min-height: 62px;
+  padding: 8px 10px;
+  align-items: center;
+}
+
+.modern-admin-hero h2 {
+  font-size: clamp(1.22rem, 1.75vw, 1.6rem);
+}
+
+.modern-admin-hero p {
+  margin-top: 3px;
+  font-size: 0.74rem;
+  line-height: 1.24;
+}
+
+.modern-admin-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.modern-admin-metrics article {
+  min-height: 68px;
+  padding: 7px 8px;
+  border-left-width: 5px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+}
+
+.modern-admin-metrics article:nth-child(1) {
+  --admin-tone: #6f55b5;
+  background: linear-gradient(135deg, rgba(111, 85, 181, 0.24), rgba(255, 255, 255, 0.86));
+}
+
+.modern-admin-metrics article:nth-child(2) {
+  --admin-tone: #0b78b6;
+  background: linear-gradient(135deg, rgba(11, 120, 182, 0.2), rgba(255, 255, 255, 0.86));
+}
+
+.modern-admin-metrics article:nth-child(3) {
+  --admin-tone: #c95705;
+  background: linear-gradient(135deg, rgba(201, 87, 5, 0.19), rgba(255, 255, 255, 0.86));
+}
+
+.modern-admin-metrics article:nth-child(4) {
+  --admin-tone: #087b2d;
+  background: linear-gradient(135deg, rgba(8, 123, 45, 0.2), rgba(255, 255, 255, 0.86));
+}
+
+.modern-admin-metrics span {
+  font-size: 0.64rem;
+}
+
+.modern-admin-metrics strong {
+  font-size: clamp(1.02rem, 1.7vw, 1.35rem);
+}
+
+.modern-admin-metrics p {
+  font-size: 0.64rem;
+  line-height: 1.15;
+}
+
+.modern-admin-section-heading {
+  min-height: 38px;
+}
+
+.modern-admin-app-card__heading,
+.modern-admin-activity > .modern-admin-section-heading {
+  min-height: 44px;
+  padding: 7px 8px;
+}
+
+.modern-admin-app-card h3,
+.modern-admin-section-heading h2 {
+  font-size: 1rem;
+}
+
+.modern-admin-model-groups {
+  gap: 7px;
+  padding: 0 8px 8px;
+}
+
+.modern-admin-model-group {
+  gap: 5px;
+  padding: 7px;
+}
+
+.modern-admin-model-card > summary {
+  min-height: 34px;
+  padding: 5px 6px;
+}
+
+.modern-admin-chevron {
+  width: 22px;
+  height: 22px;
+}
+
+.modern-admin-model-card > summary {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+}
+
+.modern-admin-model-title {
+  font-size: 0.76rem;
+}
+
+.modern-admin-model-add {
+  min-height: 26px;
+  padding: 4px 7px;
+}
+
+.modern-admin-model-card__details {
+  padding: 0 6px 6px 32px;
+}
+
+/* Single ops rail behavior: match the modern app sidebar everywhere. */
+@media (min-width: 1181px) {
+  .modern-admin-shell {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .modern-admin-sidebar {
+    width: 64px;
+    overflow: hidden;
+    z-index: 70;
+    color: #e8f2f1;
+    background:
+      linear-gradient(180deg, rgba(8, 48, 48, 0.98), rgba(12, 32, 45, 0.96)),
+      #092d31;
+    transition: width 180ms ease, box-shadow 180ms ease;
+  }
+
+  .modern-admin-sidebar:hover,
+  .modern-admin-sidebar:focus-within {
+    width: 248px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2);
+  }
+
+  .modern-admin-brand,
+  .modern-admin-sidebar nav a,
+  .modern-admin-back {
+    min-width: 44px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .modern-admin-brand > img,
+  .modern-admin-rail-icon {
+    flex: 0 0 auto;
+  }
+
+  .modern-admin-rail-icon {
+    width: 18px;
+    height: 18px;
+    color: rgba(232, 242, 241, 0.82);
+  }
+
+  svg.modern-admin-rail-icon:not([stroke]) {
+    fill: currentColor;
+  }
+
+  .modern-admin-brand div,
+  .modern-admin-nav-label,
+  .modern-admin-sidecard span,
+  .modern-admin-sidecard p {
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateX(-4px);
+    transition: max-width 180ms ease, opacity 160ms ease, transform 180ms ease;
+  }
+
+  .modern-admin-sidebar:hover .modern-admin-brand div,
+  .modern-admin-sidebar:focus-within .modern-admin-brand div,
+  .modern-admin-sidebar:hover .modern-admin-nav-label,
+  .modern-admin-sidebar:focus-within .modern-admin-nav-label,
+  .modern-admin-sidebar:hover .modern-admin-sidecard span,
+  .modern-admin-sidebar:focus-within .modern-admin-sidecard span,
+  .modern-admin-sidebar:hover .modern-admin-sidecard p,
+  .modern-admin-sidebar:focus-within .modern-admin-sidecard p {
+    max-width: 190px;
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .modern-admin-sidebar:not(:hover):not(:focus-within) .modern-admin-brand,
+  .modern-admin-sidebar:not(:hover):not(:focus-within) nav a,
+  .modern-admin-sidebar:not(:hover):not(:focus-within) .modern-admin-back {
+    justify-content: center;
+    padding-inline: 8px;
+  }
+
+  .modern-admin-sidebar:not(:hover):not(:focus-within) .modern-admin-sidecard {
+    display: grid;
+    place-items: center;
+    min-height: 42px;
+    gap: 0;
+    padding-inline: 8px;
+  }
+
+  body.modern-admin-django-page:not(.modern-admin-calendar-page):has(.mladis-admin-left-rail) #header,
+  body.modern-admin-django-page:not(.modern-admin-calendar-page):has(.mladis-admin-left-rail) div.breadcrumbs,
+  body.modern-admin-django-page:not(.modern-admin-calendar-page):has(.mladis-admin-left-rail) #main {
+    margin-left: 88px;
+  }
+
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail {
+    width: 64px;
+    overflow: hidden;
+    z-index: 70;
+    color: #e8f2f1;
+    background:
+      linear-gradient(180deg, rgba(8, 48, 48, 0.98), rgba(12, 32, 45, 0.96)),
+      #092d31;
+    transition: width 180ms ease, box-shadow 180ms ease;
+  }
+
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail:hover,
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail:focus-within {
+    width: 248px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2);
+  }
+
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail a {
+    gap: 10px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail .modern-admin-rail-icon {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    color: rgba(232, 242, 241, 0.82);
+  }
+
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail__label {
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transform: translateX(-4px);
+    transition: max-width 180ms ease, opacity 160ms ease, transform 180ms ease;
+  }
+
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail:hover .mladis-admin-left-rail__label,
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail:focus-within .mladis-admin-left-rail__label {
+    max-width: 190px;
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  body.modern-admin-django-page:not(.modern-admin-calendar-page) .mladis-admin-left-rail:not(:hover):not(:focus-within) a {
+    justify-content: center;
+    padding-inline: 8px;
   }
 }

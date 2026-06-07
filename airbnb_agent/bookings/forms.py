@@ -55,8 +55,10 @@ class BookingInquiryForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["item"].queryset = BookableItem.objects.filter(is_active=True)
         self.fields["item"].empty_label = _("Flexible / help me choose")
-        self.fields["phone"].required = True
+        self.fields["email"].required = True
+        self.fields["phone"].required = False
         self.fields["phone"].label = _("Phone number")
+        self.fields["phone"].help_text = _("Optional now; required during the secure deposit/booking step.")
         self.fields["message"].required = False
         self.fields["coupon_code"].required = False
         self.fields["guests"].min_value = 1
@@ -84,6 +86,19 @@ class BookingInquiryForm(forms.ModelForm):
             self.add_error("check_in", _("Choose a future date."))
         if check_in and check_out and check_out <= check_in:
             self.add_error("check_out", _("End date must be after start date."))
+
+        item = cleaned.get("item")
+        guests = cleaned.get("guests") or 1
+        if item:
+            from .services import ReservationPricingService
+
+            policy = ReservationPricingService().policy_for_item(item)
+            if guests > policy.max_guests:
+                self.add_error(
+                    "guests",
+                    _("This stay allows up to %(max_guests)s guests.")
+                    % {"max_guests": policy.max_guests},
+                )
 
         coupon_code = (cleaned.get("coupon_code") or "").strip().upper()
         if coupon_code:
@@ -288,6 +303,12 @@ class ReservationManageForm(forms.ModelForm):
         self.fields["message"].required = False
         self.fields["guests"].min_value = 1
         self.fields["guests"].widget.attrs["min"] = "1"
+        if self.instance and self.instance.item_id:
+            from .services import ReservationPricingService
+
+            policy = ReservationPricingService().policy_for_item(self.instance.item)
+            self.fields["guests"].max_value = policy.max_guests
+            self.fields["guests"].widget.attrs["max"] = str(policy.max_guests)
         for field_name, field in self.fields.items():
             field.widget.attrs.setdefault("class", "form-control")
             field.widget.attrs.setdefault("data-field", field_name)
@@ -298,6 +319,18 @@ class ReservationManageForm(forms.ModelForm):
         check_out = cleaned.get("check_out")
         if check_in and check_out and check_out <= check_in:
             self.add_error("check_out", _("End date must be after start date."))
+        item = self.instance.item if self.instance else None
+        guests = cleaned.get("guests") or 1
+        if item:
+            from .services import ReservationPricingService
+
+            policy = ReservationPricingService().policy_for_item(item)
+            if guests > policy.max_guests:
+                self.add_error(
+                    "guests",
+                    _("This stay allows up to %(max_guests)s guests.")
+                    % {"max_guests": policy.max_guests},
+                )
         return cleaned
 
 

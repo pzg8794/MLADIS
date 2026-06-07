@@ -1,0 +1,22 @@
+{% load i18n %}
+<details class="modern-admin-model-card modern-admin-model-card--{{ model.object_name|default:model.name|slugify }}">
+  <summary>
+    <span class="modern-admin-chevron" aria-hidden="true">›</span>
+    {% if model.admin_url %}
+      <a class="modern-admin-model-title" href="{{ model.admin_url }}">{{ model.name }}</a>
+    {% else %}
+      <strong class="modern-admin-model-title">{{ model.name }}</strong>
+    {% endif %}
+    {% if model.add_url %}
+      <a class="modern-admin-model-add" href="{{ model.add_url }}">{% trans "Add" %}</a>
+    {% endif %}
+  </summary>
+  <div class="modern-admin-model-card__details">
+    {% if model.admin_url %}
+      <a href="{{ model.admin_url }}">{% trans "Open records" %}</a>
+    {% endif %}
+    {% if model.add_url %}
+      <a href="{{ model.add_url }}">{% trans "Create new" %}</a>
+    {% endif %}
+  </div>
+</details>

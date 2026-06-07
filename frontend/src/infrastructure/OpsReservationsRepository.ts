@@ -36,6 +36,7 @@ interface ApiOpsReservationRow {
   thread_url: string;
   consent_status: string;
   segment: string;
+  segment_value: string;
   record_admin_url: string;
   profile_admin_url: string;
   feedback_admin_url: string;
@@ -84,6 +85,7 @@ export class ApiOpsReservationsRepository implements OpsReservationsRepository {
         row.thread_url,
         row.consent_status,
         row.segment,
+        row.segment_value,
         row.record_admin_url,
         row.profile_admin_url,
         row.feedback_admin_url,

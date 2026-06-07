@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ChatKit, useChatKit } from '@openai/chatkit-react';
 import {
   ArrowUpRight,
   Bot,
@@ -25,7 +24,18 @@ import {
 } from 'lucide-react';
 import { AccountFactory } from '../../application/AccountFactory';
 import { PublicSiteFactory } from '../../application/PublicSiteFactory';
-import { AccountReservation, AccountSnapshot, PublicSiteSnapshot, PublicStay } from '../../domain/models';
+import {
+  AccountReservation,
+  AccountSnapshot,
+  AgentAccessStatus,
+  PublicSiteSnapshot,
+  PublicStay,
+  PublicUserContext,
+  ReservationRequestDraft,
+  type ReservationRequestField,
+} from '../../domain/models';
+import { getConfiguredLogoUrl } from '../helpers/brand';
+import { formatStayName } from '../helpers/stayNames';
 
 type Language = 'en' | 'es';
 type LegalKind = 'business' | 'privacy' | 'terms' | 'data-deletion';
@@ -54,11 +64,98 @@ type AdminSnapshot = {
   cancelledCount: number;
 };
 
-type AuthNavState = {
-  status: 'checking' | 'anonymous' | 'authenticated';
-  name?: string;
-  isStaff?: boolean;
+type ApiAgentAccess = {
+  agent_key?: string;
+  agent_name?: string;
+  is_authenticated: boolean;
+  question_limit: number;
+  questions_used: number;
+  remaining_questions: number | null;
+  can_ask: boolean;
+  login_url: string;
 };
+
+type ApiAccountUserContext = {
+  authenticated?: boolean;
+  profile?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    is_staff?: boolean;
+    is_superuser?: boolean;
+  } | null;
+  is_staff?: boolean;
+  is_superuser?: boolean;
+  agent?: ApiAgentAccess;
+};
+
+type CreatedReservationRequest = {
+  id: number;
+  request_key: string;
+  guest_name: string;
+  email: string;
+  phone: string;
+  item_id: number | null;
+  stay_name: string;
+  check_in: string;
+  check_out: string;
+  nights: number;
+  guests: number;
+  coupon_code: string;
+  display_subtotal: string;
+  display_discount: string;
+  display_deposit: string;
+  display_reservation_payment: string;
+  display_total: string;
+  reservation_payment_cents: number;
+  deposit_checkout_url: string;
+  reservation_payment_checkout_url: string;
+  admin_test: boolean;
+};
+
+type DepositCheckoutResponse = {
+  ok?: boolean;
+  message?: string;
+  checkout_url?: string;
+  deposit_id?: number;
+  provider?: string;
+  status?: string;
+  errors?: Record<string, string[]>;
+};
+
+type PaymentContextResponse = {
+  ok?: boolean;
+  message?: string;
+  inquiry?: CreatedReservationRequest;
+};
+
+function agentAccessFromApi(data?: ApiAgentAccess, fallback?: AgentAccessStatus): AgentAccessStatus {
+  return new AgentAccessStatus(
+    Boolean(data?.is_authenticated ?? fallback?.isAuthenticated ?? false),
+    data?.question_limit ?? fallback?.questionLimit ?? 5,
+    data?.questions_used ?? fallback?.questionsUsed ?? 0,
+    data?.remaining_questions ?? fallback?.remainingQuestions ?? null,
+    Boolean(data?.can_ask ?? fallback?.canAsk ?? false),
+    data?.login_url ?? fallback?.loginUrl ?? '/accounts/login/?next=/accounts/',
+    data?.agent_key ?? fallback?.agentKey ?? 'public-booking-agent',
+    data?.agent_name ?? fallback?.agentName ?? 'Booking agent',
+  );
+}
+
+function userContextFromApi(data: ApiAccountUserContext, fallbackAgent: AgentAccessStatus): PublicUserContext {
+  const agent = agentAccessFromApi(data.agent, fallbackAgent);
+  if (!data.profile || data.authenticated === false) {
+    return PublicUserContext.anonymous(agent);
+  }
+  return new PublicUserContext(
+    'authenticated',
+    data.profile.name || data.profile.email || '',
+    data.profile.email || '',
+    data.profile.phone || '',
+    Boolean(data.profile.is_staff || data.profile.is_superuser || data.is_staff || data.is_superuser),
+    agent,
+  );
+}
 
 const copy = {
   en: {
@@ -70,27 +167,39 @@ const copy = {
     signIn: 'Sign in',
     heroTitle: 'Vacation stays in Santo Domingo Norte.',
     heroText:
-      'Pool-ready apartments near Colinas del Arroyo II, Los Guaricanos, Jacobo Majluta, malls, restaurants, and the Embassy corridor.',
+      'Pool-ready apartments near Colinas del Arroyo II, Jacobo Majluta, malls, restaurants, and the Embassy corridor.',
     primary: 'Start booking',
     secondary: 'Explore stays',
-    proof: 'Airbnb review signals',
+    proof: 'Guest rating',
     staysTitle: 'Choose your stay',
-    staysText: 'Each apartment has its own photos, guest reviews, house rules, and a direct booking path.',
+    staysText: 'Photos, reviews, rules, and direct booking in one clean view.',
     areaTitle: 'More than a place to sleep',
     areaText:
       'Beyond the room: city errands, food, malls, beach-day options, and hosted support from Santo Domingo Norte.',
     bookingTitle: 'Ask first, then book with confidence',
     bookingText:
       'The agent sits beside the booking form so guests can ask about rules, deposits, location, and the best fit before starting a reservation.',
-    agentTitle: 'MLADIS booking agent',
+    agentTitle: 'Booking agent',
     agentText: 'Ask about availability, guest count, deposit holds, house rules, transportation, or which apartment fits your group.',
     formTitle: 'Start a reservation',
-    formText: 'Phone is required for booking. The $200 secure deposit hold appears after the request starts.',
+    formText: 'Send the request first. The $200 secure deposit hold opens next in a secure step.',
+    pricePreview: 'Price preview',
+    stayPayment: 'Stay payment hold',
     highlights: 'Top guest highlights',
     rules: 'Apartment rules',
     mission: 'Travel with mission',
-    social: 'Account access',
-    submit: 'Make secure deposit hold',
+    signInToAskAgent: 'Sign in to ask agent',
+    agentLimitReached: 'Question limit reached',
+    agentLimitText: 'You have reached the current question limit for this account.',
+    submit: 'Send request',
+    autofill: 'Use my account info',
+    required: 'required',
+    depositTitle: 'Make secure deposit',
+    depositText: 'Your request is saved. Continue with the refundable damage-deposit hold for this stay.',
+    depositAction: 'Make secure deposit',
+    paymentTitle: 'Hold reservation payment',
+    paymentText: 'Deposit hold recorded. Now place the stay-payment authorization hold; it is captured 24 hours before check-in.',
+    paymentAction: 'Hold reservation payment',
     details: 'Details',
     airbnb: 'Airbnb',
     gallery: 'Gallery',
@@ -99,7 +208,7 @@ const copy = {
       'MLADIS gives guests a practical Santo Domingo Norte base with warm host support, access to city errands, mall corridors, restaurants, and day-trip beaches like Juan Dolio or Boca Chica.',
     aboutMission:
       'We want every stay to support a larger mission: better guest care, local opportunity, and charity work for children, education, and families who need support.',
-    accountTitle: 'Your MLADIS reservations',
+    accountTitle: 'Your reservations',
     accountText: 'Manage requests, watch cancellation windows, review invoices, and keep your booking details in one place.',
   },
   es: {
@@ -114,24 +223,36 @@ const copy = {
       'Apartamentos con piscina cerca de Colinas del Arroyo II, Los Guaricanos, Jacobo Majluta, plazas, restaurantes y la zona de la Embajada.',
     primary: 'Empezar reserva',
     secondary: 'Ver estadías',
-    proof: 'Señales de reseñas Airbnb',
+    proof: 'Valoración de huéspedes',
     staysTitle: 'Elige tu estadía',
-    staysText: 'Cada apartamento tiene sus propias fotos, reseñas de huéspedes, reglas y ruta de reserva directa.',
+    staysText: 'Fotos, reseñas, reglas y reserva directa en una vista clara.',
     areaTitle: 'Más que un lugar para dormir',
     areaText:
       'Más allá del cuarto: diligencias, comida, plazas, playa y apoyo anfitrión desde Santo Domingo Norte.',
     bookingTitle: 'Pregunta primero y reserva con confianza',
     bookingText:
       'El agente está al lado del formulario para responder sobre reglas, depósito, ubicación y el mejor apartamento antes de iniciar la reserva.',
-    agentTitle: 'Agente de reservas MLADIS',
+    agentTitle: 'Agente de reservas',
     agentText: 'Pregunta por disponibilidad, cantidad de huéspedes, depósito, reglas, transporte o cuál apartamento te conviene.',
     formTitle: 'Iniciar reserva',
-    formText: 'El teléfono es requerido para reservar. El depósito seguro de $200 aparece después de iniciar la solicitud.',
+    formText: 'Envía la solicitud primero. El depósito seguro de $200 se abre después en un paso seguro.',
+    pricePreview: 'Vista previa del precio',
+    stayPayment: 'Retención de estadía',
     highlights: 'Comentarios destacados',
     rules: 'Reglas del apartamento',
     mission: 'Viaja con misión',
-    social: 'Acceso de cuenta',
-    submit: 'Make secure deposit hold',
+    signInToAskAgent: 'Entra para preguntar al agente',
+    agentLimitReached: 'Límite de preguntas alcanzado',
+    agentLimitText: 'Has alcanzado el límite actual de preguntas para esta cuenta.',
+    submit: 'Enviar solicitud',
+    autofill: 'Usar mi cuenta',
+    required: 'requerido',
+    depositTitle: 'Hacer depósito seguro',
+    depositText: 'Tu solicitud está guardada. Continúa con el depósito reembolsable por daños para esta estadía.',
+    depositAction: 'Hacer depósito seguro',
+    paymentTitle: 'Retener pago de reserva',
+    paymentText: 'El depósito quedó registrado. Ahora haz la retención del pago de estadía; se captura 24 horas antes del check-in.',
+    paymentAction: 'Retener pago de reserva',
     details: 'Detalles',
     airbnb: 'Airbnb',
     gallery: 'Galería',
@@ -140,7 +261,7 @@ const copy = {
       'MLADIS ofrece una base práctica en Santo Domingo Norte con apoyo anfitrión, acceso a diligencias, plazas, restaurantes y playas como Juan Dolio o Boca Chica.',
     aboutMission:
       'Queremos que cada estadía apoye una misión mayor: mejor servicio, oportunidades locales y ayuda para niños, educación y familias que necesitan apoyo.',
-    accountTitle: 'Tus reservas MLADIS',
+    accountTitle: 'Tus reservas',
     accountText: 'Maneja solicitudes, ventanas de cancelación, facturas y detalles de reserva en un solo lugar.',
   },
 };
@@ -184,6 +305,14 @@ function formatDate(value: string) {
   );
 }
 
+function nightsBetween(checkIn: string, checkOut: string) {
+  if (!checkIn || !checkOut) return 1;
+  const start = new Date(`${checkIn}T00:00:00Z`).getTime();
+  const end = new Date(`${checkOut}T00:00:00Z`).getTime();
+  const nights = Math.round((end - start) / 86_400_000);
+  return Math.max(nights || 1, 1);
+}
+
 function PublicSiteSkeleton() {
   return (
     <main className="public-site">
@@ -198,70 +327,26 @@ function PublicSiteSkeleton() {
 
 function PublicNav({
   snapshot,
+  userContext,
   language,
   onLanguageChange,
+  onSignOutStart,
 }: {
   snapshot: PublicSiteSnapshot;
+  userContext: PublicUserContext;
   language: Language;
   onLanguageChange: (language: Language) => void;
+  onSignOutStart: () => void;
 }) {
   const t = copy[language];
-  const [auth, setAuth] = useState<AuthNavState>({ status: 'checking' });
-
-  useEffect(() => {
-    let active = true;
-
-    fetch('/api/account/summary/', {
-      credentials: 'include',
-      headers: { Accept: 'application/json' },
-    })
-      .then(async (response) => {
-        if (!active) return;
-        const contentType = response.headers.get('content-type') || '';
-        if (!response.ok || !contentType.includes('application/json')) {
-          setAuth({ status: 'anonymous' });
-          return;
-        }
-
-        const data = await response.json() as {
-          authenticated?: boolean;
-          profile?: {
-            name?: string;
-            email?: string;
-            is_staff?: boolean;
-            is_superuser?: boolean;
-          } | null;
-          is_staff?: boolean;
-          is_superuser?: boolean;
-        };
-
-        if (!data.profile || data.authenticated === false) {
-          setAuth({ status: 'anonymous' });
-          return;
-        }
-
-        setAuth({
-          status: 'authenticated',
-          name: data.profile.name || data.profile.email,
-          isStaff: Boolean(data.profile.is_staff || data.profile.is_superuser || data.is_staff || data.is_superuser),
-        });
-      })
-      .catch(() => {
-        if (active) setAuth({ status: 'anonymous' });
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const isAuthenticated = auth.status === 'authenticated';
-  const showAdmin = isAuthenticated && auth.isStaff === true;
+  const isAuthenticated = userContext.isAuthenticated;
+  const showAdmin = isAuthenticated && userContext.isStaff === true;
+  const logoUrl = snapshot.logoUrl || getConfiguredLogoUrl();
 
   return (
     <header className="public-nav">
       <a className="public-brand" href="/">
-        {snapshot.logoUrl ? <img src={snapshot.logoUrl} alt={snapshot.siteName} /> : <span>M</span>}
+        <img src={logoUrl} alt={snapshot.siteName} />
         <strong>{snapshot.siteName}</strong>
       </a>
       <nav aria-label="Primary">
@@ -277,7 +362,7 @@ function PublicNav({
 
         {isAuthenticated ? (
           <>
-            <a href="/accounts/" title={auth.name ? `Signed in as ${auth.name}` : 'Signed in'}>
+            <a href="/accounts/" title={userContext.displayName ? `Signed in as ${userContext.displayName}` : 'Signed in'}>
               <Home size={16} /> {t.navAccount}
             </a>
             {showAdmin && (
@@ -285,7 +370,7 @@ function PublicNav({
                 <ShieldCheck size={16} /> Admin
               </a>
             )}
-            <form method="post" action="/accounts/logout/" className="public-nav-logout">
+            <form method="post" action="/accounts/logout/" className="public-nav-logout" onSubmit={onSignOutStart}>
               <input type="hidden" name="csrfmiddlewaretoken" value={csrfToken()} />
               <button type="submit">
                 <LogIn size={16} /> Sign out
@@ -294,11 +379,8 @@ function PublicNav({
           </>
         ) : (
           <>
-            <a href="/accounts/">
-              <Home size={16} /> {t.navAccount}
-            </a>
             <a href="/accounts/login/?next=/accounts/">
-              <LogIn size={16} /> {auth.status === 'checking' ? 'Checking...' : t.signIn}
+              <LogIn size={16} /> {userContext.status === 'checking' ? 'Checking...' : t.signIn}
             </a>
           </>
         )}
@@ -309,12 +391,15 @@ function PublicNav({
 
 function StayCard({ stay, language }: { stay: PublicStay; language: Language }) {
   const t = copy[language];
+  const displayName = formatStayName(stay.name);
   return (
     <article className="public-stay-card">
-      <img src={stay.imageUrl} alt={stay.name} />
+      <a className="public-stay-card__image" href={stay.detailUrl} aria-label={`View ${displayName}`}>
+        <img src={stay.imageUrl} alt={displayName} />
+      </a>
       <div className="public-stay-card__body">
         <div>
-          <h3>{stay.name}</h3>
+          <h3>{displayName}</h3>
           <p>{stay.headline || stay.description}</p>
         </div>
         <div className="public-stay-card__stats">
@@ -330,102 +415,30 @@ function StayCard({ stay, language }: { stay: PublicStay; language: Language }) 
   );
 }
 
-function chatKitOptions(language: Language) {
-  return {
-    frameTitle: copy[language].agentTitle,
-    theme: {
-      colorScheme: 'light' as const,
-      radius: 'soft' as const,
-      density: 'compact' as const,
-    },
-    thread: { autoScroll: true },
-    history: {
-      enabled: true,
-      showDelete: false,
-      showRename: false,
-    },
-    header: {
-      title: { text: copy[language].agentTitle },
-    },
-    composer: {
-      placeholder:
-        language === 'en'
-          ? 'Ask about dates, guest count, rules, or deposit holds.'
-          : 'Pregunta por fechas, cantidad de huéspedes, reglas o depósito.',
-    },
-    startScreen: {
-      greeting: copy[language].agentText,
-      prompts:
-        language === 'en'
-          ? [
-            { label: 'Check availability', prompt: 'Do you have availability for next weekend?' },
-            { label: 'Deposit hold', prompt: 'How does the secure deposit hold work?' },
-            { label: 'Best fit', prompt: 'Which stay is best for four guests?' },
-          ]
-          : [
-            { label: 'Ver disponibilidad', prompt: 'Tienen disponibilidad para el próximo fin de semana?' },
-            { label: 'Depósito', prompt: 'Cómo funciona el depósito seguro?' },
-            { label: 'Mejor opción', prompt: 'Cuál estadía conviene para cuatro huéspedes?' },
-          ],
-    },
-  };
-}
-
-function ManagedChatKitAgent({ sessionUrl, token, language }: { sessionUrl: string; token: string; language: Language }) {
-  const { control } = useChatKit({
-    ...chatKitOptions(language),
-    api: {
-      async getClientSecret() {
-        const response = await fetch(sessionUrl, {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': token,
-          },
-        });
-        const data = await response.json() as { client_secret?: string; error?: string };
-        if (!response.ok || !data.client_secret) {
-          throw new Error(data.error || 'Could not start the booking chat.');
-        }
-        return data.client_secret;
-      },
-    },
-  });
-
-  return (
-    <div className="public-agent-chatkit-shell">
-      <ChatKit control={control} className="public-agent-chatkit" />
-    </div>
-  );
-}
-
-function CustomChatKitAgent({ apiUrl, domainKey, language }: { apiUrl: string; domainKey: string; language: Language }) {
-  const { control } = useChatKit({
-    ...chatKitOptions(language),
-    api: {
-      url: apiUrl,
-      domainKey,
-      fetch(input, init) {
-        return fetch(input, { ...init, credentials: 'include' });
-      },
-    },
-  });
-
-  return (
-    <div className="public-agent-chatkit-shell">
-      <ChatKit control={control} className="public-agent-chatkit" />
-    </div>
-  );
-}
-
-function LegacyAgentPrompt({ stay, token }: { stay?: PublicStay | null; token: string }) {
+function LegacyAgentPrompt({
+  stay,
+  token,
+  agent,
+  language,
+}: {
+  stay?: PublicStay | null;
+  token: string;
+  agent: AgentAccessStatus;
+  language: Language;
+}) {
   const [agentMessage, setAgentMessage] = useState('');
   const [agentReply, setAgentReply] = useState('');
   const [agentBusy, setAgentBusy] = useState(false);
+  const [agentAccess, setAgentAccess] = useState(agent);
+  const t = copy[language];
+
+  useEffect(() => {
+    setAgentAccess(agent);
+  }, [agent]);
 
   async function askAgent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!agentAccess.canAsk) return;
     const message = agentMessage.trim();
     if (!message) return;
     setAgentBusy(true);
@@ -444,14 +457,52 @@ function LegacyAgentPrompt({ stay, token }: { stay?: PublicStay | null; token: s
           session_id: window.sessionStorage.getItem('mladis_agent_session') || undefined,
         }),
       });
-      const data = await response.json() as { reply?: string; error?: string; session_id?: string };
+      const data = await response.json() as { reply?: string; error?: string; session_id?: string; agent?: ApiAgentAccess };
       if (data.session_id) window.sessionStorage.setItem('mladis_agent_session', data.session_id);
+      if (data.agent) {
+        setAgentAccess(agentAccessFromApi(data.agent, agentAccess));
+      }
       setAgentReply(data.reply || data.error || 'The agent did not return a reply yet.');
     } catch {
       setAgentReply('I could not reach the agent API from this browser session.');
     } finally {
       setAgentBusy(false);
     }
+  }
+
+  if (!agentAccess.isAuthenticated) {
+    return (
+      <div className="public-agent-prompt">
+        <label>
+          <MessageSquareText size={16} />
+          <textarea
+            name="message"
+            value={agentMessage}
+            onChange={(event) => setAgentMessage(event.target.value)}
+            placeholder="Can I bring family visitors? What are the pool hours?"
+          />
+        </label>
+        <a className="public-agent-action" href={agentAccess.loginUrl}>{t.signInToAskAgent}</a>
+      </div>
+    );
+  }
+
+  if (!agentAccess.canAsk) {
+    return (
+      <div className="public-agent-prompt">
+        <label>
+          <MessageSquareText size={16} />
+          <textarea
+            name="message"
+            value={agentMessage}
+            onChange={(event) => setAgentMessage(event.target.value)}
+            placeholder="Can I bring family visitors? What are the pool hours?"
+          />
+        </label>
+        <button type="button" disabled>{t.agentLimitReached}</button>
+        <p className="public-agent-reply">{t.agentLimitText}</p>
+      </div>
+    );
   }
 
   return (
@@ -475,18 +526,118 @@ function LegacyAgentPrompt({ stay, token }: { stay?: PublicStay | null; token: s
 
 function AgentBookingSection({
   snapshot,
+  userContext,
   stay,
   language,
 }: {
   snapshot: PublicSiteSnapshot;
+  userContext: PublicUserContext;
   stay?: PublicStay | null;
   language: Language;
 }) {
   const t = copy[language];
   const token = csrfToken();
   const submitted = new URLSearchParams(window.location.search).get('submitted') === '1';
-  const managedChatKit = snapshot.chatKit?.mode === 'managed' ? snapshot.chatKit : null;
-  const customChatKit = snapshot.chatKit?.mode === 'custom' ? snapshot.chatKit : null;
+  const [draft, setDraft] = useState(() => ReservationRequestDraft.forStay(stay?.id));
+  const [requestResult, setRequestResult] = useState<CreatedReservationRequest | null>(null);
+  const [paymentRequest, setPaymentRequest] = useState<CreatedReservationRequest | null>(null);
+  const [requestMessage, setRequestMessage] = useState('');
+  const [requestErrors, setRequestErrors] = useState<string[]>([]);
+  const [requestBusy, setRequestBusy] = useState(false);
+  const selectedStay = useMemo(
+    () => snapshot.stays.find((availableStay) => String(availableStay.id) === draft.item) ?? null,
+    [draft.item, snapshot.stays],
+  );
+  const quote = selectedStay
+    ? selectedStay.pricing.quote(draft.guests, nightsBetween(draft.checkIn, draft.checkOut))
+    : null;
+  const guestLimit = selectedStay?.pricing.maxGuests ?? null;
+  const guestsNumber = Math.max(Number(draft.guests) || 1, 1);
+  const overGuestLimit = Boolean(guestLimit && guestsNumber > guestLimit);
+
+  useEffect(() => {
+    setDraft((currentDraft) => currentDraft.withField('item', stay?.id ? String(stay.id) : currentDraft.item));
+  }, [stay?.id]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentFor = params.get('payment_for');
+    const paymentSuccess = params.get('payment_success') === '1';
+    if (paymentSuccess) {
+      setRequestMessage('Reservation payment hold recorded. MLADIS will review and confirm by email.');
+      return;
+    }
+    if (!paymentFor || params.get('deposit_success') !== '1') return;
+    let isMounted = true;
+    fetch(`/payments/context/?inquiry_id=${encodeURIComponent(paymentFor)}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    })
+      .then((response) => response.json() as Promise<PaymentContextResponse>)
+      .then((data) => {
+        if (!isMounted) return;
+        if (data.ok && data.inquiry) {
+          setPaymentRequest(data.inquiry);
+          setRequestMessage('Damage deposit hold recorded. Finish the reservation payment hold next.');
+        } else {
+          setRequestErrors([data.message || 'Could not reopen the reservation payment window.']);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setRequestErrors(['Could not reopen the reservation payment window.']);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  function updateDraft(field: ReservationRequestField, value: string) {
+    setDraft((currentDraft) => currentDraft.withField(field, value));
+  }
+
+  function autofillAccount() {
+    setDraft((currentDraft) => currentDraft.withAccount(userContext));
+  }
+
+  async function submitReservationRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setRequestBusy(true);
+    setRequestErrors([]);
+    setRequestMessage('');
+    try {
+      const response = await fetch('/inquiries/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': token,
+        },
+        body: draft.toFormData(token),
+      });
+      const data = await response.json() as {
+        ok?: boolean;
+        message?: string;
+        inquiry?: CreatedReservationRequest;
+        errors?: Record<string, string[]>;
+      };
+      if (!response.ok || !data.ok || !data.inquiry) {
+        const errors = Object.entries(data.errors || {}).flatMap(([field, values]) => values.map((value) => `${field}: ${value}`));
+        setRequestErrors(errors.length ? errors : ['Could not send this request yet. Check the required fields.']);
+        return;
+      }
+      setRequestResult(data.inquiry);
+      setRequestMessage('');
+    } catch {
+      setRequestErrors(['Could not reach the reservation request service from this browser session.']);
+    } finally {
+      setRequestBusy(false);
+    }
+  }
 
   return (
     <section id="booking" className="public-section public-booking">
@@ -498,75 +649,302 @@ function AgentBookingSection({
         <article className="public-agent-card">
           <span><Bot size={19} /> {t.agentTitle}</span>
           <p>{t.agentText}</p>
-          {managedChatKit?.sessionUrl ? (
-            <ManagedChatKitAgent sessionUrl={managedChatKit.sessionUrl} token={token} language={language} />
-          ) : customChatKit?.apiUrl && customChatKit.domainKey ? (
-            <CustomChatKitAgent apiUrl={customChatKit.apiUrl} domainKey={customChatKit.domainKey} language={language} />
-          ) : (
-            <LegacyAgentPrompt stay={stay} token={token} />
-          )}
-          <div className="public-social-card">
-            <strong>{t.social}</strong>
-            <div>
-              {snapshot.socialProviders.length > 0 ? (
-                snapshot.socialProviders.map((provider) => (
-                  provider.isLaunchable ? (
-                    <form method="post" action={provider.loginUrl} key={provider.id}>
-                      <input type="hidden" name="csrfmiddlewaretoken" value={token} />
-                      <button type="submit">{provider.label}</button>
-                    </form>
-                  ) : (
-                    <span
-                      className="public-social-card__disabled"
-                      title={provider.helpText || provider.disabledReason}
-                      key={provider.id}
-                    >
-                      {provider.label}
-                      <small>{provider.disabledReason || 'setup needed'}</small>
-                    </span>
-                  )
-                ))
-              ) : (
-                <a href="/accounts/login/?next=/accounts/">Account login</a>
-              )}
-            </div>
-          </div>
+          <LegacyAgentPrompt stay={stay} token={token} agent={userContext.agent} language={language} />
         </article>
 
-        <form className="public-booking-form" method="post" action="/inquiries/">
+        <form className="public-booking-form" method="post" action="/inquiries/" onSubmit={submitReservationRequest}>
           <input type="hidden" name="csrfmiddlewaretoken" value={token} />
-          <div>
-            <h3>{t.formTitle}</h3>
-            <p>{t.formText}</p>
+          <div className="public-booking-form__header">
+            <div>
+              <h3>{t.formTitle}</h3>
+              <p>{t.formText}</p>
+            </div>
+            {userContext.isAuthenticated && (
+              <button className="public-booking-form__autofill" type="button" onClick={autofillAccount}>
+                <PencilLine size={15} /> {t.autofill}
+              </button>
+            )}
           </div>
-          {submitted && <p className="public-success">Request received. Continue to the secure deposit hold when prompted.</p>}
+          {submitted && <p className="public-success">Request received. Continue with the secure deposit hold.</p>}
+          {requestMessage && <p className="public-success">{requestMessage}</p>}
+          {requestErrors.length > 0 && (
+            <div className="public-error-list">
+              {requestErrors.map((error) => <p key={error}>{error}</p>)}
+            </div>
+          )}
           <label>
             Stay
-            <select name="item" defaultValue={stay?.id ?? ''}>
+            <select name="item" value={draft.item} onChange={(event) => updateDraft('item', event.target.value)}>
               <option value="">Flexible / help me choose</option>
               {snapshot.stays.map((availableStay) => (
-                <option value={availableStay.id} key={availableStay.id}>{availableStay.name}</option>
+                <option value={availableStay.id} key={availableStay.id}>{formatStayName(availableStay.name)}</option>
               ))}
             </select>
           </label>
           <div className="public-form-row">
-            <label>Name<input name="guest_name" required /></label>
-            <label>Phone<input name="phone" required /></label>
+            <label>Name<input name="guest_name" value={draft.guestName} onChange={(event) => updateDraft('guest_name', event.target.value)} required /></label>
+            <label>Phone <span className="public-optional">optional now</span><input name="phone" value={draft.phone} onChange={(event) => updateDraft('phone', event.target.value)} autoComplete="tel" /></label>
           </div>
-          <label>Email<input type="email" name="email" required /></label>
+          <label>Email <span className="public-required" aria-label={t.required}>*</span><input type="email" name="email" value={draft.email} onChange={(event) => updateDraft('email', event.target.value)} autoComplete="email" required /></label>
           <div className="public-form-row">
-            <label>Check in<input type="date" name="check_in" required /></label>
-            <label>Check out<input type="date" name="check_out" required /></label>
+            <label>Check in<input type="date" name="check_in" value={draft.checkIn} onChange={(event) => updateDraft('check_in', event.target.value)} required /></label>
+            <label>Check out<input type="date" name="check_out" value={draft.checkOut} onChange={(event) => updateDraft('check_out', event.target.value)} required /></label>
           </div>
           <div className="public-form-row">
-            <label><Users size={15} /> Guests<input type="number" name="guests" min="1" defaultValue="1" required /></label>
-            <label>Coupon<input name="coupon_code" /></label>
+            <label><Users size={15} /> Guests<input type="number" name="guests" min="1" max={guestLimit ?? undefined} value={draft.guests} onChange={(event) => updateDraft('guests', event.target.value)} required /></label>
+            <label>Coupon<input name="coupon_code" value={draft.couponCode} onChange={(event) => updateDraft('coupon_code', event.target.value)} /></label>
           </div>
-          <label>Notes<textarea name="message" rows={3} /></label>
-          <button type="submit"><CreditCard size={17} /> {t.submit}</button>
+          <div className="public-price-preview" aria-live="polite">
+            <div>
+              <span>{t.pricePreview}</span>
+              <strong>{quote ? quote.displaySubtotal : 'Choose a stay for an exact quote'}</strong>
+              <small>{quote ? `${quote.displayNightly}/night · ${quote.nights} night${quote.nights === 1 ? '' : 's'}` : 'G-101/G-102 pricing appears here before you send.'}</small>
+            </div>
+            <div>
+              <span>{t.stayPayment}</span>
+              <strong>{quote ? quote.displaySubtotal : '$0.00 USD'}</strong>
+              <small>{selectedStay?.pricing.label ?? 'Select a stay and guest count.'}</small>
+            </div>
+            <div>
+              <span>Damage deposit</span>
+              <strong>{snapshot.depositAmount}</strong>
+              <small>Refundable authorization hold.</small>
+            </div>
+          </div>
+          {quote && quote.extraGuestCount > 0 && (
+            <p className="public-price-note">
+              {quote.extraGuestCount} added guest{quote.extraGuestCount === 1 ? '' : 's'} included at {selectedStay?.pricing.displayExtraGuestPrice}/night each.
+            </p>
+          )}
+          {overGuestLimit && (
+            <p className="public-deposit-modal__error" role="alert">This stay allows up to {guestLimit} guests.</p>
+          )}
+          <label>Notes<textarea name="message" rows={3} value={draft.message} onChange={(event) => updateDraft('message', event.target.value)} /></label>
+          <button type="submit" disabled={requestBusy || overGuestLimit}><CreditCard size={17} /> {requestBusy ? 'Sending...' : t.submit}</button>
         </form>
       </div>
+      {requestResult && (
+        <DepositHoldModal
+          request={requestResult}
+          token={token}
+          onClose={() => setRequestResult(null)}
+          language={language}
+        />
+      )}
+      {paymentRequest && (
+        <ReservationPaymentHoldModal
+          request={paymentRequest}
+          token={token}
+          onClose={() => setPaymentRequest(null)}
+          language={language}
+        />
+      )}
     </section>
+  );
+}
+
+function DepositHoldModal({
+  request,
+  token,
+  onClose,
+  language,
+}: {
+  request: CreatedReservationRequest;
+  token: string;
+  onClose: () => void;
+  language: Language;
+}) {
+  const t = copy[language];
+  const [provider, setProvider] = useState('stripe');
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+
+  async function startDepositCheckout(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsStartingCheckout(true);
+    setCheckoutError('');
+    const formData = new FormData(event.currentTarget);
+    formData.set('payment_provider', provider);
+
+    try {
+      const response = await fetch(request.deposit_checkout_url || '/deposits/checkout/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': token,
+        },
+        body: formData,
+      });
+      const data = await response.json() as DepositCheckoutResponse;
+      if (response.ok && data.ok && data.checkout_url) {
+        window.location.assign(data.checkout_url);
+        return;
+      }
+      const validationErrors = Object.entries(data.errors || {})
+        .flatMap(([field, values]) => values.map((value) => `${field}: ${value}`));
+      setCheckoutError(validationErrors[0] || data.message || 'The secure deposit checkout could not be started.');
+    } catch {
+      setCheckoutError('Could not reach the secure deposit checkout service from this browser session.');
+    } finally {
+      setIsStartingCheckout(false);
+    }
+  }
+
+  return (
+    <div className="public-modal-backdrop" role="presentation">
+      <article className="public-deposit-modal" role="dialog" aria-modal="true" aria-labelledby="deposit-modal-title">
+        <header className="public-deposit-modal__header">
+          <div>
+            <span>{request.request_key}</span>
+            <h2 id="deposit-modal-title">{t.depositTitle}</h2>
+            <p>{t.depositText}</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close deposit form">
+            <XCircle size={24} />
+          </button>
+        </header>
+        <div className="public-deposit-modal__summary">
+          <div>
+            <span>Stay</span>
+            <strong>{formatStayName(request.stay_name)}</strong>
+          </div>
+          <div>
+            <span>Dates</span>
+            <strong>{request.check_in} to {request.check_out}</strong>
+          </div>
+          <div>
+            <span>Guests</span>
+            <strong>{request.guests}</strong>
+          </div>
+          <div>
+            <span>Deposit</span>
+            <strong>{request.display_deposit}</strong>
+          </div>
+          <div>
+            <span>Next stay hold</span>
+            <strong>{request.display_reservation_payment}</strong>
+          </div>
+        </div>
+        <form className="public-deposit-modal__form" method="post" action={request.deposit_checkout_url || '/deposits/checkout/'} onSubmit={startDepositCheckout}>
+          <input type="hidden" name="csrfmiddlewaretoken" value={token} />
+          <input type="hidden" name="inquiry_id" value={request.id} />
+          <input type="hidden" name="item" value={request.item_id ?? ''} />
+          <input type="hidden" name="guest_name" value={request.guest_name} />
+          <input type="hidden" name="email" value={request.email} />
+          <fieldset>
+            <legend>Payment method</legend>
+            <label><input type="radio" name="payment_provider" value="stripe" checked={provider === 'stripe'} onChange={(event) => setProvider(event.target.value)} /> Card / wallet through Stripe</label>
+            <label><input type="radio" name="payment_provider" value="paypal" checked={provider === 'paypal'} onChange={(event) => setProvider(event.target.value)} /> PayPal</label>
+          </fieldset>
+          {checkoutError && <p className="public-deposit-modal__error" role="alert">{checkoutError}</p>}
+          <footer className="public-deposit-modal__actions">
+            <button type="button" onClick={onClose}>Close</button>
+            <button type="submit" disabled={isStartingCheckout}>
+              <ShieldCheck size={17} /> {isStartingCheckout ? 'Opening checkout...' : t.depositAction}
+            </button>
+          </footer>
+        </form>
+      </article>
+    </div>
+  );
+}
+
+function ReservationPaymentHoldModal({
+  request,
+  token,
+  onClose,
+  language,
+}: {
+  request: CreatedReservationRequest;
+  token: string;
+  onClose: () => void;
+  language: Language;
+}) {
+  const t = copy[language];
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+
+  async function startPaymentCheckout(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsStartingCheckout(true);
+    setCheckoutError('');
+    const formData = new FormData(event.currentTarget);
+
+    try {
+      const response = await fetch(request.reservation_payment_checkout_url || '/payments/checkout/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': token,
+        },
+        body: formData,
+      });
+      const data = await response.json() as DepositCheckoutResponse;
+      if (response.ok && data.ok && data.checkout_url) {
+        window.location.assign(data.checkout_url);
+        return;
+      }
+      const validationErrors = Object.entries(data.errors || {})
+        .flatMap(([field, values]) => values.map((value) => `${field}: ${value}`));
+      setCheckoutError(validationErrors[0] || data.message || 'The reservation payment hold could not be started.');
+    } catch {
+      setCheckoutError('Could not reach the reservation payment service from this browser session.');
+    } finally {
+      setIsStartingCheckout(false);
+    }
+  }
+
+  return (
+    <div className="public-modal-backdrop" role="presentation">
+      <article className="public-deposit-modal" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title">
+        <header className="public-deposit-modal__header">
+          <div>
+            <span>{request.request_key}</span>
+            <h2 id="payment-modal-title">{t.paymentTitle}</h2>
+            <p>{t.paymentText}</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close payment form">
+            <XCircle size={24} />
+          </button>
+        </header>
+        <div className="public-deposit-modal__summary">
+          <div>
+            <span>Stay</span>
+            <strong>{formatStayName(request.stay_name)}</strong>
+          </div>
+          <div>
+            <span>Dates</span>
+            <strong>{request.check_in} to {request.check_out}</strong>
+          </div>
+          <div>
+            <span>Stay hold</span>
+            <strong>{request.display_reservation_payment}</strong>
+          </div>
+          <div>
+            <span>Total incl. deposit</span>
+            <strong>{request.display_total}</strong>
+          </div>
+        </div>
+        <form className="public-deposit-modal__form" method="post" action={request.reservation_payment_checkout_url || '/payments/checkout/'} onSubmit={startPaymentCheckout}>
+          <input type="hidden" name="csrfmiddlewaretoken" value={token} />
+          <input type="hidden" name="inquiry_id" value={request.id} />
+          <p className="public-price-note">
+            This is an authorization hold for the stay payment. MLADIS captures it 24 hours before check-in after admin review.
+          </p>
+          {checkoutError && <p className="public-deposit-modal__error" role="alert">{checkoutError}</p>}
+          <footer className="public-deposit-modal__actions">
+            <button type="button" onClick={onClose}>Close</button>
+            <button type="submit" disabled={isStartingCheckout}>
+              <ShieldCheck size={17} /> {isStartingCheckout ? 'Opening checkout...' : t.paymentAction}
+            </button>
+          </footer>
+        </form>
+      </article>
+    </div>
   );
 }
 
@@ -603,7 +981,7 @@ function RulesBook({ stay, language }: { stay: PublicStay; language: Language })
   );
 }
 
-function HomeExperience({ snapshot, language }: { snapshot: PublicSiteSnapshot; language: Language }) {
+function HomeExperience({ snapshot, userContext, language }: { snapshot: PublicSiteSnapshot; userContext: PublicUserContext; language: Language }) {
   const t = copy[language];
   const heroStay = snapshot.stays[0];
   const secondStay = snapshot.stays[1] ?? heroStay;
@@ -624,14 +1002,18 @@ function HomeExperience({ snapshot, language }: { snapshot: PublicSiteSnapshot; 
           </div>
         </div>
         {heroStay && (
-          <article className="public-hero__stay">
-            <img src={heroStay.imageUrl} alt={heroStay.name} />
+          <a className="public-hero__stay" href={heroStay.detailUrl} aria-label={`View ${formatStayName(heroStay.name)}`}>
+            <img src={heroStay.imageUrl} alt={formatStayName(heroStay.name)} />
             <div>
               <span>{t.proof}</span>
-              <h2>{heroStay.name}</h2>
+              <h2>{formatStayName(heroStay.name)}</h2>
               <p>{heroStay.reviewLabel}</p>
+              <div className="public-hero__stay-metrics">
+                <b><Star size={14} /> {heroStay.rating || '4.9'}</b>
+                {heroStay.statList.slice(0, 2).map((stat) => <b key={stat}>{stat}</b>)}
+              </div>
             </div>
-          </article>
+          </a>
         )}
       </section>
 
@@ -646,12 +1028,12 @@ function HomeExperience({ snapshot, language }: { snapshot: PublicSiteSnapshot; 
       </section>
 
       <AreaSection snapshot={snapshot} language={language} />
-      <AgentBookingSection snapshot={snapshot} stay={heroStay} language={language} />
+      <AgentBookingSection snapshot={snapshot} userContext={userContext} stay={heroStay} language={language} />
 
       {secondStay && (
         <section className="public-section public-detail-strip">
           <div>
-            <h2>{secondStay.name}</h2>
+            <h2>{formatStayName(secondStay.name)}</h2>
             <p>{secondStay.description}</p>
           </div>
           <div className="public-gallery-rail">
@@ -717,7 +1099,7 @@ function MissionSection({ snapshot, language }: { snapshot: PublicSiteSnapshot; 
   );
 }
 
-function StayDetailExperience({ snapshot, stay, language }: { snapshot: PublicSiteSnapshot; stay: PublicStay; language: Language }) {
+function StayDetailExperience({ snapshot, userContext, stay, language }: { snapshot: PublicSiteSnapshot; userContext: PublicUserContext; stay: PublicStay; language: Language }) {
   const t = copy[language];
   const gallery = stay.gallery.length ? stay.gallery : [{ imageUrl: stay.imageUrl, altText: stay.name, caption: stay.name }];
   return (
@@ -725,7 +1107,7 @@ function StayDetailExperience({ snapshot, stay, language }: { snapshot: PublicSi
       <section className="public-subhero public-stay-detail-hero">
         <div>
           <a className="public-subtle-link" href="/#stays">All stays</a>
-          <h1>{stay.name}</h1>
+          <h1>{formatStayName(stay.name)}</h1>
           <p>{stay.description}</p>
           <div className="public-proof-strip">
             <span><Star size={16} /> {stay.rating || 'Airbnb'} rating</span>
@@ -770,12 +1152,12 @@ function StayDetailExperience({ snapshot, stay, language }: { snapshot: PublicSi
         </div>
       </section>
 
-      <AgentBookingSection snapshot={snapshot} stay={stay} language={language} />
+      <AgentBookingSection snapshot={snapshot} userContext={userContext} stay={stay} language={language} />
     </>
   );
 }
 
-function AboutExperience({ snapshot, language }: { snapshot: PublicSiteSnapshot; language: Language }) {
+function AboutExperience({ snapshot, userContext, language }: { snapshot: PublicSiteSnapshot; userContext: PublicUserContext; language: Language }) {
   const t = copy[language];
   return (
     <>
@@ -801,7 +1183,7 @@ function AboutExperience({ snapshot, language }: { snapshot: PublicSiteSnapshot;
         </div>
       </section>
       <MissionSection snapshot={snapshot} language={language} />
-      <AgentBookingSection snapshot={snapshot} stay={snapshot.stays[0]} language={language} />
+      <AgentBookingSection snapshot={snapshot} userContext={userContext} stay={snapshot.stays[0]} language={language} />
     </>
   );
 }
@@ -849,7 +1231,7 @@ function LegalExperience({ snapshot, kind }: { snapshot: PublicSiteSnapshot; kin
   );
 }
 
-function AccountExperience({ snapshot, language }: { snapshot: PublicSiteSnapshot; language: Language }) {
+function AccountExperience({ snapshot, userContext, language }: { snapshot: PublicSiteSnapshot; userContext: PublicUserContext; language: Language }) {
   const t = copy[language];
   const service = useMemo(() => AccountFactory.create(), []);
   const [account, setAccount] = useState<AccountSnapshot | null>(null);
@@ -933,7 +1315,7 @@ function AccountExperience({ snapshot, language }: { snapshot: PublicSiteSnapsho
         </div>
       </section>
 
-      <AgentBookingSection snapshot={snapshot} stay={snapshot.stays[0]} language={language} />
+      <AgentBookingSection snapshot={snapshot} userContext={userContext} stay={snapshot.stays[0]} language={language} />
     </>
   );
 }
@@ -946,8 +1328,8 @@ function AccountAdminTools() {
     { label: 'Customers', href: '/ops/customers/', detail: 'Guest profiles, segments, consent, feedback, and promotion readiness.' },
     { label: 'Deposits', href: '/ops/deposits/', detail: 'Stripe and PayPal security deposit records in a modern ledger.' },
     { label: 'Agent workspace', href: '/ops/agent/', detail: 'Question analytics and FAQ training controls.' },
-    { label: 'Business calendar', href: '/admin/bookings/bookableitem/calendar/', detail: 'Block dates, pricing overrides, and availability review.' },
-    { label: 'Django admin', href: '/admin/', detail: 'Full source-of-truth admin tools.' },
+    { label: 'Business calendar', href: '/ops/calendar/', detail: 'Block dates, pricing overrides, and availability review.' },
+    { label: 'Admin tools', href: '/admin/', detail: 'Full protected admin tools.' },
   ];
   return (
     <section className="public-section account-admin-tools">
@@ -990,18 +1372,44 @@ function ReservationDetail({ reservation }: { reservation: AccountReservation })
 }
 
 function ReservationEditForm({ reservation, token }: { reservation: AccountReservation; token: string }) {
+  const [checkIn, setCheckIn] = useState(reservation.checkIn);
+  const [checkOut, setCheckOut] = useState(reservation.checkOut);
+  const [guests, setGuests] = useState(String(reservation.guests));
+  const quote = reservation.pricing.quote(guests, nightsBetween(checkIn, checkOut));
+  const overGuestLimit = (Number(guests) || 1) > reservation.pricing.maxGuests;
+
   return (
     <form className="public-booking-form" method="post" action={currentPath()}>
       <input type="hidden" name="csrfmiddlewaretoken" value={token} />
       <h2>Edit reservation request</h2>
       <label>Phone<input name="phone" defaultValue={reservation.phone} required /></label>
       <div className="public-form-row">
-        <label>Check in<input type="date" name="check_in" defaultValue={reservation.checkIn} required /></label>
-        <label>Check out<input type="date" name="check_out" defaultValue={reservation.checkOut} required /></label>
+        <label>Check in<input type="date" name="check_in" value={checkIn} onChange={(event) => setCheckIn(event.target.value)} required /></label>
+        <label>Check out<input type="date" name="check_out" value={checkOut} onChange={(event) => setCheckOut(event.target.value)} required /></label>
       </div>
-      <label>Guests<input type="number" name="guests" min="1" defaultValue={reservation.guests} required /></label>
+      <label>Guests<input type="number" name="guests" min="1" max={reservation.pricing.maxGuests} value={guests} onChange={(event) => setGuests(event.target.value)} required /></label>
+      <div className="public-price-preview" aria-live="polite">
+        <div>
+          <span>Updated stay hold</span>
+          <strong>{quote.displaySubtotal}</strong>
+          <small>{quote.displayNightly}/night · {quote.nights} night{quote.nights === 1 ? '' : 's'}</small>
+        </div>
+        <div>
+          <span>Current deposit</span>
+          <strong>{reservation.displayDeposit}</strong>
+          <small>Separate refundable damage hold.</small>
+        </div>
+        <div>
+          <span>Guest cap</span>
+          <strong>{reservation.pricing.maxGuests}</strong>
+          <small>{reservation.pricing.label}</small>
+        </div>
+      </div>
+      {overGuestLimit && (
+        <p className="public-deposit-modal__error" role="alert">This stay allows up to {reservation.pricing.maxGuests} guests.</p>
+      )}
       <label>Notes<textarea name="message" rows={4} defaultValue={reservation.message} /></label>
-      <button type="submit"><PencilLine size={17} /> Save changes</button>
+      <button type="submit" disabled={overGuestLimit}><PencilLine size={17} /> Save changes</button>
     </form>
   );
 }
@@ -1272,6 +1680,7 @@ function AdminExperience({ language }: { language: Language }) {
 export function PublicSitePage() {
   const service = useMemo(() => PublicSiteFactory.create(), []);
   const [snapshot, setSnapshot] = useState<PublicSiteSnapshot | null>(null);
+  const [userContext, setUserContext] = useState<PublicUserContext | null>(null);
   const [error, setError] = useState('');
   const [language, setLanguage] = useState<Language>(() => (window.localStorage.getItem('mladis_language') === 'es' ? 'es' : 'en'));
 
@@ -1284,7 +1693,9 @@ export function PublicSitePage() {
     service
       .loadSite()
       .then((data) => {
-        if (active) setSnapshot(data);
+        if (!active) return;
+        setSnapshot(data);
+        setUserContext(PublicUserContext.checking(data.agent));
       })
       .catch((caught: unknown) => {
         if (active) setError(caught instanceof Error ? caught.message : 'Could not load the modern site.');
@@ -1294,23 +1705,58 @@ export function PublicSitePage() {
     };
   }, [service]);
 
+  useEffect(() => {
+    if (!snapshot) return undefined;
+    let active = true;
+
+    fetch('/api/account/summary/', {
+      cache: 'no-store',
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    })
+      .then(async (response) => {
+        if (!active) return;
+        const contentType = response.headers.get('content-type') || '';
+        if (!response.ok || !contentType.includes('application/json')) {
+          setUserContext(PublicUserContext.anonymous(snapshot.agent));
+          return;
+        }
+        const data = await response.json() as ApiAccountUserContext;
+        setUserContext(userContextFromApi(data, snapshot.agent));
+      })
+      .catch(() => {
+        if (active) setUserContext(PublicUserContext.anonymous(snapshot.agent));
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [snapshot]);
+
   if (!snapshot && !error) return <PublicSiteSkeleton />;
   if (!snapshot) return <main className="public-site"><section className="dashboard-error">{error}</section></main>;
 
+  const resolvedUserContext = userContext ?? PublicUserContext.checking(snapshot.agent);
   const stay = findStayByPath(snapshot);
   const legalKind = legalKindFromPath();
   const path = currentPath();
 
-  let content = <HomeExperience snapshot={snapshot} language={language} />;
-  if (stay) content = <StayDetailExperience snapshot={snapshot} stay={stay} language={language} />;
-  if (path.startsWith('/about')) content = <AboutExperience snapshot={snapshot} language={language} />;
+  let content = <HomeExperience snapshot={snapshot} userContext={resolvedUserContext} language={language} />;
+  if (stay) content = <StayDetailExperience snapshot={snapshot} userContext={resolvedUserContext} stay={stay} language={language} />;
+  if (path.startsWith('/about')) content = <AboutExperience snapshot={snapshot} userContext={resolvedUserContext} language={language} />;
   if (legalKind) content = <LegalExperience snapshot={snapshot} kind={legalKind} />;
-    if (path.startsWith('/ops/admin')) content = <AdminExperience language={language} />;
-  if (path.startsWith('/accounts')) content = <AccountExperience snapshot={snapshot} language={language} />;
+  if (path.startsWith('/ops/admin')) content = <AdminExperience language={language} />;
+  if (path.startsWith('/accounts')) content = <AccountExperience snapshot={snapshot} userContext={resolvedUserContext} language={language} />;
 
   return (
     <main className="public-site">
-      <PublicNav snapshot={snapshot} language={language} onLanguageChange={setLanguage} />
+      <PublicNav
+        snapshot={snapshot}
+        userContext={resolvedUserContext}
+        language={language}
+        onLanguageChange={setLanguage}
+        onSignOutStart={() => setUserContext(PublicUserContext.anonymous(resolvedUserContext.agent))}
+      />
       {content}
     </main>
   );

@@ -13,7 +13,11 @@
     <main class="modern-auth-page modern-auth-page--launch">
       <section class="modern-auth-hero">
         <a class="public-brand" href="/">
-          <span>M</span>
+          {% if site_settings.logo_display_url %}
+            <img src="{{ site_settings.logo_display_url }}" alt="MLADIS">
+          {% else %}
+            <img src="{% static 'bookings/brand/mladis-connected-intelligence.png' %}" alt="MLADIS">
+          {% endif %}
           <strong>MLADIS</strong>
         </a>
         <h1>{% trans "One moment while we connect your account." %}</h1>

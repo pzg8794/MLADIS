@@ -1,0 +1,1122 @@
+import hashlib
+import json
+from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
+from pathlib import Path
+from uuid import uuid4
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+
+from .models import (
+    AgentConversation,
+    AgentFAQ,
+    AirbnbGuestRecord,
+    AvailabilityBlock,
+    BookableItem,
+    BookingInquiry,
+    BookingStatus,
+    CustomerFeedback,
+    CustomerProfile,
+    DailyPriceOverride,
+    DamageDeposit,
+    Donation,
+    Invoice,
+    PageVisit,
+    Promotion,
+    ReservationPaymentHold,
+)
+
+
+SCHEMA_VERSION = "1.0"
+
+
+@dataclass(frozen=True)
+class DataLakeCollection:
+    key: str
+    zone: str
+    subject: str
+    entity_type: str
+    description: str
+    pii_classification: str
+
+    @property
+    def relative_schema_path(self):
+        return f"schemas/v1/{self.key}.schema.json"
+
+
+@dataclass(frozen=True)
+class DataLakeExportResult:
+    export_run_id: str
+    root: Path
+    schema_only: bool
+    redacted: bool
+    collection_counts: dict
+    manifest_path: Path
+
+
+class DataLakeJsonEncoder(json.JSONEncoder):
+    def default(self, value):
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        if isinstance(value, Decimal):
+            return str(value)
+        return super().default(value)
+
+
+class DataLakeRecordBuilder:
+    def __init__(self, *, redacted=False):
+        self.redacted = redacted
+
+    def build(self, *, collection, source_model, entity_id, occurred_at, data, natural_keys=None):
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "collection": collection.key,
+            "entity_type": collection.entity_type,
+            "record_key": f"{collection.entity_type}:{entity_id}",
+            "source_system": "mladis-django",
+            "source_model": source_model,
+            "source_pk": str(entity_id),
+            "pii_classification": "redacted" if self.redacted else collection.pii_classification,
+            "occurred_at": self._iso(occurred_at),
+            "extracted_at": timezone.now().isoformat(),
+            "natural_keys": natural_keys or {},
+            "data": self._clean(data),
+        }
+
+    def identity(self, value):
+        value = (value or "").strip().lower()
+        if not value:
+            return ""
+        if not self.redacted:
+            return value
+        return hashlib.sha256(f"{settings.SECRET_KEY}:{value}".encode("utf-8")).hexdigest()
+
+    def contact_fields(self, *, email="", phone=""):
+        if self.redacted:
+            return {
+                "email_hash": self.identity(email),
+                "phone_hash": self.identity(phone),
+            }
+        return {
+            "email": email or "",
+            "phone": phone or "",
+        }
+
+    def _iso(self, value):
+        if value is None:
+            return None
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+        return value
+
+    def _clean(self, value):
+        if isinstance(value, dict):
+            return {key: self._clean(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self._clean(item) for item in value]
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        if isinstance(value, Decimal):
+            return str(value)
+        return value
+
+
+class DataLakeLayout:
+    REQUIRED_DIRECTORIES = (
+        "_catalog",
+        "_manifests",
+        "schemas/v1",
+        "bronze/app_events",
+        "bronze/imports",
+        "silver/accounts",
+        "silver/customers",
+        "silver/bookings",
+        "silver/requests",
+        "silver/agent",
+        "silver/payments",
+        "silver/marketing",
+        "silver/content",
+        "gold/analytics",
+        "quarantine",
+    )
+
+    def __init__(self, root):
+        self.root = Path(root).expanduser().resolve()
+
+    def initialize(self):
+        for relative_path in self.REQUIRED_DIRECTORIES:
+            (self.root / relative_path).mkdir(parents=True, exist_ok=True)
+        self._write_root_readme()
+
+    def collection_dir(self, collection, as_of):
+        return (
+            self.root
+            / collection.zone
+            / collection.subject
+            / collection.key
+            / f"year={as_of:%Y}"
+            / f"month={as_of:%m}"
+            / f"day={as_of:%d}"
+        )
+
+    def schema_path(self, collection):
+        return self.root / collection.relative_schema_path
+
+    def catalog_path(self):
+        return self.root / "_catalog" / "collections.json"
+
+    def manifest_path(self, export_run_id):
+        return self.root / "_manifests" / f"export-run-{export_run_id}.json"
+
+    def _write_root_readme(self):
+        readme = self.root / "README.md"
+        if readme.exists():
+            return
+        readme.write_text(
+            "\n".join(
+                [
+                    "# MLADIS Data Store",
+                    "",
+                    "Drive-backed JSON/JSONL data lake for MLADIS operational exports.",
+                    "",
+                    "- Django/Postgres or SQLite remains the transactional source of truth.",
+                    "- JSONL files here are export snapshots for analysis, recovery, agent learning, and audits.",
+                    "- Do not place SSNs, EIN letters, bank records, passwords, raw signatures, or identity documents here.",
+                    "- Treat `pii_classification=private` files as restricted business records.",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+
+class DataLakeSchemaWriter:
+    BASE_RECORD_FIELDS = {
+        "schema_version": "string",
+        "collection": "string",
+        "entity_type": "string",
+        "record_key": "string",
+        "source_system": "string",
+        "source_model": "string",
+        "source_pk": "string",
+        "pii_classification": "string",
+        "occurred_at": "datetime|null",
+        "extracted_at": "datetime",
+        "natural_keys": "object",
+        "data": "object",
+    }
+
+    def __init__(self, layout, collections):
+        self.layout = layout
+        self.collections = collections
+
+    def write(self):
+        for collection in self.collections:
+            self._write_collection_schema(collection)
+        self.layout.catalog_path().write_text(
+            json.dumps(
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "generated_at": timezone.now().isoformat(),
+                    "collections": [
+                        {
+                            "key": collection.key,
+                            "zone": collection.zone,
+                            "subject": collection.subject,
+                            "entity_type": collection.entity_type,
+                            "description": collection.description,
+                            "pii_classification": collection.pii_classification,
+                            "schema_path": collection.relative_schema_path,
+                        }
+                        for collection in self.collections
+                    ],
+                },
+                indent=2,
+                cls=DataLakeJsonEncoder,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    def _write_collection_schema(self, collection):
+        self.layout.schema_path(collection).write_text(
+            json.dumps(
+                {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "$id": f"https://mladis.com/schemas/data-lake/{collection.key}.schema.json",
+                    "title": f"MLADIS {collection.key} record",
+                    "description": collection.description,
+                    "type": "object",
+                    "required": list(self.BASE_RECORD_FIELDS.keys()),
+                    "properties": {
+                        key: {"description": type_name}
+                        for key, type_name in self.BASE_RECORD_FIELDS.items()
+                    },
+                    "x-mladis": {
+                        "schema_version": SCHEMA_VERSION,
+                        "zone": collection.zone,
+                        "subject": collection.subject,
+                        "entity_type": collection.entity_type,
+                        "pii_classification": collection.pii_classification,
+                    },
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+
+class DataLakeJsonlWriter:
+    def write_records(self, path, records):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        count = 0
+        with path.open("w", encoding="utf-8") as output:
+            for record in records:
+                output.write(json.dumps(record, cls=DataLakeJsonEncoder, sort_keys=True))
+                output.write("\n")
+                count += 1
+        return count
+
+
+class DataLakeObjectEventWriter:
+    collection = DataLakeCollection(
+        key="object_events",
+        zone="bronze",
+        subject="app_events",
+        entity_type="object_event",
+        description="Append-only object lifecycle events emitted by live MLADIS workflows.",
+        pii_classification="private",
+    )
+
+    def __init__(self, root):
+        self.layout = DataLakeLayout(root)
+        self.record_builder = DataLakeRecordBuilder(redacted=False)
+
+    @classmethod
+    def from_settings(cls):
+        root = (settings.MLADIS_DATASTORE_ROOT or "").strip()
+        if not root:
+            return NullDataLakeObjectEventWriter()
+        return cls(root)
+
+    def write_model_event(self, *, event_name, instance, request=None, data=None):
+        self.layout.initialize()
+        now = timezone.now()
+        event_id = f"{instance._meta.label_lower}:{instance.pk}:{event_name}:{uuid4().hex[:8]}"
+        request_data = self._request_data(request)
+        record = self.record_builder.build(
+            collection=self.collection,
+            source_model=instance._meta.label,
+            entity_id=event_id,
+            occurred_at=now,
+            natural_keys={
+                "event_name": event_name,
+                "source_pk": str(instance.pk or ""),
+            },
+            data={
+                "event_name": event_name,
+                "object_model": instance._meta.label,
+                "object_pk": instance.pk,
+                "request_path": request_data["path"],
+                "request_user_id": request_data["user_id"],
+                "session_key": request_data["session_key"],
+                "data": data or {},
+            },
+        )
+        output_path = (
+            self.layout.collection_dir(self.collection, timezone.localdate())
+            / f"object_events-live-{now:%Y%m%d}.jsonl"
+        )
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("a", encoding="utf-8") as output:
+            output.write(json.dumps(record, cls=DataLakeJsonEncoder, sort_keys=True) + "\n")
+        return output_path
+
+    def _request_data(self, request):
+        if request is None:
+            return {"path": "", "user_id": "", "session_key": ""}
+        user = getattr(request, "user", None)
+        session = getattr(request, "session", None)
+        return {
+            "path": getattr(request, "path", ""),
+            "user_id": getattr(user, "pk", "") if getattr(user, "is_authenticated", False) else "",
+            "session_key": getattr(session, "session_key", "") if session else "",
+        }
+
+
+class NullDataLakeObjectEventWriter:
+    def write_model_event(self, **kwargs):
+        return None
+
+
+class MLADISDataLakeExporter:
+    COLLECTIONS = (
+        DataLakeObjectEventWriter.collection,
+        DataLakeCollection(
+            key="subscriptions",
+            zone="silver",
+            subject="accounts",
+            entity_type="subscription",
+            description="Registered website accounts and linked social login/subscription identity metadata.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="customer_profiles",
+            zone="silver",
+            subject="customers",
+            entity_type="customer_profile",
+            description="Customer CRM profiles, segmentation, contact consent, and language preferences.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="airbnb_guest_records",
+            zone="silver",
+            subject="customers",
+            entity_type="airbnb_guest_record",
+            description="Imported Airbnb guest records and linked permission/feedback notes.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="customer_feedback",
+            zone="silver",
+            subject="customers",
+            entity_type="customer_feedback",
+            description="Guest feedback and review summaries tied to customers and stays.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="booking_requests",
+            zone="silver",
+            subject="requests",
+            entity_type="booking_request",
+            description="User booking/request submissions, coupon use, status, and admin handling state.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="reservations",
+            zone="silver",
+            subject="bookings",
+            entity_type="reservation",
+            description="Reservation lifecycle records derived from booking inquiries after review/confirmation.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="agent_conversations",
+            zone="silver",
+            subject="agent",
+            entity_type="agent_conversation",
+            description="Chatbot conversation logs, topics, language, and item context for agent improvement.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="agent_faq",
+            zone="silver",
+            subject="agent",
+            entity_type="agent_faq",
+            description="Editable agent FAQ knowledge records used by the local booking assistant.",
+            pii_classification="internal",
+        ),
+        DataLakeCollection(
+            key="page_visits",
+            zone="bronze",
+            subject="app_events",
+            entity_type="page_visit",
+            description="Lightweight website/app visit events for traffic analytics.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="damage_deposits",
+            zone="silver",
+            subject="payments",
+            entity_type="damage_deposit",
+            description="Damage deposit checkout/authorization records across payment providers.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="reservation_payment_holds",
+            zone="silver",
+            subject="payments",
+            entity_type="reservation_payment_hold",
+            description="Stay payment authorization holds created after the damage-deposit hold.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="donations",
+            zone="silver",
+            subject="payments",
+            entity_type="donation",
+            description="Mission donation checkout records.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="invoices",
+            zone="silver",
+            subject="payments",
+            entity_type="invoice",
+            description="Invoice headers and line-item totals for customer billing.",
+            pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="promotions",
+            zone="silver",
+            subject="marketing",
+            entity_type="promotion",
+            description="Promotion campaigns, target segments, linked coupons, and delivery state.",
+            pii_classification="internal",
+        ),
+        DataLakeCollection(
+            key="inventory",
+            zone="silver",
+            subject="content",
+            entity_type="bookable_item",
+            description="Bookable stays/services and Airbnb-facing inventory metadata.",
+            pii_classification="internal",
+        ),
+        DataLakeCollection(
+            key="availability_blocks",
+            zone="silver",
+            subject="bookings",
+            entity_type="availability_block",
+            description="Manual calendar blocks that affect availability.",
+            pii_classification="internal",
+        ),
+        DataLakeCollection(
+            key="daily_price_overrides",
+            zone="silver",
+            subject="bookings",
+            entity_type="daily_price_override",
+            description="Manual nightly price overrides by stay and date range.",
+            pii_classification="internal",
+        ),
+    )
+
+    def __init__(self, root, *, redacted=False):
+        self.layout = DataLakeLayout(root)
+        self.redacted = redacted
+        self.record_builder = DataLakeRecordBuilder(redacted=redacted)
+        self.writer = DataLakeJsonlWriter()
+
+    def export(self, *, collections=None, schema_only=False, include_placeholders=False):
+        export_run_id = timezone.now().strftime("%Y%m%dT%H%M%S") + "-" + uuid4().hex[:8]
+        as_of = timezone.localdate()
+        selected = self._selected_collections(collections)
+        self.layout.initialize()
+        DataLakeSchemaWriter(self.layout, self.COLLECTIONS).write()
+
+        collection_counts = {collection.key: 0 for collection in selected}
+        if schema_only:
+            if include_placeholders:
+                for collection in selected:
+                    placeholder_path = self._collection_file(collection, as_of, export_run_id, placeholder=True)
+                    self.writer.write_records(
+                        placeholder_path,
+                        [
+                            {
+                                "schema_version": SCHEMA_VERSION,
+                                "collection": collection.key,
+                                "placeholder": True,
+                                "message": "This file reserves the JSONL path. Run export_data_lake without --schema-only to write records.",
+                            }
+                        ],
+                    )
+            manifest_path = self._write_manifest(export_run_id, selected, collection_counts, schema_only=True)
+            return DataLakeExportResult(export_run_id, self.layout.root, True, self.redacted, collection_counts, manifest_path)
+
+        for collection in selected:
+            records = list(self._records_for(collection))
+            collection_counts[collection.key] = self.writer.write_records(
+                self._collection_file(collection, as_of, export_run_id),
+                records,
+            )
+
+        manifest_path = self._write_manifest(export_run_id, selected, collection_counts, schema_only=False)
+        return DataLakeExportResult(export_run_id, self.layout.root, False, self.redacted, collection_counts, manifest_path)
+
+    def _selected_collections(self, keys):
+        if not keys:
+            return list(self.COLLECTIONS)
+        requested = {key.strip() for key in keys if key.strip()}
+        collections = [collection for collection in self.COLLECTIONS if collection.key in requested]
+        missing = sorted(requested - {collection.key for collection in collections})
+        if missing:
+            raise ValueError(f"Unknown data lake collection(s): {', '.join(missing)}")
+        return collections
+
+    def _collection_file(self, collection, as_of, export_run_id, *, placeholder=False):
+        suffix = "placeholder" if placeholder else export_run_id
+        return self.layout.collection_dir(collection, as_of) / f"{collection.key}-{suffix}.jsonl"
+
+    def _write_manifest(self, export_run_id, collections, counts, *, schema_only):
+        manifest_path = self.layout.manifest_path(export_run_id)
+        manifest = {
+            "schema_version": SCHEMA_VERSION,
+            "export_run_id": export_run_id,
+            "generated_at": timezone.now().isoformat(),
+            "schema_only": schema_only,
+            "redacted": self.redacted,
+            "root": str(self.layout.root),
+            "collections": [
+                {
+                    "key": collection.key,
+                    "zone": collection.zone,
+                    "subject": collection.subject,
+                    "pii_classification": "redacted" if self.redacted else collection.pii_classification,
+                    "count": counts.get(collection.key, 0),
+                    "schema_path": collection.relative_schema_path,
+                }
+                for collection in collections
+            ],
+        }
+        manifest_path.write_text(json.dumps(manifest, indent=2, cls=DataLakeJsonEncoder) + "\n", encoding="utf-8")
+        return manifest_path
+
+    def _records_for(self, collection):
+        producer = getattr(self, f"_records_{collection.key}")
+        return producer(collection)
+
+    def _base_natural_keys(self, *, email="", phone="", slug="", code=""):
+        natural_keys = {}
+        if email:
+            natural_keys["email" if not self.redacted else "email_hash"] = self.record_builder.identity(email)
+        if phone:
+            natural_keys["phone" if not self.redacted else "phone_hash"] = self.record_builder.identity(phone)
+        if slug:
+            natural_keys["slug"] = slug
+        if code:
+            natural_keys["code"] = code
+        return natural_keys
+
+    def _records_object_events(self, collection):
+        return tuple()
+
+    def _records_subscriptions(self, collection):
+        User = get_user_model()
+        try:
+            from allauth.socialaccount.models import SocialAccount
+        except ImportError:
+            SocialAccount = None
+
+        social_accounts = {}
+        if SocialAccount:
+            for account in SocialAccount.objects.select_related("user"):
+                social_accounts.setdefault(account.user_id, []).append(
+                    {
+                        "provider": account.provider,
+                        "uid_hash" if self.redacted else "uid": self.record_builder.identity(account.uid),
+                    }
+                )
+
+        profiles = {
+            profile.user_id: profile
+            for profile in CustomerProfile.objects.filter(user__isnull=False)
+        }
+        for user in User.objects.order_by("date_joined", "id"):
+            profile = profiles.get(user.id)
+            data = {
+                "user_id": user.id,
+                "username_hash" if self.redacted else "username": self.record_builder.identity(user.username),
+                "first_name": "" if self.redacted else user.first_name,
+                "last_name": "" if self.redacted else user.last_name,
+                **self.record_builder.contact_fields(email=user.email),
+                "is_active": user.is_active,
+                "is_staff": user.is_staff,
+                "is_superuser": user.is_superuser,
+                "date_joined": user.date_joined,
+                "last_login": user.last_login,
+                "customer_profile_id": profile.id if profile else None,
+                "customer_segment": profile.segment if profile else "",
+                "preferred_language": profile.preferred_language if profile else "",
+                "social_accounts": social_accounts.get(user.id, []),
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="auth.User",
+                entity_id=user.id,
+                occurred_at=user.date_joined,
+                natural_keys=self._base_natural_keys(email=user.email),
+                data=data,
+            )
+
+    def _records_customer_profiles(self, collection):
+        for profile in CustomerProfile.objects.select_related("user").order_by("created_at", "id"):
+            data = {
+                "profile_id": profile.id,
+                "user_id": profile.user_id,
+                "name": "" if self.redacted else profile.name,
+                **self.record_builder.contact_fields(email=profile.email, phone=profile.phone),
+                "segment": profile.segment,
+                "source": profile.source,
+                "marketing_consent_status": profile.marketing_consent_status,
+                "marketing_consent_requested_at": profile.marketing_consent_requested_at,
+                "marketing_consent_at": profile.marketing_consent_at,
+                "marketing_consent_source": profile.marketing_consent_source,
+                "preferred_language": profile.preferred_language,
+                "notes": "" if self.redacted else profile.notes,
+                "created_at": profile.created_at,
+                "updated_at": profile.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.CustomerProfile",
+                entity_id=profile.id,
+                occurred_at=profile.created_at,
+                natural_keys=self._base_natural_keys(email=profile.email, phone=profile.phone),
+                data=data,
+            )
+
+    def _records_airbnb_guest_records(self, collection):
+        queryset = AirbnbGuestRecord.objects.select_related("customer_profile", "item").order_by("created_at", "id")
+        for record in queryset:
+            data = {
+                "airbnb_guest_record_id": record.id,
+                "customer_profile_id": record.customer_profile_id,
+                "item_id": record.item_id,
+                "guest_name": "" if self.redacted else record.guest_name,
+                **self.record_builder.contact_fields(email=record.email, phone=record.phone),
+                "listing_title": record.listing_title,
+                "airbnb_listing_id": record.airbnb_listing_id,
+                "airbnb_thread_url": "" if self.redacted else record.airbnb_thread_url,
+                "source_message_id": record.source_message_id,
+                "source_email_subject": "" if self.redacted else record.source_email_subject,
+                "source_email_timestamp": record.source_email_timestamp,
+                "check_in": record.check_in,
+                "check_out": record.check_out,
+                "guests": record.guests,
+                "message_excerpt": "" if self.redacted else record.message_excerpt,
+                "feedback_summary": "" if self.redacted else record.feedback_summary,
+                "rating": record.rating,
+                "permission_notes": "" if self.redacted else record.permission_notes,
+                "created_at": record.created_at,
+                "updated_at": record.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.AirbnbGuestRecord",
+                entity_id=record.id,
+                occurred_at=record.created_at,
+                natural_keys=self._base_natural_keys(email=record.email, phone=record.phone),
+                data=data,
+            )
+
+    def _records_customer_feedback(self, collection):
+        queryset = CustomerFeedback.objects.select_related("customer_profile", "airbnb_guest_record", "item").order_by("created_at", "id")
+        for feedback in queryset:
+            data = {
+                "feedback_id": feedback.id,
+                "customer_profile_id": feedback.customer_profile_id,
+                "airbnb_guest_record_id": feedback.airbnb_guest_record_id,
+                "item_id": feedback.item_id,
+                "source": feedback.source,
+                "source_label": feedback.source_label,
+                "source_url": "" if self.redacted else feedback.source_url,
+                "guest_name": "" if self.redacted else feedback.guest_name,
+                **self.record_builder.contact_fields(email=feedback.email, phone=feedback.phone),
+                "rating": feedback.rating,
+                "feedback_text": "" if self.redacted else feedback.feedback_text,
+                "feedback_summary": "" if self.redacted else feedback.feedback_summary,
+                "permission_notes": "" if self.redacted else feedback.permission_notes,
+                "is_public": feedback.is_public,
+                "published_at": feedback.published_at,
+                "created_at": feedback.created_at,
+                "updated_at": feedback.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.CustomerFeedback",
+                entity_id=feedback.id,
+                occurred_at=feedback.created_at,
+                natural_keys=self._base_natural_keys(email=feedback.email, phone=feedback.phone),
+                data=data,
+            )
+
+    def _booking_record_data(self, inquiry):
+        return {
+            "booking_inquiry_id": inquiry.id,
+            "user_id": inquiry.user_id,
+            "customer_profile_id": inquiry.customer_profile_id,
+            "item_id": inquiry.item_id,
+            "item_name": inquiry.item.business_display_name if inquiry.item else "",
+            "guest_name": "" if self.redacted else inquiry.guest_name,
+            **self.record_builder.contact_fields(email=inquiry.email, phone=inquiry.phone),
+            "check_in": inquiry.check_in,
+            "check_out": inquiry.check_out,
+            "nights": inquiry.nights,
+            "guests": inquiry.guests,
+            "message": "" if self.redacted else inquiry.message,
+            "coupon_id": inquiry.coupon_id,
+            "coupon_code": inquiry.coupon_code,
+            "cancellation_policy_id": inquiry.cancellation_policy_id,
+            "status": inquiry.status,
+            "subtotal_cents": inquiry.subtotal_cents,
+            "discount_cents": inquiry.discount_cents,
+            "reservation_payment_cents": inquiry.reservation_payment_cents,
+            "deposit_cents": inquiry.deposit_cents,
+            "total_cents": inquiry.total_cents,
+            "currency": inquiry.currency,
+            "is_admin_test": inquiry.is_admin_test,
+            "is_blacklist_flagged": inquiry.is_blacklist_flagged,
+            "canceled_at": inquiry.canceled_at,
+            "cancellation_reason": "" if self.redacted else inquiry.cancellation_reason,
+            "email_sent_at": inquiry.email_sent_at,
+            "email_delivery_status": inquiry.email_delivery_status,
+            "email_error": "" if self.redacted else inquiry.email_error,
+            "admin_notes": "" if self.redacted else inquiry.admin_notes,
+            "created_at": inquiry.created_at,
+            "updated_at": inquiry.updated_at,
+        }
+
+    def _records_booking_requests(self, collection):
+        queryset = BookingInquiry.objects.select_related("user", "customer_profile", "item", "coupon", "cancellation_policy").order_by("created_at", "id")
+        for inquiry in queryset:
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.BookingInquiry",
+                entity_id=inquiry.id,
+                occurred_at=inquiry.created_at,
+                natural_keys=self._base_natural_keys(email=inquiry.email, phone=inquiry.phone),
+                data=self._booking_record_data(inquiry),
+            )
+
+    def _records_reservations(self, collection):
+        statuses = {BookingStatus.QUOTED, BookingStatus.CONFIRMED, BookingStatus.CANCELED, BookingStatus.DECLINED}
+        queryset = BookingInquiry.objects.filter(status__in=statuses).select_related("item", "customer_profile").order_by("created_at", "id")
+        for inquiry in queryset:
+            data = self._booking_record_data(inquiry)
+            data["reservation_state"] = "active" if inquiry.status == BookingStatus.CONFIRMED else inquiry.status
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.BookingInquiry",
+                entity_id=inquiry.id,
+                occurred_at=inquiry.created_at,
+                natural_keys=self._base_natural_keys(email=inquiry.email, phone=inquiry.phone),
+                data=data,
+            )
+
+    def _records_agent_conversations(self, collection):
+        queryset = AgentConversation.objects.select_related("item", "user").order_by("created_at", "id")
+        for conversation in queryset:
+            data = {
+                "agent_conversation_id": conversation.id,
+                "user_id": conversation.user_id,
+                "session_id_hash" if self.redacted else "session_id": self.record_builder.identity(conversation.session_id),
+                "item_id": conversation.item_id,
+                "visitor_name": "" if self.redacted else conversation.visitor_name,
+                **self.record_builder.contact_fields(email=conversation.visitor_email),
+                "last_user_message": "" if self.redacted else conversation.last_user_message,
+                "last_agent_reply": "" if self.redacted else conversation.last_agent_reply,
+                "question_topic": conversation.question_topic,
+                "language": conversation.language,
+                "metadata": {} if self.redacted else conversation.metadata,
+                "created_at": conversation.created_at,
+                "updated_at": conversation.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.AgentConversation",
+                entity_id=conversation.id,
+                occurred_at=conversation.created_at,
+                natural_keys=self._base_natural_keys(email=conversation.visitor_email),
+                data=data,
+            )
+
+    def _records_agent_faq(self, collection):
+        for faq in AgentFAQ.objects.select_related("item").order_by("category", "priority", "id"):
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.AgentFAQ",
+                entity_id=faq.id,
+                occurred_at=faq.created_at,
+                natural_keys={"category": faq.category, "language": faq.language},
+                data={
+                    "agent_faq_id": faq.id,
+                    "category": faq.category,
+                    "question": faq.question,
+                    "answer": faq.answer,
+                    "keywords": faq.keywords,
+                    "item_id": faq.item_id,
+                    "language": faq.language,
+                    "min_score": faq.min_score,
+                    "priority": faq.priority,
+                    "is_active": faq.is_active,
+                    "created_at": faq.created_at,
+                    "updated_at": faq.updated_at,
+                },
+            )
+
+    def _records_page_visits(self, collection):
+        queryset = PageVisit.objects.select_related("user").order_by("created_at", "id")
+        for visit in queryset:
+            email = visit.user.email if visit.user else ""
+            data = {
+                "page_visit_id": visit.id,
+                "path": visit.path,
+                "user_id": visit.user_id,
+                "session_key_hash" if self.redacted else "session_key": self.record_builder.identity(visit.session_key),
+                "language": visit.language,
+                "user_agent": "" if self.redacted else visit.user_agent,
+                "created_at": visit.created_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.PageVisit",
+                entity_id=visit.id,
+                occurred_at=visit.created_at,
+                natural_keys=self._base_natural_keys(email=email),
+                data=data,
+            )
+
+    def _records_damage_deposits(self, collection):
+        queryset = DamageDeposit.objects.select_related("inquiry", "item").order_by("created_at", "id")
+        for deposit in queryset:
+            data = {
+                "damage_deposit_id": deposit.id,
+                "booking_inquiry_id": deposit.inquiry_id,
+                "item_id": deposit.item_id,
+                "guest_name": "" if self.redacted else deposit.guest_name,
+                **self.record_builder.contact_fields(email=deposit.email),
+                "amount_cents": deposit.amount_cents,
+                "currency": deposit.currency,
+                "payment_provider": deposit.payment_provider,
+                "status": deposit.status,
+                "stripe_checkout_session_id": "" if self.redacted else deposit.stripe_checkout_session_id,
+                "stripe_payment_intent_id": "" if self.redacted else deposit.stripe_payment_intent_id,
+                "paypal_order_id": "" if self.redacted else deposit.paypal_order_id,
+                "paypal_authorization_id": "" if self.redacted else deposit.paypal_authorization_id,
+                "checkout_url": "" if self.redacted else deposit.checkout_url,
+                "notes": "" if self.redacted else deposit.notes,
+                "created_at": deposit.created_at,
+                "updated_at": deposit.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.DamageDeposit",
+                entity_id=deposit.id,
+                occurred_at=deposit.created_at,
+                natural_keys=self._base_natural_keys(email=deposit.email),
+                data=data,
+            )
+
+    def _records_reservation_payment_holds(self, collection):
+        queryset = ReservationPaymentHold.objects.select_related("inquiry", "item").order_by("created_at", "id")
+        for hold in queryset:
+            data = {
+                "reservation_payment_hold_id": hold.id,
+                "booking_inquiry_id": hold.inquiry_id,
+                "item_id": hold.item_id,
+                "guest_name": "" if self.redacted else hold.guest_name,
+                **self.record_builder.contact_fields(email=hold.email),
+                "amount_cents": hold.amount_cents,
+                "currency": hold.currency,
+                "payment_provider": hold.payment_provider,
+                "status": hold.status,
+                "stripe_checkout_session_id": "" if self.redacted else hold.stripe_checkout_session_id,
+                "stripe_payment_intent_id": "" if self.redacted else hold.stripe_payment_intent_id,
+                "checkout_url": "" if self.redacted else hold.checkout_url,
+                "capture_after": hold.capture_after,
+                "notes": "" if self.redacted else hold.notes,
+                "created_at": hold.created_at,
+                "updated_at": hold.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.ReservationPaymentHold",
+                entity_id=hold.id,
+                occurred_at=hold.created_at,
+                natural_keys=self._base_natural_keys(email=hold.email),
+                data=data,
+            )
+
+    def _records_donations(self, collection):
+        queryset = Donation.objects.select_related("cause").order_by("created_at", "id")
+        for donation in queryset:
+            data = {
+                "donation_id": donation.id,
+                "cause_id": donation.cause_id,
+                "cause_name": donation.cause.name if donation.cause else "",
+                "donor_name": "" if self.redacted else donation.donor_name,
+                **self.record_builder.contact_fields(email=donation.email),
+                "amount_cents": donation.amount_cents,
+                "currency": donation.currency,
+                "status": donation.status,
+                "stripe_checkout_session_id": "" if self.redacted else donation.stripe_checkout_session_id,
+                "stripe_payment_intent_id": "" if self.redacted else donation.stripe_payment_intent_id,
+                "checkout_url": "" if self.redacted else donation.checkout_url,
+                "notes": "" if self.redacted else donation.notes,
+                "created_at": donation.created_at,
+                "updated_at": donation.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.Donation",
+                entity_id=donation.id,
+                occurred_at=donation.created_at,
+                natural_keys=self._base_natural_keys(email=donation.email),
+                data=data,
+            )
+
+    def _records_invoices(self, collection):
+        queryset = Invoice.objects.select_related("inquiry", "customer_profile").prefetch_related("line_items").order_by("created_at", "id")
+        for invoice in queryset:
+            data = {
+                "invoice_id": invoice.id,
+                "booking_inquiry_id": invoice.inquiry_id,
+                "customer_profile_id": invoice.customer_profile_id,
+                "invoice_number": invoice.invoice_number,
+                "public_token": "" if self.redacted else str(invoice.public_token),
+                "recipient_name": "" if self.redacted else invoice.recipient_name,
+                **self.record_builder.contact_fields(email=invoice.recipient_email),
+                "status": invoice.status,
+                "issue_date": invoice.issue_date,
+                "due_date": invoice.due_date,
+                "currency": invoice.currency,
+                "subtotal_cents": invoice.subtotal_cents,
+                "discount_cents": invoice.discount_cents,
+                "deposit_cents": invoice.deposit_cents,
+                "total_cents": invoice.total_cents,
+                "logo_snapshot_url": invoice.logo_snapshot_url,
+                "notes": "" if self.redacted else invoice.notes,
+                "sent_at": invoice.sent_at,
+                "email_status": invoice.email_status,
+                "email_error": "" if self.redacted else invoice.email_error,
+                "line_items": [
+                    {
+                        "description": line.description,
+                        "quantity": line.quantity,
+                        "unit_amount_cents": line.unit_amount_cents,
+                        "amount_cents": line.amount_cents,
+                        "sort_order": line.sort_order,
+                    }
+                    for line in invoice.line_items.all()
+                ],
+                "created_at": invoice.created_at,
+                "updated_at": invoice.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.Invoice",
+                entity_id=invoice.id,
+                occurred_at=invoice.created_at,
+                natural_keys=self._base_natural_keys(email=invoice.recipient_email, code=invoice.invoice_number),
+                data=data,
+            )
+
+    def _records_promotions(self, collection):
+        queryset = Promotion.objects.select_related("coupon", "created_by").prefetch_related("recipients").order_by("created_at", "id")
+        for promotion in queryset:
+            data = {
+                "promotion_id": promotion.id,
+                "title": promotion.title,
+                "subject": promotion.subject,
+                "message": promotion.message,
+                "discount_percent": promotion.discount_percent,
+                "coupon_id": promotion.coupon_id,
+                "coupon_code": promotion.coupon.code if promotion.coupon else "",
+                "target_segment": promotion.target_segment,
+                "status": promotion.status,
+                "created_by_id": promotion.created_by_id,
+                "sent_at": promotion.sent_at,
+                "recipients": [
+                    {
+                        "customer_profile_id": recipient.customer_profile_id,
+                        "name": "" if self.redacted else recipient.name,
+                        **self.record_builder.contact_fields(email=recipient.email),
+                        "status": recipient.status,
+                        "error": "" if self.redacted else recipient.error,
+                        "sent_at": recipient.sent_at,
+                    }
+                    for recipient in promotion.recipients.all()
+                ],
+                "created_at": promotion.created_at,
+                "updated_at": promotion.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.Promotion",
+                entity_id=promotion.id,
+                occurred_at=promotion.created_at,
+                data=data,
+            )
+
+    def _records_inventory(self, collection):
+        for item in BookableItem.objects.order_by("category", "name", "id"):
+            data = {
+                "bookable_item_id": item.id,
+                "name": item.name,
+                "business_display_name": item.business_display_name,
+                "slug": item.slug,
+                "category": item.category,
+                "short_description": item.short_description,
+                "marketing_headline": item.marketing_headline,
+                "location_label": item.location_label,
+                "starting_price": item.starting_price,
+                "price_unit": item.price_unit,
+                "max_guests": item.max_guests,
+                "bedrooms": item.bedrooms,
+                "beds": item.beds,
+                "bathrooms": item.bathrooms,
+                "airbnb_listing_id": item.airbnb_listing_id,
+                "airbnb_url": item.airbnb_url,
+                "airbnb_rating": item.airbnb_rating,
+                "review_count": item.review_count,
+                "is_featured": item.is_featured,
+                "is_active": item.is_active,
+                "created_at": item.created_at,
+                "updated_at": item.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.BookableItem",
+                entity_id=item.id,
+                occurred_at=item.created_at,
+                natural_keys=self._base_natural_keys(slug=item.slug),
+                data=data,
+            )
+
+    def _records_availability_blocks(self, collection):
+        for block in AvailabilityBlock.objects.select_related("item").order_by("created_at", "id"):
+            data = {
+                "availability_block_id": block.id,
+                "item_id": block.item_id,
+                "item_name": block.item.business_display_name if block.item else "",
+                "start_date": block.start_date,
+                "end_date": block.end_date,
+                "reason": block.reason,
+                "notes": "" if self.redacted else block.notes,
+                "is_active": block.is_active,
+                "created_at": block.created_at,
+                "updated_at": block.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.AvailabilityBlock",
+                entity_id=block.id,
+                occurred_at=block.created_at,
+                data=data,
+            )
+
+    def _records_daily_price_overrides(self, collection):
+        for override in DailyPriceOverride.objects.select_related("item").order_by("created_at", "id"):
+            data = {
+                "daily_price_override_id": override.id,
+                "item_id": override.item_id,
+                "item_name": override.item.business_display_name if override.item else "",
+                "start_date": override.start_date,
+                "end_date": override.end_date,
+                "nightly_price": override.nightly_price,
+                "label": override.label,
+                "notes": "" if self.redacted else override.notes,
+                "is_active": override.is_active,
+                "created_at": override.created_at,
+                "updated_at": override.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.DailyPriceOverride",
+                entity_id=override.id,
+                occurred_at=override.created_at,
+                data=data,
+            )

@@ -33,6 +33,7 @@ interface ApiReservation {
   check_out: string;
   guests: number;
   status: ReservationSummary['status'];
+  admin_url: string;
   action_required?: boolean;
 }
 
@@ -70,6 +71,7 @@ interface ApiStayPerformance {
   rating: string;
   occupancy_label: string;
   revenue_label: string;
+  detail_url: string;
   status?: StayPerformance['status'];
 }
 
@@ -90,11 +92,11 @@ export class ApiDashboardRepository implements DashboardRepository {
     const data = await this.http.get<ApiDashboardSnapshot>('/api/ops/summary/');
     return new DashboardSnapshot(
       data.metrics.map((item) => new DashboardMetric(item.id, item.label, item.value, item.caption, item.trend ?? 'neutral', item.trend_label ?? 'Stable', item.accent ?? 'teal', item.progress ?? 0)),
-      data.reservations.map((item) => new ReservationSummary(item.id, item.guest_name, item.stay_name, item.check_in, item.check_out, item.guests, item.status, item.action_required ?? false)),
+      data.reservations.map((item) => new ReservationSummary(item.id, item.guest_name, item.stay_name, item.check_in, item.check_out, item.guests, item.status, item.admin_url, item.action_required ?? false)),
       data.deposits.map((item) => new DepositSummary(item.id, item.guest_name, item.stay_name, new Money(item.amount_cents, item.currency), item.provider, item.status)),
       data.agent_questions.map((item) => new AgentQuestionSummary(item.id, item.topic, item.last_question, item.mode, item.created_at)),
       data.calendar_alerts.map((item) => new CalendarAlert(item.id, item.label, item.stay_name, item.date_range, item.severity ?? 'info')),
-      (data.stays ?? []).map((item) => new StayPerformance(item.id, item.name, item.subtitle, item.image_url, item.rating, item.occupancy_label, item.revenue_label, item.status ?? 'live')),
+      (data.stays ?? []).map((item) => new StayPerformance(item.id, item.name, item.subtitle, item.image_url, item.rating, item.occupancy_label, item.revenue_label, item.detail_url, item.status ?? 'live')),
       data.generated_at,
       'api',
     );
@@ -111,10 +113,10 @@ export class MockDashboardRepository implements DashboardRepository {
         new DashboardMetric('agent', 'Agent coverage', '64%', 'Questions answered by the FAQ layer', 'up', 'FAQ layer active', 'violet', 64),
       ],
       [
-        new ReservationSummary(101, 'Maria R.', 'G-102 Tech Apartment', 'May 16', 'May 20', 4, 'reviewing', true),
-        new ReservationSummary(102, 'Anthony B.', 'G-101 Comfort Stay', 'May 22', 'May 26', 2, 'confirmed'),
-        new ReservationSummary(103, 'Family Group', '6-Bedroom Vacation Home', 'Jun 02', 'Jun 09', 10, 'new', true),
-        new ReservationSummary(104, 'Jessica L.', 'G-101 Comfort Stay', 'Jun 15', 'Jun 18', 3, 'confirmed'),
+        new ReservationSummary(101, 'Maria R.', 'G-102 Tech Apartment', 'May 16', 'May 20', 4, 'reviewing', '/admin/bookings/bookinginquiry/101/change/', true),
+        new ReservationSummary(102, 'Anthony B.', 'G-101 Comfort Stay', 'May 22', 'May 26', 2, 'confirmed', '/admin/bookings/bookinginquiry/102/change/'),
+        new ReservationSummary(103, 'Family Group', '6-Bedroom Vacation Home', 'Jun 02', 'Jun 09', 10, 'new', '/admin/bookings/bookinginquiry/103/change/', true),
+        new ReservationSummary(104, 'Jessica L.', 'G-101 Comfort Stay', 'Jun 15', 'Jun 18', 3, 'confirmed', '/admin/bookings/bookinginquiry/104/change/'),
       ],
       [
         new DepositSummary(21, 'Maria R.', 'G-102 Tech Apartment', new Money(20000), 'Stripe', 'pending'),
@@ -139,6 +141,7 @@ export class MockDashboardRepository implements DashboardRepository {
           '4.93',
           '82% occupied',
           '$4.8k this month',
+          '/stays/g101/',
         ),
         new StayPerformance(
           'g102',
@@ -148,6 +151,7 @@ export class MockDashboardRepository implements DashboardRepository {
           '4.88',
           '76% occupied',
           '$4.1k this month',
+          '/stays/g102/',
           'review',
         ),
         new StayPerformance(
@@ -158,6 +162,7 @@ export class MockDashboardRepository implements DashboardRepository {
           '4.69',
           '68% occupied',
           '$6.7k this month',
+          '/stays/six-bedroom/',
         ),
       ],
       new Date().toISOString(),

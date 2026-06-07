@@ -1,1 +1,243 @@
-.admin-page{gap:24px}.admin-hero{display:flex;justify-content:space-between;align-items:center;gap:22px;padding:28px;border:1px solid rgba(255,255,255,.72);border-radius:30px;background:linear-gradient(135deg,rgba(15,118,110,.92),rgba(37,99,235,.82));color:#fff;box-shadow:0 28px 80px rgba(15,23,42,.18)}.admin-hero span,.admin-section-header>span{display:inline-flex;align-items:center;gap:8px;font-weight:900}.admin-hero h2{margin:10px 0 8px;font-size:clamp(2rem,4vw,4rem);letter-spacing:-.06em}.admin-hero p{max-width:760px;margin:0;color:rgba(255,255,255,.78)}.admin-primary-link{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;border-radius:999px;padding:13px 16px;background:#fff;color:#0f766e;font-weight:950}.admin-health-grid,.admin-shortcut-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.admin-health-card,.admin-shortcut,.admin-checklist{border:1px solid rgba(148,163,184,.22);border-radius:24px;background:rgba(255,255,255,.82);box-shadow:0 22px 60px rgba(31,41,55,.09);backdrop-filter:blur(18px)}.admin-health-card{display:grid;gap:7px;padding:20px}.admin-health-card span{color:#64748b;font-weight:900;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em}.admin-health-card strong{font-size:1.35rem;letter-spacing:-.04em}.admin-health-card p,.admin-shortcut p,.admin-checklist p{margin:0;color:#64748b}.admin-health-card--review{border-color:rgba(245,158,11,.42)}.admin-health-card--attention{border-color:rgba(239,68,68,.36)}.admin-section-header{display:flex;justify-content:space-between;align-items:end;gap:18px}.admin-section-header h3,.admin-checklist h3{margin:0;font-size:1.65rem;letter-spacing:-.04em}.admin-section-header p{margin:4px 0 0;color:#64748b}.admin-section-header>span{border-radius:999px;padding:9px 12px;background:rgba(255,255,255,.78);color:#0f766e}.admin-shortcut{display:grid;gap:10px;padding:20px;transition:transform .18s ease,box-shadow .18s ease}.admin-shortcut:hover{transform:translateY(-4px);box-shadow:0 30px 90px rgba(31,41,55,.14)}.admin-shortcut__icon{display:grid;place-items:center;width:44px;height:44px;border-radius:16px;color:#fff;background:linear-gradient(135deg,#2563eb,#7c3aed)}.admin-shortcut--teal .admin-shortcut__icon{background:linear-gradient(135deg,#0f766e,#14b8a6)}.admin-shortcut--violet .admin-shortcut__icon{background:linear-gradient(135deg,#7c3aed,#a855f7)}.admin-shortcut--amber .admin-shortcut__icon{background:linear-gradient(135deg,#d97706,#f59e0b)}.admin-shortcut--rose .admin-shortcut__icon{background:linear-gradient(135deg,#e11d48,#fb7185)}.admin-shortcut strong{font-size:1.05rem}.admin-shortcut small{display:inline-flex;align-items:center;gap:5px;color:#0f766e;font-weight:950}.admin-checklist{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:18px;padding:24px}.admin-checklist ol{margin:0;padding-left:22px;color:#334155}.admin-checklist li+li{margin-top:8px}@media(max-width:1100px){.admin-health-grid,.admin-shortcut-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-checklist{grid-template-columns:1fr}}@media(max-width:720px){.admin-hero,.admin-section-header{display:grid}.admin-health-grid,.admin-shortcut-grid{grid-template-columns:1fr}.admin-primary-link{width:fit-content}}
+.admin-page {
+  gap: 12px;
+}
+
+.admin-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 108px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.92), rgba(37, 99, 235, 0.76)),
+    #0f766e;
+  color: #fff;
+  box-shadow: var(--shadow-tight);
+}
+
+.admin-hero span,
+.admin-section-header > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 900;
+}
+
+.admin-hero h2 {
+  margin: 4px 0 5px;
+  font-size: clamp(1.55rem, 2.2vw, 2.15rem);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.admin-hero p {
+  max-width: 700px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.86rem;
+  line-height: 1.36;
+}
+
+.admin-primary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 11px;
+  border-radius: var(--radius);
+  background: #fff;
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.admin-health-grid,
+.admin-shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-health-card,
+.admin-shortcut {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-left: 6px solid var(--admin-tone, #2563eb);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, var(--admin-tint, rgba(37, 99, 235, 0.12)), rgba(255, 255, 255, 0.86)),
+    rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-tight);
+  backdrop-filter: blur(18px);
+}
+
+.admin-health-card {
+  display: grid;
+  align-content: space-between;
+  gap: 5px;
+  min-height: 86px;
+  padding: 9px;
+  overflow: hidden;
+}
+
+.admin-health-card:nth-child(1) {
+  --admin-tone: #6f55b5;
+  --admin-tint: rgba(111, 85, 181, 0.16);
+}
+
+.admin-health-card:nth-child(2) {
+  --admin-tone: #0b78b6;
+  --admin-tint: rgba(11, 120, 182, 0.14);
+}
+
+.admin-health-card:nth-child(3) {
+  --admin-tone: #c95705;
+  --admin-tint: rgba(201, 87, 5, 0.14);
+}
+
+.admin-health-card:nth-child(4) {
+  --admin-tone: #087b2d;
+  --admin-tint: rgba(8, 123, 45, 0.14);
+}
+
+.admin-health-card--review {
+  --admin-tone: #d97706;
+  --admin-tint: rgba(245, 158, 11, 0.15);
+}
+
+.admin-health-card--attention {
+  --admin-tone: #e11d48;
+  --admin-tint: rgba(225, 29, 72, 0.13);
+}
+
+.admin-health-card span {
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-health-card strong {
+  font-size: clamp(1rem, 1.8vw, 1.35rem);
+  letter-spacing: 0;
+}
+
+.admin-health-card p,
+.admin-shortcut p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.72rem;
+  line-height: 1.28;
+}
+
+.admin-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 12px;
+}
+
+.admin-section-header h3 {
+  margin: 0;
+  font-size: 1.18rem;
+  letter-spacing: 0;
+}
+
+.admin-section-header p {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.admin-section-header > span {
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.78);
+  color: #0f766e;
+  font-size: 0.8rem;
+}
+
+.admin-shortcut {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 10px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-shortcut:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(31, 41, 55, 0.12);
+}
+
+.admin-shortcut--blue {
+  --admin-tone: #0b78b6;
+  --admin-tint: rgba(11, 120, 182, 0.14);
+}
+
+.admin-shortcut--teal {
+  --admin-tone: #0f766e;
+  --admin-tint: rgba(15, 118, 110, 0.14);
+}
+
+.admin-shortcut--violet {
+  --admin-tone: #6f55b5;
+  --admin-tint: rgba(111, 85, 181, 0.15);
+}
+
+.admin-shortcut--amber {
+  --admin-tone: #c95705;
+  --admin-tint: rgba(201, 87, 5, 0.14);
+}
+
+.admin-shortcut--rose {
+  --admin-tone: #b4235c;
+  --admin-tint: rgba(180, 35, 92, 0.12);
+}
+
+.admin-shortcut__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius);
+  color: #fff;
+  background: var(--admin-tone, #2563eb);
+}
+
+.admin-shortcut strong {
+  font-size: 0.94rem;
+}
+
+.admin-shortcut small {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--admin-tone, #0f766e);
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+@media (max-width: 1100px) {
+  .admin-health-grid,
+  .admin-shortcut-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-hero,
+  .admin-section-header {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .admin-health-grid,
+  .admin-shortcut-grid {
+    grid-template-columns: 1fr;
+  }
+}

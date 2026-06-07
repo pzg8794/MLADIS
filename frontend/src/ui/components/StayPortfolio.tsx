@@ -1,6 +1,7 @@
 import { CircleDollarSign, Percent, Star } from 'lucide-react';
 import { StayPerformance } from '../../domain/models';
 import { StatusBadge, type BadgeTone } from './StatusBadge';
+import { formatStayName } from '../helpers/stayNames';
 
 interface StayPortfolioProps {
   stays: StayPerformance[];
@@ -29,11 +30,11 @@ export function StayPortfolio({ stays }: StayPortfolioProps) {
       </header>
       <div className="stay-grid">
         {stays.map((stay) => (
-          <article className="dashboard-panel stay-card" key={stay.id}>
+          <a className="dashboard-panel stay-card" href={stay.detailUrl || `/stays/${stay.id}/`} key={stay.id}>
             <img src={stay.imageUrl} alt={stay.name} />
             <div className="stay-card__content">
               <div>
-                <h3>{stay.name}</h3>
+                <h3>{formatStayName(stay.name)}</h3>
                 <p>{stay.subtitle}</p>
               </div>
               <div className="stay-card__meta">
@@ -43,7 +44,7 @@ export function StayPortfolio({ stays }: StayPortfolioProps) {
               </div>
               <StatusBadge label={labelForStatus(stay.status)} tone={toneForStatus(stay.status)} />
             </div>
-          </article>
+          </a>
         ))}
       </div>
     </section>

@@ -14,6 +14,14 @@ exports `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com` for the Django
 process it starts, so normal UI/Django restarts do not rotate the Facebook
 callback URL.
 
+During active development, keep the launcher running so the site stays testable.
+If an agent has to restart the app after migrations, frontend builds, env
+changes, or a server failure, the agent should restart it through this same
+launcher immediately and verify `/healthz` before saying the work is ready.
+Do not use or share `http://0.0.0.0:8000` as a MLADIS test URL; it is only a
+bind address. Owner-facing testing uses `https://local.mladis.com` and internal
+local checks use `http://127.0.0.1:8000`.
+
 Use `https://local.mladis.com` for browser testing when Facebook sign-in
 matters. Use `http://127.0.0.1:8000` as the internal local
 Django origin and for Google/GitHub local callbacks. Do not use the Vite dev
@@ -44,6 +52,23 @@ with:
 ```bash
 bash airbnb_agent/scripts/test_signin_contracts.sh
 ```
+
+For local runtime and provider setup, read:
+
+- [docs/local-runtime-contract.md](docs/local-runtime-contract.md)
+- [docs/environment-provider-contract.md](docs/environment-provider-contract.md)
+
+Verify the contracts with:
+
+```bash
+airbnb_agent/scripts/check_local_runtime_contract.sh
+airbnb_agent/scripts/check_provider_contract.sh
+```
+
+For implementation work, the OOP/MVC architecture contract lives in
+[docs/engineering/oop-mvc-contract.md](docs/engineering/oop-mvc-contract.md).
+MLADIS features must keep model/domain objects, controller payloads, and rendered
+views separated.
 
 ## One-File VM Deploy
 

@@ -10,3 +10,6 @@ staticfiles/
 media/
 runtime_backups/
 runtime_restore_safety/
+runtime_datastore/
+MLADIS-DATASTORE/
+*.jsonl

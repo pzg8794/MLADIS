@@ -6,6 +6,18 @@
 - Update this file when repository-wide agent workflow expectations change.
 - Prefer the smallest behavior-scoped test slice first, then widen only if the touched code path crosses a broader surface.
 
+## Architecture Discipline
+
+- OOP and MVC are mandatory for MLADIS. Treat them as the system bible, not as optional style.
+- Model/domain objects own business state, identity, invariants, and rules. For example, every visitor must be represented through a user/session context object, whether anonymous or authenticated.
+- Controllers coordinate the request/response flow, ask model/domain objects for decisions, and return explicit payloads. They must not bury business rules in templates or React components.
+- Views/templates/components render the model state they receive. They must not invent parallel auth, agent, booking, payment, or permission state.
+- Do not duplicate the same state across independent components. If the nav, booking form, and agent panel need login state, they must receive it from the same user/session model or controller payload.
+- Agent access must be modeled as an `AgentInstance` attached to a user/session context. The UI asks the backend controller for the current context and renders from that object.
+- Any shortcut that directly checks loose booleans in multiple views instead of using the shared model/context is a bug, even if the screen appears to work.
+- When fixing regressions, repair the model/controller boundary first, then simplify the view. Do not stack UI patches over a broken state model.
+- Read `docs/engineering/oop-mvc-contract.md` before changing login/logout, agent access, bookings, payments, reservations, customer accounts, or admin workflows.
+
 ## Deployment Safety
 
 - Prefer the non-destructive root deploy script: `./deploy_mladis_vm.command`.
@@ -14,14 +26,20 @@
 
 ## Local Startup
 
+- Read `docs/local-runtime-contract.md` before starting, stopping, restarting, or debugging the local site.
+- Keep the local site live for the owner during active UI/app work. Do not stop the Django server, tunnel, or launcher and leave the owner without a working test URL unless the owner explicitly asks you to stop it.
 - Use `./run_mladis_live.command` from the repo root for the working local Django app. This is the only normal local startup path.
 - Do not start MLADIS with ad hoc `python manage.py runserver`, `npm run dev`, `preview_*` scripts, `nohup`, or background shell servers during normal testing.
+- Never tell the owner to use `http://0.0.0.0:8000`. `0.0.0.0` is a bind address, not the owner-facing MLADIS test URL.
 - The launcher builds the React frontend into Django static assets by default, runs Django setup, stops stale Django processes on the same port, starts the stable `mladis-local` Cloudflare named tunnel, exports `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com`, then starts Django on `http://127.0.0.1:8000`.
 - Use `https://local.mladis.com` for browser testing when Facebook sign-in matters. `http://127.0.0.1:8000` is the internal local Django origin and the Google/GitHub local callback origin.
 - Do not test Django/allauth social sign-in through the Vite dev server at `http://127.0.0.1:5173`.
+- If you must restart for migrations, static assets, env changes, or a broken server, restart through the same launcher immediately and verify `/healthz` before reporting back.
+- Before any final response after local web work, confirm the owner has a live test URL, normally `http://127.0.0.1:8000` and, when the tunnel is healthy, `https://local.mladis.com`.
 - If frontend preview servers are running in parallel, stop them before debugging auth so redirects and cookies stay easy to reason about.
 - If the Google Drive checkout is slow or Git starts hanging on ignored files, create a fast clone under `~/Documents` or `~/Desktop`, copy only `airbnb_agent/.env` if needed, and use GitHub as the synchronization point.
 - The local launcher caches dependency installs by `requirements.txt`, skips local `collectstatic` unless `MLADIS_COLLECTSTATIC=1`, builds frontend assets unless `MLADIS_BUILD_FRONTEND=0`, writes named-tunnel output to `/private/tmp/mladis-tunnel.log`, and defaults to a 60 second startup timeout.
+- Before claiming local runtime is ready, run `airbnb_agent/scripts/check_local_runtime_contract.sh`.
 
 ## Sign-In Contract
 
@@ -68,9 +86,28 @@
 
 ## Deposit Operations
 
+- Read `docs/environment-provider-contract.md` before changing Stripe, PayPal, OAuth provider secrets, local `.env`, or live runtime provider configuration.
 - Keep Stripe and PayPal deposit lifecycle behavior aligned at the admin layer whenever practical.
 - Preserve audit notes on `DamageDeposit.notes` when capturing or releasing a hold.
 - Authorized deposits should require an explicit confirmation step before capture or release from the change page.
+- If the public secure-deposit modal says Stripe is not configured, do not rewrite the booking flow. Confirm `airbnb_agent/.env` has `STRIPE_SECRET_KEY` set, use `airbnb_agent/scripts/configure_stripe_env.sh` if the owner needs a safe local prompt, and restart Django so settings reload.
+- Use `MLADIS_AGENT_ADMIN_EMAIL` as the default outbound automation mailbox, normally `agent-admin@mladis.com`, for booking, payment, and admin notification email setup.
+- For real inbox delivery, reuse stored `MLADIS_AGENT_EMAIL_PASSWORD`, `GMAIL_SMTP_APP_PASSWORD`, or `EMAIL_HOST_PASSWORD` from `.env`; do not ask the owner to redo SMTP setup if one of those secrets is already present.
+- Do not treat `MLADIS_AGENT_ADMIN_PASSWORD` as the mailbox SMTP/app password. That value is for web-app login unless a separate provider setup explicitly says otherwise.
+- If local email is still console-only, run `airbnb_agent/scripts/configure_email_env.sh`; it defaults to the agent mailbox and stores SMTP settings without printing secrets.
+- Before claiming payment/provider setup is ready, run `airbnb_agent/scripts/check_provider_contract.sh`.
+
+## Data Store Operations
+
+- Treat the Django database as the transactional source of truth and the Drive-backed MLADIS data store as the JSON/JSONL export lake for analytics, recovery, agent learning, and audit work.
+- Start from `docs/data-store/README.md` and `docs/data-store/drive-data-lake-contract.md` before changing subscriptions, bookings, requests, chatbot logs, payments, feedback, or analytics export behavior.
+- Use `python manage.py export_data_lake --schema-only --include-placeholders --sync-drive` to create or refresh the Drive folder/catalog/schema skeleton.
+- Use `python manage.py export_data_lake --sync-drive` when MLADIS operational records must be written to the configured Drive data store.
+- Use `python manage.py export_data_lake --redacted --sync-drive` for analytics and agent-training experiments unless the task explicitly requires private contact fields.
+- Do not commit generated JSONL exports, customer contact data, chatbot private messages, payment processor IDs, identity records, or raw production lake files. Keep generated exports in the protected Drive folder or another approved private storage target.
+- The current Drive target is `https://drive.google.com/drive/folders/1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn`; keep `MLADIS_DATASTORE_DRIVE_FOLDER_ID` aligned with that folder unless the owner explicitly changes the storage location.
+- Every functional customer, booking, request, payment, agent, invoice, promotion, cancellation, or admin-action object needs a data-store path. Prefer a transactional model plus export collection; add a live `object_events` JSONL log for lifecycle actions where possible.
+- If `MLADIS_DATASTORE_ROOT` is configured, reservation and deposit workflows should append live object events without blocking the customer if the data-store write fails.
 
 ## Calendar Operations
 

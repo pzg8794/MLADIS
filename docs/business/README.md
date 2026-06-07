@@ -17,6 +17,7 @@ These records are meant to give the MLADIS app, agents, and future automation wo
 - [EIN and banking package](ein-and-banking/README.md): EIN worksheet, bank checklist, and bookkeeping starter categories.
 - [Funding readiness package](funding-readiness/README.md): fundable-company goal, resume plan, todo list, data-room index, and lender/grant/certification readiness notes.
 - [Signing controls](signing/README.md): rules for signing assistance and why reusable signature assets stay outside Git.
+- [Data store contract](../data-store/README.md): Drive-backed JSON/JSONL data lake structure for MLADIS accounts, bookings, requests, chatbot logs, payments, feedback, and analytics exports.
 
 ## Data Handling Rules
 

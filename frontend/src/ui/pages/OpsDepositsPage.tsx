@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CreditCard, ExternalLink, ReceiptText, Search, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ChevronRight, CreditCard, ExternalLink, ReceiptText, Search, ShieldCheck } from 'lucide-react';
 import { OpsWorkspaceFactory } from '../../application/OpsWorkspaceFactory';
-import { OpsDepositsSnapshot } from '../../domain/models';
+import { OpsDepositRow, OpsDepositsSnapshot } from '../../domain/models';
+import { OpsListModal } from '../components/OpsListModal';
+import { formatStayName } from '../helpers/stayNames';
 
 function statusTone(status: string) {
   if (status === 'requires_capture') return 'authorized';
@@ -11,12 +13,22 @@ function statusTone(status: string) {
   return 'pending';
 }
 
+function compactStatusLabel(label: string) {
+  return label
+    .replace('Requires payment configuration', 'To configure')
+    .replace('Requires capture', 'Capture')
+    .replace('Checkout created', 'Checkout')
+    .replace('Payment failed', 'Failed')
+    .replace('Canceled', 'Released');
+}
+
 export function OpsDepositsPage() {
   const service = useMemo(() => OpsWorkspaceFactory.create(), []);
   const [snapshot, setSnapshot] = useState<OpsDepositsSnapshot | null>(null);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [isListOpen, setIsListOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -43,6 +55,38 @@ export function OpsDepositsPage() {
     });
   }, [search, snapshot, status]);
 
+  const renderDepositRow = (row: OpsDepositRow) => (
+    <details className="ops-data-row ops-data-row--deposits ops-expand-card" data-status={statusTone(row.status)} key={row.id}>
+      <summary className="ops-data-summary">
+        <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
+        <div>
+          <span className={`ops-status-pill ops-status-pill--${statusTone(row.status)}`}>{row.statusLabel}</span>
+          <h3>{row.guestName}</h3>
+          <p>{row.email || 'No email captured'}</p>
+        </div>
+        <div>
+          <strong>{formatStayName(row.stayName)}</strong>
+          <p>{row.createdLabel || 'Date pending'} · {row.provider}</p>
+        </div>
+        <div>
+          <strong>{row.amount}</strong>
+          <p>{row.notes || 'No internal notes yet.'}</p>
+        </div>
+      </summary>
+      <div className="ops-expand-details">
+        <div>
+          <span>Workflow</span>
+          <p>{row.statusLabel} via {row.provider}. Capture-ready holds are authorized deposits waiting for an admin capture or release decision.</p>
+        </div>
+        <div className="ops-row-actions">
+          {row.checkoutUrl && <a href={row.checkoutUrl} target="_blank" rel="noreferrer">Checkout</a>}
+          {row.inquiryAdminUrl && <a href={row.inquiryAdminUrl}>Booking</a>}
+          <a href={row.adminUrl}>Record</a>
+        </div>
+      </div>
+    </details>
+  );
+
   if (error) {
     return <section className="dashboard-error"><AlertCircle /> {error}</section>;
   }
@@ -52,12 +96,12 @@ export function OpsDepositsPage() {
   }
 
   return (
-    <main className="dashboard-content ops-page">
+    <main className="dashboard-content ops-page ops-page--deposits">
       <section className="ops-hero ops-hero--deposits">
         <div>
           <span><CreditCard size={16} /> Deposit command center</span>
-          <h2>Security deposit holds without the old admin-table feel.</h2>
-          <p>Review Stripe and PayPal deposit records, active holds, captured value, failed attempts, and the booking record behind each hold.</p>
+          <h2>Deposits</h2>
+          <p>Review security holds, captures, failed attempts, and the booking record behind each hold.</p>
         </div>
         <div className="ops-hero-actions">
           <a href={snapshot.adminUrl}><ExternalLink size={16} /> Deposit admin</a>
@@ -83,7 +127,7 @@ export function OpsDepositsPage() {
         <div className="ops-chip-row">
           {snapshot.statusOptions.map((option) => (
             <button className={status === option.value ? 'is-active' : ''} key={option.value || 'all'} onClick={() => setStatus(option.value)} type="button">
-              {option.label}
+              {compactStatusLabel(option.label)}
               <small>{option.count}</small>
             </button>
           ))}
@@ -96,7 +140,10 @@ export function OpsDepositsPage() {
             <span>Deposit ledger</span>
             <h3>{rows.length} records shown</h3>
           </div>
-          <strong>$200</strong>
+          <div className="ops-card-heading__actions">
+            <button type="button" onClick={() => setIsListOpen(true)}><Search size={15} /> Open ledger</button>
+            <strong>$200 hold</strong>
+          </div>
         </div>
 
         {rows.length === 0 && (
@@ -107,29 +154,19 @@ export function OpsDepositsPage() {
           </article>
         )}
 
-        {rows.map((row) => (
-          <article className="ops-data-row ops-data-row--deposits" key={row.id}>
-            <div>
-              <span className={`ops-status-pill ops-status-pill--${statusTone(row.status)}`}>{row.statusLabel}</span>
-              <h3>{row.guestName}</h3>
-              <p>{row.email || 'No email captured'}</p>
-            </div>
-            <div>
-              <strong>{row.stayName}</strong>
-              <p>{row.createdLabel || 'Date pending'} · {row.provider}</p>
-            </div>
-            <div>
-              <strong>{row.amount}</strong>
-              <p>{row.notes || 'No internal notes yet.'}</p>
-            </div>
-            <div className="ops-row-actions">
-              {row.checkoutUrl && <a href={row.checkoutUrl} target="_blank" rel="noreferrer">Checkout</a>}
-              {row.inquiryAdminUrl && <a href={row.inquiryAdminUrl}>Booking</a>}
-              <a href={row.adminUrl}>Record</a>
-            </div>
-          </article>
-        ))}
+        <div className="ops-list-scroll">
+          {rows.map(renderDepositRow)}
+        </div>
       </section>
+
+      <OpsListModal
+        isOpen={isListOpen}
+        title={`${rows.length} deposit records shown`}
+        subtitle="Scroll the security deposit ledger, capture state, booking links, and provider actions."
+        onClose={() => setIsListOpen(false)}
+      >
+        {rows.map(renderDepositRow)}
+      </OpsListModal>
     </main>
   );
 }

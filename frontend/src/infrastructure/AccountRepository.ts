@@ -1,4 +1,9 @@
-import { AccountInvoice, AccountReservation, AccountSnapshot } from '../domain/models';
+import {
+  AccountInvoice,
+  AccountReservation,
+  AccountSnapshot,
+  ReservationPricingPolicy,
+} from '../domain/models';
 import { HttpClient } from './HttpClient';
 
 interface ApiAccountReservation {
@@ -11,8 +16,22 @@ interface ApiAccountReservation {
   phone: string;
   status: string;
   can_cancel: boolean;
+  display_subtotal: string;
+  display_discount: string;
+  display_reservation_payment: string;
   display_total: string;
   display_deposit: string;
+  reservation_payment_cents: number;
+  pricing: {
+    base_price_cents: number;
+    included_guests: number;
+    extra_guest_cents: number;
+    max_guests: number;
+    currency: string;
+    label: string;
+    display_base_price: string;
+    display_extra_guest_price: string;
+  };
   coupon_code: string;
   message: string;
   detail_url: string;
@@ -67,8 +86,22 @@ export class ApiAccountRepository implements AccountRepository {
         reservation.phone,
         reservation.status,
         reservation.can_cancel,
+        reservation.display_subtotal,
+        reservation.display_discount,
+        reservation.display_reservation_payment,
         reservation.display_total,
         reservation.display_deposit,
+        reservation.reservation_payment_cents,
+        new ReservationPricingPolicy(
+          reservation.pricing.base_price_cents,
+          reservation.pricing.included_guests,
+          reservation.pricing.extra_guest_cents,
+          reservation.pricing.max_guests,
+          reservation.pricing.currency,
+          reservation.pricing.label,
+          reservation.pricing.display_base_price,
+          reservation.pricing.display_extra_guest_price,
+        ),
         reservation.coupon_code,
         reservation.message,
         reservation.detail_url,

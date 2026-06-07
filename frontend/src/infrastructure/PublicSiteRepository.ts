@@ -1,10 +1,12 @@
 import {
   AreaTile,
+  AgentAccessStatus,
   MissionCauseSummary,
   PublicChatKitConfig,
   PublicGalleryImage,
   PublicHouseRule,
   PublicReviewHighlight,
+  ReservationPricingPolicy,
   PublicSiteSnapshot,
   PublicStay,
   SocialLoginProvider,
@@ -42,6 +44,16 @@ interface ApiStay {
   stat_list: string[];
   detail_url: string;
   airbnb_url: string;
+  pricing: {
+    base_price_cents: number;
+    included_guests: number;
+    extra_guest_cents: number;
+    max_guests: number;
+    currency: string;
+    label: string;
+    display_base_price: string;
+    display_extra_guest_price: string;
+  };
   gallery: ApiGalleryImage[];
   highlights: ApiReviewHighlight[];
   rules: ApiHouseRule[];
@@ -92,6 +104,16 @@ interface ApiPublicSiteSnapshot {
   mission_causes: ApiMissionCause[];
   social_providers?: ApiSocialLoginProvider[];
   chatkit?: ApiChatKitConfig | null;
+  agent?: {
+    agent_key?: string;
+    agent_name?: string;
+    is_authenticated: boolean;
+    question_limit: number;
+    questions_used: number;
+    remaining_questions: number | null;
+    can_ask: boolean;
+    login_url: string;
+  };
   generated_at: string;
 }
 
@@ -124,6 +146,16 @@ export class ApiPublicSiteRepository implements PublicSiteRepository {
         stay.stat_list,
         stay.detail_url,
         stay.airbnb_url,
+        new ReservationPricingPolicy(
+          stay.pricing.base_price_cents,
+          stay.pricing.included_guests,
+          stay.pricing.extra_guest_cents,
+          stay.pricing.max_guests,
+          stay.pricing.currency,
+          stay.pricing.label,
+          stay.pricing.display_base_price,
+          stay.pricing.display_extra_guest_price,
+        ),
         stay.gallery.map((image) => new PublicGalleryImage(image.image_url, image.alt_text, image.caption)),
         stay.highlights.map((highlight) => new PublicReviewHighlight(highlight.title, highlight.body, highlight.source_label)),
         stay.rules.map((rule) => new PublicHouseRule(rule.title, rule.description)),
@@ -147,6 +179,16 @@ export class ApiPublicSiteRepository implements PublicSiteRepository {
           data.chatkit.mode === 'custom' ? data.chatkit.domain_key : null,
         )
         : null,
+      new AgentAccessStatus(
+        Boolean(data.agent?.is_authenticated),
+        data.agent?.question_limit ?? 5,
+        data.agent?.questions_used ?? 0,
+        data.agent?.remaining_questions ?? null,
+        Boolean(data.agent?.can_ask),
+        data.agent?.login_url ?? '/accounts/login/?next=/accounts/',
+        data.agent?.agent_key ?? 'public-booking-agent',
+        data.agent?.agent_name ?? 'Booking agent',
+      ),
       data.generated_at,
       'api',
     );

@@ -822,6 +822,11 @@ a {
   margin-top: 14px;
 }
 
+.agent-signin-button {
+  text-align: center;
+  text-decoration: none;
+}
+
 .agent-panel-heading h3 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;

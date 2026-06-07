@@ -22,7 +22,7 @@ env_path = Path(sys.argv[1])
 rotate = sys.argv[2].strip().lower() in {"1", "true", "yes", "on"}
 
 defaults = {
-    "MLADIS_AGENT_ADMIN_EMAIL": "agent@mladis.com",
+    "MLADIS_AGENT_ADMIN_EMAIL": "agent-admin@mladis.com",
     "MLADIS_AGENT_ADMIN_NAME": "MLADIS Automation Agent",
     "MLADIS_AGENT_ADMIN_PHONE": "",
     "MLADIS_AGENT_ADMIN_USERNAME": "mladis-agent",

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Bot, BrainCircuit, ExternalLink, MessageSquareText, Search, Sparkles } from 'lucide-react';
+import { AlertCircle, Bot, BrainCircuit, ChevronRight, ExternalLink, MessageSquareText, Search, Sparkles } from 'lucide-react';
 import { OpsWorkspaceFactory } from '../../application/OpsWorkspaceFactory';
-import { OpsAgentSnapshot } from '../../domain/models';
+import { OpsAgentConversation, OpsAgentFaq, OpsAgentSnapshot } from '../../domain/models';
+import { OpsListModal } from '../components/OpsListModal';
 
 function modeLabel(mode: string) {
   if (mode === 'openai') return 'OpenAI';
@@ -15,6 +16,7 @@ export function OpsAgentPage() {
   const [snapshot, setSnapshot] = useState<OpsAgentSnapshot | null>(null);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [isQuestionsOpen, setIsQuestionsOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -45,6 +47,53 @@ export function OpsAgentPage() {
     return snapshot.faqs.filter((row) => [row.question, row.answer, row.category, row.keywords, row.item].some((value) => value.toLowerCase().includes(query)));
   }, [search, snapshot]);
 
+  const renderConversationRow = (row: OpsAgentConversation) => (
+    <details className="ops-data-row ops-data-row--agent ops-expand-card" data-status={row.mode} key={row.id}>
+      <summary className="ops-data-summary">
+        <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
+        <div>
+          <span className={`ops-status-pill ops-status-pill--${row.mode}`}>{modeLabel(row.mode)}</span>
+          <h3>{row.topic || 'General'}</h3>
+          <p>{row.visitor} · {row.item}</p>
+        </div>
+        <div>
+          <strong>{row.lastQuestion}</strong>
+          <p>{row.language.toUpperCase()} · {row.updatedAt ? new Date(row.updatedAt).toLocaleString() : 'Update pending'}</p>
+        </div>
+      </summary>
+      <div className="ops-expand-details">
+        <div>
+          <span>Last reply</span>
+          <p>{row.lastReply || 'No reply captured yet.'}</p>
+        </div>
+        <div className="ops-row-actions">
+          <a href={row.adminUrl}>Conversation</a>
+        </div>
+      </div>
+    </details>
+  );
+
+  const renderFaqRow = (faq: OpsAgentFaq) => (
+    <details className="ops-faq-card ops-expand-card" key={faq.id}>
+      <summary className="ops-faq-summary">
+        <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
+        <div>
+          <span className={`ops-status-pill ${faq.isActive ? 'ops-status-pill--active' : 'ops-status-pill--inactive'}`}>{faq.isActive ? 'Active' : 'Inactive'}</span>
+          <small>{faq.category} · {faq.item} · {faq.language}</small>
+          <h3>{faq.question}</h3>
+        </div>
+      </summary>
+      <div className="ops-expand-details">
+        <div>
+          <span>Answer</span>
+          <p>{faq.answer}</p>
+          {faq.keywords && <strong>{faq.keywords}</strong>}
+        </div>
+        <a href={faq.adminUrl}>Edit FAQ</a>
+      </div>
+    </details>
+  );
+
   if (error) {
     return <section className="dashboard-error"><AlertCircle /> {error}</section>;
   }
@@ -58,8 +107,8 @@ export function OpsAgentPage() {
       <section className="ops-hero ops-hero--agent">
         <div>
           <span><Bot size={16} /> Agent workspace</span>
-          <h2>Train the booking agent from real customer questions.</h2>
-          <p>See what guests ask, what the FAQ layer handled, where OpenAI helped, and which answers should be added or improved.</p>
+          <h2>Agent training</h2>
+          <p>Use real customer questions to improve FAQ answers, guardrails, and booking support.</p>
         </div>
         <div className="ops-hero-actions">
           <a href={snapshot.faqAdminUrl}><BrainCircuit size={16} /> Manage FAQs</a>
@@ -90,14 +139,17 @@ export function OpsAgentPage() {
       </section>
 
       <section className="ops-split-grid">
-        <article className="ops-chart-card">
-          <div className="ops-card-heading">
+        <details className="ops-chart-card ops-expand-card ops-equal-collapse">
+          <summary className="ops-card-heading">
+            <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
             <div>
               <span>Question analytics</span>
               <h3>Top topics</h3>
             </div>
-            <strong>{snapshot.topics.length}</strong>
-          </div>
+            <a href={snapshot.conversationAdminUrl} onClick={(event) => event.stopPropagation()}>
+              Open logs
+            </a>
+          </summary>
           <div className="ops-chart-bars">
             {snapshot.topics.length === 0 && <p>No agent topics captured yet.</p>}
             {snapshot.topics.map((topic) => (
@@ -108,14 +160,21 @@ export function OpsAgentPage() {
               </div>
             ))}
           </div>
-        </article>
+        </details>
 
-        <article className="ops-training-card">
-          <span><MessageSquareText size={16} /> Training loop</span>
-          <h3>Use the conversation list as your agent curriculum.</h3>
-          <p>When the same question repeats, promote the best answer into an Agent FAQ. Keep rules, deposit holds, location guidance, cancellation policy, and payment language precise.</p>
-          <a href="/admin/bookings/agentfaq/add/">Create a new answer</a>
-        </article>
+        <details className="ops-training-card ops-expand-card ops-equal-collapse">
+          <summary className="ops-card-heading">
+            <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
+            <div>
+              <span><MessageSquareText size={16} /> Training loop</span>
+              <h3>Agent curriculum</h3>
+            </div>
+            <a href="/admin/bookings/agentfaq/add/" onClick={(event) => event.stopPropagation()}>Create answer</a>
+          </summary>
+          <div className="ops-training-card__details">
+            <p>When the same question repeats, promote the best answer into an Agent FAQ. Keep rules, deposit holds, location guidance, cancellation policy, and payment language precise.</p>
+          </div>
+        </details>
       </section>
 
       <section className="ops-table-card">
@@ -124,40 +183,38 @@ export function OpsAgentPage() {
             <span>Recent questions</span>
             <h3>{conversations.length} conversations shown</h3>
           </div>
-          <strong>{snapshot.conversations.length}</strong>
+          <div className="ops-card-heading__actions">
+            <button type="button" onClick={() => setIsQuestionsOpen(true)}><Search size={15} /> Open list</button>
+            <strong>{snapshot.conversations.length}</strong>
+          </div>
         </div>
-        {conversations.map((row) => (
-          <article className="ops-data-row ops-data-row--agent" key={row.id}>
-            <div>
-              <span className={`ops-status-pill ops-status-pill--${row.mode}`}>{modeLabel(row.mode)}</span>
-              <h3>{row.topic || 'General'}</h3>
-              <p>{row.visitor} · {row.item}</p>
-            </div>
-            <div>
-              <strong>{row.lastQuestion}</strong>
-              <p>{row.lastReply}</p>
-            </div>
-            <div className="ops-row-actions">
-              <a href={row.adminUrl}>Conversation</a>
-            </div>
-          </article>
-        ))}
+        <div className="ops-list-scroll">
+          {conversations.map(renderConversationRow)}
+        </div>
       </section>
 
-      <section className="ops-card-grid">
-        {faqs.map((faq) => (
-          <article className="ops-faq-card" key={faq.id}>
-            <div>
-              <span className={`ops-status-pill ${faq.isActive ? 'ops-status-pill--active' : 'ops-status-pill--inactive'}`}>{faq.isActive ? 'Active' : 'Inactive'}</span>
-              <small>{faq.category} · {faq.item} · {faq.language}</small>
-            </div>
-            <h3>{faq.question}</h3>
-            <p>{faq.answer}</p>
-            {faq.keywords && <strong>{faq.keywords}</strong>}
-            <a href={faq.adminUrl}>Edit FAQ</a>
-          </article>
-        ))}
-      </section>
+      <details className="ops-table-card ops-expand-card">
+        <summary className="ops-card-heading">
+          <span className="ops-expand-chevron"><ChevronRight size={17} /></span>
+          <div>
+            <span>Agent FAQ library</span>
+            <h3>{faqs.length} answer cards</h3>
+          </div>
+          <a href={snapshot.faqAdminUrl}>Manage FAQs</a>
+        </summary>
+        <section className="ops-card-grid ops-faq-library">
+          {faqs.map(renderFaqRow)}
+        </section>
+      </details>
+
+      <OpsListModal
+        isOpen={isQuestionsOpen}
+        title={`${conversations.length} recent questions`}
+        subtitle="Scroll the latest agent questions, routing mode, visitor context, and captured answer."
+        onClose={() => setIsQuestionsOpen(false)}
+      >
+        {conversations.map(renderConversationRow)}
+      </OpsListModal>
     </main>
   );
 }

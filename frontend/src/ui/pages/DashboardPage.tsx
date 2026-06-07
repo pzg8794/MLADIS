@@ -8,7 +8,6 @@ import { ReservationBoard } from '../components/ReservationBoard';
 import { DepositPanel } from '../components/DepositPanel';
 import { AgentPanel } from '../components/AgentPanel';
 import { CalendarAlerts } from '../components/CalendarAlerts';
-import { StayPortfolio } from '../components/StayPortfolio';
 
 export function DashboardPage() {
   const service = useMemo(() => DashboardFactory.create(), []);
@@ -48,10 +47,10 @@ export function DashboardPage() {
       <section className="command-hero">
         <div className="command-hero__copy">
           <span><MapPin size={16} /> Santo Domingo Norte operations</span>
-          <h2>Run stays, deposits, guests, and the booking agent from one calm cockpit.</h2>
-          <p>Live Django data powers this dashboard. Payment captures, deposit changes, and booking mutations still stay inside the protected admin flows.</p>
+          <h2>Operations cockpit</h2>
+          <p>Live stay, deposit, guest, calendar, and agent activity in one place.</p>
           <div className="hero-actions">
-            <a href="/admin/bookings/bookableitem/calendar/" aria-label="Open business calendar">
+            <a href="/ops/calendar/" aria-label="Open business calendar">
               Calendar
               <ArrowUpRight size={16} />
             </a>
@@ -75,7 +74,7 @@ export function DashboardPage() {
       </section>
 
       {snapshot.source === 'mock' && (
-        <div className="mock-banner"><ShieldCheck size={17} /> Mock data is active. Set <code>VITE_USE_MOCK_DATA=false</code> only when the Django API is ready.</div>
+        <div className="mock-banner"><ShieldCheck size={17} /> Mock data is active. Set <code>VITE_USE_MOCK_DATA=false</code> when the live API is ready.</div>
       )}
 
       <section className="metric-grid">
@@ -88,8 +87,6 @@ export function DashboardPage() {
         <AgentPanel questions={snapshot.agentQuestions} />
         <CalendarAlerts alerts={snapshot.calendarAlerts} />
       </section>
-
-      <StayPortfolio stays={snapshot.stays} />
     </main>
   );
 }
