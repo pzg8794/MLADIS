@@ -1,0 +1,60 @@
+{% load i18n static %}
+<!doctype html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#eef3f4">
+    <link rel="icon" href="{% static 'frontend/modern-dashboard/favicon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}">
+    <title>{% trans "Finish account" %} | MLADIS</title>
+  </head>
+  <body>
+    <main class="modern-auth-page">
+      <section class="modern-auth-hero">
+        <a class="public-brand" href="/">
+          {% if site_settings.logo_display_url %}
+            <img src="{{ site_settings.logo_display_url }}" alt="MLADIS">
+          {% else %}
+            <img src="{% static 'bookings/brand/mladis-connected-intelligence.png' %}" alt="MLADIS">
+          {% endif %}
+          <strong>MLADIS</strong>
+        </a>
+        <h1>{% trans "Finish your booking account." %}</h1>
+        <p>{% blocktrans with provider_name=account.get_provider.name %}We have your {{ provider_name }} account. Confirm the details below to finish connecting it to MLADIS.{% endblocktrans %}</p>
+      </section>
+      <section class="modern-auth-panel">
+        <h2>{% trans "Confirm account" %}</h2>
+        <p>{% trans "This extra step only appears when the provider needs one more account detail." %}</p>
+        {% if form.non_field_errors %}
+          <div class="public-success public-success--warning" role="alert">
+            {{ form.non_field_errors|striptags }}
+          </div>
+        {% endif %}
+        {% url 'socialaccount_signup' as action_url %}
+        <form method="post" action="{{ action_url }}" class="modern-auth-form">
+          {% csrf_token %}
+          {% for field in form %}
+            {% if field.is_hidden %}
+              {{ field }}
+            {% else %}
+              <label for="{{ field.id_for_label }}">
+                {{ field.label }}
+                {{ field }}
+                {% if field.help_text %}
+                  <small>{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                  <span>{{ field.errors|striptags }}</span>
+                {% endif %}
+              </label>
+            {% endif %}
+          {% endfor %}
+          {{ redirect_field }}
+          <button type="submit">{% trans "Finish account" %}</button>
+        </form>
+        <a class="modern-auth-link" href="{% url 'bookings:login' %}">{% trans "Use a different sign-in" %}</a>
+      </section>
+    </main>
+  </body>
+</html>

@@ -13,6 +13,7 @@ from allauth.account.models import EmailAddress
 from allauth.socialaccount.internal.flows.signup import process_auto_signup
 from allauth.socialaccount.models import SocialApp
 from allauth.socialaccount.models import SocialAccount, SocialLogin
+from allauth.socialaccount.providers.google.provider import GoogleProvider
 from django.contrib import messages
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
@@ -1968,6 +1969,87 @@ class SocialAccountAdapterTests(TestCase):
             "facebook-123456789@users.mladis.invalid",
         )
         self.assertFalse(sociallogin.email_addresses[0].verified)
+
+    def test_google_verified_email_connects_existing_verified_user(self):
+        app = SocialApp.objects.create(
+            provider="google",
+            name="Google",
+            client_id="google-client",
+            secret="google-secret",
+        )
+        existing_user = get_user_model().objects.create_user(
+            username="diana",
+            email="garciabdianas@gmail.com",
+            password="secret",
+        )
+        EmailAddress.objects.create(
+            user=existing_user,
+            email="garciabdianas@gmail.com",
+            verified=True,
+            primary=True,
+        )
+        request = self.factory.get("/oauth/google/login/callback/")
+        sociallogin = SocialLogin(
+            user=get_user_model()(),
+            account=SocialAccount(
+                provider="google",
+                uid="google-diana",
+                extra_data={
+                    "email": "garciabdianas@gmail.com",
+                    "email_verified": True,
+                    "given_name": "Diana",
+                    "family_name": "Garcia",
+                },
+            ),
+            provider=GoogleProvider(request, app=app),
+        )
+
+        adapter = MLADISSocialAccountAdapter()
+        adapter.populate_user(
+            request,
+            sociallogin,
+            {
+                "email": "garciabdianas@gmail.com",
+                "first_name": "Diana",
+                "last_name": "Garcia",
+            },
+        )
+        sociallogin.lookup()
+
+        self.assertEqual(sociallogin.user.pk, existing_user.pk)
+        self.assertTrue(sociallogin.email_addresses[0].verified)
+        self.assertEqual(sociallogin._did_authenticate_by_email, "garciabdianas@gmail.com")
+
+    def test_social_signup_generates_safe_username_for_new_google_user(self):
+        request = self.factory.get("/oauth/google/login/callback/")
+        sociallogin = SocialLogin(
+            user=get_user_model()(username="Usuario"),
+            account=SocialAccount(
+                provider="google",
+                uid="google-new-diana",
+                extra_data={
+                    "email": "new.diana@example.com",
+                    "email_verified": True,
+                    "given_name": "Diana",
+                    "family_name": "Garcia",
+                },
+            ),
+        )
+
+        adapter = MLADISSocialAccountAdapter()
+        adapter.populate_user(
+            request,
+            sociallogin,
+            {
+                "email": "new.diana@example.com",
+                "first_name": "Diana",
+                "last_name": "Garcia",
+            },
+        )
+
+        self.assertNotIn(sociallogin.user.username.lower(), {"", "user", "usuario"})
+        self.assertIn("diana", sociallogin.user.username.lower())
+        self.assertTrue(sociallogin.email_addresses[0].verified)
 
     def test_generated_social_email_skips_confirmation_mail(self):
         request = self.factory.get("/accounts/login/")

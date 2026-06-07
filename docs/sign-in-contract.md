@@ -51,6 +51,20 @@ or OAuth launch routes must keep these guarantees true.
 - Do not add an MLADIS-side "confirm current GitHub account" interstitial. The
   identity provider should handle account choice.
 
+## Social Signup Completion Contract
+
+- Provider emails that the provider marks as verified must remain verified in
+  the allauth `SocialLogin.email_addresses` object. Do not downgrade trusted
+  Google/GitHub/Microsoft email claims to `verified=False`; that breaks safe
+  email authentication and forces existing users into the raw
+  `/oauth/3rdparty/signup/` completion form.
+- Existing MLADIS users with a verified matching email must be allowed to
+  connect/login through the verified provider email path.
+- If allauth still needs a final social-signup form, it must render the modern
+  `socialaccount/signup.html` template, not the package default unstyled page.
+- Social signup usernames must be generated from account data, not left as
+  placeholders such as `User` or `Usuario`.
+
 ## Callback URLs
 
 Register these exact callbacks for local testing:

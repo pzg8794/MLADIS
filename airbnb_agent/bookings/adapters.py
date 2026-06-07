@@ -1,4 +1,5 @@
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.account.adapter import get_adapter as get_account_adapter
 from allauth.account.models import EmailAddress
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.models import SocialApp
@@ -71,6 +72,9 @@ class MLADISSocialAccountAdapter(DefaultSocialAccountAdapter):
             user.first_name = data.get("first_name") or extra_data.get("given_name") or ""
         if not user.last_name:
             user.last_name = data.get("last_name") or extra_data.get("family_name") or ""
+        if self._should_generate_username(getattr(user, "username", "")):
+            user.username = ""
+            get_account_adapter(request).populate_username(request, user)
         self._sync_sociallogin_email(sociallogin, provider_email=provider_email)
         return user
 
@@ -100,7 +104,11 @@ class MLADISSocialAccountAdapter(DefaultSocialAccountAdapter):
         provider_email = (provider_email or extra_data.get("email") or "").strip().lower()
         if provider_email:
             user.email = provider_email
-            self._set_sociallogin_email(sociallogin, provider_email, verified=False)
+            self._set_sociallogin_email(
+                sociallogin,
+                provider_email,
+                verified=self._is_provider_email_verified(sociallogin, provider_email),
+            )
             return
 
         if account.provider != "facebook":
@@ -121,6 +129,38 @@ class MLADISSocialAccountAdapter(DefaultSocialAccountAdapter):
         sociallogin.email_addresses = [
             EmailAddress(user=user, email=email, verified=verified, primary=True)
         ]
+
+    def _is_provider_email_verified(self, sociallogin, email):
+        account = getattr(sociallogin, "account", None)
+        if account is None or not email:
+            return False
+
+        normalized_email = email.strip().lower()
+        for email_address in getattr(sociallogin, "email_addresses", []) or []:
+            if email_address.email.strip().lower() == normalized_email and email_address.verified:
+                return True
+
+        extra_data = getattr(account, "extra_data", {}) or {}
+        provider = account.provider
+        trusted_flags = (
+            extra_data.get("email_verified"),
+            extra_data.get("verified_email"),
+            extra_data.get("verified"),
+        )
+        if provider in {"google", "github", "microsoft"}:
+            return any(self._provider_flag_is_true(flag) for flag in trusted_flags)
+        return False
+
+    def _provider_flag_is_true(self, value):
+        if value is True:
+            return True
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes"}
+        return False
+
+    def _should_generate_username(self, username):
+        normalized = (username or "").strip().lower()
+        return not normalized or normalized in {"user", "usuario"}
 
     def _build_generated_social_email(self, provider_id, uid):
         safe_uid = "".join(character for character in str(uid).lower() if character.isalnum())
