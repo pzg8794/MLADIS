@@ -65,7 +65,7 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 | 4 | Apply for EIN | Completed; private CP 575 letter saved in Google Drive outside Git | IRS EIN Assistant: https://www.irs.gov/ein |
 | 5 | Open business bank account | `docs/business/ein-and-banking/bank-account-opening-packet.md` | Bank or fintech chosen by owner |
 | 6 | Queens newspaper designations | Done; designation letter received 2026-06-08 and archived in `docs/business/source-documents/` | Daily: NY Daily News. Weekly: The Forum. |
-| 7 | Place publication notices | NY Daily News order/payment still open; The Forum follow-up sent with designation letter attached and reply pending | `docs/business/publication/llc-publication-notice-draft.md` and `publication-completion-checklist.md` |
+| 7 | Place publication notices | **NY Daily News: DONE.** Order #87497, $235.00, paid 2026-06-08, run dates Jun 10–15 2026, Pending Approval. Affidavit emailed to garcp37@mladis.com after final run. **The Forum: WAITING.** Two emails sent 2026-06-08; reply pending. Once they reply: pay, confirm first date, track 6 weekly runs. | `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md` |
 
 ## Prepared For Future Diana Business Visitor Planning
 
@@ -102,6 +102,6 @@ Use `docs/business/funding-readiness/financial-institution-resume-plan.md` when 
 2. Place and review signature/date fields in Dropbox Sign.
 3. Save the completed signed PDFs and audit trail in private business records.
 4. Open business bank account using the private EIN confirmation letter and bank packet.
-5. Place/pay the NY Daily News LLC legal notice order and save the receipt.
-6. Track The Forum reply, payment/start date, and both newspapers' six-week publication run.
+5. ~~Place/pay the NY Daily News LLC legal notice order and save the receipt.~~ **Done 2026-06-08.** Order #87497, $235.00, Jun 10–15 2026.
+6. **[Waiting]** The Forum reply — when they reply, pay them and record first publication date. Then track both papers' six-week runs, collect affidavits, and file Certificate of Publication with NY DOS ($50) by 2026-10-01.
 7. Come back to MLADIS bookkeeping/OOP integration after governance and EIN are stable.
