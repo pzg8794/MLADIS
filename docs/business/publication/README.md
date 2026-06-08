@@ -7,11 +7,14 @@ Private publication workflow for MLADIS LLC.
 - LLC formation approved: 2026-06-03
 - County: Queens
 - Publication deadline target: 2026-10-01
-- Current next action: send the official filing receipt/Articles packet to the Queens County Clerk for newspaper designation.
+- Queens County Clerk designation received: 2026-06-08
+- Daily newspaper: NY Daily News, placement site `placeanad.nydailynews.com`
+- Weekly newspaper: The Forum, `forumsouth@gmail.com`
+- Current next action: place/pay the NY Daily News LLC notice order and wait for The Forum to confirm cost, payment method, and first publication date.
 
 ## Official Process Summary
 
-The Queens County Clerk assigns newspapers from a rotating list. The official Queens County Clerk page says to include a copy of the original Department of State filing receipt when requesting publication designation by email or in person.
+The Queens County Clerk assigns newspapers from a rotating list. MLADIS already received the designation letter on 2026-06-08; keep the archived letter as the source of truth for assigned newspapers.
 
 Office listed on the official page:
 
@@ -29,10 +32,11 @@ New York Department of State publication filing:
 
 ## Files
 
-- `queens-county-clerk-publication-request-email.md` - email draft for requesting newspaper designation.
-- `llc-publication-notice-draft.md` - draft publication notice to send to designated newspapers after the County Clerk assigns them.
+- `queens-county-clerk-publication-request-email.md` - sent designation-request email record.
+- `llc-publication-notice-draft.md` - publication notice text for NY Daily News and The Forum.
 - `publication-completion-checklist.md` - checklist for managing the six-week publication process and final Certificate of Publication filing.
+- `publication-activity-log.md` - operational proof log for sent emails, browser checks, and next actions.
 
 ## Do Not Skip
 
-Do not send the application confirmation PDF alone unless the County Clerk accepts it. The official Queens County Clerk page asks for the original filing receipt from the Department of State. Use `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf` as the filing receipt packet.
+Do not mark publication as placed until each newspaper confirms or accepts the order/payment and a first publication date is recorded. Use `docs/business/source-documents/MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf` when a newspaper asks for the Queens County Clerk designation letter.

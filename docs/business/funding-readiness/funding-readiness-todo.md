@@ -10,7 +10,7 @@ Private operating checklist for preparing MLADIS LLC for government and financia
 | High | Sign operating agreement | Done | None | Piter-signed execution copy exists in `docs/business/signing/execution-ready-2026-06-03/`. |
 | High | Sign initial member consent | Done | None | Piter-signed execution copy authorizes EIN, banking, payments, records, and contractor/vendor actions. |
 | High | Sign Diana operations acknowledgment if used | In progress | Send to Diana for review/acceptance | Piter/MLADIS signed; Diana signature is pending. |
-| High | Start Queens publication process | Todo | Send package after receipt is saved | Deadline target from formation date is 2026-10-01. |
+| High | Start Queens publication process | In progress | Place/pay NY Daily News order; wait for The Forum reply | Queens designation letter received 2026-06-08. Daily: NY Daily News. Weekly: The Forum. Deadline target from formation date is 2026-10-01. |
 | Medium | File Certificate of Publication | Todo | Submit after six weeks of newspaper publication | Store affidavits and filed certificate privately. |
 
 ## Phase 2 - Money Infrastructure

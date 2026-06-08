@@ -64,8 +64,8 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 | --- | --- | --- | --- |
 | 4 | Apply for EIN | Completed; private CP 575 letter saved in Google Drive outside Git | IRS EIN Assistant: https://www.irs.gov/ein |
 | 5 | Open business bank account | `docs/business/ein-and-banking/bank-account-opening-packet.md` | Bank or fintech chosen by owner |
-| 6 | Wait for Queens newspaper designations | Request sent on 2026-06-03; track the response in `docs/business/publication/publication-completion-checklist.md` | Email response from `QCC-LLC@nycourts.gov` |
-| 7 | Start publication once newspapers are assigned | `docs/business/publication/llc-publication-notice-draft.md` | Designated daily and weekly newspapers |
+| 6 | Queens newspaper designations | Done; designation letter received 2026-06-08 and archived in `docs/business/source-documents/` | Daily: NY Daily News. Weekly: The Forum. |
+| 7 | Place publication notices | NY Daily News order/payment still open; The Forum follow-up sent with designation letter attached and reply pending | `docs/business/publication/llc-publication-notice-draft.md` and `publication-completion-checklist.md` |
 
 ## Prepared For Future Diana Business Visitor Planning
 
@@ -102,6 +102,6 @@ Use `docs/business/funding-readiness/financial-institution-resume-plan.md` when 
 2. Place and review signature/date fields in Dropbox Sign.
 3. Save the completed signed PDFs and audit trail in private business records.
 4. Open business bank account using the private EIN confirmation letter and bank packet.
-5. Track the Queens County Clerk designation response and save it in private records.
-6. Track the assigned newspapers and six-week publication run.
+5. Place/pay the NY Daily News LLC legal notice order and save the receipt.
+6. Track The Forum reply, payment/start date, and both newspapers' six-week publication run.
 7. Come back to MLADIS bookkeeping/OOP integration after governance and EIN are stable.

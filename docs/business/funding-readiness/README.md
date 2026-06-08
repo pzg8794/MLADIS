@@ -17,7 +17,7 @@ The strongest current assets are:
 - Formation confirmation and approval status documented in [docs/business](../).
 - Ready-for-signature governance packet in [ready-for-signature-2026-06-03](../signing/ready-for-signature-2026-06-03/).
 - Private EIN and bank packet split documented in [private-records-manifest.md](../ein-and-banking/private-records-manifest.md).
-- Queens publication designation request sent record in [publication](../publication/).
+- Queens publication designation letter and newspaper workflow in [publication](../publication/).
 - Archived Diana contractor agreement for vacation-rental operations in [source-documents](../source-documents/).
 - MLADIS website/product work already underway in the main application.
 
@@ -25,7 +25,7 @@ The main blockers are:
 
 - Final e-sign completion/audit trail still needs to be saved after Dropbox Sign.
 - Business bank account and bookkeeping system are not live yet.
-- Queens publication response/newspaper designations are pending.
+- NY publication is not complete: NY Daily News order/payment is still open, The Forum reply is pending, and the six-week run/affidavits/Certificate of Publication still need to be completed.
 - Financial statements, business plan, and use-of-funds model are not yet prepared.
 
 ## Active Files
