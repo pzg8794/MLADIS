@@ -58,6 +58,8 @@ from .models import (
     Invoice,
     InvoiceLineItem,
     MarketingConsentStatus,
+    MaintenanceEvent,
+    MaintenancePhoto,
     PageVisit,
     Promotion,
     PromotionRecipient,
@@ -114,7 +116,7 @@ class BookingInquiryFormTests(TestCase):
 
 
 class DataLakeExporterTests(TestCase):
-    def test_schema_only_export_creates_catalog_schemas_and_placeholders(self):
+    def test_schema_only_export_creates_simple_catalog_and_placeholders(self):
         with TemporaryDirectory() as temp_dir:
             result = MLADISDataLakeExporter(temp_dir).export(
                 schema_only=True,
@@ -122,10 +124,53 @@ class DataLakeExporterTests(TestCase):
             )
             root = Path(temp_dir)
 
-            self.assertTrue((root / "_catalog" / "collections.json").exists())
-            self.assertTrue((root / "schemas" / "v1" / "subscriptions.schema.json").exists())
-            self.assertTrue((root / "_manifests" / f"export-run-{result.export_run_id}.json").exists())
+            self.assertTrue((root / "CATALOG.json").exists())
+            self.assertTrue((root / "CUSTOMERS" / "subscriptions-placeholder.jsonl").exists())
+            self.assertTrue((root / "EVENTS" / "object_states-placeholder.jsonl").exists())
+            self.assertTrue((root / "EXPORTS" / f"export-run-{result.export_run_id}.json").exists())
             self.assertTrue(list(root.rglob("*placeholder.jsonl")))
+            catalog = json.loads((root / "CATALOG.json").read_text(encoding="utf-8"))
+            self.assertEqual(catalog["layout"], "simple-object-folders")
+            self.assertIn("object_states", {collection["key"] for collection in catalog["collections"]})
+
+    def test_live_object_state_signal_writes_model_snapshot(self):
+        with TemporaryDirectory() as temp_dir, override_settings(
+            MLADIS_DATASTORE_ROOT=temp_dir,
+            MLADIS_DATASTORE_LIVE_SYNC_DRIVE=False,
+        ):
+            item = BookableItem.objects.create(
+                name="Data Lake Test Stay",
+                slug="data-lake-test-stay",
+                short_description="State stream test.",
+            )
+
+            object_file = Path(temp_dir) / "STAYS" / f"bookableitem-{item.id}.json"
+            history_file = Path(temp_dir) / "STAYS" / "_history.jsonl"
+            self.assertTrue(object_file.exists())
+            self.assertTrue(history_file.exists())
+            state_text = object_file.read_text(encoding="utf-8")
+            self.assertIn("object.created", state_text)
+            self.assertIn("bookings.BookableItem", state_text)
+            self.assertIn(str(item.id), state_text)
+            self.assertIn("data-lake-test-stay", state_text)
+
+    def test_live_object_state_redacts_auth_password_hash(self):
+        User = get_user_model()
+        with TemporaryDirectory() as temp_dir, override_settings(
+            MLADIS_DATASTORE_ROOT=temp_dir,
+            MLADIS_DATASTORE_LIVE_SYNC_DRIVE=False,
+        ):
+            User.objects.create_user(
+                username="lake-user@example.com",
+                email="lake-user@example.com",
+                password="super-secret-pass",
+            )
+
+            state_text = (Path(temp_dir) / "CUSTOMERS" / "_history.jsonl").read_text(encoding="utf-8")
+            self.assertIn("auth.User", state_text)
+            self.assertIn('"password": "[redacted]"', state_text)
+            self.assertNotIn("pbkdf2", state_text)
+            self.assertNotIn("super-secret-pass", state_text)
 
     def test_redacted_export_removes_direct_contact_and_message_text(self):
         User = get_user_model()
@@ -734,9 +779,9 @@ class BookingInquiryViewTests(TestCase):
             self.assertEqual(payload["inquiry"]["display_deposit"], "$200.00 USD")
             self.assertEqual(inquiry.phone, "")
 
-            event_files = list(Path(temp_dir).glob("bronze/app_events/object_events/year=*/month=*/day=*/object_events-live-*.jsonl"))
-            self.assertEqual(len(event_files), 1)
-            self.assertIn("reservation_request.created", event_files[0].read_text(encoding="utf-8"))
+            event_file = Path(temp_dir) / "BOOKINGS" / "_events.jsonl"
+            self.assertTrue(event_file.exists())
+            self.assertIn("reservation_request.created", event_file.read_text(encoding="utf-8"))
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
@@ -3518,3 +3563,203 @@ class CalendarOpsTests(TestCase):
         self.assertEqual(delete_price_response.status_code, 200)
         self.assertFalse(AvailabilityBlock.objects.filter(pk=block.pk).exists())
         self.assertFalse(DailyPriceOverride.objects.filter(pk=override.pk).exists())
+
+
+@override_settings(STORAGES=TEST_STORAGES)
+class MaintenanceOpsTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="maintenance-admin",
+            password="secret",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.item = BookableItem.objects.create(
+            name="3 Bedrooms Vacation Home & Pool G-101",
+            slug="maintenance-g-101",
+            category=BookingCategory.STAY,
+            short_description="Maintenance test stay.",
+            is_active=True,
+        )
+
+    def test_maintenance_ops_requires_staff_login(self):
+        response = self.client.get(reverse("bookings:ops-maintenance"))
+
+        self.assertRedirects(
+            response,
+            f"{reverse('bookings:login')}?next={reverse('bookings:ops-maintenance')}",
+            fetch_redirect_response=False,
+        )
+
+    def test_maintenance_ops_loads_for_staff(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("bookings:ops-maintenance"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "MLADIS Modern Dashboard")
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+
+    def test_maintenance_api_rejects_completed_event_without_photo(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("bookings:ops-maintenance-api"),
+            {
+                "item": self.item.pk,
+                "title": "Post-stay cleaning",
+                "work_type": "cleaning",
+                "status": "completed",
+                "cost_amount": "55.00",
+                "cost_currency": "USD",
+                "reported_at": "2026-06-07T10:30",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("photos", response.json()["errors"])
+        self.assertFalse(MaintenanceEvent.objects.exists())
+
+    def test_maintenance_api_creates_event_photo_and_agent_payload(self):
+        self.client.force_login(self.user)
+        with TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root, MEDIA_URL="/media/"):
+                response = self.client.post(
+                    reverse("bookings:ops-maintenance-api"),
+                    {
+                        "item": self.item.pk,
+                        "title": "Replace pool filter",
+                        "work_type": "repair",
+                        "status": "completed",
+                        "cost_amount": "75.50",
+                        "cost_currency": "USD",
+                        "reported_at": "2026-06-07T11:00",
+                        "started_at": "2026-06-07T10:00",
+                        "completed_at": "2026-06-07T10:45",
+                        "vendor_name": "Local maintenance",
+                        "payment_status": "paid",
+                        "proof_of_payment_ref": "cash receipt 102",
+                        "description": "Replaced pool filter cartridge after inspection.",
+                        "photos": SimpleUploadedFile("filter.png", TINY_PNG_BYTES, content_type="image/png"),
+                    },
+                )
+
+                self.assertEqual(response.status_code, 201)
+                event = MaintenanceEvent.objects.get()
+                photo = MaintenancePhoto.objects.get(event=event)
+                self.assertEqual(event.title, "Replace pool filter")
+                self.assertEqual(event.cost_amount, Decimal("75.50"))
+                self.assertEqual(event.created_by, self.user)
+                self.assertEqual(event.photo_count, 1)
+                self.assertTrue(photo.checksum_sha256)
+
+                payload_response = self.client.get(
+                    reverse("bookings:ops-maintenance-agent-payload-api", args=[event.pk])
+                )
+
+        self.assertEqual(payload_response.status_code, 200)
+        payload = payload_response.json()
+        self.assertEqual(payload["title"], "Replace pool filter")
+        self.assertEqual(payload["cost"]["amount"], "75.50")
+        self.assertEqual(payload["time"]["duration_minutes"], 45)
+        self.assertEqual(len(payload["pictures"]), 1)
+
+    def test_maintenance_ai_description_requires_openai_configuration(self):
+        self.client.force_login(self.user)
+        with TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root, MEDIA_URL="/media/", OPENAI_API_KEY=""):
+                event = MaintenanceEvent.objects.create(
+                    item=self.item,
+                    title="Document ceiling stain",
+                    work_type="inspection",
+                    status="completed",
+                    cost_amount=Decimal("0.00"),
+                    cost_currency="USD",
+                    created_by=self.user,
+                )
+                MaintenancePhoto.objects.create(
+                    event=event,
+                    image=SimpleUploadedFile("stain.png", TINY_PNG_BYTES, content_type="image/png"),
+                    caption="Ceiling stain",
+                    mime_type="image/png",
+                )
+
+                response = self.client.post(
+                    reverse("bookings:ops-maintenance-ai-description-api", args=[event.pk])
+                )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("ai_description", response.json()["errors"])
+
+    def test_maintenance_ai_description_persists_and_updates_agent_payload(self):
+        self.client.force_login(self.user)
+        fake_response = SimpleNamespace(
+            output_text=json.dumps(
+                {
+                    "description": "Photo evidence shows a replaced pool filter cartridge and a clean equipment area. The record is suitable for repair documentation after staff review.",
+                    "observations": ["Pool filter cartridge visible", "Equipment area appears clean"],
+                    "confidence": "high",
+                }
+            )
+        )
+        fake_client = SimpleNamespace(responses=SimpleNamespace(create=lambda **kwargs: fake_response))
+
+        with TemporaryDirectory() as media_root:
+            with self.settings(
+                MEDIA_ROOT=media_root,
+                MEDIA_URL="/media/",
+                OPENAI_API_KEY="sk-test",
+                OPENAI_MAINTENANCE_VISION_MODEL="gpt-vision-test",
+            ):
+                event = MaintenanceEvent.objects.create(
+                    item=self.item,
+                    title="Replace pool filter",
+                    work_type="repair",
+                    status="completed",
+                    cost_amount=Decimal("75.50"),
+                    cost_currency="USD",
+                    created_by=self.user,
+                )
+                MaintenancePhoto.objects.create(
+                    event=event,
+                    image=SimpleUploadedFile("filter.png", TINY_PNG_BYTES, content_type="image/png"),
+                    caption="Pool filter",
+                    mime_type="image/png",
+                )
+
+                with patch("bookings.services._build_openai_client", return_value=fake_client):
+                    response = self.client.post(
+                        reverse("bookings:ops-maintenance-ai-description-api", args=[event.pk])
+                    )
+                payload_response = self.client.get(
+                    reverse("bookings:ops-maintenance-agent-payload-api", args=[event.pk])
+                )
+
+        self.assertEqual(response.status_code, 200)
+        event.refresh_from_db()
+        self.assertTrue(event.use_ai_description)
+        self.assertIn("replaced pool filter", event.ai_description.lower())
+        self.assertEqual(event.ai_description_model, "gpt-vision-test")
+        self.assertEqual(event.ai_description_metadata["confidence"], "high")
+        self.assertEqual(payload_response.json()["description"], event.ai_description)
+        self.assertEqual(payload_response.json()["work_description"]["active"], "ai")
+
+    def test_maintenance_api_snapshot_includes_filter_options_and_rows(self):
+        self.client.force_login(self.user)
+        MaintenanceEvent.objects.create(
+            item=self.item,
+            title="Inventory count",
+            work_type="inspection",
+            status="draft",
+            cost_amount=Decimal("0.00"),
+            cost_currency="USD",
+            created_by=self.user,
+        )
+
+        response = self.client.get(reverse("bookings:ops-maintenance-api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["rows"][0]["title"], "Inventory count")
+        self.assertIn("Cleaning", [option["label"] for option in payload["work_type_options"]])
+        self.assertIn("3 Beds Apt", payload["stays"][0]["name"])

@@ -92,6 +92,11 @@ Recommended fields:
 - `payment_status`: unpaid, pending, paid, reimbursed, disputed
 - `tax_category_code`
 - `description`
+- `ai_description`
+- `ai_description_generated_at`
+- `ai_description_model`
+- `ai_description_metadata`
+- `use_ai_description`
 - `admin_notes`
 - `created_by`
 - `approved_by`
@@ -138,10 +143,13 @@ The model should expose:
 ```python
 event.money
 event.time_window
+event.effective_description
 event.to_agent_payload()
 event.to_data_lake_record()
 event.is_tax_ready
 ```
+
+`effective_description` should prefer `ai_description` only when `use_ai_description` is true and an AI description exists. Manual notes and AI notes must both remain on the object so the system preserves audit provenance.
 
 ## Validation Contract
 
@@ -182,7 +190,9 @@ Django view/API layer plus services:
 - `OpsMaintenanceAPIView`
 - `OpsMaintenanceEventDetailAPIView`
 - `OpsMaintenancePhotoUploadAPIView`
+- `OpsMaintenanceAIDescriptionAPIView`
 - `MaintenanceService`
+- `MaintenanceVisionAgent`
 - `MaintenanceDocumentService`
 - `MaintenanceDataLakeService`
 
@@ -217,11 +227,75 @@ GET  /api/ops/maintenance/<uuid:event_id>/
 PATCH /api/ops/maintenance/<uuid:event_id>/
 POST /api/ops/maintenance/<uuid:event_id>/photos/
 GET  /api/ops/maintenance/<uuid:event_id>/agent-payload/
+POST /api/ops/maintenance/<uuid:event_id>/ai-description/
 POST /api/ops/maintenance/<uuid:event_id>/documents/
 POST /api/ops/maintenance/<uuid:event_id>/export/
 ```
 
 For mobile reliability, allow creating the event metadata first and uploading photos immediately after. The UI can still present this as one workflow.
+
+## V1 Integrated Implementation
+
+The integrated v1 lives inside the existing `bookings` app instead of the older standalone maintenance branch.
+
+Implemented backend objects:
+
+- `bookings.MaintenanceEvent`
+- `bookings.MaintenancePhoto`
+- `MaintenanceService`
+- `MaintenanceVisionAgent`
+- `OpsMaintenanceAPIView`
+- `OpsMaintenanceAgentPayloadAPIView`
+- `OpsMaintenanceAIDescriptionAPIView`
+
+Implemented routes:
+
+- `/ops/maintenance/`
+- `/api/ops/maintenance/`
+- `/api/ops/maintenance/<uuid>/agent-payload/`
+- `/api/ops/maintenance/<uuid>/ai-description/`
+
+Implemented frontend objects:
+
+- `OpsMaintenanceSnapshot`
+- `OpsMaintenanceEvent`
+- `OpsMaintenancePhoto`
+- `OpsMaintenancePage`
+
+Implemented data-lake collection:
+
+- `silver/operations/maintenance_events`
+
+Implemented AI work-description state:
+
+- `ai_description`
+- `ai_description_generated_at`
+- `ai_description_model`
+- `ai_description_metadata`
+- `use_ai_description`
+
+The first v1 uses `FileField` photo evidence with checksum, MIME type, file size, captions, cover photo, and upload timestamps. Image width/height extraction and generated invoice/tax document snapshots are future improvements, because they require either image-processing dependencies or a document-generation workflow.
+
+## AI Work Description Contract
+
+The maintenance vision agent is an application/service object, not a React shortcut.
+
+- The UI can show an `AI description` button on an existing maintenance record.
+- The controller must require staff/admin access before invoking the agent.
+- The service reads existing `MaintenancePhoto` objects and asks the configured OpenAI vision model for concise work notes.
+- The model persists the generated text and metadata in `ai_description`, `ai_description_generated_at`, `ai_description_model`, and `ai_description_metadata`.
+- The model keeps `description` as the manual note field and uses `use_ai_description` to decide the active description for `effective_description`.
+- `to_agent_payload()` must include both manual and AI descriptions plus the active mode.
+- Generating an AI description must emit a data-store object event, currently `maintenance_event.ai_description_generated`.
+- Missing `OPENAI_API_KEY` must return a clear setup error and must not break the maintenance page.
+
+Config:
+
+```text
+OPENAI_API_KEY=
+OPENAI_MAINTENANCE_VISION_MODEL=
+MAINTENANCE_AI_MAX_PHOTOS=6
+```
 
 ## Agent Payload
 

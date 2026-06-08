@@ -10,6 +10,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  Wrench,
 } from 'lucide-react';
 import { FocusEvent, ReactNode, useState } from 'react';
 import { getConfiguredLogoUrl } from '../helpers/brand';
@@ -28,6 +29,7 @@ const navItems = [
   { label: 'Reports', icon: BarChart3, href: '/ops/reports/' },
   { label: 'Customers', icon: Users, href: '/ops/customers/' },
   { label: 'Deposits', icon: ReceiptText, href: '/ops/deposits/' },
+  { label: 'Maintenance', icon: Wrench, href: '/ops/maintenance/' },
   { label: 'Agent', icon: Bot, href: '/ops/agent/' },
 ];
 

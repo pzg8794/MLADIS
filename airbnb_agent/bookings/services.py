@@ -1,16 +1,22 @@
 import calendar
+import base64
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from functools import lru_cache
+import hashlib
+import json
 from pathlib import Path
 import re
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from django.db import transaction
 from django.db.models import F
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 import requests
 import stripe
 
@@ -35,6 +41,9 @@ from .models import (
     Invoice,
     InvoiceStatus,
     MarketingConsentStatus,
+    MaintenanceEvent,
+    MaintenancePhoto,
+    MaintenanceStatus,
     Promotion,
     PromotionRecipient,
     PromotionStatus,
@@ -1240,6 +1249,297 @@ class ReservationRequestService:
         except Exception:
             # Data-lake writes are audit side effects and must not block a guest request.
             return
+
+
+class MaintenanceService:
+    """Application service for maintenance event creation and evidence logging."""
+
+    REQUIRED_PHOTO_STATUSES = {
+        MaintenanceStatus.LOGGED,
+        MaintenanceStatus.SCHEDULED,
+        MaintenanceStatus.IN_PROGRESS,
+        MaintenanceStatus.COMPLETED,
+        MaintenanceStatus.DOCUMENTED,
+        MaintenanceStatus.BILLED,
+        MaintenanceStatus.ARCHIVED,
+    }
+
+    DATETIME_FIELDS = ("reported_at", "started_at", "completed_at", "captured_at")
+
+    def create_event(self, *, user, data, files, request=None):
+        payload = self._mutable_payload(data)
+        uploaded_photos = self._uploaded_photos(files)
+        status = payload.get("status") or MaintenanceStatus.COMPLETED
+        if status in self.REQUIRED_PHOTO_STATUSES and not uploaded_photos:
+            raise ValidationError({"photos": "Add at least one photo for maintenance evidence."})
+
+        with transaction.atomic():
+            event = MaintenanceEvent(
+                item_id=payload.get("item"),
+                booking_id=payload.get("booking") or None,
+                title=(payload.get("title") or "").strip(),
+                work_type=payload.get("work_type") or "cleaning",
+                status=status,
+                cost_amount=self._decimal(payload.get("cost_amount")),
+                cost_currency=(payload.get("cost_currency") or "USD").strip().upper(),
+                reported_at=self._datetime(payload.get("reported_at")) or timezone.now(),
+                started_at=self._datetime(payload.get("started_at")),
+                completed_at=self._datetime(payload.get("completed_at")),
+                timezone_name=(payload.get("timezone_name") or "America/Santo_Domingo").strip(),
+                vendor_name=(payload.get("vendor_name") or "").strip(),
+                vendor_contact=(payload.get("vendor_contact") or "").strip(),
+                invoice_number=(payload.get("invoice_number") or "").strip(),
+                proof_of_payment_ref=(payload.get("proof_of_payment_ref") or "").strip(),
+                payment_status=payload.get("payment_status") or "pending",
+                tax_category_code=(payload.get("tax_category_code") or "").strip(),
+                description=(payload.get("description") or "").strip(),
+                admin_notes=(payload.get("admin_notes") or "").strip(),
+                created_by=user,
+            )
+            event.full_clean()
+            event.save()
+
+            captions = self._list_values(data, "photo_captions")
+            captured_values = self._list_values(data, "photo_captured_at")
+            for index, upload in enumerate(uploaded_photos):
+                photo = MaintenancePhoto(
+                    event=event,
+                    image=upload,
+                    caption=(captions[index] if index < len(captions) else upload.name).strip(),
+                    sort_order=index,
+                    is_cover=index == 0,
+                    checksum_sha256=self._checksum(upload),
+                    mime_type=getattr(upload, "content_type", "") or "",
+                    file_size_bytes=getattr(upload, "size", 0) or 0,
+                    captured_at=self._datetime(captured_values[index]) if index < len(captured_values) else None,
+                )
+                photo.full_clean()
+                photo.save()
+
+        self.log_object_event(event, "maintenance_event.created", request=request)
+        return event
+
+    def agent_payload(self, event):
+        return event.to_agent_payload()
+
+    def generate_ai_description(self, event, request=None):
+        result = MaintenanceVisionAgent().describe(event)
+        event.ai_description = result.description
+        event.ai_description_generated_at = timezone.now()
+        event.ai_description_model = result.model
+        event.ai_description_metadata = {
+            "confidence": result.confidence,
+            "observations": result.observations,
+        }
+        event.use_ai_description = True
+        if not event.description:
+            event.description = result.description
+        event.full_clean()
+        event.save(
+            update_fields=[
+                "description",
+                "ai_description",
+                "ai_description_generated_at",
+                "ai_description_model",
+                "ai_description_metadata",
+                "use_ai_description",
+                "updated_at",
+            ]
+        )
+        self.log_object_event(event, "maintenance_event.ai_description_generated", request=request)
+        return event
+
+    def log_object_event(self, event, event_name, request=None):
+        try:
+            from .data_lake import DataLakeObjectEventWriter
+
+            DataLakeObjectEventWriter.from_settings().write_model_event(
+                event_name=event_name,
+                instance=event,
+                request=request,
+                data={
+                    "item_id": event.item_id,
+                    "booking_id": event.booking_id,
+                    "work_type": event.work_type,
+                    "status": event.status,
+                    "cost_amount": str(event.cost_amount),
+                    "cost_currency": event.cost_currency,
+                    "photo_count": event.photo_count,
+                    "is_tax_ready": event.is_tax_ready,
+                },
+            )
+        except Exception:
+            return
+
+    @staticmethod
+    def _mutable_payload(data):
+        return {key: data.get(key) for key in data.keys()}
+
+    @staticmethod
+    def _uploaded_photos(files):
+        if hasattr(files, "getlist"):
+            return list(files.getlist("photos") or files.getlist("photo") or [])
+        photo = files.get("photos") or files.get("photo") if files else None
+        return [photo] if photo else []
+
+    @staticmethod
+    def _list_values(data, key):
+        if hasattr(data, "getlist"):
+            return [value for value in data.getlist(key) if value]
+        value = data.get(key) if data else ""
+        if isinstance(value, (list, tuple)):
+            return [item for item in value if item]
+        return [value] if value else []
+
+    @staticmethod
+    def _datetime(value):
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            parsed = value
+        else:
+            parsed = parse_datetime(str(value))
+        if parsed and timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+        return parsed
+
+    @staticmethod
+    def _decimal(value):
+        if value in (None, ""):
+            return Decimal("0.00")
+        return Decimal(str(value))
+
+    @staticmethod
+    def _checksum(upload):
+        digest = hashlib.sha256()
+        position = None
+        if hasattr(upload, "tell") and hasattr(upload, "seek"):
+            position = upload.tell()
+            upload.seek(0)
+        for chunk in upload.chunks():
+            digest.update(chunk)
+        if position is not None:
+            upload.seek(position)
+        return digest.hexdigest()
+
+
+@dataclass(frozen=True)
+class MaintenanceDescriptionResult:
+    description: str
+    observations: list[str]
+    confidence: str
+    model: str
+
+
+class MaintenanceVisionAgent:
+    """Vision-backed agent for turning maintenance photos into work notes."""
+
+    MAX_PHOTOS = 6
+
+    def __init__(self, api_key=None, model=None, max_photos=None):
+        self.api_key = api_key if api_key is not None else settings.OPENAI_API_KEY
+        self.model = (
+            model
+            or getattr(settings, "OPENAI_MAINTENANCE_VISION_MODEL", "")
+            or settings.OPENAI_AGENT_MODEL
+        )
+        self.max_photos = max_photos or getattr(settings, "MAINTENANCE_AI_MAX_PHOTOS", self.MAX_PHOTOS)
+
+    def describe(self, event):
+        if not self.api_key:
+            raise ValidationError(
+                {"ai_description": "OpenAI is not configured. Set OPENAI_API_KEY before using AI descriptions."}
+            )
+
+        photos = list(event.photos.all().order_by("sort_order", "uploaded_at")[: self.max_photos])
+        if not photos:
+            raise ValidationError({"photos": "Add at least one photo before generating an AI work description."})
+
+        response_text = self._call_model(event, photos)
+        result = self._parse_response(response_text)
+        if not result.description:
+            raise ValidationError({"ai_description": "The maintenance agent did not return a usable description."})
+        return result
+
+    def _call_model(self, event, photos):
+        client = _build_openai_client(self.api_key)
+        content = [
+            {
+                "type": "input_text",
+                "text": self._prompt(event),
+            }
+        ]
+        for photo in photos:
+            data_url = self._photo_data_url(photo)
+            if data_url:
+                content.append({"type": "input_image", "image_url": data_url, "detail": "low"})
+
+        if len(content) == 1:
+            raise ValidationError({"photos": "The attached photos could not be read for AI description."})
+
+        response = client.responses.create(
+            model=self.model,
+            input=[{"role": "user", "content": content}],
+            max_output_tokens=700,
+        )
+        return getattr(response, "output_text", "") or ""
+
+    def _prompt(self, event):
+        return (
+            "You are a maintenance documentation assistant for MLADIS property operations. "
+            "Inspect the attached maintenance photos and create concise, business-ready work notes. "
+            "Use only evidence visible in the photos plus the provided record metadata; do not invent vendor names, "
+            "costs, dates, causes, or completed work that is not visible. "
+            "Return JSON only with keys: description, observations, confidence. "
+            "The description should be 2 to 4 sentences and suitable for a bill, tax record, or admin review. "
+            f"Record title: {event.title}. "
+            f"Stay: {event.item.business_display_name if event.item else ''}. "
+            f"Work type: {event.get_work_type_display()}. "
+            f"Status: {event.get_status_display()}. "
+            f"Cost: {event.display_cost}. "
+            f"Manual notes: {event.description or 'none'}."
+        )
+
+    def _photo_data_url(self, photo):
+        try:
+            photo.image.open("rb")
+            raw = photo.image.read()
+        finally:
+            try:
+                photo.image.close()
+            except Exception:
+                pass
+        if not raw:
+            return ""
+        mime_type = photo.mime_type or "image/jpeg"
+        if not mime_type.startswith("image/"):
+            mime_type = "image/jpeg"
+        encoded = base64.b64encode(raw).decode("ascii")
+        return f"data:{mime_type};base64,{encoded}"
+
+    def _parse_response(self, response_text):
+        text = (response_text or "").strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```(?:json)?\s*", "", text)
+            text = re.sub(r"\s*```$", "", text)
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            payload = {"description": text, "observations": [], "confidence": "medium"}
+
+        description = str(payload.get("description") or "").strip()
+        observations = payload.get("observations") or []
+        if not isinstance(observations, list):
+            observations = [str(observations)]
+        confidence = str(payload.get("confidence") or "medium").strip().lower()
+        if confidence not in {"low", "medium", "high"}:
+            confidence = "medium"
+        return MaintenanceDescriptionResult(
+            description=description,
+            observations=[str(item).strip() for item in observations if str(item).strip()],
+            confidence=confidence,
+            model=self.model,
+        )
 
 
 class BookingEmailService:

@@ -17,6 +17,11 @@ import {
   OpsDepositRow,
   OpsDepositStatusOption,
   OpsDepositsSnapshot,
+  OpsMaintenanceEvent,
+  OpsMaintenanceOption,
+  OpsMaintenancePhoto,
+  OpsMaintenanceSnapshot,
+  OpsMaintenanceStay,
   OpsMetric,
   OpsReportsSnapshot,
   OpsSegmentOption,
@@ -236,6 +241,100 @@ interface ApiOpsCalendarStayRow {
   events: ApiOpsCalendarEvent[];
 }
 
+interface ApiOpsMaintenanceOption {
+  value: string;
+  label: string;
+  count: number;
+}
+
+interface ApiOpsMaintenanceStay {
+  id: number;
+  name: string;
+  slug: string;
+  subtitle: string;
+  max_guests: number;
+}
+
+interface ApiOpsMaintenancePhoto {
+  id: string;
+  url: string;
+  caption: string;
+  sort_order: number;
+  is_cover: boolean;
+  mime_type: string;
+  file_size_bytes: number;
+  checksum_sha256: string;
+  uploaded_at: string;
+}
+
+interface ApiOpsMaintenanceEvent {
+  id: string;
+  title: string;
+  item_id: number;
+  item_name: string;
+  booking_id: number | null;
+  work_type: string;
+  work_type_label: string;
+  status: string;
+  status_label: string;
+  payment_status: string;
+  payment_status_label: string;
+  display_cost: string;
+  cost_amount: string;
+  cost_currency: string;
+  reported_at: string;
+  reported_label: string;
+  started_at: string;
+  completed_at: string;
+  duration_minutes: number | null;
+  vendor_name: string;
+  vendor_contact: string;
+  invoice_number: string;
+  proof_of_payment_ref: string;
+  tax_category_code: string;
+  description: string;
+  ai_description: string;
+  ai_description_generated_at: string;
+  ai_description_model: string;
+  ai_description_metadata: Record<string, unknown>;
+  use_ai_description: boolean;
+  admin_notes: string;
+  photo_count: number;
+  first_photo_url: string;
+  is_tax_ready: boolean;
+  created_by: string;
+  admin_url: string;
+  agent_payload_url: string;
+  ai_description_url: string;
+  photos: ApiOpsMaintenancePhoto[];
+  created_at: string;
+  updated_at: string;
+}
+
+interface ApiOpsMaintenanceSnapshot {
+  summary_cards: ApiOpsMetric[];
+  work_type_options: ApiOpsMaintenanceOption[];
+  status_options: ApiOpsMaintenanceOption[];
+  payment_status_options: ApiOpsMaintenanceOption[];
+  stays: ApiOpsMaintenanceStay[];
+  rows: ApiOpsMaintenanceEvent[];
+  admin_url: string;
+  add_admin_url: string;
+  generated_at: string;
+}
+
+interface ApiOpsMaintenanceCreateResponse {
+  ok: boolean;
+  message: string;
+  event: ApiOpsMaintenanceEvent;
+}
+
+interface ApiOpsMaintenanceAIDescriptionResponse {
+  ok: boolean;
+  message: string;
+  event: ApiOpsMaintenanceEvent;
+}
+
 export interface OpsCalendarQuery {
   itemId?: number | null;
   view?: OpsCalendarViewMode;
@@ -265,6 +364,10 @@ export interface OpsWorkspaceRepository {
   getDeposits(): Promise<OpsDepositsSnapshot>;
   getAgent(): Promise<OpsAgentSnapshot>;
   getCalendar(query: OpsCalendarQuery): Promise<OpsCalendarSnapshot>;
+  getMaintenance(): Promise<OpsMaintenanceSnapshot>;
+  createMaintenanceEvent(input: FormData): Promise<OpsMaintenanceEvent>;
+  getMaintenanceAgentPayload(id: string): Promise<Record<string, unknown>>;
+  generateMaintenanceAiDescription(id: string): Promise<OpsMaintenanceEvent>;
   createCalendarBlock(input: OpsCalendarBlockInput): Promise<void>;
   deleteCalendarBlock(id: number): Promise<void>;
   createCalendarPrice(input: OpsCalendarPriceInput): Promise<void>;
@@ -413,6 +516,35 @@ export class ApiOpsWorkspaceRepository implements OpsWorkspaceRepository {
     );
   }
 
+  async getMaintenance(): Promise<OpsMaintenanceSnapshot> {
+    const data = await this.http.get<ApiOpsMaintenanceSnapshot>('/api/ops/maintenance/');
+    return new OpsMaintenanceSnapshot(
+      data.summary_cards.map(toMetric),
+      data.work_type_options.map(toMaintenanceOption),
+      data.status_options.map(toMaintenanceOption),
+      data.payment_status_options.map(toMaintenanceOption),
+      data.stays.map(toMaintenanceStay),
+      data.rows.map(toMaintenanceEvent),
+      data.admin_url,
+      data.add_admin_url,
+      data.generated_at,
+    );
+  }
+
+  async createMaintenanceEvent(input: FormData): Promise<OpsMaintenanceEvent> {
+    const data = await this.http.postForm<ApiOpsMaintenanceCreateResponse>('/api/ops/maintenance/', input);
+    return toMaintenanceEvent(data.event);
+  }
+
+  async getMaintenanceAgentPayload(id: string): Promise<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(`/api/ops/maintenance/${id}/agent-payload/`);
+  }
+
+  async generateMaintenanceAiDescription(id: string): Promise<OpsMaintenanceEvent> {
+    const data = await this.http.post<ApiOpsMaintenanceAIDescriptionResponse>(`/api/ops/maintenance/${id}/ai-description/`, {});
+    return toMaintenanceEvent(data.event);
+  }
+
   async createCalendarBlock(input: OpsCalendarBlockInput): Promise<void> {
     await this.http.post('/api/ops/calendar/blocks/', input);
   }
@@ -491,5 +623,79 @@ function toCalendarEvent(item: ApiOpsCalendarEvent): OpsCalendarEvent {
     item.guest_label,
     item.amount,
     item.admin_url,
+  );
+}
+
+function toMaintenanceOption(item: ApiOpsMaintenanceOption): OpsMaintenanceOption {
+  return new OpsMaintenanceOption(item.value, item.label, item.count);
+}
+
+function toMaintenanceStay(item: ApiOpsMaintenanceStay): OpsMaintenanceStay {
+  return new OpsMaintenanceStay(
+    item.id,
+    item.name,
+    item.slug,
+    item.subtitle,
+    item.max_guests,
+  );
+}
+
+function toMaintenancePhoto(item: ApiOpsMaintenancePhoto): OpsMaintenancePhoto {
+  return new OpsMaintenancePhoto(
+    item.id,
+    item.url,
+    item.caption,
+    item.sort_order,
+    item.is_cover,
+    item.mime_type,
+    item.file_size_bytes,
+    item.checksum_sha256,
+    item.uploaded_at,
+  );
+}
+
+function toMaintenanceEvent(item: ApiOpsMaintenanceEvent): OpsMaintenanceEvent {
+  return new OpsMaintenanceEvent(
+    item.id,
+    item.title,
+    item.item_id,
+    item.item_name,
+    item.booking_id,
+    item.work_type,
+    item.work_type_label,
+    item.status,
+    item.status_label,
+    item.payment_status,
+    item.payment_status_label,
+    item.display_cost,
+    item.cost_amount,
+    item.cost_currency,
+    item.reported_at,
+    item.reported_label,
+    item.started_at,
+    item.completed_at,
+    item.duration_minutes,
+    item.vendor_name,
+    item.vendor_contact,
+    item.invoice_number,
+    item.proof_of_payment_ref,
+    item.tax_category_code,
+    item.description,
+    item.ai_description,
+    item.ai_description_generated_at,
+    item.ai_description_model,
+    item.ai_description_metadata,
+    item.use_ai_description,
+    item.admin_notes,
+    item.photo_count,
+    item.first_photo_url,
+    item.is_tax_ready,
+    item.created_by,
+    item.admin_url,
+    item.agent_payload_url,
+    item.ai_description_url,
+    item.photos.map(toMaintenancePhoto),
+    item.created_at,
+    item.updated_at,
   );
 }

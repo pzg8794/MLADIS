@@ -111,15 +111,14 @@ class Command(BaseCommand):
         root = result.root
         files = [
             root / "README.md",
-            root / "_catalog" / "collections.json",
+            root / "CATALOG.json",
             result.manifest_path,
         ]
-        files.extend(sorted((root / "schemas" / "v1").glob("*.schema.json")))
         if result.schema_only:
             if include_placeholders:
                 files.extend(sorted(root.rglob("*-placeholder.jsonl")))
         else:
-            files.extend(sorted(root.rglob(f"*-{result.export_run_id}.jsonl")))
+            files.extend(sorted(path for path in root.rglob("*.jsonl") if "EXPORTS" not in path.parts))
         return [path for path in files if path.exists()]
 
     def _rclone_copyto(self, source, destination, folder_id):
@@ -147,6 +146,8 @@ class Command(BaseCommand):
             "--stats-one-line",
         ]
         try:
-            subprocess.run(command, check=True)
+            subprocess.run(command, check=True, timeout=getattr(settings, "MLADIS_DATASTORE_DRIVE_COPY_TIMEOUT_SECONDS", 25))
+        except subprocess.TimeoutExpired as error:
+            raise CommandError(f"Drive write timed out for {source.name}: {error}") from error
         except subprocess.CalledProcessError as error:
             raise CommandError(f"Drive write failed for {source.name}: {error}") from error

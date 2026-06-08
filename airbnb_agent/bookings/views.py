@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.conf import settings
 from django.contrib.sites.models import Site
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
@@ -52,12 +53,16 @@ from .models import (
     DepositStatus,
     Invoice,
     MarketingConsentStatus,
+    MaintenanceEvent,
+    MaintenancePaymentStatus,
+    MaintenanceStatus,
+    MaintenanceWorkType,
     MissionCause,
     PageVisit,
     ReservationPaymentHold,
     SiteSettings,
 )
-from .services import AgentAccessContext, BookingCalendarService, ReservationPricingService
+from .services import AgentAccessContext, BookingCalendarService, MaintenanceService, ReservationPricingService
 from .social_auth import SOCIAL_LOGIN_PROVIDER_SPECS, get_social_login_providers
 from .social_auth import get_provider_spec, provider_auth_origin, request_origin
 
@@ -1818,6 +1823,216 @@ class ModernOpsDepositsView(TemplateView):
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsAgentView(TemplateView):
     template_name = "bookings/modern_dashboard.html"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class ModernOpsMaintenanceView(TemplateView):
+    template_name = "bookings/modern_dashboard.html"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsMaintenanceAPIView(View):
+    def get(self, request):
+        events = (
+            MaintenanceEvent.objects.select_related("item", "booking", "created_by", "approved_by")
+            .prefetch_related("photos")
+            .order_by("-reported_at", "-created_at")
+        )
+        rows = [self._event_payload(request, event) for event in events]
+        total_cost = sum(event.cost_amount for event in events)
+        tax_ready = sum(1 for event in events if event.is_tax_ready)
+        open_statuses = {
+            MaintenanceStatus.LOGGED,
+            MaintenanceStatus.SCHEDULED,
+            MaintenanceStatus.IN_PROGRESS,
+        }
+        recent = timezone.now() - timedelta(days=30)
+        return JsonResponse(
+            {
+                "summary_cards": [
+                    self._metric("Events", events.count(), "Maintenance records."),
+                    self._metric("Open", events.filter(status__in=open_statuses).count(), "Needs action."),
+                    self._metric("Tax-ready", tax_ready, "Documented."),
+                    self._metric("Photos", sum(event.photo_count for event in events), "Evidence files."),
+                    self._metric("30 days", events.filter(reported_at__gte=recent).count(), "Recent work."),
+                    self._metric("Total cost", f"${total_cost:,.2f}", "All records."),
+                ],
+                "work_type_options": self._choice_options(MaintenanceWorkType.choices, rows, "work_type"),
+                "status_options": self._choice_options(MaintenanceStatus.choices, rows, "status"),
+                "payment_status_options": self._choice_options(MaintenancePaymentStatus.choices, rows, "payment_status"),
+                "stays": [self._stay_payload(stay) for stay in BookableItem.objects.filter(is_active=True, category=BookingCategory.STAY).order_by("name")],
+                "rows": rows,
+                "admin_url": reverse("admin:bookings_maintenanceevent_changelist"),
+                "add_admin_url": reverse("admin:bookings_maintenanceevent_add"),
+                "generated_at": timezone.now().isoformat(),
+            }
+        )
+
+    def post(self, request):
+        try:
+            event = MaintenanceService().create_event(
+                user=request.user,
+                data=request.POST,
+                files=request.FILES,
+                request=request,
+            )
+        except ValidationError as error:
+            return JsonResponse({"errors": self._validation_errors(error)}, status=400)
+        except Exception as error:
+            return JsonResponse({"error": str(error) or "Could not create maintenance event."}, status=400)
+
+        event = (
+            MaintenanceEvent.objects.select_related("item", "booking", "created_by", "approved_by")
+            .prefetch_related("photos")
+            .get(pk=event.pk)
+        )
+        return JsonResponse(
+            {
+                "ok": True,
+                "message": "Maintenance event saved.",
+                "event": self._event_payload(request, event),
+            },
+            status=201,
+        )
+
+    @staticmethod
+    def _metric(label, value, caption):
+        return {"label": label, "value": value, "caption": caption}
+
+    @staticmethod
+    def _stay_payload(stay):
+        return {
+            "id": stay.pk,
+            "name": stay.business_display_name,
+            "slug": stay.slug,
+            "subtitle": stay.short_description,
+            "max_guests": stay.max_guests or 0,
+        }
+
+    @staticmethod
+    def _choice_options(choices, rows, field):
+        counts = {}
+        for row in rows:
+            value = row.get(field, "")
+            counts[value] = counts.get(value, 0) + 1
+        return [
+            {"value": "", "label": "All", "count": len(rows)},
+            *[
+                {"value": value, "label": label, "count": counts.get(value, 0)}
+                for value, label in choices
+            ],
+        ]
+
+    def _event_payload(self, request, event):
+        photos = list(event.photos.all())
+        cover = next((photo for photo in photos if photo.is_cover), photos[0] if photos else None)
+        return {
+            "id": str(event.pk),
+            "title": event.title,
+            "item_id": event.item_id,
+            "item_name": event.item.business_display_name if event.item else "",
+            "booking_id": event.booking_id,
+            "work_type": event.work_type,
+            "work_type_label": event.get_work_type_display(),
+            "status": event.status,
+            "status_label": event.get_status_display(),
+            "payment_status": event.payment_status,
+            "payment_status_label": event.get_payment_status_display(),
+            "display_cost": event.display_cost,
+            "cost_amount": str(event.cost_amount),
+            "cost_currency": event.cost_currency,
+            "reported_at": event.reported_at.isoformat() if event.reported_at else "",
+            "reported_label": self._date_label(event.reported_at),
+            "started_at": event.started_at.isoformat() if event.started_at else "",
+            "completed_at": event.completed_at.isoformat() if event.completed_at else "",
+            "duration_minutes": event.duration_minutes,
+            "vendor_name": event.vendor_name,
+            "vendor_contact": event.vendor_contact,
+            "invoice_number": event.invoice_number,
+            "proof_of_payment_ref": event.proof_of_payment_ref,
+            "tax_category_code": event.tax_category_code,
+            "description": event.description,
+            "ai_description": event.ai_description,
+            "ai_description_generated_at": event.ai_description_generated_at.isoformat()
+            if event.ai_description_generated_at
+            else "",
+            "ai_description_model": event.ai_description_model,
+            "ai_description_metadata": event.ai_description_metadata,
+            "use_ai_description": event.use_ai_description,
+            "admin_notes": event.admin_notes,
+            "photo_count": len(photos),
+            "first_photo_url": request.build_absolute_uri(cover.image_url) if cover and cover.image_url else "",
+            "is_tax_ready": event.is_tax_ready,
+            "created_by": event.created_by.get_full_name() or event.created_by.get_username(),
+            "admin_url": request.build_absolute_uri(reverse("admin:bookings_maintenanceevent_change", args=[event.pk])),
+            "agent_payload_url": request.build_absolute_uri(reverse("bookings:ops-maintenance-agent-payload-api", args=[event.pk])),
+            "ai_description_url": request.build_absolute_uri(reverse("bookings:ops-maintenance-ai-description-api", args=[event.pk])),
+            "photos": [self._photo_payload(request, photo) for photo in photos],
+            "created_at": event.created_at.isoformat() if event.created_at else "",
+            "updated_at": event.updated_at.isoformat() if event.updated_at else "",
+        }
+
+    @staticmethod
+    def _date_label(value):
+        return value.strftime("%b %-d, %Y") if value else ""
+
+    @staticmethod
+    def _photo_payload(request, photo):
+        return {
+            "id": str(photo.pk),
+            "url": request.build_absolute_uri(photo.image_url) if photo.image_url else "",
+            "caption": photo.caption,
+            "sort_order": photo.sort_order,
+            "is_cover": photo.is_cover,
+            "mime_type": photo.mime_type,
+            "file_size_bytes": photo.file_size_bytes,
+            "checksum_sha256": photo.checksum_sha256,
+            "uploaded_at": photo.uploaded_at.isoformat() if photo.uploaded_at else "",
+        }
+
+    @staticmethod
+    def _validation_errors(error):
+        if hasattr(error, "message_dict"):
+            return {field: [str(item) for item in messages] for field, messages in error.message_dict.items()}
+        return {"__all__": [str(message) for message in getattr(error, "messages", [str(error)])]}
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsMaintenanceAgentPayloadAPIView(View):
+    def get(self, request, pk):
+        event = get_object_or_404(
+            MaintenanceEvent.objects.select_related("item", "booking", "created_by", "approved_by").prefetch_related("photos"),
+            pk=pk,
+        )
+        return JsonResponse(MaintenanceService().agent_payload(event))
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsMaintenanceAIDescriptionAPIView(View):
+    def post(self, request, pk):
+        event = get_object_or_404(
+            MaintenanceEvent.objects.select_related("item", "booking", "created_by", "approved_by").prefetch_related("photos"),
+            pk=pk,
+        )
+        try:
+            event = MaintenanceService().generate_ai_description(event, request=request)
+        except ValidationError as error:
+            return JsonResponse({"errors": OpsMaintenanceAPIView._validation_errors(error)}, status=400)
+        except Exception as error:
+            return JsonResponse({"error": str(error) or "Could not generate maintenance description."}, status=502)
+
+        event = (
+            MaintenanceEvent.objects.select_related("item", "booking", "created_by", "approved_by")
+            .prefetch_related("photos")
+            .get(pk=event.pk)
+        )
+        return JsonResponse(
+            {
+                "ok": True,
+                "message": "AI work description generated.",
+                "event": OpsMaintenanceAPIView()._event_payload(request, event),
+            }
+        )
 
 
 @method_decorator(ops_staff_required, name="dispatch")

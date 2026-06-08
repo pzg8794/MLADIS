@@ -43,6 +43,8 @@ from .models import (
     Invoice,
     InvoiceLineItem,
     MarketingConsentStatus,
+    MaintenanceEvent,
+    MaintenancePhoto,
     MissionCause,
     PageVisit,
     Promotion,
@@ -98,6 +100,13 @@ class CalendarFeedInline(admin.StackedInline):
     model = CalendarFeed
     extra = 0
     max_num = 1
+
+
+class MaintenancePhotoInline(admin.TabularInline):
+    model = MaintenancePhoto
+    extra = 0
+    fields = ("image", "caption", "sort_order", "is_cover", "mime_type", "file_size_bytes", "checksum_sha256")
+    readonly_fields = ("mime_type", "file_size_bytes", "checksum_sha256")
 
 
 @admin.register(BookableItem)
@@ -251,6 +260,55 @@ class CancellationPolicyAdmin(admin.ModelAdmin):
     list_filter = ("allow_guest_cancellation", "is_default", "is_active")
     prepopulated_fields = {"slug": ("name",)}
     search_fields = ("name", "description")
+
+
+@admin.register(MaintenanceEvent)
+class MaintenanceEventAdmin(admin.ModelAdmin):
+    list_display = (
+        "title",
+        "item",
+        "work_type",
+        "status",
+        "display_cost",
+        "payment_status",
+        "photo_count",
+        "is_tax_ready",
+        "use_ai_description",
+        "reported_at",
+        "created_by",
+    )
+    list_filter = ("work_type", "status", "payment_status", "item", "reported_at")
+    search_fields = ("title", "description", "ai_description", "vendor_name", "vendor_contact", "invoice_number", "proof_of_payment_ref")
+    autocomplete_fields = ("item", "booking", "created_by", "approved_by")
+    readonly_fields = ("id", "created_at", "updated_at", "photo_count", "is_tax_ready", "ai_description_generated_at", "ai_description_model", "ai_description_metadata")
+    fieldsets = (
+        ("Core record", {"fields": ("id", "item", "booking", "title", "work_type", "status")}),
+        ("Cost and time", {"fields": ("cost_amount", "cost_currency", "reported_at", "started_at", "completed_at", "timezone_name")}),
+        ("Vendor and tax evidence", {"fields": ("vendor_name", "vendor_contact", "payment_status", "invoice_number", "proof_of_payment_ref", "tax_category_code")}),
+        ("Notes", {"fields": ("description", "admin_notes")}),
+        ("AI work description", {"fields": ("use_ai_description", "ai_description", "ai_description_generated_at", "ai_description_model", "ai_description_metadata")}),
+        ("Ownership", {"fields": ("created_by", "approved_by", "created_at", "updated_at", "photo_count", "is_tax_ready")}),
+    )
+    inlines = (MaintenancePhotoInline,)
+
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+        initial.setdefault("created_by", request.user.pk)
+        return initial
+
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by_id:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(MaintenancePhoto)
+class MaintenancePhotoAdmin(admin.ModelAdmin):
+    list_display = ("event", "caption", "sort_order", "is_cover", "mime_type", "file_size_bytes", "uploaded_at")
+    list_filter = ("is_cover", "mime_type", "uploaded_at")
+    search_fields = ("caption", "event__title", "event__item__name", "checksum_sha256")
+    autocomplete_fields = ("event",)
+    readonly_fields = ("checksum_sha256", "mime_type", "file_size_bytes", "uploaded_at")
 
 
 class CustomerProfileFeedbackInline(admin.TabularInline):

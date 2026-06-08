@@ -749,3 +749,95 @@ export class OpsCalendarSnapshot {
     public readonly generatedAt: string,
   ) {}
 }
+
+export class OpsMaintenanceOption {
+  constructor(
+    public readonly value: string,
+    public readonly label: string,
+    public readonly count: number,
+  ) {}
+}
+
+export class OpsMaintenanceStay {
+  constructor(
+    public readonly id: number,
+    public readonly name: string,
+    public readonly slug: string,
+    public readonly subtitle: string,
+    public readonly maxGuests: number,
+  ) {}
+}
+
+export class OpsMaintenancePhoto {
+  constructor(
+    public readonly id: string,
+    public readonly url: string,
+    public readonly caption: string,
+    public readonly sortOrder: number,
+    public readonly isCover: boolean,
+    public readonly mimeType: string,
+    public readonly fileSizeBytes: number,
+    public readonly checksumSha256: string,
+    public readonly uploadedAt: string,
+  ) {}
+}
+
+export class OpsMaintenanceEvent {
+  constructor(
+    public readonly id: string,
+    public readonly title: string,
+    public readonly itemId: number,
+    public readonly itemName: string,
+    public readonly bookingId: number | null,
+    public readonly workType: string,
+    public readonly workTypeLabel: string,
+    public readonly status: string,
+    public readonly statusLabel: string,
+    public readonly paymentStatus: string,
+    public readonly paymentStatusLabel: string,
+    public readonly displayCost: string,
+    public readonly costAmount: string,
+    public readonly costCurrency: string,
+    public readonly reportedAt: string,
+    public readonly reportedLabel: string,
+    public readonly startedAt: string,
+    public readonly completedAt: string,
+    public readonly durationMinutes: number | null,
+    public readonly vendorName: string,
+    public readonly vendorContact: string,
+    public readonly invoiceNumber: string,
+    public readonly proofOfPaymentRef: string,
+    public readonly taxCategoryCode: string,
+    public readonly description: string,
+    public readonly aiDescription: string,
+    public readonly aiDescriptionGeneratedAt: string,
+    public readonly aiDescriptionModel: string,
+    public readonly aiDescriptionMetadata: Record<string, unknown>,
+    public readonly useAiDescription: boolean,
+    public readonly adminNotes: string,
+    public readonly photoCount: number,
+    public readonly firstPhotoUrl: string,
+    public readonly isTaxReady: boolean,
+    public readonly createdBy: string,
+    public readonly adminUrl: string,
+    public readonly agentPayloadUrl: string,
+    public readonly aiDescriptionUrl: string,
+    public readonly photos: OpsMaintenancePhoto[],
+    public readonly createdAt: string,
+    public readonly updatedAt: string,
+  ) {}
+}
+
+export class OpsMaintenanceSnapshot {
+  constructor(
+    public readonly summaryCards: OpsMetric[],
+    public readonly workTypeOptions: OpsMaintenanceOption[],
+    public readonly statusOptions: OpsMaintenanceOption[],
+    public readonly paymentStatusOptions: OpsMaintenanceOption[],
+    public readonly stays: OpsMaintenanceStay[],
+    public readonly rows: OpsMaintenanceEvent[],
+    public readonly adminUrl: string,
+    public readonly addAdminUrl: string,
+    public readonly generatedAt: string,
+  ) {}
+}

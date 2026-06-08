@@ -3,6 +3,8 @@ import {
   OpsCalendarSnapshot,
   OpsCustomersSnapshot,
   OpsDepositsSnapshot,
+  OpsMaintenanceEvent,
+  OpsMaintenanceSnapshot,
   OpsReportsSnapshot,
 } from '../domain/models';
 import {
@@ -33,6 +35,22 @@ export class OpsWorkspaceService {
 
   async loadCalendar(query: OpsCalendarQuery): Promise<OpsCalendarSnapshot> {
     return this.repository.getCalendar(query);
+  }
+
+  async loadMaintenance(): Promise<OpsMaintenanceSnapshot> {
+    return this.repository.getMaintenance();
+  }
+
+  async createMaintenanceEvent(input: FormData): Promise<OpsMaintenanceEvent> {
+    return this.repository.createMaintenanceEvent(input);
+  }
+
+  async loadMaintenanceAgentPayload(id: string): Promise<Record<string, unknown>> {
+    return this.repository.getMaintenanceAgentPayload(id);
+  }
+
+  async generateMaintenanceAiDescription(id: string): Promise<OpsMaintenanceEvent> {
+    return this.repository.generateMaintenanceAiDescription(id);
   }
 
   async createCalendarBlock(input: OpsCalendarBlockInput): Promise<void> {

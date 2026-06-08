@@ -1,13 +1,17 @@
 import hashlib
 import json
+import shutil
+import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import models as django_models
 from django.utils import timezone
 
 from .models import (
@@ -24,6 +28,7 @@ from .models import (
     DamageDeposit,
     Donation,
     Invoice,
+    MaintenanceEvent,
     PageVisit,
     Promotion,
     ReservationPaymentHold,
@@ -32,19 +37,98 @@ from .models import (
 
 SCHEMA_VERSION = "1.0"
 
+SENSITIVE_FIELD_FRAGMENTS = (
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "apikey",
+    "private_key",
+    "webhook",
+    "session",
+)
+
+SIMPLE_OBJECT_LAKE_FOLDERS = (
+    "BOOKINGS",
+    "CUSTOMERS",
+    "BOOKINGAGENTS",
+    "TRANSACTIONS",
+    "STAYS",
+    "MAINTENANCE",
+    "WEBSITE",
+    "ADMIN",
+    "EVENTS",
+)
+
+MODEL_FOLDER_OVERRIDES = {
+    "auth.User": "CUSTOMERS",
+    "account.EmailAddress": "CUSTOMERS",
+    "socialaccount.SocialAccount": "CUSTOMERS",
+    "socialaccount.SocialToken": "CUSTOMERS",
+    "socialaccount.SocialApp": "ADMIN",
+    "bookings.CustomerProfile": "CUSTOMERS",
+    "bookings.AirbnbGuestRecord": "CUSTOMERS",
+    "bookings.CustomerFeedback": "CUSTOMERS",
+    "bookings.BookingInquiry": "BOOKINGS",
+    "bookings.CancellationPolicy": "BOOKINGS",
+    "bookings.Coupon": "TRANSACTIONS",
+    "bookings.DamageDeposit": "TRANSACTIONS",
+    "bookings.ReservationPaymentHold": "TRANSACTIONS",
+    "bookings.Donation": "TRANSACTIONS",
+    "bookings.Invoice": "TRANSACTIONS",
+    "bookings.InvoiceLineItem": "TRANSACTIONS",
+    "bookings.ExtraBillTemplate": "TRANSACTIONS",
+    "bookings.Promotion": "TRANSACTIONS",
+    "bookings.PromotionRecipient": "TRANSACTIONS",
+    "bookings.AgentConversation": "BOOKINGAGENTS",
+    "bookings.AgentFAQ": "BOOKINGAGENTS",
+    "bookings.AgentKnowledgeSource": "BOOKINGAGENTS",
+    "bookings.BookableItem": "STAYS",
+    "bookings.AvailabilityBlock": "STAYS",
+    "bookings.DailyPriceOverride": "STAYS",
+    "bookings.CalendarFeed": "STAYS",
+    "bookings.GuestReviewHighlight": "STAYS",
+    "bookings.HouseRule": "STAYS",
+    "bookings.StayGalleryImage": "STAYS",
+    "bookings.ReviewTheme": "STAYS",
+    "bookings.MaintenanceEvent": "MAINTENANCE",
+    "bookings.MaintenancePhoto": "MAINTENANCE",
+    "bookings.SiteSettings": "WEBSITE",
+    "bookings.SiteContentBlock": "WEBSITE",
+    "bookings.AdminAccess": "ADMIN",
+}
+
+COLLECTION_FOLDER_OVERRIDES = {
+    "subscriptions": "CUSTOMERS",
+    "customer_profiles": "CUSTOMERS",
+    "airbnb_guest_records": "CUSTOMERS",
+    "customer_feedback": "CUSTOMERS",
+    "booking_requests": "BOOKINGS",
+    "reservations": "BOOKINGS",
+    "agent_conversations": "BOOKINGAGENTS",
+    "agent_faq": "BOOKINGAGENTS",
+    "damage_deposits": "TRANSACTIONS",
+    "reservation_payment_holds": "TRANSACTIONS",
+    "donations": "TRANSACTIONS",
+    "invoices": "TRANSACTIONS",
+    "promotions": "TRANSACTIONS",
+    "inventory": "STAYS",
+    "availability_blocks": "STAYS",
+    "daily_price_overrides": "STAYS",
+    "maintenance_events": "MAINTENANCE",
+    "page_visits": "EVENTS",
+    "object_events": "EVENTS",
+    "object_states": "EVENTS",
+}
+
 
 @dataclass(frozen=True)
 class DataLakeCollection:
     key: str
-    zone: str
-    subject: str
+    folder: str
     entity_type: str
     description: str
     pii_classification: str
-
-    @property
-    def relative_schema_path(self):
-        return f"schemas/v1/{self.key}.schema.json"
 
 
 @dataclass(frozen=True)
@@ -62,6 +146,8 @@ class DataLakeJsonEncoder(json.JSONEncoder):
         if isinstance(value, (datetime, date)):
             return value.isoformat()
         if isinstance(value, Decimal):
+            return str(value)
+        if isinstance(value, UUID):
             return str(value)
         return super().default(value)
 
@@ -121,151 +207,80 @@ class DataLakeRecordBuilder:
             return value.isoformat()
         if isinstance(value, Decimal):
             return str(value)
+        if isinstance(value, UUID):
+            return str(value)
         return value
 
 
-class DataLakeLayout:
-    REQUIRED_DIRECTORIES = (
-        "_catalog",
-        "_manifests",
-        "schemas/v1",
-        "bronze/app_events",
-        "bronze/imports",
-        "silver/accounts",
-        "silver/customers",
-        "silver/bookings",
-        "silver/requests",
-        "silver/agent",
-        "silver/payments",
-        "silver/marketing",
-        "silver/content",
-        "gold/analytics",
-        "quarantine",
-    )
-
+class SimpleObjectLakeLayout:
     def __init__(self, root):
         self.root = Path(root).expanduser().resolve()
 
     def initialize(self):
-        for relative_path in self.REQUIRED_DIRECTORIES:
-            (self.root / relative_path).mkdir(parents=True, exist_ok=True)
+        self.root.mkdir(parents=True, exist_ok=True)
+        for folder in SIMPLE_OBJECT_LAKE_FOLDERS:
+            (self.root / folder).mkdir(parents=True, exist_ok=True)
         self._write_root_readme()
 
-    def collection_dir(self, collection, as_of):
-        return (
-            self.root
-            / collection.zone
-            / collection.subject
-            / collection.key
-            / f"year={as_of:%Y}"
-            / f"month={as_of:%m}"
-            / f"day={as_of:%d}"
-        )
+    def folder_for_model_label(self, model_label):
+        return MODEL_FOLDER_OVERRIDES.get(model_label, "ADMIN")
 
-    def schema_path(self, collection):
-        return self.root / collection.relative_schema_path
+    def folder_for_collection(self, collection):
+        return collection.folder or COLLECTION_FOLDER_OVERRIDES.get(collection.key, "EVENTS")
+
+    def object_path(self, instance):
+        folder = self.folder_for_model_label(instance._meta.label)
+        return self.root / folder / f"{self._model_key(instance._meta.model_name)}-{instance.pk or 'pending'}.json"
+
+    def history_path_for_instance(self, instance):
+        folder = self.folder_for_model_label(instance._meta.label)
+        return self.root / folder / "_history.jsonl"
+
+    def event_path_for_instance(self, instance):
+        folder = self.folder_for_model_label(instance._meta.label)
+        return self.root / folder / "_events.jsonl"
+
+    def collection_path(self, collection):
+        folder = self.folder_for_collection(collection)
+        return self.root / folder / f"{collection.key}.jsonl"
 
     def catalog_path(self):
-        return self.root / "_catalog" / "collections.json"
+        return self.root / "CATALOG.json"
 
     def manifest_path(self, export_run_id):
-        return self.root / "_manifests" / f"export-run-{export_run_id}.json"
+        return self.root / "EXPORTS" / f"export-run-{export_run_id}.json"
+
+    def _model_key(self, model_name):
+        return "".join(character if character.isalnum() else "-" for character in model_name.lower()).strip("-")
 
     def _write_root_readme(self):
-        readme = self.root / "README.md"
-        if readme.exists():
-            return
-        readme.write_text(
+        (self.root / "README.md").write_text(
             "\n".join(
                 [
-                    "# MLADIS Data Store",
+                    "# MLADIS Object Lake",
                     "",
-                    "Drive-backed JSON/JSONL data lake for MLADIS operational exports.",
+                    "Simple Drive-backed JSON object store for MLADIS business objects.",
                     "",
-                    "- Django/Postgres or SQLite remains the transactional source of truth.",
-                    "- JSONL files here are export snapshots for analysis, recovery, agent learning, and audits.",
-                    "- Do not place SSNs, EIN letters, bank records, passwords, raw signatures, or identity documents here.",
-                    "- Treat `pii_classification=private` files as restricted business records.",
+                    "Top-level folders are the contract:",
+                    "",
+                    "- BOOKINGS: booking requests and reservations.",
+                    "- CUSTOMERS: users, customer profiles, Airbnb guests, and feedback.",
+                    "- BOOKINGAGENTS: agent conversations, FAQ, and knowledge records.",
+                    "- TRANSACTIONS: deposits, payment holds, donations, invoices, coupons, and promotions.",
+                    "- STAYS: apartments, availability, pricing, rules, galleries, and calendar feeds.",
+                    "- MAINTENANCE: cleaning, repair, maintenance, and photo evidence objects.",
+                    "- WEBSITE: site settings and public content objects.",
+                    "- ADMIN: admin access and business configuration objects.",
+                    "- EVENTS: app/page/workflow events that are not one durable business object.",
+                    "",
+                    "Each business object is stored as one readable JSON file named `<model>-<id>.json`.",
+                    "Each folder may also contain `_history.jsonl` for append-only change history.",
+                    "",
+                    "The Django database remains the transactional source of truth. This object lake is for recovery, audits, analytics, and agent learning.",
+                    "Do not store SSNs, EIN letters, raw signatures, bank records, passwords, OAuth secrets, or payment cards here.",
                     "",
                 ]
             ),
-            encoding="utf-8",
-        )
-
-
-class DataLakeSchemaWriter:
-    BASE_RECORD_FIELDS = {
-        "schema_version": "string",
-        "collection": "string",
-        "entity_type": "string",
-        "record_key": "string",
-        "source_system": "string",
-        "source_model": "string",
-        "source_pk": "string",
-        "pii_classification": "string",
-        "occurred_at": "datetime|null",
-        "extracted_at": "datetime",
-        "natural_keys": "object",
-        "data": "object",
-    }
-
-    def __init__(self, layout, collections):
-        self.layout = layout
-        self.collections = collections
-
-    def write(self):
-        for collection in self.collections:
-            self._write_collection_schema(collection)
-        self.layout.catalog_path().write_text(
-            json.dumps(
-                {
-                    "schema_version": SCHEMA_VERSION,
-                    "generated_at": timezone.now().isoformat(),
-                    "collections": [
-                        {
-                            "key": collection.key,
-                            "zone": collection.zone,
-                            "subject": collection.subject,
-                            "entity_type": collection.entity_type,
-                            "description": collection.description,
-                            "pii_classification": collection.pii_classification,
-                            "schema_path": collection.relative_schema_path,
-                        }
-                        for collection in self.collections
-                    ],
-                },
-                indent=2,
-                cls=DataLakeJsonEncoder,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-
-    def _write_collection_schema(self, collection):
-        self.layout.schema_path(collection).write_text(
-            json.dumps(
-                {
-                    "$schema": "https://json-schema.org/draft/2020-12/schema",
-                    "$id": f"https://mladis.com/schemas/data-lake/{collection.key}.schema.json",
-                    "title": f"MLADIS {collection.key} record",
-                    "description": collection.description,
-                    "type": "object",
-                    "required": list(self.BASE_RECORD_FIELDS.keys()),
-                    "properties": {
-                        key: {"description": type_name}
-                        for key, type_name in self.BASE_RECORD_FIELDS.items()
-                    },
-                    "x-mladis": {
-                        "schema_version": SCHEMA_VERSION,
-                        "zone": collection.zone,
-                        "subject": collection.subject,
-                        "entity_type": collection.entity_type,
-                        "pii_classification": collection.pii_classification,
-                    },
-                },
-                indent=2,
-            )
-            + "\n",
             encoding="utf-8",
         )
 
@@ -282,18 +297,104 @@ class DataLakeJsonlWriter:
         return count
 
 
+class DataLakeDriveMirror:
+    def __init__(self, root):
+        self.root = Path(root).expanduser().resolve()
+
+    @classmethod
+    def from_settings(cls, root):
+        return cls(root)
+
+    def copy_path(self, path):
+        if not getattr(settings, "MLADIS_DATASTORE_LIVE_SYNC_DRIVE", False):
+            return None
+        if not shutil.which("rclone"):
+            return None
+        remote = getattr(settings, "MLADIS_DATASTORE_DRIVE_REMOTE", "")
+        folder_id = getattr(settings, "MLADIS_DATASTORE_DRIVE_FOLDER_ID", "")
+        if not remote or not folder_id:
+            return None
+
+        source = Path(path).expanduser().resolve()
+        try:
+            relative_path = source.relative_to(self.root).as_posix()
+        except ValueError:
+            return None
+
+        command = [
+            "rclone",
+            "copyto",
+            str(source),
+            f"{remote}:{relative_path}",
+            "--drive-root-folder-id",
+            folder_id,
+            "--drive-pacer-min-sleep",
+            getattr(settings, "MLADIS_DATASTORE_DRIVE_PACER_MIN_SLEEP", "3s"),
+            "--drive-pacer-burst",
+            "1",
+            "--tpslimit",
+            getattr(settings, "MLADIS_DATASTORE_DRIVE_TPS_LIMIT", "0.25"),
+            "--transfers",
+            "1",
+            "--checkers",
+            "1",
+            "--retries",
+            "3",
+            "--low-level-retries",
+            "3",
+            "--stats-one-line",
+        ]
+        if getattr(settings, "MLADIS_DATASTORE_LIVE_SYNC_ASYNC", True):
+            helper_command = [
+                sys.executable,
+                "-c",
+                (
+                    "import subprocess, sys; "
+                    "timeout = int(sys.argv[1]); "
+                    "cmd = sys.argv[2:]; "
+                    "\ntry:\n"
+                    "    subprocess.run(cmd, timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+                    "except Exception:\n"
+                    "    pass\n"
+                ),
+                str(getattr(settings, "MLADIS_DATASTORE_DRIVE_COPY_TIMEOUT_SECONDS", 25)),
+                *command,
+            ]
+            try:
+                subprocess.Popen(
+                    helper_command,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+            except OSError:
+                return None
+            return relative_path
+
+        try:
+            subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=getattr(settings, "MLADIS_DATASTORE_DRIVE_COPY_TIMEOUT_SECONDS", 25),
+            )
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return None
+        return relative_path
+
+
 class DataLakeObjectEventWriter:
     collection = DataLakeCollection(
         key="object_events",
-        zone="bronze",
-        subject="app_events",
+        folder="EVENTS",
         entity_type="object_event",
         description="Append-only object lifecycle events emitted by live MLADIS workflows.",
         pii_classification="private",
     )
 
     def __init__(self, root):
-        self.layout = DataLakeLayout(root)
+        self.layout = SimpleObjectLakeLayout(root)
         self.record_builder = DataLakeRecordBuilder(redacted=False)
 
     @classmethod
@@ -327,13 +428,11 @@ class DataLakeObjectEventWriter:
                 "data": data or {},
             },
         )
-        output_path = (
-            self.layout.collection_dir(self.collection, timezone.localdate())
-            / f"object_events-live-{now:%Y%m%d}.jsonl"
-        )
+        output_path = self.layout.event_path_for_instance(instance)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with output_path.open("a", encoding="utf-8") as output:
             output.write(json.dumps(record, cls=DataLakeJsonEncoder, sort_keys=True) + "\n")
+        DataLakeDriveMirror.from_settings(self.layout.root).copy_path(output_path)
         return output_path
 
     def _request_data(self, request):
@@ -353,149 +452,235 @@ class NullDataLakeObjectEventWriter:
         return None
 
 
+class DataLakeObjectStateWriter:
+    collection = DataLakeCollection(
+        key="object_states",
+        folder="EVENTS",
+        entity_type="object_state",
+        description="Append-only model state records emitted from Django save/delete signals for recoverability and object-level audit trails.",
+        pii_classification="private",
+    )
+
+    def __init__(self, root):
+        self.layout = SimpleObjectLakeLayout(root)
+        self.record_builder = DataLakeRecordBuilder(redacted=False)
+
+    @classmethod
+    def from_settings(cls):
+        root = (settings.MLADIS_DATASTORE_ROOT or "").strip()
+        if not root:
+            return NullDataLakeObjectStateWriter()
+        return cls(root)
+
+    def write_instance_state(self, *, event_name, instance, created=None, using="", update_fields=None):
+        self.layout.initialize()
+        now = timezone.now()
+        entity_id = f"{instance._meta.label_lower}:{instance.pk}:{event_name}:{uuid4().hex[:8]}"
+        record = self.record_builder.build(
+            collection=self.collection,
+            source_model=instance._meta.label,
+            entity_id=entity_id,
+            occurred_at=now,
+            natural_keys=self._natural_keys(instance),
+            data={
+                "event_name": event_name,
+                "object_model": instance._meta.label,
+                "object_pk": str(instance.pk or ""),
+                "created": created,
+                "database": using or "",
+                "update_fields": sorted(str(field) for field in update_fields) if update_fields else [],
+                "object_state": self._serialize_instance(instance),
+            },
+        )
+        object_path = self.layout.object_path(instance)
+        history_path = self.layout.history_path_for_instance(instance)
+        object_path.parent.mkdir(parents=True, exist_ok=True)
+        history_path.parent.mkdir(parents=True, exist_ok=True)
+        object_path.write_text(
+            json.dumps(record, cls=DataLakeJsonEncoder, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        with history_path.open("a", encoding="utf-8") as output:
+            output.write(json.dumps(record, cls=DataLakeJsonEncoder, sort_keys=True) + "\n")
+        mirror = DataLakeDriveMirror.from_settings(self.layout.root)
+        mirror.copy_path(object_path)
+        mirror.copy_path(history_path)
+        return object_path
+
+    def _serialize_instance(self, instance):
+        state = {}
+        for field in instance._meta.fields:
+            output_name = getattr(field, "attname", field.name)
+            if self._is_sensitive_field(field.name) or self._is_sensitive_field(output_name):
+                state[output_name] = "[redacted]"
+                continue
+            value = self._field_value(instance, field)
+            state[output_name] = self.record_builder._clean(value)
+        return state
+
+    def _field_value(self, instance, field):
+        if isinstance(field, django_models.FileField):
+            file_value = getattr(instance, field.name, None)
+            return getattr(file_value, "name", "") if file_value else ""
+        if getattr(field, "is_relation", False) and getattr(field, "many_to_one", False):
+            return getattr(instance, field.attname, None)
+        return getattr(instance, field.name, None)
+
+    def _natural_keys(self, instance):
+        keys = {}
+        for attr in ("request_key", "email", "phone", "slug", "code", "invoice_number", "username", "name", "title"):
+            if not hasattr(instance, attr):
+                continue
+            value = getattr(instance, attr, "")
+            if value is None or value == "":
+                continue
+            keys[attr] = str(value)
+        return keys
+
+    def _is_sensitive_field(self, name):
+        lowered = (name or "").lower()
+        return any(fragment in lowered for fragment in SENSITIVE_FIELD_FRAGMENTS)
+
+
+class NullDataLakeObjectStateWriter:
+    def write_instance_state(self, **kwargs):
+        return None
+
+
 class MLADISDataLakeExporter:
     COLLECTIONS = (
         DataLakeObjectEventWriter.collection,
+        DataLakeObjectStateWriter.collection,
         DataLakeCollection(
             key="subscriptions",
-            zone="silver",
-            subject="accounts",
+            folder="CUSTOMERS",
             entity_type="subscription",
             description="Registered website accounts and linked social login/subscription identity metadata.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="customer_profiles",
-            zone="silver",
-            subject="customers",
+            folder="CUSTOMERS",
             entity_type="customer_profile",
             description="Customer CRM profiles, segmentation, contact consent, and language preferences.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="airbnb_guest_records",
-            zone="silver",
-            subject="customers",
+            folder="CUSTOMERS",
             entity_type="airbnb_guest_record",
             description="Imported Airbnb guest records and linked permission/feedback notes.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="customer_feedback",
-            zone="silver",
-            subject="customers",
+            folder="CUSTOMERS",
             entity_type="customer_feedback",
             description="Guest feedback and review summaries tied to customers and stays.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="booking_requests",
-            zone="silver",
-            subject="requests",
+            folder="BOOKINGS",
             entity_type="booking_request",
             description="User booking/request submissions, coupon use, status, and admin handling state.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="reservations",
-            zone="silver",
-            subject="bookings",
+            folder="BOOKINGS",
             entity_type="reservation",
             description="Reservation lifecycle records derived from booking inquiries after review/confirmation.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="agent_conversations",
-            zone="silver",
-            subject="agent",
+            folder="BOOKINGAGENTS",
             entity_type="agent_conversation",
             description="Chatbot conversation logs, topics, language, and item context for agent improvement.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="agent_faq",
-            zone="silver",
-            subject="agent",
+            folder="BOOKINGAGENTS",
             entity_type="agent_faq",
             description="Editable agent FAQ knowledge records used by the local booking assistant.",
             pii_classification="internal",
         ),
         DataLakeCollection(
             key="page_visits",
-            zone="bronze",
-            subject="app_events",
+            folder="EVENTS",
             entity_type="page_visit",
             description="Lightweight website/app visit events for traffic analytics.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="damage_deposits",
-            zone="silver",
-            subject="payments",
+            folder="TRANSACTIONS",
             entity_type="damage_deposit",
             description="Damage deposit checkout/authorization records across payment providers.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="reservation_payment_holds",
-            zone="silver",
-            subject="payments",
+            folder="TRANSACTIONS",
             entity_type="reservation_payment_hold",
             description="Stay payment authorization holds created after the damage-deposit hold.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="donations",
-            zone="silver",
-            subject="payments",
+            folder="TRANSACTIONS",
             entity_type="donation",
             description="Mission donation checkout records.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="invoices",
-            zone="silver",
-            subject="payments",
+            folder="TRANSACTIONS",
             entity_type="invoice",
             description="Invoice headers and line-item totals for customer billing.",
             pii_classification="private",
         ),
         DataLakeCollection(
             key="promotions",
-            zone="silver",
-            subject="marketing",
+            folder="TRANSACTIONS",
             entity_type="promotion",
             description="Promotion campaigns, target segments, linked coupons, and delivery state.",
             pii_classification="internal",
         ),
         DataLakeCollection(
             key="inventory",
-            zone="silver",
-            subject="content",
+            folder="STAYS",
             entity_type="bookable_item",
             description="Bookable stays/services and Airbnb-facing inventory metadata.",
             pii_classification="internal",
         ),
         DataLakeCollection(
             key="availability_blocks",
-            zone="silver",
-            subject="bookings",
+            folder="STAYS",
             entity_type="availability_block",
             description="Manual calendar blocks that affect availability.",
             pii_classification="internal",
         ),
         DataLakeCollection(
             key="daily_price_overrides",
-            zone="silver",
-            subject="bookings",
+            folder="STAYS",
             entity_type="daily_price_override",
             description="Manual nightly price overrides by stay and date range.",
             pii_classification="internal",
         ),
+        DataLakeCollection(
+            key="maintenance_events",
+            folder="MAINTENANCE",
+            entity_type="maintenance_event",
+            description="Maintenance, cleaning, repair, cost, time, vendor, and photo evidence records for tax and billing workflows.",
+            pii_classification="private",
+        ),
     )
 
     def __init__(self, root, *, redacted=False):
-        self.layout = DataLakeLayout(root)
+        self.layout = SimpleObjectLakeLayout(root)
         self.redacted = redacted
         self.record_builder = DataLakeRecordBuilder(redacted=redacted)
         self.writer = DataLakeJsonlWriter()
@@ -505,7 +690,7 @@ class MLADISDataLakeExporter:
         as_of = timezone.localdate()
         selected = self._selected_collections(collections)
         self.layout.initialize()
-        DataLakeSchemaWriter(self.layout, self.COLLECTIONS).write()
+        self._write_catalog()
 
         collection_counts = {collection.key: 0 for collection in selected}
         if schema_only:
@@ -547,11 +732,39 @@ class MLADISDataLakeExporter:
         return collections
 
     def _collection_file(self, collection, as_of, export_run_id, *, placeholder=False):
-        suffix = "placeholder" if placeholder else export_run_id
-        return self.layout.collection_dir(collection, as_of) / f"{collection.key}-{suffix}.jsonl"
+        if placeholder:
+            return self.layout.root / self.layout.folder_for_collection(collection) / f"{collection.key}-placeholder.jsonl"
+        return self.layout.collection_path(collection)
+
+    def _write_catalog(self):
+        self.layout.catalog_path().write_text(
+            json.dumps(
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "generated_at": timezone.now().isoformat(),
+                    "layout": "simple-object-folders",
+                    "folders": list(SIMPLE_OBJECT_LAKE_FOLDERS),
+                    "collections": [
+                        {
+                            "key": collection.key,
+                            "folder": self.layout.folder_for_collection(collection),
+                            "entity_type": collection.entity_type,
+                            "description": collection.description,
+                            "pii_classification": collection.pii_classification,
+                        }
+                        for collection in self.COLLECTIONS
+                    ],
+                },
+                indent=2,
+                cls=DataLakeJsonEncoder,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
     def _write_manifest(self, export_run_id, collections, counts, *, schema_only):
         manifest_path = self.layout.manifest_path(export_run_id)
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest = {
             "schema_version": SCHEMA_VERSION,
             "export_run_id": export_run_id,
@@ -559,14 +772,13 @@ class MLADISDataLakeExporter:
             "schema_only": schema_only,
             "redacted": self.redacted,
             "root": str(self.layout.root),
+            "layout": "simple-object-folders",
             "collections": [
                 {
                     "key": collection.key,
-                    "zone": collection.zone,
-                    "subject": collection.subject,
+                    "folder": self.layout.folder_for_collection(collection),
                     "pii_classification": "redacted" if self.redacted else collection.pii_classification,
                     "count": counts.get(collection.key, 0),
-                    "schema_path": collection.relative_schema_path,
                 }
                 for collection in collections
             ],
@@ -591,6 +803,9 @@ class MLADISDataLakeExporter:
         return natural_keys
 
     def _records_object_events(self, collection):
+        return tuple()
+
+    def _records_object_states(self, collection):
         return tuple()
 
     def _records_subscriptions(self, collection):
@@ -1118,5 +1333,66 @@ class MLADISDataLakeExporter:
                 source_model="bookings.DailyPriceOverride",
                 entity_id=override.id,
                 occurred_at=override.created_at,
+                data=data,
+            )
+
+    def _records_maintenance_events(self, collection):
+        queryset = (
+            MaintenanceEvent.objects.select_related("item", "booking", "created_by", "approved_by")
+            .prefetch_related("photos")
+            .order_by("created_at", "id")
+        )
+        for event in queryset:
+            data = {
+                "maintenance_event_id": str(event.id),
+                "item_id": event.item_id,
+                "item_name": event.item.business_display_name if event.item else "",
+                "booking_inquiry_id": event.booking_id,
+                "title": event.title,
+                "work_type": event.work_type,
+                "status": event.status,
+                "cost_amount": event.cost_amount,
+                "cost_currency": event.cost_currency,
+                "reported_at": event.reported_at,
+                "started_at": event.started_at,
+                "completed_at": event.completed_at,
+                "duration_minutes": event.duration_minutes,
+                "timezone_name": event.timezone_name,
+                "vendor_name": "" if self.redacted else event.vendor_name,
+                "vendor_contact": "" if self.redacted else event.vendor_contact,
+                "payment_status": event.payment_status,
+                "invoice_number": event.invoice_number,
+                "proof_of_payment_ref": "" if self.redacted else event.proof_of_payment_ref,
+                "tax_category_code": event.tax_category_code,
+                "description": "" if self.redacted else event.description,
+                "admin_notes": "" if self.redacted else event.admin_notes,
+                "created_by_id": event.created_by_id,
+                "approved_by_id": event.approved_by_id,
+                "photo_count": event.photo_count,
+                "is_tax_ready": event.is_tax_ready,
+                "photos": [
+                    {
+                        "photo_id": str(photo.id),
+                        "caption": photo.caption,
+                        "sort_order": photo.sort_order,
+                        "is_cover": photo.is_cover,
+                        "checksum_sha256": photo.checksum_sha256,
+                        "mime_type": photo.mime_type,
+                        "file_size_bytes": photo.file_size_bytes,
+                        "captured_at": photo.captured_at,
+                        "uploaded_at": photo.uploaded_at,
+                        "image_path": "" if self.redacted else getattr(photo.image, "name", ""),
+                    }
+                    for photo in event.photos.all()
+                ],
+                "created_at": event.created_at,
+                "updated_at": event.updated_at,
+            }
+            yield self.record_builder.build(
+                collection=collection,
+                source_model="bookings.MaintenanceEvent",
+                entity_id=event.id,
+                occurred_at=event.reported_at or event.created_at,
+                natural_keys={"item_slug": event.item.slug if event.item else "", "work_type": event.work_type},
                 data=data,
             )
