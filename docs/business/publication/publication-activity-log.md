@@ -96,11 +96,32 @@ Weekly newspaper:
 - Low-level local screen interaction was used only to open the already-visible QCC thread; no new email was sent and no payment was submitted.
 - Future agents must not claim the mailbox was fully searched unless the Chrome tab is actually claimable or a screenshot/connector result proves the search.
 
+## 2026-06-08 - Session Wrap / Docs Sync
+
+Session completed by owner and agent (2026-06-08 evening).
+
+What was fully accomplished this session:
+
+- Queens County Clerk designation letter received and archived.
+- Both newspapers identified and recorded: NY Daily News (daily) and The Forum (weekly).
+- Initial notice email sent to The Forum at `forumsouth@gmail.com`.
+- Follow-up sent to The Forum with designation letter PDF attached.
+- NY Daily News LLC notice order flow navigated to: Legal Notices → LLC package at `advertising.nydailynews.com`. Order requires account login and payment — owner must complete manually.
+- Activity log, README, checklist, next-steps, and owner action center all updated and committed.
+- Stale "wait for designation" instructions removed from docs so future agents follow correct post-designation workflow.
+- Commits on `feature/signin-contracts-ci`: `b78bf6f`, `574cb21`, `51d6165`, `882f34c`, `d0f5052`.
+
+What is explicitly NOT done yet (requires owner action):
+
+- NY Daily News order: go to [advertising.nydailynews.com/ad-configuration/step1?packageId=TPDNLEGALLLC&categoryId=LLCLEG&categoryTreeId=TPDNLEGALS](https://advertising.nydailynews.com/ad-configuration/step1?packageId=TPDNLEGALLLC&categoryId=LLCLEG&categoryTreeId=TPDNLEGALS), create/login account, paste notice text, select first run date, pay (~$219), save order confirmation.
+- The Forum reply: awaiting response to the two emails sent. Once they reply with cost and first date, pay and record the start date.
+- No Dropbox Sign sends have been made — Diana signature on the Founding Operations Pillar Acknowledgment is still pending.
+
 ## Current Next Actions
 
-1. Finish NY Daily News order and save the order confirmation/receipt.
-2. Wait for The Forum reply with cost, payment method, and first publication date.
-3. Record first publication dates for both newspapers.
-4. Track six weekly runs.
-5. Save both affidavits.
-6. File the Certificate of Publication with NY DOS and save confirmation.
+1. **[Owner, manual]** Place/pay NY Daily News LLC legal notice order and save the receipt.
+2. **[Waiting]** The Forum reply — confirm cost, payment, and first publication date.
+3. Record first publication dates for both newspapers once confirmed.
+4. Track six weekly runs in the table in `publication-completion-checklist.md`.
+5. Collect affidavit of publication from each newspaper after final run.
+6. File Certificate of Publication with NY DOS, attach both affidavits, pay $50 filing fee, save confirmation.
