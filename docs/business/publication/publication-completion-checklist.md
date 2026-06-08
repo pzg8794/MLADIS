@@ -17,7 +17,8 @@ Use this after the Queens County Clerk assigns the designated newspapers.
 - [ ] Send notice draft to **NY Daily News** via placeanad.nydailynews.com (note: the "email" in the designation letter is a website link, not an email address).
 - [ ] Confirm publication cost and payment method with NY Daily News.
 - [ ] Confirm first publication date with NY Daily News.
-- [ ] Send notice draft to **The Forum** at forumsouth@gmail.com.
+- [x] Send notice draft to **The Forum** at forumsouth@gmail.com.
+  - Email sent 2026-06-08 from garcp37@mladis.com. Subject: "LLC Publication Notice Request - MLADIS LLC". Awaiting reply with cost, payment method, and first publication date.
 - [ ] Confirm publication cost and payment method with The Forum.
 - [ ] Confirm first publication date with The Forum.
 
