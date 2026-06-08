@@ -43,6 +43,7 @@ from .models import (
     MarketingConsentStatus,
     MaintenanceEvent,
     MaintenancePhoto,
+    MaintenanceWorkType,
     MaintenanceStatus,
     Promotion,
     PromotionRecipient,
@@ -1349,6 +1350,32 @@ class MaintenanceService:
         self.log_object_event(event, "maintenance_event.ai_description_generated", request=request)
         return event
 
+    def preview_ai_description(self, *, data, files):
+        payload = self._mutable_payload(data)
+        uploaded_photos = self._uploaded_photos(files)
+        if not uploaded_photos:
+            raise ValidationError({"photos": "Add at least one photo before auto-generating the work description."})
+
+        item_name = ""
+        item_id = payload.get("item")
+        if item_id:
+            item = BookableItem.objects.filter(pk=item_id).first()
+            item_name = item.business_display_name if item else ""
+
+        work_type = payload.get("work_type") or "cleaning"
+        status = payload.get("status") or MaintenanceStatus.COMPLETED
+        amount = self._decimal(payload.get("cost_amount"))
+        currency = (payload.get("cost_currency") or "USD").strip().upper()
+        context = MaintenanceDescriptionContext(
+            title=(payload.get("title") or "Maintenance work").strip(),
+            item_name=item_name,
+            work_type_label=dict(MaintenanceWorkType.choices).get(work_type, work_type),
+            status_label=dict(MaintenanceStatus.choices).get(status, status),
+            display_cost=f"{currency} {amount:,.2f}",
+            manual_notes=(payload.get("description") or "").strip(),
+        )
+        return MaintenanceVisionAgent().describe_uploads(context, uploaded_photos)
+
     def log_object_event(self, event, event_name, request=None):
         try:
             from .data_lake import DataLakeObjectEventWriter
@@ -1431,6 +1458,16 @@ class MaintenanceDescriptionResult:
     model: str
 
 
+@dataclass(frozen=True)
+class MaintenanceDescriptionContext:
+    title: str
+    item_name: str
+    work_type_label: str
+    status_label: str
+    display_cost: str
+    manual_notes: str
+
+
 class MaintenanceVisionAgent:
     """Vision-backed agent for turning maintenance photos into work notes."""
 
@@ -1455,22 +1492,41 @@ class MaintenanceVisionAgent:
         if not photos:
             raise ValidationError({"photos": "Add at least one photo before generating an AI work description."})
 
-        response_text = self._call_model(event, photos)
+        context = MaintenanceDescriptionContext(
+            title=event.title,
+            item_name=event.item.business_display_name if event.item else "",
+            work_type_label=event.get_work_type_display(),
+            status_label=event.get_status_display(),
+            display_cost=event.display_cost,
+            manual_notes=event.description or "",
+        )
+        response_text = self._call_model(context, [self._photo_data_url(photo) for photo in photos])
         result = self._parse_response(response_text)
         if not result.description:
             raise ValidationError({"ai_description": "The maintenance agent did not return a usable description."})
         return result
 
-    def _call_model(self, event, photos):
+    def describe_uploads(self, context, uploads):
+        if not self.api_key:
+            raise ValidationError(
+                {"ai_description": "OpenAI is not configured. Set OPENAI_API_KEY before using AI descriptions."}
+            )
+        image_urls = [self._upload_data_url(upload) for upload in uploads[: self.max_photos]]
+        response_text = self._call_model(context, image_urls)
+        result = self._parse_response(response_text)
+        if not result.description:
+            raise ValidationError({"ai_description": "The maintenance agent did not return a usable description."})
+        return result
+
+    def _call_model(self, context, image_urls):
         client = _build_openai_client(self.api_key)
         content = [
             {
                 "type": "input_text",
-                "text": self._prompt(event),
+                "text": self._prompt(context),
             }
         ]
-        for photo in photos:
-            data_url = self._photo_data_url(photo)
+        for data_url in image_urls:
             if data_url:
                 content.append({"type": "input_image", "image_url": data_url, "detail": "low"})
 
@@ -1484,7 +1540,7 @@ class MaintenanceVisionAgent:
         )
         return getattr(response, "output_text", "") or ""
 
-    def _prompt(self, event):
+    def _prompt(self, context):
         return (
             "You are a maintenance documentation assistant for MLADIS property operations. "
             "Inspect the attached maintenance photos and create concise, business-ready work notes. "
@@ -1492,12 +1548,12 @@ class MaintenanceVisionAgent:
             "costs, dates, causes, or completed work that is not visible. "
             "Return JSON only with keys: description, observations, confidence. "
             "The description should be 2 to 4 sentences and suitable for a bill, tax record, or admin review. "
-            f"Record title: {event.title}. "
-            f"Stay: {event.item.business_display_name if event.item else ''}. "
-            f"Work type: {event.get_work_type_display()}. "
-            f"Status: {event.get_status_display()}. "
-            f"Cost: {event.display_cost}. "
-            f"Manual notes: {event.description or 'none'}."
+            f"Record title: {context.title}. "
+            f"Stay: {context.item_name}. "
+            f"Work type: {context.work_type_label}. "
+            f"Status: {context.status_label}. "
+            f"Cost: {context.display_cost}. "
+            f"Manual notes: {context.manual_notes or 'none'}."
         )
 
     def _photo_data_url(self, photo):
@@ -1512,6 +1568,28 @@ class MaintenanceVisionAgent:
         if not raw:
             return ""
         mime_type = photo.mime_type or "image/jpeg"
+        if not mime_type.startswith("image/"):
+            mime_type = "image/jpeg"
+        encoded = base64.b64encode(raw).decode("ascii")
+        return f"data:{mime_type};base64,{encoded}"
+
+    def _upload_data_url(self, upload):
+        position = None
+        raw = b""
+        try:
+            if hasattr(upload, "tell") and hasattr(upload, "seek"):
+                position = upload.tell()
+                upload.seek(0)
+            if hasattr(upload, "chunks"):
+                raw = b"".join(upload.chunks())
+            else:
+                raw = upload.read()
+        finally:
+            if position is not None:
+                upload.seek(position)
+        if not raw:
+            return ""
+        mime_type = getattr(upload, "content_type", "") or "image/jpeg"
         if not mime_type.startswith("image/"):
             mime_type = "image/jpeg"
         encoded = base64.b64encode(raw).decode("ascii")

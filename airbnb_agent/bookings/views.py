@@ -2036,6 +2036,28 @@ class OpsMaintenanceAIDescriptionAPIView(View):
 
 
 @method_decorator(ops_staff_required, name="dispatch")
+class OpsMaintenanceDraftAIDescriptionAPIView(View):
+    def post(self, request):
+        try:
+            result = MaintenanceService().preview_ai_description(data=request.POST, files=request.FILES)
+        except ValidationError as error:
+            return JsonResponse({"errors": OpsMaintenanceAPIView._validation_errors(error)}, status=400)
+        except Exception as error:
+            return JsonResponse({"error": str(error) or "Could not generate maintenance description."}, status=502)
+
+        return JsonResponse(
+            {
+                "ok": True,
+                "message": "AI work description generated.",
+                "description": result.description,
+                "observations": result.observations,
+                "confidence": result.confidence,
+                "model": result.model,
+            }
+        )
+
+
+@method_decorator(ops_staff_required, name="dispatch")
 class OpsCustomersAPIView(View):
     def get(self, request):
         profiles = CustomerProfile.objects.annotate(

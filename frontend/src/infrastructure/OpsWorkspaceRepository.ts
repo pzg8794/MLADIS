@@ -335,6 +335,15 @@ interface ApiOpsMaintenanceAIDescriptionResponse {
   event: ApiOpsMaintenanceEvent;
 }
 
+export interface OpsMaintenanceDraftAiDescriptionResult {
+  ok: boolean;
+  message: string;
+  description: string;
+  observations: string[];
+  confidence: string;
+  model: string;
+}
+
 export interface OpsCalendarQuery {
   itemId?: number | null;
   view?: OpsCalendarViewMode;
@@ -368,6 +377,7 @@ export interface OpsWorkspaceRepository {
   createMaintenanceEvent(input: FormData): Promise<OpsMaintenanceEvent>;
   getMaintenanceAgentPayload(id: string): Promise<Record<string, unknown>>;
   generateMaintenanceAiDescription(id: string): Promise<OpsMaintenanceEvent>;
+  generateMaintenanceDraftAiDescription(input: FormData): Promise<OpsMaintenanceDraftAiDescriptionResult>;
   createCalendarBlock(input: OpsCalendarBlockInput): Promise<void>;
   deleteCalendarBlock(id: number): Promise<void>;
   createCalendarPrice(input: OpsCalendarPriceInput): Promise<void>;
@@ -543,6 +553,10 @@ export class ApiOpsWorkspaceRepository implements OpsWorkspaceRepository {
   async generateMaintenanceAiDescription(id: string): Promise<OpsMaintenanceEvent> {
     const data = await this.http.post<ApiOpsMaintenanceAIDescriptionResponse>(`/api/ops/maintenance/${id}/ai-description/`, {});
     return toMaintenanceEvent(data.event);
+  }
+
+  async generateMaintenanceDraftAiDescription(input: FormData): Promise<OpsMaintenanceDraftAiDescriptionResult> {
+    return this.http.postForm<OpsMaintenanceDraftAiDescriptionResult>('/api/ops/maintenance/ai-description/draft/', input);
   }
 
   async createCalendarBlock(input: OpsCalendarBlockInput): Promise<void> {

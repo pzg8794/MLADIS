@@ -7957,6 +7957,34 @@ svg.modern-admin-rail-icon:not([stroke]) {
   resize: vertical;
 }
 
+.ops-maintenance-field-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ops-maintenance-field-header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  border: 1px solid rgba(5, 150, 105, 0.26);
+  border-radius: 999px;
+  background: #ecfdf3;
+  color: #047857;
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.ops-maintenance-field-header button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 .ops-maintenance-upload {
   display: flex;
   align-items: center;

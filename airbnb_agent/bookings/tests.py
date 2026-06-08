@@ -3691,6 +3691,39 @@ class MaintenanceOpsTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("ai_description", response.json()["errors"])
 
+    def test_maintenance_draft_ai_description_requires_click_and_does_not_create_event(self):
+        self.client.force_login(self.user)
+        fake_response = SimpleNamespace(
+            output_text=json.dumps(
+                {
+                    "description": "Photo evidence shows post-stay cleaning work with surfaces ready for review.",
+                    "observations": ["Cleaning evidence visible"],
+                    "confidence": "medium",
+                }
+            )
+        )
+        fake_client = SimpleNamespace(responses=SimpleNamespace(create=lambda **kwargs: fake_response))
+
+        with self.settings(OPENAI_API_KEY="sk-test", OPENAI_MAINTENANCE_VISION_MODEL="gpt-vision-test"):
+            with patch("bookings.services._build_openai_client", return_value=fake_client):
+                response = self.client.post(
+                    reverse("bookings:ops-maintenance-ai-description-draft-api"),
+                    data={
+                        "item": str(self.item.pk),
+                        "title": "Post-stay cleaning",
+                        "work_type": "cleaning",
+                        "status": "completed",
+                        "cost_amount": "50.00",
+                        "cost_currency": "USD",
+                        "photos": SimpleUploadedFile("cleaning.png", TINY_PNG_BYTES, content_type="image/png"),
+                    },
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("post-stay cleaning", response.json()["description"].lower())
+        self.assertEqual(response.json()["model"], "gpt-vision-test")
+        self.assertEqual(MaintenanceEvent.objects.count(), 0)
+
     def test_maintenance_ai_description_persists_and_updates_agent_payload(self):
         self.client.force_login(self.user)
         fake_response = SimpleNamespace(

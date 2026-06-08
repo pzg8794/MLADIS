@@ -65,6 +65,7 @@ export function OpsMaintenancePage() {
   const [payload, setPayload] = useState<Record<string, unknown> | null>(null);
   const [isPayloadOpen, setIsPayloadOpen] = useState(false);
   const [describingId, setDescribingId] = useState('');
+  const [isDraftDescribing, setIsDraftDescribing] = useState(false);
   const [descriptionModes, setDescriptionModes] = useState<Record<string, 'manual' | 'ai'>>({});
   const [formValues, setFormValues] = useState({
     item: '',
@@ -140,12 +141,7 @@ export function OpsMaintenancePage() {
     setIsSubmitting(true);
     setMessage('');
     setError('');
-    const formData = new FormData();
-    Object.entries(formValues).forEach(([key, value]) => formData.set(key, value));
-    photoFiles.forEach((file) => {
-      formData.append('photos', file);
-      formData.append('photo_captions', file.name);
-    });
+    const formData = maintenanceFormData();
     try {
       const created = await service.createMaintenanceEvent(formData);
       setMessage(`Saved ${created.title}.`);
@@ -181,6 +177,35 @@ export function OpsMaintenancePage() {
       setIsPayloadOpen(true);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not load agent payload.');
+    }
+  }
+
+  function maintenanceFormData() {
+    const formData = new FormData();
+    Object.entries(formValues).forEach(([key, value]) => formData.set(key, value));
+    photoFiles.forEach((file) => {
+      formData.append('photos', file);
+      formData.append('photo_captions', file.name);
+    });
+    return formData;
+  }
+
+  async function generateDraftAiDescription() {
+    setError('');
+    setMessage('');
+    if (photoFiles.length === 0) {
+      setError('Add at least one picture before auto-generating a description.');
+      return;
+    }
+    setIsDraftDescribing(true);
+    try {
+      const result = await service.generateMaintenanceDraftAiDescription(maintenanceFormData());
+      setFormValues((current) => ({ ...current, description: result.description }));
+      setMessage('Description auto-generated from the selected photos. Review it before saving.');
+    } catch (caught) {
+      setError(caught instanceof Error ? parseErrorMessage(caught.message) : 'Could not auto-generate the description.');
+    } finally {
+      setIsDraftDescribing(false);
     }
   }
 
@@ -263,8 +288,9 @@ export function OpsMaintenancePage() {
             type="button"
             onClick={() => generateAiDescription(row)}
             disabled={describingId === row.id || row.photoCount === 0}
+            title={row.photoCount === 0 ? 'Add photos before generating an AI description.' : 'Auto-generate a saved description from this record’s photos.'}
           >
-            <Sparkles size={14} /> {describingId === row.id ? 'Reading photos...' : 'AI description'}
+            <Sparkles size={14} /> {describingId === row.id ? 'Reading photos...' : 'Auto-generate description'}
           </button>
           <button type="button" onClick={() => openPayload(row)}><FileJson size={14} /> Agent payload</button>
           <a href={row.adminUrl}>Record</a>
@@ -396,7 +422,18 @@ export function OpsMaintenancePage() {
           </div>
 
           <label className="ops-maintenance-textarea">
-            Description
+            <span className="ops-maintenance-field-header">
+              <span>Description</span>
+              <button
+                type="button"
+                onClick={generateDraftAiDescription}
+                disabled={isDraftDescribing || photoFiles.length === 0}
+                title={photoFiles.length === 0 ? 'Add pictures first.' : 'Read selected pictures and fill the description.'}
+              >
+                <Sparkles size={14} />
+                {isDraftDescribing ? 'Reading photos...' : 'Auto-generate description'}
+              </button>
+            </span>
             <textarea name="description" value={formValues.description} onChange={updateForm} placeholder="What was done, why, and anything the agent should know." />
           </label>
 

@@ -11,6 +11,7 @@ import {
   OpsCalendarBlockInput,
   OpsCalendarPriceInput,
   OpsCalendarQuery,
+  OpsMaintenanceDraftAiDescriptionResult,
   OpsWorkspaceRepository,
 } from '../infrastructure/OpsWorkspaceRepository';
 
@@ -51,6 +52,10 @@ export class OpsWorkspaceService {
 
   async generateMaintenanceAiDescription(id: string): Promise<OpsMaintenanceEvent> {
     return this.repository.generateMaintenanceAiDescription(id);
+  }
+
+  async generateMaintenanceDraftAiDescription(input: FormData): Promise<OpsMaintenanceDraftAiDescriptionResult> {
+    return this.repository.generateMaintenanceDraftAiDescription(input);
   }
 
   async createCalendarBlock(input: OpsCalendarBlockInput): Promise<void> {
