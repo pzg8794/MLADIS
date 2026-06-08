@@ -61,8 +61,14 @@ Weekly newspaper:
   - earliest first publication date,
   - any format requirements.
 - Status as of this log:
-  - Awaiting reply from The Forum.
-  - If the designation letter was not attached, send a follow-up with the archived PDF attached before assuming The Forum can place the notice.
+  - Follow-up sent on 2026-06-08 through the configured MLADIS SMTP account.
+  - Follow-up subject: `Follow-up: LLC Publication Notice Request - MLADIS LLC`.
+  - Sent to: `forumsouth@gmail.com`.
+  - CC: `garcp37@mladis.com`.
+  - Reply-To: `garcp37@mladis.com`.
+  - Attachment included: `MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf`.
+  - SMTP result: `sent_count=1`.
+  - Awaiting reply from The Forum with cost, payment method, and first publication date.
 
 ## 2026-06-08 - NY Daily News Status
 
@@ -93,9 +99,8 @@ Weekly newspaper:
 ## Current Next Actions
 
 1. Finish NY Daily News order and save the order confirmation/receipt.
-2. Wait for The Forum reply, or send a follow-up with the designation letter attached if no attachment was included.
+2. Wait for The Forum reply with cost, payment method, and first publication date.
 3. Record first publication dates for both newspapers.
 4. Track six weekly runs.
 5. Save both affidavits.
 6. File the Certificate of Publication with NY DOS and save confirmation.
-

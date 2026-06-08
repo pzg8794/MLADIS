@@ -20,7 +20,7 @@ Use this after the Queens County Clerk assigns the designated newspapers.
 - [ ] Confirm first publication date with NY Daily News.
 - [x] Send notice draft to **The Forum** at forumsouth@gmail.com.
   - Email sent 2026-06-08 from garcp37@mladis.com. Subject: "LLC Publication Notice Request - MLADIS LLC". Awaiting reply with cost, payment method, and first publication date.
-  - Follow-up check: if the designation letter was not attached, send it before assuming The Forum can place the notice.
+  - Follow-up sent 2026-06-08 through configured MLADIS SMTP account. Subject: "Follow-up: LLC Publication Notice Request - MLADIS LLC". Sent to forumsouth@gmail.com, CC garcp37@mladis.com, with `MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf` attached. SMTP result: sent_count=1.
 - [ ] Confirm publication cost and payment method with The Forum.
 - [ ] Confirm first publication date with The Forum.
 
