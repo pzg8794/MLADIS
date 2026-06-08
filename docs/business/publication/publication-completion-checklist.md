@@ -15,9 +15,12 @@ Use this after the Queens County Clerk assigns the designated newspapers.
 
 ## Step 2 - Place Notices
 
-- [ ] Send notice draft to **NY Daily News** via placeanad.nydailynews.com (note: the "email" in the designation letter is a website link, not an email address).
-- [ ] Confirm publication cost and payment method with NY Daily News.
-- [ ] Confirm first publication date with NY Daily News.
+- [x] Send notice draft to **NY Daily News** via placeanad.nydailynews.com.
+  - Order placed 2026-06-08. Order #87497, $235.00, Print+Online, run dates Jun 10–15 2026. Status: Pending Approval. Account #15494.
+- [x] Confirm publication cost and payment method with NY Daily News.
+  - $235.00, paid by credit card 2026-06-08.
+- [x] Confirm first publication date with NY Daily News.
+  - First run date: **2026-06-10** (Wednesday).
 - [x] Send notice draft to **The Forum** at forumsouth@gmail.com.
   - Email sent 2026-06-08 from garcp37@mladis.com. Subject: "LLC Publication Notice Request - MLADIS LLC". Awaiting reply with cost, payment method, and first publication date.
   - Follow-up sent 2026-06-08 through configured MLADIS SMTP account. Subject: "Follow-up: LLC Publication Notice Request - MLADIS LLC". Sent to forumsouth@gmail.com, CC garcp37@mladis.com, with `MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf` attached. SMTP result: sent_count=1.
@@ -28,7 +31,7 @@ Use this after the Queens County Clerk assigns the designated newspapers.
 
 | Week | Daily newspaper published? | Weekly newspaper published? | Notes |
 | --- | --- | --- | --- |
-| 1 |  |  |  |
+| 1 | 06/10/2026 (pending approval) |  | NY Daily News order #87497 placed 2026-06-08 |
 | 2 |  |  |  |
 | 3 |  |  |  |
 | 4 |  |  |  |

@@ -119,9 +119,26 @@ What is explicitly NOT done yet (requires owner action):
 
 ## Current Next Actions
 
-1. **[Owner, manual]** Place/pay NY Daily News LLC legal notice order and save the receipt.
+## 2026-06-08 - NY Daily News Order Placed
+
+- Order placed by owner after agent navigated all 5 steps of the ad configuration wizard.
+- Order number: **87497**
+- Account number: 15494
+- Package: Legal - LLC
+- Publications: New York Daily News Classified, NDN Public Notices, New York Daily News Affidavit
+- Run dates: 06/10/2026 – 06/15/2026 (6 consecutive days)
+- Amount paid: **$235.00** (credit card)
+- Affidavit delivery: Email to garcp37@mladis.com, contact: Piter Garcia
+- Status at order time: **Pending Approval**
+- Confirmation URL: `https://advertising.nydailynews.com/manage-orders`
+
+Save the order confirmation email when it arrives at garcp37@mladis.com.
+
+## Current Next Actions
+
+1. **[Waiting]** NY Daily News order approval — watch garcp37@mladis.com for confirmation email. Save it.
 2. **[Waiting]** The Forum reply — confirm cost, payment, and first publication date.
-3. Record first publication dates for both newspapers once confirmed.
-4. Track six weekly runs in the table in `publication-completion-checklist.md`.
+3. Record The Forum's first publication date once confirmed.
+4. Track all six weekly runs in the table in `publication-completion-checklist.md`.
 5. Collect affidavit of publication from each newspaper after final run.
 6. File Certificate of Publication with NY DOS, attach both affidavits, pay $50 filing fee, save confirmation.
