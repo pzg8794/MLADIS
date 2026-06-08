@@ -22,7 +22,7 @@ Private status page. This is the current "read, sign, and click it away" center.
 | Funding-readiness tracker and data-room checklist | Done | `docs/business/funding-readiness/` |
 | EIN issued | Done | IRS confirmation letter stored in the private Google Drive business-record vault outside Git |
 | Bank account opening packet | Done | `docs/business/ein-and-banking/bank-account-opening-packet.md` |
-| Queens publication designation request | Sent | Sent from `garcp37@mladis.com` on 2026-06-03 with `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf` attached |
+| Queens publication designation request | Done | Designation letter received 2026-06-08 from `QCC-LLC@nycourts.gov`. Daily: **NY Daily News** (placeanad.nydailynews.com). Weekly: **The Forum** (forumsouth@gmail.com). Letter archived at `docs/business/source-documents/MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf`. |
 | Signature source pointer | Done | `docs/business/signing/README.md` records the Drive file metadata, not the signature image |
 | Private Google Drive vault | Done | See `docs/business/ein-and-banking/private-records-manifest.md`; private files live outside the Git repo |
 | Private EIN reference | Done | Exact private path documented in `docs/business/ein-and-banking/private-records-manifest.md` |

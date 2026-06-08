@@ -23,7 +23,7 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 | High | Draft MLADIS LLC operating agreement package | 2026-06-03 | Done | Draft package is in `docs/business/operating-agreement/`. |
 | High | Sign MLADIS LLC operating agreement and initial member consent | 2026-06-03 | Done | Execution-ready copies signed by Piter are in `docs/business/signing/execution-ready-2026-06-03/`. |
 | High | Prepare Queens publication package | 2026-06-03 | Done | Draft package is in `docs/business/publication/`. |
-| High | Start the New York publication process | 2026-10-01 | Todo | Send the filing acknowledgement/receipt to Queens County Clerk, receive newspaper designations, publish for six weeks, collect affidavits, then file Certificate of Publication. |
+| High | Start the New York publication process | 2026-10-01 | In progress | Designation letter received 2026-06-08. Daily: NY Daily News (placeanad.nydailynews.com, 212-210-2111). Weekly: The Forum (forumsouth@gmail.com, 718-845-3221). Next: submit notice to both newspapers. Letter archived at `docs/business/source-documents/MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf`. |
 | High | Prepare IRS EIN worksheet | 2026-06-03 | Done | Worksheet is in `docs/business/ein-and-banking/ein-worksheet.md`. |
 | High | Apply for an IRS EIN | 2026-06-03 | Done | EIN 42-2932522 issued. CP 575 G letter stored in private vault at `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/02-tax-ein/`. |
 | High | Update all business accounts/profiles with MLADIS LLC + EIN | 2026-06-03 | In progress | See `docs/business/platform-account-update-checklist.md` for Airbnb, Squarespace, Cloudflare, Dropbox Sign, Google Workspace, booking app, and bank. |
