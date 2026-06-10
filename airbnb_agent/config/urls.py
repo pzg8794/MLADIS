@@ -19,6 +19,7 @@ urlpatterns = [
     path("i18n/", include("django.conf.urls.i18n")),
     path("oauth/", include("allauth.urls")),
     path("healthz", healthz, name="healthz"),
+    path("ops/", include("operations.urls")),
     path("", include("bookings.urls")),
 ]
 
