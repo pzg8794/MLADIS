@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.microsoft",
     "allauth.socialaccount.providers.github",
     "bookings",
+    "operations",
 ]
 
 MIDDLEWARE = [
@@ -82,7 +83,7 @@ TEMPLATES = [
                 "bookings.context_processors.site_settings",
             ],
         },
-    },
+    }
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
