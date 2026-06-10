@@ -1,0 +1,44 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}MLADIS Operations{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'operations/css/workboard.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="ml-ops-shell">
+  <aside class="ml-ops-sidebar" aria-label="Operations navigation">
+    <a class="ml-ops-brand" href="/ops/workboard/">
+      <span class="ml-ops-brand__mark">M</span>
+      <span>
+        <strong>MLADIS</strong>
+        <small>Operations</small>
+      </span>
+    </a>
+    <nav class="ml-ops-nav">
+      <a class="is-active" href="/ops/workboard/">Workboard</a>
+      <a href="/ops/dashboard/">Booking Ops</a>
+      <a href="/ops/reports/">Reports</a>
+      <a href="/admin/">Django Admin</a>
+    </nav>
+  </aside>
+
+  <main class="ml-ops-main">
+    <header class="ml-ops-topbar">
+      <div>
+        <p class="ml-ops-eyebrow">Internal management system</p>
+        <h1>{% block page_title %}Operations{% endblock %}</h1>
+      </div>
+      <div class="ml-ops-user">
+        {% if request.user.is_authenticated %}
+          <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+        {% endif %}
+      </div>
+    </header>
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
