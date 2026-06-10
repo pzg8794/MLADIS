@@ -1,15 +1,18 @@
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.views.generic import TemplateView
 
+from .access import is_operations_owner
 from .services import WorkboardService
 
 
-class StaffRequiredMixin(UserPassesTestMixin):
+class OperationsOwnerRequiredMixin(UserPassesTestMixin):
+    raise_exception = True
+
     def test_func(self):
-        return self.request.user.is_authenticated and self.request.user.is_staff
+        return is_operations_owner(self.request.user)
 
 
-class WorkboardView(StaffRequiredMixin, TemplateView):
+class WorkboardView(OperationsOwnerRequiredMixin, TemplateView):
     template_name = "operations/workboard.html"
     service_class = WorkboardService
 
