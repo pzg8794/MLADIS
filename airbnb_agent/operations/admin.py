@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .access import is_operations_owner
 from .models import WorkItem
 
 
@@ -25,6 +26,27 @@ class WorkItemAdmin(admin.ModelAdmin):
         ("Links", {"fields": ("source_url", "github_url", "drive_url")}),
         ("Timestamps", {"fields": ("created_at", "updated_at", "completed_at")}),
     )
+
+    def has_module_permission(self, request):
+        return is_operations_owner(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        return is_operations_owner(request.user)
+
+    def has_add_permission(self, request):
+        return is_operations_owner(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return is_operations_owner(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return is_operations_owner(request.user)
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        if not is_operations_owner(request.user):
+            return queryset.none()
+        return queryset
 
     def save_model(self, request, obj, form, change):
         if not obj.created_by_id:
