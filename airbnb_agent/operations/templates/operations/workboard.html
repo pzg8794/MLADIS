@@ -1,0 +1,77 @@
+{% extends "layouts/ops_shell.html" %}
+
+{% block title %}MLADIS Workboard{% endblock %}
+{% block page_title %}MLADIS Workboard{% endblock %}
+
+{% block content %}
+<section class="ml-focus-grid">
+  <article class="ml-panel ml-focus-panel">
+    <p class="ml-ops-eyebrow">Today's Focus</p>
+    {% if today_focus.main %}
+      <h2>{{ today_focus.main.title }}</h2>
+      <p>{{ today_focus.next_action }}</p>
+      <div class="ml-chip-row">
+        <span class="ml-chip ml-chip--{{ today_focus.main.neuron }}">{{ today_focus.main.get_neuron_display }}</span>
+        <span class="ml-chip ml-chip--priority">{{ today_focus.main.get_priority_display }}</span>
+      </div>
+    {% else %}
+      <h2>Create the next tiny action.</h2>
+      <p>No active focus item exists yet. Add WorkItems in Django admin to begin.</p>
+    {% endif %}
+  </article>
+
+  <article class="ml-panel">
+    <p class="ml-ops-eyebrow">Support Tasks</p>
+    {% if today_focus.support %}
+      <ul class="ml-mini-list">
+        {% for item in today_focus.support %}
+          <li>
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.next_action|default:"No next action yet." }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="ml-muted">No support tasks selected yet.</p>
+    {% endif %}
+  </article>
+</section>
+
+<section class="ml-board" aria-label="MLADIS work items grouped by status">
+  {% for column in columns %}
+    <div class="ml-board-column ml-board-column--{{ column.key }}">
+      <header>
+        <h2>{{ column.label }}</h2>
+        <span>{{ column.count }}</span>
+      </header>
+
+      <div class="ml-card-stack">
+        {% for item in column.items %}
+          <article class="ml-work-card">
+            <div class="ml-work-card__topline">
+              <span class="ml-chip ml-chip--{{ item.neuron }}">{{ item.get_neuron_display }}</span>
+              <span class="ml-chip ml-chip--{{ item.priority }}">{{ item.get_priority_display }}</span>
+            </div>
+            <h3>{{ item.title }}</h3>
+            {% if item.description %}
+              <p>{{ item.description|truncatewords:24 }}</p>
+            {% endif %}
+            <div class="ml-next-action">
+              <span>Next</span>
+              <strong>{{ item.next_action|default:"Define the next tiny action." }}</strong>
+            </div>
+            <div class="ml-work-links">
+              {% if item.github_url %}<a href="{{ item.github_url }}" target="_blank" rel="noopener">GitHub</a>{% endif %}
+              {% if item.drive_url %}<a href="{{ item.drive_url }}" target="_blank" rel="noopener">Drive</a>{% endif %}
+              {% if item.source_url %}<a href="{{ item.source_url }}" target="_blank" rel="noopener">Source</a>{% endif %}
+            </div>
+            <footer>Updated {{ item.updated_at|timesince }} ago</footer>
+          </article>
+        {% empty %}
+          <div class="ml-empty-card">No {{ column.label|lower }} work yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</section>
+{% endblock %}
