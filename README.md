@@ -4,7 +4,7 @@ MLADIS stands for **Machine Learning Advanced Information Systems**.
 
 MLADIS is a private parent repository for the MLADIS source corpus, live booking platform, business documentation, and future Viverse-aligned intelligence systems.
 
-The current production system began as a vacation-home / booking platform, but that is only the first product expression of the broader MLADIS architecture.
+The current production system began as a vacation-home / booking platform, but that is only the first working branch and first product expression of the broader MLADIS architecture.
 
 See:
 
@@ -102,6 +102,12 @@ For implementation work, the OOP/MVC architecture contract lives in
 MLADIS features must keep model/domain objects, controller payloads, and rendered
 views separated.
 
+For cross-domain architecture work, use the MLADIS universe/neuron model in
+[docs/architecture/0001-mladis-universe-neuron-model.md](docs/architecture/0001-mladis-universe-neuron-model.md).
+New Finance, Booking, Research, Education, Fitness, Portfolio, Pyramid, or
+FairAgent work should follow that document instead of treating the current
+booking app as the whole system.
+
 ---
 
 ## One-file VM deploy
@@ -126,7 +132,7 @@ Important deploy rule:
 
 ## Layout
 
-- `airbnb_agent/` - current Django implementation for the live MLADIS booking platform.
+- `airbnb_agent/` - current Django implementation for the live MLADIS booking platform and operations dashboard.
 - `frontend/` - modern frontend/dashboard direction under local-first development.
 - `docs/architecture/` - MLADIS universe, neuron model, and re-architecture decisions.
 - `docs/roadmap/` - execution roadmap and master TODO list.

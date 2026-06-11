@@ -893,7 +893,7 @@ class ReservationPricingAndPaymentHoldTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("guests", response.json()["errors"])
 
-    def test_six_bed_pricing_covers_full_capacity(self):
+    def test_six_bed_pricing_charges_added_guests_after_twelve(self):
         item = BookableItem.objects.create(
             name="6 Bedrooms Vacation Home & Pool G-All",
             slug="g-all-pricing",
@@ -907,8 +907,10 @@ class ReservationPricingAndPaymentHoldTests(TestCase):
 
         quote = ReservationPricingService().quote(item, guests=14, nights=2)
 
-        self.assertEqual(quote.nightly_cents, 10000)
-        self.assertEqual(quote.subtotal_cents, 20000)
+        self.assertEqual(quote.policy.included_guests, 12)
+        self.assertEqual(quote.extra_guest_count, 2)
+        self.assertEqual(quote.nightly_cents, 12000)
+        self.assertEqual(quote.subtotal_cents, 24000)
         self.assertEqual(quote.policy.max_guests, 14)
 
     @override_settings(

@@ -35,6 +35,7 @@
 
 {% block nav-global %}
 {% if has_permission %}
+{% url 'admin:index' as admin_index_url %}
 <nav class="mladis-admin-left-rail" aria-label="{% trans 'Admin shortcuts' %}">
   <a class="mladis-admin-left-rail__brand" href="{% url 'bookings:home' %}">
     {% if site_settings.logo_display_url %}
@@ -45,14 +46,15 @@
     <span class="mladis-admin-left-rail__label">MLADIS</span>
   </a>
   <a href="{% url 'bookings:ops-dashboard' %}">{% include "admin/includes/rail_icon.html" with icon="dashboard" %}<span class="mladis-admin-left-rail__label">{% trans "Dashboard" %}</span></a>
-  <a class="primary" href="{% url 'admin:index' %}">{% include "admin/includes/rail_icon.html" with icon="admin" %}<span class="mladis-admin-left-rail__label">{% trans "Admin" %}</span></a>
-  <a href="{% url 'admin:bookings_sitesettings_change' 1 %}">{% include "admin/includes/rail_icon.html" with icon="settings" %}<span class="mladis-admin-left-rail__label">{% trans "Brand settings" %}</span></a>
+  <a href="{% url 'bookings:ops-admin' %}">{% include "admin/includes/rail_icon.html" with icon="admin" %}<span class="mladis-admin-left-rail__label">{% trans "Admin" %}</span></a>
+  <a class="{% if request.path == admin_index_url or '/admin/' in request.path %}primary{% endif %}" href="{{ admin_index_url }}">{% include "admin/includes/rail_icon.html" with icon="settings" %}<span class="mladis-admin-left-rail__label">{% trans "Settings" %}</span></a>
   <a href="{% url 'bookings:ops-reservations' %}">{% include "admin/includes/rail_icon.html" with icon="reservations" %}<span class="mladis-admin-left-rail__label">{% trans "Reservations" %}</span></a>
   <a href="{% url 'bookings:calendar-ops' %}">{% include "admin/includes/rail_icon.html" with icon="calendar" %}<span class="mladis-admin-left-rail__label">{% trans "Calendar" %}</span></a>
   <a href="{% url 'bookings:ops-stays' %}">{% include "admin/includes/rail_icon.html" with icon="stays" %}<span class="mladis-admin-left-rail__label">{% trans "Stay portfolio" %}</span></a>
   <a href="{% url 'bookings:ops-reports' %}">{% include "admin/includes/rail_icon.html" with icon="reports" %}<span class="mladis-admin-left-rail__label">{% trans "Reports" %}</span></a>
   <a href="{% url 'bookings:ops-customers' %}">{% include "admin/includes/rail_icon.html" with icon="customers" %}<span class="mladis-admin-left-rail__label">{% trans "Customers" %}</span></a>
   <a href="{% url 'bookings:ops-deposits' %}">{% include "admin/includes/rail_icon.html" with icon="deposits" %}<span class="mladis-admin-left-rail__label">{% trans "Deposits" %}</span></a>
+  <a href="{% url 'bookings:ops-maintenance' %}">{% include "admin/includes/rail_icon.html" with icon="maintenance" %}<span class="mladis-admin-left-rail__label">{% trans "Maintenance" %}</span></a>
   <a href="{% url 'bookings:ops-agent' %}">{% include "admin/includes/rail_icon.html" with icon="agent" %}<span class="mladis-admin-left-rail__label">{% trans "Agent" %}</span></a>
 </nav>
 {% endif %}

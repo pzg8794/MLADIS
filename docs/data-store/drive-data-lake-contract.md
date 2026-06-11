@@ -1,154 +1,169 @@
-# Drive Data Lake Contract
+# Drive Object Lake Contract
 
 ## Storage Model
 
-MLADIS uses an OOP application model and a lake-style export model:
+MLADIS uses a simple Drive-backed object lake, not a deeply partitioned warehouse layout.
 
-- Django models and services control live transactional behavior.
-- Data lake collections are immutable export files written as JSONL.
-- Live object lifecycle events are append-only JSONL records in `bronze/app_events/object_events` when `MLADIS_DATASTORE_ROOT` is configured.
-- Manifests and schemas are JSON.
-- Each record has a stable envelope so future tools can search by keys without guessing source tables.
-- No operational object should become part of a customer, booking, payment, agent, or admin workflow without either a transactional database record and an export collection, or a live `object_events` log plus a documented reason.
+- The Django database remains the transactional source of truth.
+- The object lake stores readable JSON objects for recovery, audit, analysis, and agent learning.
+- Business object state is stored in human-readable top-level folders.
+- Do not use `year/month/day` partitions for live business object state.
+- Do not store runtime JSON files in Git.
 
 ## Root Layout
 
 ```text
 MLADIS-DATASTORE/
   README.md
-  _catalog/
-    collections.json
-  _manifests/
+  CATALOG.json
+  BOOKINGS/
+    bookinginquiry-15.json
+    booking_requests.jsonl
+    reservations.jsonl
+    _history.jsonl
+    _events.jsonl
+  CUSTOMERS/
+    user-9.json
+    customerprofile-47.json
+    airbnbguestrecord-41.json
+    customer_profiles.jsonl
+    airbnb_guest_records.jsonl
+    customer_feedback.jsonl
+    subscriptions.jsonl
+    _history.jsonl
+  BOOKINGAGENTS/
+    agentconversation-1.json
+    agentfaq-8.json
+    agent_conversations.jsonl
+    agent_faq.jsonl
+    _history.jsonl
+  TRANSACTIONS/
+    damagedeposit-13.json
+    reservationpaymenthold-4.json
+    damage_deposits.jsonl
+    reservation_payment_holds.jsonl
+    donations.jsonl
+    invoices.jsonl
+    promotions.jsonl
+    _history.jsonl
+    _events.jsonl
+  STAYS/
+    bookableitem-1.json
+    availabilityblock-2.json
+    dailypriceoverride-1.json
+    inventory.jsonl
+    availability_blocks.jsonl
+    daily_price_overrides.jsonl
+    _history.jsonl
+  MAINTENANCE/
+    maintenanceevent-<id>.json
+    maintenancephoto-<id>.json
+    maintenance_events.jsonl
+    _history.jsonl
+  WEBSITE/
+    sitesettings-1.json
+    sitecontentblock-<id>.json
+    _history.jsonl
+  ADMIN/
+    adminaccess-<id>.json
+    _history.jsonl
+  EVENTS/
+    page_visits.jsonl
+    object_events.jsonl
+    object_states.jsonl
+  EXPORTS/
     export-run-<timestamp>-<id>.json
-  schemas/
-    v1/
-      <collection>.schema.json
-  bronze/
-    app_events/
-      object_events/
-    imports/
-  silver/
-    accounts/
-    customers/
-    bookings/
-    requests/
-    agent/
-    payments/
-    marketing/
-    content/
-  gold/
-    analytics/
-  quarantine/
 ```
 
-## Partition Pattern
+## Folder Meaning
 
-Every record collection uses date partitions:
+- `BOOKINGS`: booked/reservation objects and booking request lifecycle.
+- `CUSTOMERS`: clients, user accounts, imported guests, feedback, and consent state.
+- `BOOKINGAGENTS`: chat agent conversations, FAQ, and training knowledge.
+- `TRANSACTIONS`: payments, deposits, holds, invoices, donations, coupons, and promotions.
+- `STAYS`: apartments/stays, availability, pricing, rules, galleries, and calendar feeds.
+- `MAINTENANCE`: cleaning, repair, maintenance, cost, time, and photo evidence objects.
+- `WEBSITE`: site settings, logo/content, and public copy records.
+- `ADMIN`: admin access and internal business configuration.
+- `EVENTS`: high-volume app events that are not one durable business object.
+- `EXPORTS`: export manifests only.
+
+## Object Files
+
+Each saved business object writes one current JSON file:
 
 ```text
-<zone>/<subject>/<collection>/year=YYYY/month=MM/day=DD/<collection>-<export_run_id>.jsonl
+<FOLDER>/<model>-<id>.json
 ```
 
 Example:
 
 ```text
-silver/agent/agent_conversations/year=2026/month=06/day=06/agent_conversations-20260606T230000-a1b2c3d4.jsonl
+CUSTOMERS/customerprofile-47.json
+BOOKINGS/bookinginquiry-15.json
+TRANSACTIONS/damagedeposit-13.json
+BOOKINGAGENTS/agentconversation-1.json
 ```
 
-Live object events use the same partition pattern and append to a daily file:
+Each folder can also have `_history.jsonl` for append-only state changes. This gives agents and humans a current object file plus a simple change log without digging through partitions.
+
+## Snapshot Files
+
+Current collection snapshots are plain JSONL files inside the matching folder:
 
 ```text
-bronze/app_events/object_events/year=YYYY/month=MM/day=DD/object_events-live-YYYYMMDD.jsonl
+CUSTOMERS/customer_profiles.jsonl
+BOOKINGS/booking_requests.jsonl
+TRANSACTIONS/damage_deposits.jsonl
+STAYS/inventory.jsonl
 ```
 
-## Record Envelope
+## Live Write Rule
 
-Every JSONL line follows this contract:
+When `MLADIS_DATASTORE_ROOT` is configured:
 
-```json
-{
-  "schema_version": "1.0",
-  "collection": "agent_conversations",
-  "entity_type": "agent_conversation",
-  "record_key": "agent_conversation:42",
-  "source_system": "mladis-django",
-  "source_model": "bookings.AgentConversation",
-  "source_pk": "42",
-  "pii_classification": "private",
-  "occurred_at": "2026-06-06T18:30:00-04:00",
-  "extracted_at": "2026-06-06T19:00:00-04:00",
-  "natural_keys": {
-    "email": "guest@example.com"
-  },
-  "data": {}
-}
+1. Save/delete a relevant model.
+2. Write/update its current JSON file in the correct top-level folder.
+3. Append the same state envelope to that folder's `_history.jsonl`.
+4. If `MLADIS_DATASTORE_LIVE_SYNC_DRIVE=True`, mirror those touched files to the configured Drive folder.
+
+Drive mirroring should run asynchronously for request paths through `MLADIS_DATASTORE_LIVE_SYNC_ASYNC=True`, so Drive latency cannot freeze booking or admin work.
+
+## Required Objects
+
+Every functional object must have a data-store path:
+
+- subscriptions and login identities,
+- customers and imported Airbnb guests,
+- booking requests and reservation lifecycle records,
+- request/inquiry records,
+- chatbot conversations, FAQ, and training records,
+- payments, deposit holds, donations, invoices, promotions, coupons, and cancellation records,
+- maintenance events and photo evidence,
+- calendar availability, pricing, feed, stay, and inventory records,
+- site settings, admin-managed content, and business configuration records.
+
+## Privacy
+
+Never write these to the object lake:
+
+- SSNs,
+- EIN letters,
+- bank login records,
+- raw signatures,
+- identity documents,
+- passwords,
+- OAuth secrets,
+- payment card numbers.
+
+Sensitive auth/provider fields must be redacted before writing JSON.
+
+## Drive Target
+
+Runtime JSON belongs in the protected Drive folder:
+
+```text
+https://drive.google.com/drive/folders/1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn
 ```
 
-## Zones
-
-- `bronze`: raw app/import event exports with light normalization.
-- `silver`: entity-level operational records keyed around the MLADIS domain model.
-- `gold`: curated analytics outputs generated from bronze/silver.
-- `quarantine`: malformed or untrusted imports that need review before loading.
-
-## Collection Families
-
-- `accounts`: subscriptions and login identities.
-- `customers`: customer profiles, imported Airbnb guests, and feedback.
-- `requests`: booking inquiries and information requests.
-- `bookings`: reservation lifecycle, availability blocks, and price overrides.
-- `agent`: chatbot logs, FAQ records, and agent training signals.
-- `payments`: damage deposits, reservation payment holds, donations, invoices, and payment-state records.
-- `marketing`: promotions, coupon linkage, and campaign delivery.
-- `content`: stays, services, inventory, and public listing metadata.
-
-## Required Live Event Logging
-
-The following workflows must emit a live `object_events` record when the root is configured:
-
-- reservation request created,
-- damage deposit checkout created,
-- damage deposit provider configuration failure,
-- damage deposit provider failure,
-- reservation payment hold checkout created,
-- reservation payment hold provider configuration failure,
-- reservation payment hold provider failure,
-- security deposit and reservation payment confirmation emails sent,
-- agent conversation created or updated,
-- customer/account creation or profile linking,
-- invoice creation/sending,
-- promotion creation/sending,
-- cancellation, capture, release, or refund actions.
-
-Each event must include:
-
-- `event_name`,
-- `object_model`,
-- `object_pk`,
-- request path when available,
-- authenticated user id when available,
-- session key when available,
-- a small data payload with stable keys such as `request_key`, status, provider, item id, customer profile id, or invoice number.
-
-If a feature cannot emit a live event yet, it must have a matching export collection and a test or TODO in the feature docs explaining how the object is recoverable in the lake.
-
-## Privacy Classes
-
-- `public`: safe for public pages or marketing.
-- `internal`: business operational data without direct customer contact details.
-- `private`: direct customer data or sensitive operational notes.
-- `redacted`: hashed or removed direct identifiers for analytics and model-training experiments.
-
-## Production Guidance
-
-Use the database for live booking behavior. Use the lake for:
-
-- recovery snapshots,
-- longitudinal analytics,
-- agent training review,
-- customer segmentation,
-- marketing-consent audits,
-- financial and reservation reporting,
-- future pipelines into BigQuery, DuckDB, vector stores, or warehouse tools.
-
-Do not build customer-facing workflows that read directly from JSONL while the Django database already has the transactional record. JSONL exports should be read by batch/reporting/agent-learning jobs.
+Git stores only code, tests, schemas/contracts, and documentation.

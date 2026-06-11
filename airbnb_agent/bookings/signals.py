@@ -3,7 +3,7 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 
-LIVE_OBJECT_STATE_APP_LABELS = {"bookings", "auth", "account", "socialaccount"}
+LIVE_OBJECT_STATE_APP_LABELS = {"bookings", "operations", "auth", "account", "socialaccount"}
 LIVE_OBJECT_STATE_EXCLUDED_MODELS = {
     "bookings.PageVisit",
 }

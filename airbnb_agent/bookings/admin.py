@@ -1026,10 +1026,10 @@ class SiteSettingsAdmin(admin.ModelAdmin):
     def logo_preview(self, obj):
         if not obj.logo_display_url:
             return format_html(
-                '<div style="display:grid;place-items:center;width:72px;height:72px;color:#fff;background:#10665f;border-radius:10px;font-weight:900;font-size:2rem;">M</div>'
+                '<div class="modern-admin-logo-preview modern-admin-logo-preview--fallback">M</div>'
             )
         return format_html(
-            '<img src="{}" alt="{} logo" style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid #dbe4dc;">',
+            '<div class="modern-admin-logo-preview"><img src="{}" alt="{} logo"></div>',
             obj.logo_display_url,
             obj.site_name,
         )

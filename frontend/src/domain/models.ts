@@ -167,6 +167,17 @@ export class ReservationPricingPolicy {
     );
   }
 
+  extraGuestRuleLabel(): string {
+    if (this.extraGuestCents <= 0 || this.maxGuests <= this.includedGuests) {
+      return `Included up to ${this.includedGuests} guest${this.includedGuests === 1 ? '' : 's'}, max ${this.maxGuests} guests.`;
+    }
+    const amount = this.extraGuestCents % 100 === 0
+      ? `$${this.extraGuestCents / 100}`
+      : this.formatMoney(this.extraGuestCents);
+    const threshold = this.includedGuests > 1 ? ` after ${this.includedGuests}` : '';
+    return `${amount}/night per added guest${threshold}, max ${this.maxGuests} guests.`;
+  }
+
   private formatMoney(cents: number): string {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -354,6 +365,19 @@ export class ReservationRequestDraft {
       values.coupon_code,
       values.message,
     );
+  }
+
+  withStayPricing(policy: ReservationPricingPolicy | null): ReservationRequestDraft {
+    if (!policy) return this;
+    const currentGuests = Math.max(Number(this.guests) || 1, 1);
+    let nextGuests = currentGuests;
+    if (policy.includedGuests > 1 && currentGuests <= 1) {
+      nextGuests = policy.includedGuests;
+    }
+    if (nextGuests > policy.maxGuests) {
+      nextGuests = policy.maxGuests;
+    }
+    return this.withField('guests', String(nextGuests));
   }
 
   toFormData(csrfTokenValue: string): FormData {
@@ -838,6 +862,57 @@ export class OpsMaintenanceSnapshot {
     public readonly rows: OpsMaintenanceEvent[],
     public readonly adminUrl: string,
     public readonly addAdminUrl: string,
+    public readonly generatedAt: string,
+  ) {}
+}
+
+export class OpsWorkItem {
+  constructor(
+    public readonly id: number,
+    public readonly title: string,
+    public readonly description: string,
+    public readonly listName: string,
+    public readonly neuron: string,
+    public readonly neuronLabel: string,
+    public readonly status: string,
+    public readonly statusLabel: string,
+    public readonly priority: string,
+    public readonly priorityLabel: string,
+    public readonly nextAction: string,
+    public readonly sourceUrl: string,
+    public readonly githubUrl: string,
+    public readonly driveUrl: string,
+    public readonly dueDate: string,
+    public readonly completedAt: string,
+    public readonly updatedAt: string,
+    public readonly isDone: boolean,
+  ) {}
+}
+
+export class OpsWorkItemList {
+  constructor(
+    public readonly name: string,
+    public readonly total: number,
+    public readonly done: number,
+    public readonly open: number,
+    public readonly items: OpsWorkItem[],
+  ) {}
+}
+
+export class OpsWorkStatusColumn {
+  constructor(
+    public readonly status: string,
+    public readonly label: string,
+    public readonly items: OpsWorkItem[],
+  ) {}
+}
+
+export class OpsWorkboardSnapshot {
+  constructor(
+    public readonly summaryCards: OpsMetric[],
+    public readonly lists: OpsWorkItemList[],
+    public readonly statusColumns: OpsWorkStatusColumn[],
+    public readonly focusItems: OpsWorkItem[],
     public readonly generatedAt: string,
   ) {}
 }

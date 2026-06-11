@@ -378,6 +378,7 @@ a {
 .modern-admin-shortcut--blue span { color: #2563eb; }
 .modern-admin-shortcut--amber span { color: #b45309; }
 .modern-admin-shortcut--violet span { color: #7c3aed; }
+.modern-admin-shortcut--green span { color: #047857; }
 
 .modern-admin-grid {
   display: grid;
@@ -819,8 +820,23 @@ body.modern-admin-django-page:not(.modern-admin-calendar-page) a.button {
 
 body.modern-admin-django-page:not(.modern-admin-calendar-page) .submit-row a.deletelink,
 body.modern-admin-django-page:not(.modern-admin-calendar-page) .deletelink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 38px;
+  padding: 9px 13px;
+  border: 1px solid rgba(180, 35, 24, 0.2);
   border-radius: 13px;
+  color: #ffffff;
   background: #b42318;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 950;
+  line-height: 1.1;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 body.modern-admin-django-page:not(.modern-admin-calendar-page) input,
@@ -839,6 +855,97 @@ body.modern-admin-django-page:not(.modern-admin-calendar-page) select:focus,
 body.modern-admin-django-page:not(.modern-admin-calendar-page) textarea:focus {
   border-color: #0f766e;
   outline: 3px solid rgba(15, 118, 110, 0.14);
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .modern-admin-logo-preview,
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .modern-admin-logo-live-preview {
+  display: inline-grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border: 1px solid #dbe4dc;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .modern-admin-logo-preview img,
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .modern-admin-logo-live-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .modern-admin-logo-preview--fallback {
+  color: #ffffff;
+  background: #10665f;
+  font-size: 2rem;
+  font-weight: 950;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .modern-admin-logo-live-preview {
+  position: relative;
+  margin-top: 10px;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .modern-admin-logo-live-preview[hidden] {
+  display: none;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .modern-admin-logo-live-preview span {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  left: 6px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  color: #073331;
+  background: rgba(248, 210, 122, 0.9);
+  font-size: 0.68rem;
+  font-weight: 950;
+  text-align: center;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .file-upload,
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .form-row .clearable-file-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .file-upload a {
+  color: #0f766e;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .file-upload input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  border-radius: 5px;
+}
+
+body.modern-admin-django-page:not(.modern-admin-calendar-page) .file-upload label,
+body.modern-admin-django-page:not(.modern-admin-calendar-page) label[for$="-clear_id"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #7a271a;
+  background: rgba(254, 228, 226, 0.92);
+  font-size: 0.78rem;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 body.modern-admin-django-page:not(.modern-admin-calendar-page) #changelist-filter,
@@ -1429,6 +1536,7 @@ body.modern-admin-django-page:not(.modern-admin-calendar-page) #result_list tbod
 .modern-admin-model-group--calendar { --admin-tone: #6f55b5; }
 .modern-admin-model-group--money { --admin-tone: #0b78b6; }
 .modern-admin-model-group--agent { --admin-tone: #c95705; }
+.modern-admin-model-group--maintenance { --admin-tone: #047857; }
 .modern-admin-model-group--system { --admin-tone: #087b2d; }
 
 .modern-admin-model-list {

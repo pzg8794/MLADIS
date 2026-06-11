@@ -10,7 +10,7 @@ Private publication workflow for MLADIS LLC.
 - Queens County Clerk designation received: 2026-06-08
 - Daily newspaper: NY Daily News, placement site `placeanad.nydailynews.com`
 - Weekly newspaper: The Forum, `forumsouth@gmail.com`
-- Current next action: place/pay the NY Daily News LLC notice order and wait for The Forum to confirm cost, payment method, and first publication date.
+- Current next action: wait for NY Daily News approval/confirmation email, wait for The Forum to confirm cost/payment/first date, then track both publication runs through affidavits and NY DOS Certificate of Publication filing.
 
 ## Official Process Summary
 
@@ -39,4 +39,4 @@ New York Department of State publication filing:
 
 ## Do Not Skip
 
-Do not mark publication as placed until each newspaper confirms or accepts the order/payment and a first publication date is recorded. Use `docs/business/source-documents/MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf` when a newspaper asks for the Queens County Clerk designation letter.
+Do not mark the overall publication requirement complete until both newspapers finish publication, both affidavits are received, and the Certificate of Publication is filed with NY DOS. NY Daily News has been placed and paid; The Forum is still waiting on reply/payment/first-date confirmation. Use `docs/business/source-documents/MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf` when a newspaper asks for the Queens County Clerk designation letter.

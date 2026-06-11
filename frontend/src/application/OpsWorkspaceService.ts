@@ -6,6 +6,8 @@ import {
   OpsMaintenanceEvent,
   OpsMaintenanceSnapshot,
   OpsReportsSnapshot,
+  OpsWorkboardSnapshot,
+  OpsWorkItem,
 } from '../domain/models';
 import {
   OpsCalendarBlockInput,
@@ -17,6 +19,14 @@ import {
 
 export class OpsWorkspaceService {
   constructor(private readonly repository: OpsWorkspaceRepository) {}
+
+  async loadWorkboard(): Promise<OpsWorkboardSnapshot> {
+    return this.repository.getWorkboard();
+  }
+
+  async setWorkItemCompletion(id: number, completed: boolean): Promise<OpsWorkItem> {
+    return this.repository.setWorkItemCompletion(id, completed);
+  }
 
   async loadReports(): Promise<OpsReportsSnapshot> {
     return this.repository.getReports();

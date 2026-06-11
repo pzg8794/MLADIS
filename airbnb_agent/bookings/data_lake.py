@@ -57,6 +57,7 @@ SIMPLE_OBJECT_LAKE_FOLDERS = (
     "MAINTENANCE",
     "WEBSITE",
     "ADMIN",
+    "OPERATIONS",
     "EVENTS",
 )
 
@@ -96,6 +97,7 @@ MODEL_FOLDER_OVERRIDES = {
     "bookings.SiteSettings": "WEBSITE",
     "bookings.SiteContentBlock": "WEBSITE",
     "bookings.AdminAccess": "ADMIN",
+    "operations.OperationsWorkItem": "OPERATIONS",
 }
 
 COLLECTION_FOLDER_OVERRIDES = {
@@ -271,6 +273,7 @@ class SimpleObjectLakeLayout:
                     "- MAINTENANCE: cleaning, repair, maintenance, and photo evidence objects.",
                     "- WEBSITE: site settings and public content objects.",
                     "- ADMIN: admin access and business configuration objects.",
+                    "- OPERATIONS: internal workboard tasks and owner-managed operational plans.",
                     "- EVENTS: app/page/workflow events that are not one durable business object.",
                     "",
                     "Each business object is stored as one readable JSON file named `<model>-<id>.json`.",

@@ -10,14 +10,14 @@ Private operating checklist for preparing MLADIS LLC for government and financia
 | High | Sign operating agreement | Done | None | Piter-signed execution copy exists in `docs/business/signing/execution-ready-2026-06-03/`. |
 | High | Sign initial member consent | Done | None | Piter-signed execution copy authorizes EIN, banking, payments, records, and contractor/vendor actions. |
 | High | Sign Diana operations acknowledgment if used | In progress | Send to Diana for review/acceptance | Piter/MLADIS signed; Diana signature is pending. |
-| High | Start Queens publication process | In progress | Place/pay NY Daily News order; wait for The Forum reply | Queens designation letter received 2026-06-08. Daily: NY Daily News. Weekly: The Forum. Deadline target from formation date is 2026-10-01. |
+| High | Start Queens publication process | In progress | Wait for NY Daily News approval/run proof; wait for The Forum reply/payment/first date | Queens designation letter received 2026-06-08. NY Daily News order #87497 was placed and paid 2026-06-08; first run scheduled 2026-06-10. The Forum still needs cost/payment/first-date confirmation. Deadline target from formation date is 2026-10-01. |
 | Medium | File Certificate of Publication | Todo | Submit after six weeks of newspaper publication | Store affidavits and filed certificate privately. |
 
 ## Phase 2 - Money Infrastructure
 
 | Priority | Task | Status | Owner action needed | Notes |
 | --- | --- | --- | --- | --- |
-| High | Apply for EIN at IRS.gov | Done | None | EIN issued on 2026-06-03; CP 575 letter and private EIN reference are stored outside Git in the private business-record vault. |
+| High | EIN application / CP 575 saved | Done | None | EIN issued on 2026-06-03; CP 575 letter and private EIN reference are stored outside Git in the private business-record vault. |
 | High | Open business bank account | Todo | Complete bank KYC | Needs EIN, formation proof, operating agreement, owner ID, business address. |
 | High | Configure accounting/bookkeeping tool | In progress | Finish after MLADIS OOP booking-system cleanup | Owner started the system; final accounting integration should wait until the booking system has a strong stable OOP base. |
 | High | Create business document vault outside public app assets | Done | Keep saving sensitive records there | Private Google Drive vault is documented in `docs/business/ein-and-banking/private-records-manifest.md`; keep EIN letter, bank docs, tax returns, IDs, and statements outside Git. |
@@ -51,7 +51,7 @@ Private operating checklist for preparing MLADIS LLC for government and financia
 | --- | --- | --- | --- | --- |
 | Medium | Evaluate NYC M/WBE certification | Todo | Confirm eligibility and documents | Potentially useful for city contracting visibility and financing resources. |
 | Medium | Evaluate NYS MWBE certification | Todo | Confirm eligibility and documents | Requires real ownership, operation, and control documentation. |
-| Medium | Register SAM.gov / UEI if needed | Todo | Owner approval before registration | Needed for many federal grants/contracts, but wait until EIN and email are ready. |
+| Medium | Register SAM.gov / UEI if needed | Todo | Owner approval before registration | EIN is ready, but wait for a specific grant/contract target and stable business email/responsible-party data before registering. |
 | Medium | Create Grants.gov account if target grant exists | Todo | Owner approval before registration | Most grants are specific; do not apply randomly. |
 | Low | Explore SBA Lender Match / CDFIs | Todo | After financial packet exists | SBA-backed loans require repayment ability and lender underwriting. |
 

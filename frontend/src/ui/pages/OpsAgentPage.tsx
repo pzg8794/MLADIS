@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Bot, BrainCircuit, ChevronRight, ExternalLink, MessageSquareText, Search, Sparkles } from 'lucide-react';
 import { OpsWorkspaceFactory } from '../../application/OpsWorkspaceFactory';
 import { OpsAgentConversation, OpsAgentFaq, OpsAgentSnapshot } from '../../domain/models';
-import { OpsListModal } from '../components/OpsListModal';
+import { OpsRecordSection } from '../components/OpsRecordSection';
 
 function modeLabel(mode: string) {
   if (mode === 'openai') return 'OpenAI';
@@ -16,7 +16,6 @@ export function OpsAgentPage() {
   const [snapshot, setSnapshot] = useState<OpsAgentSnapshot | null>(null);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [isQuestionsOpen, setIsQuestionsOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -177,21 +176,17 @@ export function OpsAgentPage() {
         </details>
       </section>
 
-      <section className="ops-table-card">
-        <div className="ops-card-heading">
-          <div>
-            <span>Recent questions</span>
-            <h3>{conversations.length} conversations shown</h3>
-          </div>
-          <div className="ops-card-heading__actions">
-            <button type="button" onClick={() => setIsQuestionsOpen(true)}><Search size={15} /> Open list</button>
-            <strong>{snapshot.conversations.length}</strong>
-          </div>
-        </div>
-        <div className="ops-list-scroll">
-          {conversations.map(renderConversationRow)}
-        </div>
-      </section>
+      <OpsRecordSection
+        rows={conversations}
+        renderRow={renderConversationRow}
+        eyebrow="Recent questions"
+        title={`${conversations.length} conversations shown`}
+        subtitle={`${snapshot.conversations.length} total agent conversations available.`}
+        modalTitle={`${conversations.length} recent questions`}
+        modalSubtitle="Scroll the latest agent questions, routing mode, visitor context, and captured answer."
+        aside={<strong>{snapshot.conversations.length}</strong>}
+        defaultVisible={1}
+      />
 
       <details className="ops-table-card ops-expand-card">
         <summary className="ops-card-heading">
@@ -207,14 +202,6 @@ export function OpsAgentPage() {
         </section>
       </details>
 
-      <OpsListModal
-        isOpen={isQuestionsOpen}
-        title={`${conversations.length} recent questions`}
-        subtitle="Scroll the latest agent questions, routing mode, visitor context, and captured answer."
-        onClose={() => setIsQuestionsOpen(false)}
-      >
-        {conversations.map(renderConversationRow)}
-      </OpsListModal>
     </main>
   );
 }

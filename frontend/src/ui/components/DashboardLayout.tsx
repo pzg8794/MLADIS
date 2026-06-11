@@ -4,7 +4,9 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarDays,
+  ClipboardList,
   LayoutDashboard,
+  ListChecks,
   ReceiptText,
   Search,
   Settings,
@@ -21,9 +23,9 @@ interface DashboardLayoutProps {
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/ops/dashboard/' },
-  { label: 'Admin', icon: ShieldCheck, href: '/admin/' },
-  { label: 'Brand settings', icon: Settings, href: '/admin/bookings/sitesettings/1/change/' },
-  { label: 'Reservations', icon: CalendarDays, href: '/ops/reservations/' },
+  { label: 'Admin', icon: ShieldCheck, href: '/ops/admin/' },
+  { label: 'Settings', icon: Settings, href: '/admin/' },
+  { label: 'Reservations', icon: ClipboardList, href: '/ops/reservations/' },
   { label: 'Calendar', icon: CalendarDays, href: '/ops/calendar/' },
   { label: 'Stay portfolio', icon: Building2, href: '/ops/stays/' },
   { label: 'Reports', icon: BarChart3, href: '/ops/reports/' },
@@ -31,6 +33,7 @@ const navItems = [
   { label: 'Deposits', icon: ReceiptText, href: '/ops/deposits/' },
   { label: 'Maintenance', icon: Wrench, href: '/ops/maintenance/' },
   { label: 'Agent', icon: Bot, href: '/ops/agent/' },
+  { label: 'Workboard', icon: ListChecks, href: '/ops/workboard/' },
 ];
 
 function isNavActive(pathname: string, href: string) {
@@ -87,7 +90,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <span>Protected controls</span>
           <p>Sensitive edits, payments, calendar records, and publishing controls stay permissioned.</p>
         </div>
-        <a className="modern-admin-back" href="/business/">
+        <a className={`modern-admin-back${isNavActive(pathname, '/business/') ? ' is-active' : ''}`} href="/business/">
           <BriefcaseBusiness className="modern-admin-rail-icon" aria-hidden="true" size={18} />
           <span className="modern-admin-nav-label">Business profile</span>
         </a>

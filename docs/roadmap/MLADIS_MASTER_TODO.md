@@ -96,6 +96,7 @@ Sensitive values and official private records must stay in the private Google Dr
 | Priority | Item | Status | Notes |
 | --- | --- | --- | --- |
 | High | Document MLADIS universe / neuron architecture | Done | See `docs/architecture/0001-mladis-universe-neuron-model.md`. |
+| High | Build owner-only Operations Workboard MVP | In progress | `Operations.WorkItem` model/API/UI exists at `/ops/workboard/`; continue search/filter and broader seed coverage after MVP verification. |
 | High | Create master TODO / roadmap | Done | This file. |
 | High | Update business blueprint statuses | Done | `docs/business/MLADIS_BUSINESS_BLUEPRINT.md` refreshed with latest status sweep. |
 | High | Update README to describe MLADIS as universe / connected intelligence platform | Done | README now links to architecture and roadmap. |

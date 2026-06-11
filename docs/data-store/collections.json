@@ -1,151 +1,53 @@
 {
   "schema_version": "1.0",
+  "layout": "simple-object-folders",
   "drive_folder_id": "1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn",
   "drive_folder_url": "https://drive.google.com/drive/folders/1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn",
-  "collections": [
+  "folders": [
     {
-      "key": "object_events",
-      "zone": "bronze",
-      "subject": "app_events",
-      "entity_type": "object_event",
-      "source_model": "multiple",
-      "pii_classification": "private"
+      "name": "BOOKINGS",
+      "purpose": "Booked/reservation objects and booking request lifecycle.",
+      "collections": ["booking_requests", "reservations"]
     },
     {
-      "key": "subscriptions",
-      "zone": "silver",
-      "subject": "accounts",
-      "entity_type": "subscription",
-      "source_model": "auth.User",
-      "pii_classification": "private"
+      "name": "CUSTOMERS",
+      "purpose": "Clients, user accounts, imported Airbnb guests, feedback, and consent.",
+      "collections": ["subscriptions", "customer_profiles", "airbnb_guest_records", "customer_feedback"]
     },
     {
-      "key": "customer_profiles",
-      "zone": "silver",
-      "subject": "customers",
-      "entity_type": "customer_profile",
-      "source_model": "bookings.CustomerProfile",
-      "pii_classification": "private"
+      "name": "BOOKINGAGENTS",
+      "purpose": "Chat agent conversations, FAQ, and training knowledge.",
+      "collections": ["agent_conversations", "agent_faq"]
     },
     {
-      "key": "airbnb_guest_records",
-      "zone": "silver",
-      "subject": "customers",
-      "entity_type": "airbnb_guest_record",
-      "source_model": "bookings.AirbnbGuestRecord",
-      "pii_classification": "private"
+      "name": "TRANSACTIONS",
+      "purpose": "Payments, deposits, holds, invoices, donations, coupons, and promotions.",
+      "collections": ["damage_deposits", "reservation_payment_holds", "donations", "invoices", "promotions"]
     },
     {
-      "key": "customer_feedback",
-      "zone": "silver",
-      "subject": "customers",
-      "entity_type": "customer_feedback",
-      "source_model": "bookings.CustomerFeedback",
-      "pii_classification": "private"
+      "name": "STAYS",
+      "purpose": "Apartments, availability, pricing, rules, galleries, and calendar feeds.",
+      "collections": ["inventory", "availability_blocks", "daily_price_overrides"]
     },
     {
-      "key": "booking_requests",
-      "zone": "silver",
-      "subject": "requests",
-      "entity_type": "booking_request",
-      "source_model": "bookings.BookingInquiry",
-      "pii_classification": "private"
+      "name": "MAINTENANCE",
+      "purpose": "Cleaning, repair, maintenance, cost, time, and photo evidence objects.",
+      "collections": ["maintenance_events"]
     },
     {
-      "key": "reservations",
-      "zone": "silver",
-      "subject": "bookings",
-      "entity_type": "reservation",
-      "source_model": "bookings.BookingInquiry",
-      "pii_classification": "private"
+      "name": "WEBSITE",
+      "purpose": "Site settings, logo/content, and public copy records.",
+      "collections": []
     },
     {
-      "key": "agent_conversations",
-      "zone": "silver",
-      "subject": "agent",
-      "entity_type": "agent_conversation",
-      "source_model": "bookings.AgentConversation",
-      "pii_classification": "private"
+      "name": "ADMIN",
+      "purpose": "Admin access and internal business configuration.",
+      "collections": []
     },
     {
-      "key": "agent_faq",
-      "zone": "silver",
-      "subject": "agent",
-      "entity_type": "agent_faq",
-      "source_model": "bookings.AgentFAQ",
-      "pii_classification": "internal"
-    },
-    {
-      "key": "page_visits",
-      "zone": "bronze",
-      "subject": "app_events",
-      "entity_type": "page_visit",
-      "source_model": "bookings.PageVisit",
-      "pii_classification": "private"
-    },
-    {
-      "key": "damage_deposits",
-      "zone": "silver",
-      "subject": "payments",
-      "entity_type": "damage_deposit",
-      "source_model": "bookings.DamageDeposit",
-      "pii_classification": "private"
-    },
-    {
-      "key": "reservation_payment_holds",
-      "zone": "silver",
-      "subject": "payments",
-      "entity_type": "reservation_payment_hold",
-      "source_model": "bookings.ReservationPaymentHold",
-      "pii_classification": "private"
-    },
-    {
-      "key": "donations",
-      "zone": "silver",
-      "subject": "payments",
-      "entity_type": "donation",
-      "source_model": "bookings.Donation",
-      "pii_classification": "private"
-    },
-    {
-      "key": "invoices",
-      "zone": "silver",
-      "subject": "payments",
-      "entity_type": "invoice",
-      "source_model": "bookings.Invoice",
-      "pii_classification": "private"
-    },
-    {
-      "key": "promotions",
-      "zone": "silver",
-      "subject": "marketing",
-      "entity_type": "promotion",
-      "source_model": "bookings.Promotion",
-      "pii_classification": "internal"
-    },
-    {
-      "key": "inventory",
-      "zone": "silver",
-      "subject": "content",
-      "entity_type": "bookable_item",
-      "source_model": "bookings.BookableItem",
-      "pii_classification": "internal"
-    },
-    {
-      "key": "availability_blocks",
-      "zone": "silver",
-      "subject": "bookings",
-      "entity_type": "availability_block",
-      "source_model": "bookings.AvailabilityBlock",
-      "pii_classification": "internal"
-    },
-    {
-      "key": "daily_price_overrides",
-      "zone": "silver",
-      "subject": "bookings",
-      "entity_type": "daily_price_override",
-      "source_model": "bookings.DailyPriceOverride",
-      "pii_classification": "internal"
+      "name": "EVENTS",
+      "purpose": "App/page/workflow events that are not one durable business object.",
+      "collections": ["page_visits", "object_events", "object_states"]
     }
   ]
 }

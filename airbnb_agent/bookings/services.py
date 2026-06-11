@@ -519,7 +519,8 @@ class ReservationPricingService:
     THREE_BED_INCLUDED_GUESTS = 1
     THREE_BED_MAX_GUESTS = 7
     SIX_BED_BASE_CENTS = 10000
-    SIX_BED_INCLUDED_GUESTS = 14
+    SIX_BED_INCLUDED_GUESTS = 12
+    SIX_BED_EXTRA_GUEST_CENTS = 1000
     SIX_BED_MAX_GUESTS = 14
 
     def policy_for_item(self, item: BookableItem | None) -> ReservationPricingPolicy:
@@ -538,10 +539,10 @@ class ReservationPricingService:
             return ReservationPricingPolicy(
                 base_price_cents=self.SIX_BED_BASE_CENTS,
                 included_guests=self.SIX_BED_INCLUDED_GUESTS,
-                extra_guest_cents=0,
+                extra_guest_cents=self.SIX_BED_EXTRA_GUEST_CENTS,
                 max_guests=self.SIX_BED_MAX_GUESTS,
                 currency=currency,
-                label="$100/night covers up to 14 guests.",
+                label="$100/night for 12 guests, then $10/night per added guest, max 14 guests.",
             )
 
         return ReservationPricingPolicy(

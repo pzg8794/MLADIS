@@ -25,6 +25,10 @@ import {
   OpsMetric,
   OpsReportsSnapshot,
   OpsSegmentOption,
+  OpsWorkboardSnapshot,
+  OpsWorkItem,
+  OpsWorkItemList,
+  OpsWorkStatusColumn,
 } from '../domain/models';
 import { HttpClient } from './HttpClient';
 
@@ -323,6 +327,54 @@ interface ApiOpsMaintenanceSnapshot {
   generated_at: string;
 }
 
+interface ApiOpsWorkItem {
+  id: number;
+  title: string;
+  description: string;
+  list_name: string;
+  neuron: string;
+  neuron_label: string;
+  status: string;
+  status_label: string;
+  priority: string;
+  priority_label: string;
+  next_action: string;
+  source_url: string;
+  github_url: string;
+  drive_url: string;
+  due_date: string;
+  completed_at: string;
+  updated_at: string;
+  is_done: boolean;
+}
+
+interface ApiOpsWorkItemList {
+  name: string;
+  total: number;
+  done: number;
+  open: number;
+  items: ApiOpsWorkItem[];
+}
+
+interface ApiOpsWorkStatusColumn {
+  status: string;
+  label: string;
+  items: ApiOpsWorkItem[];
+}
+
+interface ApiOpsWorkboardSnapshot {
+  summary_cards: ApiOpsMetric[];
+  lists: ApiOpsWorkItemList[];
+  status_columns: ApiOpsWorkStatusColumn[];
+  focus_items: ApiOpsWorkItem[];
+  generated_at: string;
+}
+
+interface ApiOpsWorkItemCompletionResponse {
+  ok: boolean;
+  item: ApiOpsWorkItem;
+}
+
 interface ApiOpsMaintenanceCreateResponse {
   ok: boolean;
   message: string;
@@ -368,6 +420,8 @@ export interface OpsCalendarPriceInput {
 }
 
 export interface OpsWorkspaceRepository {
+  getWorkboard(): Promise<OpsWorkboardSnapshot>;
+  setWorkItemCompletion(id: number, completed: boolean): Promise<OpsWorkItem>;
   getReports(): Promise<OpsReportsSnapshot>;
   getCustomers(): Promise<OpsCustomersSnapshot>;
   getDeposits(): Promise<OpsDepositsSnapshot>;
@@ -386,6 +440,35 @@ export interface OpsWorkspaceRepository {
 
 export class ApiOpsWorkspaceRepository implements OpsWorkspaceRepository {
   constructor(private readonly http: HttpClient) {}
+
+  async getWorkboard(): Promise<OpsWorkboardSnapshot> {
+    const data = await this.http.get<ApiOpsWorkboardSnapshot>('/api/ops/workboard/');
+    return new OpsWorkboardSnapshot(
+      data.summary_cards.map(toMetric),
+      data.lists.map((list) => new OpsWorkItemList(
+        list.name,
+        list.total,
+        list.done,
+        list.open,
+        list.items.map(toWorkItem),
+      )),
+      data.status_columns.map((column) => new OpsWorkStatusColumn(
+        column.status,
+        column.label,
+        column.items.map(toWorkItem),
+      )),
+      data.focus_items.map(toWorkItem),
+      data.generated_at,
+    );
+  }
+
+  async setWorkItemCompletion(id: number, completed: boolean): Promise<OpsWorkItem> {
+    const data = await this.http.post<ApiOpsWorkItemCompletionResponse>(
+      `/api/ops/workboard/items/${id}/completion/`,
+      { completed },
+    );
+    return toWorkItem(data.item);
+  }
 
   async getReports(): Promise<OpsReportsSnapshot> {
     const data = await this.http.get<ApiOpsReportsSnapshot>('/api/ops/reports/');
@@ -587,6 +670,29 @@ function toCalendarStayRow(item: ApiOpsCalendarStayRow): OpsCalendarStayRow {
 
 function toMetric(item: ApiOpsMetric): OpsMetric {
   return new OpsMetric(item.label, String(item.value), item.caption);
+}
+
+function toWorkItem(item: ApiOpsWorkItem): OpsWorkItem {
+  return new OpsWorkItem(
+    item.id,
+    item.title,
+    item.description,
+    item.list_name,
+    item.neuron,
+    item.neuron_label,
+    item.status,
+    item.status_label,
+    item.priority,
+    item.priority_label,
+    item.next_action,
+    item.source_url,
+    item.github_url,
+    item.drive_url,
+    item.due_date,
+    item.completed_at,
+    item.updated_at,
+    item.is_done,
+  );
 }
 
 function toCalendarStay(item: ApiOpsCalendarStay): OpsCalendarStay {

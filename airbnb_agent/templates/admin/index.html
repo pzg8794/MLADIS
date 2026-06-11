@@ -24,14 +24,15 @@
         </a>
         <nav aria-label="{% trans 'Admin sections' %}">
           <a href="{% url 'bookings:ops-dashboard' %}">{% include "admin/includes/rail_icon.html" with icon="dashboard" %}<span class="modern-admin-nav-label">{% trans "Dashboard" %}</span></a>
-          <a class="is-active" href="{% url 'admin:index' %}">{% include "admin/includes/rail_icon.html" with icon="admin" %}<span class="modern-admin-nav-label">{% trans "Admin" %}</span></a>
-          <a href="{% url 'admin:bookings_sitesettings_change' 1 %}">{% include "admin/includes/rail_icon.html" with icon="settings" %}<span class="modern-admin-nav-label">{% trans "Brand settings" %}</span></a>
+          <a href="{% url 'bookings:ops-admin' %}">{% include "admin/includes/rail_icon.html" with icon="admin" %}<span class="modern-admin-nav-label">{% trans "Admin" %}</span></a>
+          <a class="is-active" href="{% url 'admin:index' %}">{% include "admin/includes/rail_icon.html" with icon="settings" %}<span class="modern-admin-nav-label">{% trans "Settings" %}</span></a>
           <a href="{% url 'bookings:ops-reservations' %}">{% include "admin/includes/rail_icon.html" with icon="reservations" %}<span class="modern-admin-nav-label">{% trans "Reservations" %}</span></a>
           <a href="{% url 'bookings:calendar-ops' %}">{% include "admin/includes/rail_icon.html" with icon="calendar" %}<span class="modern-admin-nav-label">{% trans "Calendar" %}</span></a>
           <a href="{% url 'bookings:ops-stays' %}">{% include "admin/includes/rail_icon.html" with icon="stays" %}<span class="modern-admin-nav-label">{% trans "Stay portfolio" %}</span></a>
           <a href="{% url 'bookings:ops-reports' %}">{% include "admin/includes/rail_icon.html" with icon="reports" %}<span class="modern-admin-nav-label">{% trans "Reports" %}</span></a>
           <a href="{% url 'bookings:ops-customers' %}">{% include "admin/includes/rail_icon.html" with icon="customers" %}<span class="modern-admin-nav-label">{% trans "Customers" %}</span></a>
           <a href="{% url 'bookings:ops-deposits' %}">{% include "admin/includes/rail_icon.html" with icon="deposits" %}<span class="modern-admin-nav-label">{% trans "Deposits" %}</span></a>
+          <a href="{% url 'bookings:ops-maintenance' %}">{% include "admin/includes/rail_icon.html" with icon="maintenance" %}<span class="modern-admin-nav-label">{% trans "Maintenance" %}</span></a>
           <a href="{% url 'bookings:ops-agent' %}">{% include "admin/includes/rail_icon.html" with icon="agent" %}<span class="modern-admin-nav-label">{% trans "Agent" %}</span></a>
         </nav>
         <div class="modern-admin-sidecard">
@@ -44,8 +45,8 @@
       <main class="modern-admin-main">
         <section class="modern-admin-hero">
           <div>
-            <h2>{% trans "Admin command center" %}</h2>
-            <p>{% trans "Protected records, ops tabs, calendar, reports, and booking controls." %}</p>
+            <h2>{% trans "Settings console" %}</h2>
+            <p>{% trans "Protected records, brand controls, access, calendar feeds, and booking configuration." %}</p>
           </div>
           <div class="modern-admin-hero__actions">
             <a href="{% url 'bookings:calendar-ops' %}">{% trans "Calendar" %}</a>
@@ -92,6 +93,11 @@
             <span>{% trans "Deposits" %}</span>
             <strong>{% trans "Security deposit ledger" %}</strong>
             <p>{% trans "Track Stripe and PayPal holds while detailed payment decisions stay protected." %}</p>
+          </a>
+          <a class="modern-admin-shortcut modern-admin-shortcut--green" href="{% url 'bookings:ops-maintenance' %}">
+            <span>{% trans "Maintenance" %}</span>
+            <strong>{% trans "Cleaning, repairs, and photo evidence" %}</strong>
+            <p>{% trans "Log cost, time, photos, and tax-ready notes for each stay." %}</p>
           </a>
           <a class="modern-admin-shortcut modern-admin-shortcut--violet" href="{% url 'bookings:ops-agent' %}">
             <span>{% trans "Agent" %}</span>
@@ -153,6 +159,16 @@
                       <div class="modern-admin-model-list">
                         {% for model in app.models %}
                           {% if model.object_name == "AgentFAQ" or model.object_name == "AgentConversation" or model.object_name == "AgentKnowledgeSource" or model.object_name == "GuestReviewHighlight" or model.object_name == "HouseRule" or model.object_name == "MissionCause" or model.object_name == "SiteContentBlock" or model.object_name == "SiteSettings" %}
+                            {% include "admin/includes/model_card.html" with model=model %}
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </section>
+                    <section class="modern-admin-model-group modern-admin-model-group--maintenance">
+                      <h4>{% trans "Maintenance & evidence" %}</h4>
+                      <div class="modern-admin-model-list">
+                        {% for model in app.models %}
+                          {% if model.object_name == "MaintenanceEvent" or model.object_name == "MaintenancePhoto" %}
                             {% include "admin/includes/model_card.html" with model=model %}
                           {% endif %}
                         {% endfor %}

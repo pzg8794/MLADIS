@@ -2,6 +2,12 @@
 
 Operational log for the MLADIS LLC New York publication requirement. This file records what was verified, what was only attempted, and what still needs owner action.
 
+## 2026-06-10 - Status Sweep
+
+- NY Daily News is no longer an open placement/payment task. Order #87497 was placed and paid on 2026-06-08, with first run scheduled for 2026-06-10 and affidavit delivery expected by email after the run completes.
+- The Forum remains open. Two emails were sent on 2026-06-08; cost, payment method, and first publication date are still waiting on newspaper reply.
+- The overall NY publication requirement remains in progress until both papers complete publication, both affidavits are collected, and the Certificate of Publication is filed with NY DOS.
+
 ## 2026-06-03 - Queens County Clerk Designation Request Sent
 
 - Account used: `garcp37@mladis.com`.
@@ -70,19 +76,13 @@ Weekly newspaper:
   - SMTP result: `sent_count=1`.
   - Awaiting reply from The Forum with cost, payment method, and first publication date.
 
-## 2026-06-08 - NY Daily News Status
+## 2026-06-08 - NY Daily News Pre-Order Navigation
 
-- NY Daily News placement flow identified:
+- NY Daily News placement flow was identified:
   - Legal Notices
   - LLC / registering an LLC package
   - URL documented in the checklist.
-- Owner action still required:
-  - create/login to the NY Daily News ad account,
-  - confirm notice text,
-  - select start date,
-  - pay,
-  - save receipt/order confirmation.
-- Do not mark NY Daily News as placed until payment/order confirmation is saved.
+- This section is superseded by the later 2026-06-08 order record below. NY Daily News is now placed and paid.
 
 ## 2026-06-08 - Browser / Tooling Audit
 
@@ -106,18 +106,15 @@ What was fully accomplished this session:
 - Both newspapers identified and recorded: NY Daily News (daily) and The Forum (weekly).
 - Initial notice email sent to The Forum at `forumsouth@gmail.com`.
 - Follow-up sent to The Forum with designation letter PDF attached.
-- NY Daily News LLC notice order flow navigated to: Legal Notices → LLC package at `advertising.nydailynews.com`. Order requires account login and payment — owner must complete manually.
+- NY Daily News LLC notice order flow navigated to: Legal Notices → LLC package at `advertising.nydailynews.com`. Owner later completed the order/payment; see the order record below.
 - Activity log, README, checklist, next-steps, and owner action center all updated and committed.
 - Stale "wait for designation" instructions removed from docs so future agents follow correct post-designation workflow.
 - Commits on `feature/signin-contracts-ci`: `b78bf6f`, `574cb21`, `51d6165`, `882f34c`, `d0f5052`.
 
-What is explicitly NOT done yet (requires owner action):
+What is explicitly NOT done yet:
 
-- NY Daily News order: go to [advertising.nydailynews.com/ad-configuration/step1?packageId=TPDNLEGALLLC&categoryId=LLCLEG&categoryTreeId=TPDNLEGALS](https://advertising.nydailynews.com/ad-configuration/step1?packageId=TPDNLEGALLLC&categoryId=LLCLEG&categoryTreeId=TPDNLEGALS), create/login account, paste notice text, select first run date, pay (~$219), save order confirmation.
 - The Forum reply: awaiting response to the two emails sent. Once they reply with cost and first date, pay and record the start date.
 - No Dropbox Sign sends have been made — Diana signature on the Founding Operations Pillar Acknowledgment is still pending.
-
-## Current Next Actions
 
 ## 2026-06-08 - NY Daily News Order Placed
 

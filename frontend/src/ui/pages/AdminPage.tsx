@@ -1,4 +1,4 @@
-import { Activity, Bot, CalendarDays, CreditCard, Database, ExternalLink, FileText, KeyRound, ShieldCheck, Users } from 'lucide-react';
+import { Activity, Bot, CalendarDays, CreditCard, Database, ExternalLink, FileText, KeyRound, Settings, ShieldCheck, Users } from 'lucide-react';
 import './admin-page.css';
 
 class AdminShortcut {
@@ -21,7 +21,8 @@ class AdminHealthItem {
 }
 
 const shortcuts = [
-  new AdminShortcut('Admin tools', 'Open the protected editing console.', '/admin/', ShieldCheck, 'blue'),
+  new AdminShortcut('Settings console', 'Open protected records and configuration.', '/admin/', ShieldCheck, 'blue'),
+  new AdminShortcut('Brand settings', 'Update logo, public name, contact details, and site branding.', '/admin/bookings/sitesettings/1/change/', Settings, 'violet'),
   new AdminShortcut('Reservations', 'Review booking requests, guest notes, coupons, and confirmations.', '/ops/reservations/', CalendarDays, 'teal'),
   new AdminShortcut('Customers', 'Manage customer profiles, Airbnb imports, and marketing consent.', '/ops/customers/', Users, 'violet'),
   new AdminShortcut('Damage deposits', 'Review Stripe and PayPal authorization holds.', '/ops/deposits/', CreditCard, 'amber'),

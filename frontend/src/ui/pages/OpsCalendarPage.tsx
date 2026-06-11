@@ -1,4 +1,4 @@
-import { CSSProperties, FormEvent, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, FormEvent, MouseEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   BarChart3,
@@ -16,16 +16,22 @@ import {
   Home,
   LayoutList,
   LockKeyhole,
+  Moon,
   MapPin,
-  MoreHorizontal,
+  Monitor,
+  Palette,
+  Plus,
   Search,
   Settings,
+  Shield,
   Sparkles,
   Square,
+  Sun,
   Trash2,
   User,
   Users,
   X,
+  type LucideIcon,
 } from 'lucide-react';
 import { OpsWorkspaceFactory } from '../../application/OpsWorkspaceFactory';
 import {
@@ -89,6 +95,7 @@ type BookingDraftFormState = {
 
 type CalendarWorkspaceSection = 'calendar' | 'list' | 'rooms' | 'analytics';
 type StayFilterId = 'all' | number;
+type CalendarSettingsSection = 'profile' | 'notifications' | 'appearance' | 'booking' | 'rooms' | 'security';
 
 const viewModes: OpsCalendarViewMode[] = ['month', 'week', 'list'];
 const viewLabels: Record<OpsCalendarViewMode, string> = {
@@ -116,6 +123,20 @@ const timeSlots = [
   '15:00 - 16:00',
   '16:00 - 17:00',
   '17:00 - 18:00',
+];
+
+const calendarSettingsSections: {
+  id: CalendarSettingsSection;
+  label: string;
+  desc: string;
+  icon: LucideIcon;
+}[] = [
+  { id: 'profile', label: 'Profile', desc: 'Operator identity', icon: User },
+  { id: 'notifications', label: 'Notifications', desc: 'Alerts and reminders', icon: Bell },
+  { id: 'appearance', label: 'Appearance', desc: 'Theme and density', icon: Palette },
+  { id: 'booking', label: 'Booking rules', desc: 'Defaults and limits', icon: Clock3 },
+  { id: 'rooms', label: 'Stays', desc: 'Calendar resources', icon: Building2 },
+  { id: 'security', label: 'Security', desc: 'Access and sessions', icon: Shield },
 ];
 
 function todayIso() {
@@ -313,6 +334,8 @@ export function OpsCalendarPage() {
   const [search, setSearch] = useState('');
   const [toolbarSearchOpen, setToolbarSearchOpen] = useState(false);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(() => params.get('panel') === 'settings');
   const [showWeekends, setShowWeekends] = useState(true);
   const [railExpanded, setRailExpanded] = useState(false);
   const [selectedRange, setSelectedRange] = useState<RangeState>(() => emptyRange(params.get('date') || todayIso()));
@@ -587,6 +610,19 @@ export function OpsCalendarPage() {
     window.setTimeout(() => setActionMessage(''), 2400);
   }
 
+  function openQuickBooking() {
+    const targetRow = selectedStay || visibleRows[0];
+    const targetDay = visibleDays.find((day) => day.date === focusDate)
+      || visibleDays.find((day) => day.isToday)
+      || visibleDays[0];
+    if (!targetRow || !targetDay) {
+      setActionMessage('Select a stay and date before creating a booking.');
+      window.setTimeout(() => setActionMessage(''), 2400);
+      return;
+    }
+    setSelectionModal({ rows: [targetRow], dates: [targetDay] });
+  }
+
   if (error) {
     return <section className="dashboard-error"><AlertCircle /> {error}</section>;
   }
@@ -615,8 +651,21 @@ export function OpsCalendarPage() {
         </nav>
 
         <div className="calendar-product-rail__bottom">
-          <a href="/ops/admin/"><Settings size={26} /><span>Settings</span></a>
-          <a href="/admin/"><User size={26} /><span>Admin</span></a>
+          <button
+            type="button"
+            className={settingsOpen ? 'is-active' : ''}
+            aria-label="Calendar settings"
+            aria-expanded={settingsOpen}
+            onClick={() => {
+              setSettingsOpen((current) => !current);
+              setNotificationsOpen(false);
+            }}
+          >
+            <Settings size={26} /><span>Settings</span>
+          </button>
+          <button type="button" className="calendar-product-new-booking" onClick={openQuickBooking}>
+            <Plus size={26} /><span>New Booking</span>
+          </button>
         </div>
       </aside>
 
@@ -667,8 +716,18 @@ export function OpsCalendarPage() {
                 <button type="button" aria-label="Search calendar" onClick={showToolbarSearch}><Search /></button>
               )}
             </div>
-            <button type="button" aria-label="Calendar notifications"><Bell /></button>
-            <a aria-label="Stay admin records" href={snapshot.adminRecordsUrl}><MoreHorizontal /></a>
+            <button
+              className={notificationsOpen ? 'is-active' : ''}
+              type="button"
+              aria-label="Calendar notifications"
+              aria-expanded={notificationsOpen}
+              onClick={() => {
+                setNotificationsOpen((current) => !current);
+                setSettingsOpen(false);
+              }}
+            >
+              <Bell />
+            </button>
           </div>
         </header>
 
@@ -831,12 +890,380 @@ export function OpsCalendarPage() {
         />
       )}
 
+      <CalendarNotificationsPanel
+        isOpen={notificationsOpen}
+        rows={rowsWithMeta}
+        events={filteredEvents}
+        onClose={() => setNotificationsOpen(false)}
+      />
+
+      <CalendarSettingsPanel
+        isOpen={settingsOpen}
+        rows={rowsWithMeta}
+        view={view}
+        showWeekends={showWeekends}
+        selectedFilterSummary={selectedFilterSummary}
+        onClose={() => setSettingsOpen(false)}
+        onShowWeekendsChange={setShowWeekends}
+      />
+
       {actionMessage && (
         <div className="ops-calendar-toast">
           <CheckCircle2 size={16} /> {actionMessage}
         </div>
       )}
     </main>
+  );
+}
+
+function CalendarNotificationsPanel({
+  isOpen,
+  rows,
+  events,
+  onClose,
+}: {
+  isOpen: boolean;
+  rows: StayRowWithMeta[];
+  events: OpsCalendarEvent[];
+  onClose: () => void;
+}) {
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const feedWarnings = rows
+    .filter(({ row }) => !row.stay.isConfigured)
+    .map(({ row, meta }) => ({
+      id: `feed-${row.stay.id}`,
+      type: 'alert' as const,
+      title: 'Airbnb feed needs setup',
+      body: `${meta.displayName} does not have an active iCal feed yet.`,
+      date: '',
+      color: meta.color,
+    }));
+  const eventNotifications = events
+    .filter((event) => event.type === 'reservation' || event.type === 'block')
+    .slice(0, 8)
+    .map((event) => {
+      const meta = rows.find(({ row }) => row.stay.id === event.itemId)?.meta;
+      return {
+        id: event.id,
+        type: event.type === 'reservation' ? 'booking' as const : 'alert' as const,
+        title: event.type === 'reservation' ? 'Reservation on calendar' : 'Blocked dates',
+        body: `${meta?.displayName || event.itemName}: ${eventLabel(event)}`,
+        date: event.rangeLabel,
+        color: meta?.color || '#6750a4',
+      };
+    });
+  const notifications = [...feedWarnings, ...eventNotifications].filter((item) => !dismissed.has(item.id));
+  const unread = notifications.length;
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="calendar-drawer-backdrop" role="presentation" onClick={onClose}>
+      <aside className="calendar-side-panel" role="dialog" aria-modal="true" aria-label="Calendar notifications" onClick={(event) => event.stopPropagation()}>
+        <header>
+          <div>
+            <span><Bell size={17} /> Notifications</span>
+            <h3>{unread} active alert{unread === 1 ? '' : 's'}</h3>
+          </div>
+          <button type="button" aria-label="Close notifications" onClick={onClose}><X size={18} /></button>
+        </header>
+        <div className="calendar-side-panel__body">
+          {notifications.length === 0 ? (
+            <article className="calendar-side-empty">
+              <CheckCircle2 size={28} />
+              <strong>All clear</strong>
+              <p>No active calendar notifications for the current view.</p>
+            </article>
+          ) : (
+            notifications.map((item) => (
+              <article className={`calendar-notification calendar-notification--${item.type}`} key={item.id} style={{ '--room-color': item.color } as CSSProperties}>
+                <i />
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>{item.body}</p>
+                  {item.date && <small>{item.date}</small>}
+                </div>
+                <button type="button" aria-label={`Dismiss ${item.title}`} onClick={() => setDismissed((current) => new Set([...current, item.id]))}>
+                  <X size={14} />
+                </button>
+              </article>
+            ))
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function CalendarSettingsPanel({
+  isOpen,
+  rows,
+  view,
+  showWeekends,
+  selectedFilterSummary,
+  onClose,
+  onShowWeekendsChange,
+}: {
+  isOpen: boolean;
+  rows: StayRowWithMeta[];
+  view: OpsCalendarViewMode;
+  showWeekends: boolean;
+  selectedFilterSummary: string;
+  onClose: () => void;
+  onShowWeekendsChange: (value: boolean) => void;
+}) {
+  const [activeSection, setActiveSection] = useState<CalendarSettingsSection>('profile');
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [pushNotifications, setPushNotifications] = useState(true);
+  const [bookingReminders, setBookingReminders] = useState(true);
+  const [dailyDigest, setDailyDigest] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+  const [compactView, setCompactView] = useState(false);
+  const [showCapacity, setShowCapacity] = useState(true);
+  const [showAmenities, setShowAmenities] = useState(true);
+  const [autoRelease, setAutoRelease] = useState(false);
+  const [twoFactor, setTwoFactor] = useState(false);
+
+  if (!isOpen) return null;
+  const configured = rows.filter(({ row }) => row.stay.isConfigured).length;
+  const active = calendarSettingsSections.find((section) => section.id === activeSection) || calendarSettingsSections[0];
+
+  return (
+    <div className="calendar-drawer-backdrop" role="presentation" onClick={onClose}>
+      <aside className="calendar-settings-panel" role="dialog" aria-modal="true" aria-label="Calendar settings" onClick={(event) => event.stopPropagation()}>
+        <header className="calendar-settings-panel__header">
+          <div>
+            <span><Settings size={17} /> Calendar settings</span>
+            <h3>Room booking controls</h3>
+          </div>
+          <button type="button" aria-label="Close settings" onClick={onClose}><X size={18} /></button>
+        </header>
+
+        <div className="calendar-settings-panel__layout">
+          <nav className="calendar-settings-panel__sections" aria-label="Calendar settings sections">
+            {calendarSettingsSections.map((section) => {
+              const Icon = section.icon;
+              return (
+                <button
+                  className={activeSection === section.id ? 'is-active' : ''}
+                  key={section.id}
+                  type="button"
+                  onClick={() => setActiveSection(section.id)}
+                >
+                  <Icon size={17} />
+                  <span>{section.label}</span>
+                  <small>{section.desc}</small>
+                </button>
+              );
+            })}
+          </nav>
+
+          <section className="calendar-settings-panel__content">
+            <h4>{active.label}</h4>
+
+            {activeSection === 'profile' && (
+              <div className="calendar-settings-stack">
+                <div className="calendar-settings-profile">
+                  <span>JD</span>
+                  <div>
+                    <strong>MLADIS calendar admin</strong>
+                    <p>Staff workspace for availability, holds, stay sync, and reservation review.</p>
+                  </div>
+                </div>
+                <label className="calendar-settings-field">
+                  <span>Display name</span>
+                  <input defaultValue="MLADIS Operations" />
+                </label>
+                <label className="calendar-settings-field">
+                  <span>Calendar email</span>
+                  <input defaultValue="agent-admin@mladis.com" type="email" />
+                </label>
+                <label className="calendar-settings-field">
+                  <span>Role</span>
+                  <select defaultValue="admin">
+                    <option value="admin">Admin</option>
+                    <option value="manager">Manager</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
+                </label>
+              </div>
+            )}
+
+            {activeSection === 'notifications' && (
+              <div className="calendar-settings-stack">
+                <CalendarSettingRow label="Email notifications" desc="Reservation holds, feed failures, and admin reminders.">
+                  <CalendarSettingsToggle value={emailNotifications} onChange={setEmailNotifications} />
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Push notifications" desc="In-app alerts for new booking activity.">
+                  <CalendarSettingsToggle value={pushNotifications} onChange={setPushNotifications} />
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Booking reminders" desc="Remind admins before check-in and checkout windows.">
+                  <CalendarSettingsToggle value={bookingReminders} onChange={setBookingReminders} />
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Daily digest" desc="Morning summary of stays, holds, and feed issues.">
+                  <CalendarSettingsToggle value={dailyDigest} onChange={setDailyDigest} />
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Reminder lead time" desc="How early a stay reminder should appear.">
+                  <select className="calendar-settings-select" defaultValue="24">
+                    <option value="2">2 hours</option>
+                    <option value="12">12 hours</option>
+                    <option value="24">24 hours</option>
+                    <option value="48">48 hours</option>
+                  </select>
+                </CalendarSettingRow>
+              </div>
+            )}
+
+            {activeSection === 'appearance' && (
+              <div className="calendar-settings-stack">
+                <div className="calendar-settings-theme-grid" aria-label="Calendar theme">
+                  {[
+                    { id: 'light', label: 'Light', icon: Sun },
+                    { id: 'dark', label: 'Dark', icon: Moon },
+                    { id: 'system', label: 'System', icon: Monitor },
+                  ].map((option) => {
+                    const Icon = option.icon;
+                    return (
+                      <button
+                        className={theme === option.id ? 'is-active' : ''}
+                        key={option.id}
+                        type="button"
+                        onClick={() => setTheme(option.id as 'light' | 'dark' | 'system')}
+                      >
+                        <Icon size={18} />
+                        <span>{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <CalendarSettingRow label="Compact view" desc="Reduce row height to fit more stay rows.">
+                  <CalendarSettingsToggle value={compactView} onChange={setCompactView} />
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Show weekends" desc="Include Saturday and Sunday in the grid.">
+                  <CalendarSettingsToggle value={showWeekends} onChange={onShowWeekendsChange} />
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Current view" desc={`${viewLabels[view]} view. ${selectedFilterSummary}.`}>
+                  <span className="calendar-settings-pill">{viewLabels[view]}</span>
+                </CalendarSettingRow>
+              </div>
+            )}
+
+            {activeSection === 'booking' && (
+              <div className="calendar-settings-stack">
+                <CalendarSettingRow label="Default check-in" desc="Used when quick booking creates a hold.">
+                  <select className="calendar-settings-select" defaultValue="15:00">
+                    <option value="14:00">2:00 PM</option>
+                    <option value="15:00">3:00 PM</option>
+                    <option value="16:00">4:00 PM</option>
+                  </select>
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Default checkout" desc="Used when quick booking creates a hold.">
+                  <select className="calendar-settings-select" defaultValue="12:00">
+                    <option value="11:00">11:00 AM</option>
+                    <option value="12:00">12:00 PM</option>
+                    <option value="13:00">1:00 PM</option>
+                  </select>
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Buffer between stays" desc="Optional cleanup/readiness gap.">
+                  <select className="calendar-settings-select" defaultValue="0">
+                    <option value="0">None</option>
+                    <option value="1">1 day</option>
+                    <option value="2">2 days</option>
+                  </select>
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Auto-release tentative holds" desc="Release unpaid direct holds after review window.">
+                  <CalendarSettingsToggle value={autoRelease} onChange={setAutoRelease} />
+                </CalendarSettingRow>
+              </div>
+            )}
+
+            {activeSection === 'rooms' && (
+              <div className="calendar-settings-stack">
+                <CalendarSettingRow label="Show capacity labels" desc="Display bed/capacity labels in stay rows.">
+                  <CalendarSettingsToggle value={showCapacity} onChange={setShowCapacity} />
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Show amenities" desc="Show room/stay amenities in details panels.">
+                  <CalendarSettingsToggle value={showAmenities} onChange={setShowAmenities} />
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Airbnb iCal feeds" desc={`${configured}/${rows.length} connected. Sync import is the next backend step.`}>
+                  <a className="calendar-settings-link" href="/admin/bookings/calendarfeed/">Feeds</a>
+                </CalendarSettingRow>
+                <div className="calendar-settings-room-list">
+                  {rows.map(({ row, meta }) => (
+                    <article key={row.stay.id} style={{ '--room-color': meta.color, '--room-bg': meta.bgColor } as CSSProperties}>
+                      <i />
+                      <div>
+                        <strong>{meta.displayName}</strong>
+                        <span>{row.stay.isConfigured ? 'Feed configured' : 'Feed missing'} · {meta.capacityLabel}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'security' && (
+              <div className="calendar-settings-stack">
+                <CalendarSettingRow label="Staff-only calendar" desc="Only authenticated staff can open the calendar API.">
+                  <span className="calendar-settings-pill">Active</span>
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Two-factor authentication" desc="Require 2FA for calendar operators.">
+                  <CalendarSettingsToggle value={twoFactor} onChange={setTwoFactor} />
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Session timeout" desc="Auto logout after inactivity.">
+                  <select className="calendar-settings-select" defaultValue="60">
+                    <option value="30">30 minutes</option>
+                    <option value="60">1 hour</option>
+                    <option value="240">4 hours</option>
+                  </select>
+                </CalendarSettingRow>
+                <CalendarSettingRow label="Audit trail" desc="Calendar blocks, holds, and price changes remain logged.">
+                  <a className="calendar-settings-link" href="/admin/bookings/bookinginquiry/">Audit</a>
+                </CalendarSettingRow>
+              </div>
+            )}
+          </section>
+        </div>
+
+        <footer className="calendar-settings-panel__footer">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="button" onClick={onClose}>Save changes</button>
+        </footer>
+      </aside>
+    </div>
+  );
+}
+
+function CalendarSettingsToggle({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button
+      className={`calendar-settings-toggle-switch ${value ? 'is-active' : ''}`}
+      type="button"
+      aria-pressed={value}
+      onClick={() => onChange(!value)}
+    >
+      <span />
+    </button>
+  );
+}
+
+function CalendarSettingRow({
+  label,
+  desc,
+  children,
+}: {
+  label: string;
+  desc?: string;
+  children: ReactNode;
+}) {
+  return (
+    <article className="calendar-settings-row">
+      <div>
+        <strong>{label}</strong>
+        {desc && <p>{desc}</p>}
+      </div>
+      <div>{children}</div>
+    </article>
   );
 }
 

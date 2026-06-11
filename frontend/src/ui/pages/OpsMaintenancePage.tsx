@@ -14,6 +14,7 @@ import {
 import { OpsWorkspaceFactory } from '../../application/OpsWorkspaceFactory';
 import { OpsMaintenanceEvent, OpsMaintenanceSnapshot } from '../../domain/models';
 import { OpsListModal } from '../components/OpsListModal';
+import { OpsRecordSection } from '../components/OpsRecordSection';
 import { formatStayName } from '../helpers/stayNames';
 
 function nowForInput() {
@@ -64,6 +65,7 @@ export function OpsMaintenancePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [payload, setPayload] = useState<Record<string, unknown> | null>(null);
   const [isPayloadOpen, setIsPayloadOpen] = useState(false);
+  const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
   const [describingId, setDescribingId] = useState('');
   const [isDraftDescribing, setIsDraftDescribing] = useState(false);
   const [descriptionModes, setDescriptionModes] = useState<Record<string, 'manual' | 'ai'>>({});
@@ -272,7 +274,7 @@ export function OpsMaintenancePage() {
               </div>
             )}
           </div>
-          <p>{activeDescription || 'No description captured yet.'}</p>
+          <p className="ops-maintenance-note-preview">{activeDescription || 'No description captured yet.'}</p>
           {descriptionMode === 'ai' && row.aiDescriptionGeneratedAt && (
             <small>Generated with {row.aiDescriptionModel || 'maintenance vision'}.</small>
           )}
@@ -329,16 +331,6 @@ export function OpsMaintenancePage() {
           <a href={snapshot.adminUrl}>Maintenance admin</a>
           <a href={snapshot.addAdminUrl}>Add in admin</a>
         </div>
-      </section>
-
-      <section className="ops-metric-grid ops-maintenance-metrics">
-        {snapshot.summaryCards.map((card) => (
-          <article key={card.label}>
-            <span>{card.label}</span>
-            <strong>{card.value}</strong>
-            <p>{card.caption}</p>
-          </article>
-        ))}
       </section>
 
       <section className="ops-maintenance-layout">
@@ -421,21 +413,24 @@ export function OpsMaintenancePage() {
             </label>
           </div>
 
-          <label className="ops-maintenance-textarea">
-            <span className="ops-maintenance-field-header">
+          <section className="ops-maintenance-description-row" aria-label="Maintenance description">
+            <div>
               <span>Description</span>
-              <button
-                type="button"
-                onClick={generateDraftAiDescription}
-                disabled={isDraftDescribing || photoFiles.length === 0}
-                title={photoFiles.length === 0 ? 'Add pictures first.' : 'Read selected pictures and fill the description.'}
-              >
-                <Sparkles size={14} />
-                {isDraftDescribing ? 'Reading photos...' : 'Auto-generate description'}
-              </button>
-            </span>
-            <textarea name="description" value={formValues.description} onChange={updateForm} placeholder="What was done, why, and anything the agent should know." />
-          </label>
+              <p>{formValues.description || 'No work description entered yet.'}</p>
+            </div>
+            <button type="button" onClick={() => setIsDescriptionOpen(true)}>
+              Enter description
+            </button>
+            <button
+              type="button"
+              onClick={generateDraftAiDescription}
+              disabled={isDraftDescribing || photoFiles.length === 0}
+              title={photoFiles.length === 0 ? 'Add pictures first.' : 'Read selected pictures and fill the description.'}
+            >
+              <Sparkles size={14} />
+              {isDraftDescribing ? 'Reading photos...' : 'Auto-generate'}
+            </button>
+          </section>
 
           <label className="ops-maintenance-upload">
             <ImagePlus size={18} />
@@ -455,46 +450,55 @@ export function OpsMaintenancePage() {
           )}
         </form>
 
-        <section className="ops-table-card ops-maintenance-records">
-          <div className="ops-card-heading">
-            <div>
-              <span>Evidence ledger</span>
-              <h3>{filteredRows.length} records shown</h3>
-              <p>{snapshot.rows.length} maintenance objects available.</p>
-            </div>
-            <strong>{message || 'Photos + cost + time'}</strong>
-          </div>
-
-          {error && <div className="ops-res-alert"><AlertCircle size={16} /> {error}</div>}
-
-          <section className="ops-toolbar ops-maintenance-toolbar">
-            <label>
-              <Search size={17} />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search work, vendor, stay, notes..." />
-            </label>
-            <select value={workType} onChange={(event) => setWorkType(event.target.value)} aria-label="Work type">
-              {snapshot.workTypeOptions.map((option) => <option value={option.value} key={option.value || 'all'}>{option.label} ({option.count})</option>)}
-            </select>
-            <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Maintenance status">
-              {snapshot.statusOptions.map((option) => <option value={option.value} key={option.value || 'all'}>{option.label} ({option.count})</option>)}
-            </select>
-            <select value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)} aria-label="Payment status">
-              {snapshot.paymentStatusOptions.map((option) => <option value={option.value} key={option.value || 'all'}>{option.label} ({option.count})</option>)}
-            </select>
+        <div className="ops-maintenance-ledger-column">
+          <section className="ops-metric-grid ops-maintenance-metrics">
+            {snapshot.summaryCards.map((card) => (
+              <article key={card.label}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+                <p>{card.caption}</p>
+              </article>
+            ))}
           </section>
 
-          {filteredRows.length === 0 && (
-            <article className="ops-empty-state">
-              <CheckCircle2 size={28} />
-              <h3>No maintenance records match this view.</h3>
-              <p>Add the first record with cost, time, and pictures.</p>
-            </article>
-          )}
-
-          <div className="ops-list-scroll">
-            {filteredRows.map(renderMaintenanceRow)}
-          </div>
-        </section>
+          <OpsRecordSection
+            rows={filteredRows}
+            renderRow={renderMaintenanceRow}
+            eyebrow="Evidence ledger"
+            title={`${filteredRows.length} records shown`}
+            subtitle={`${snapshot.rows.length} maintenance objects available.`}
+            modalTitle={`${filteredRows.length} maintenance records shown`}
+            modalSubtitle="Scroll maintenance work, cost, time, photos, and agent-ready documentation."
+            actionLabel="Open ledger"
+            aside={<strong>{message || 'Photos + cost + time'}</strong>}
+            className="ops-table-card ops-maintenance-records"
+            notice={error ? <div className="ops-res-alert"><AlertCircle size={16} /> {error}</div> : null}
+            toolbar={(
+              <section className="ops-toolbar ops-maintenance-toolbar">
+                <label>
+                  <Search size={17} />
+                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search work, vendor, stay, notes..." />
+                </label>
+                <select value={workType} onChange={(event) => setWorkType(event.target.value)} aria-label="Work type">
+                  {snapshot.workTypeOptions.map((option) => <option value={option.value} key={option.value || 'all'}>{option.label} ({option.count})</option>)}
+                </select>
+                <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Maintenance status">
+                  {snapshot.statusOptions.map((option) => <option value={option.value} key={option.value || 'all'}>{option.label} ({option.count})</option>)}
+                </select>
+                <select value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)} aria-label="Payment status">
+                  {snapshot.paymentStatusOptions.map((option) => <option value={option.value} key={option.value || 'all'}>{option.label} ({option.count})</option>)}
+                </select>
+              </section>
+            )}
+            emptyState={(
+              <article className="ops-empty-state">
+                <CheckCircle2 size={28} />
+                <h3>No maintenance records match this view.</h3>
+                <p>Add the first record with cost, time, and pictures.</p>
+              </article>
+            )}
+          />
+        </div>
       </section>
 
       <OpsListModal
@@ -504,6 +508,23 @@ export function OpsMaintenancePage() {
         onClose={() => setIsPayloadOpen(false)}
       >
         <pre className="ops-json-payload">{payload ? JSON.stringify(payload, null, 2) : ''}</pre>
+      </OpsListModal>
+
+      <OpsListModal
+        isOpen={isDescriptionOpen}
+        title="Work description"
+        subtitle="Write the human-reviewed maintenance note. The agent can draft it from pictures, but the saved text stays under admin control."
+        onClose={() => setIsDescriptionOpen(false)}
+      >
+        <label className="ops-maintenance-description-modal">
+          <span>Description</span>
+          <textarea
+            name="description"
+            value={formValues.description}
+            onChange={updateForm}
+            placeholder="What was done, why, and anything the agent should know."
+          />
+        </label>
       </OpsListModal>
     </main>
   );

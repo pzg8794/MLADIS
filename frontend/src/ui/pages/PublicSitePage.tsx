@@ -570,8 +570,12 @@ function AgentBookingSection({
   const overGuestLimit = Boolean(guestLimit && guestsNumber > guestLimit);
 
   useEffect(() => {
-    setDraft((currentDraft) => currentDraft.withField('item', stay?.id ? String(stay.id) : currentDraft.item));
-  }, [stay?.id]);
+    setDraft((currentDraft) => {
+      const itemValue = stay?.id ? String(stay.id) : currentDraft.item;
+      const nextStay = snapshot.stays.find((availableStay) => String(availableStay.id) === itemValue) ?? null;
+      return currentDraft.withField('item', itemValue).withStayPricing(nextStay?.pricing ?? null);
+    });
+  }, [snapshot.stays, stay?.id]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -610,7 +614,12 @@ function AgentBookingSection({
   }, []);
 
   function updateDraft(field: ReservationRequestField, value: string) {
-    setDraft((currentDraft) => currentDraft.withField(field, value));
+    setDraft((currentDraft) => {
+      const nextDraft = currentDraft.withField(field, value);
+      if (field !== 'item') return nextDraft;
+      const nextStay = snapshot.stays.find((availableStay) => String(availableStay.id) === value) ?? null;
+      return nextDraft.withStayPricing(nextStay?.pricing ?? null);
+    });
   }
 
   function autofillAccount() {
@@ -696,40 +705,41 @@ function AgentBookingSection({
             </select>
           </label>
           <div className="public-form-row">
-            <label>Name<input name="guest_name" value={draft.guestName} onChange={(event) => updateDraft('guest_name', event.target.value)} required /></label>
+            <label><span className="public-label-text">Name <span className="public-required" aria-label={t.required}>*</span></span><input name="guest_name" value={draft.guestName} onChange={(event) => updateDraft('guest_name', event.target.value)} required /></label>
             <label>Phone <span className="public-optional">optional now</span><input name="phone" value={draft.phone} onChange={(event) => updateDraft('phone', event.target.value)} autoComplete="tel" /></label>
           </div>
-          <label>Email <span className="public-required" aria-label={t.required}>*</span><input type="email" name="email" value={draft.email} onChange={(event) => updateDraft('email', event.target.value)} autoComplete="email" required /></label>
+          <label><span className="public-label-text">Email <span className="public-required" aria-label={t.required}>*</span></span><input type="email" name="email" value={draft.email} onChange={(event) => updateDraft('email', event.target.value)} autoComplete="email" required /></label>
           <div className="public-form-row">
-            <label>Check in<input type="date" name="check_in" value={draft.checkIn} onChange={(event) => updateDraft('check_in', event.target.value)} required /></label>
-            <label>Check out<input type="date" name="check_out" value={draft.checkOut} onChange={(event) => updateDraft('check_out', event.target.value)} required /></label>
+            <label><span className="public-label-text">Check in <span className="public-required" aria-label={t.required}>*</span></span><input type="date" name="check_in" value={draft.checkIn} onChange={(event) => updateDraft('check_in', event.target.value)} required /></label>
+            <label><span className="public-label-text">Check out <span className="public-required" aria-label={t.required}>*</span></span><input type="date" name="check_out" value={draft.checkOut} onChange={(event) => updateDraft('check_out', event.target.value)} required /></label>
           </div>
           <div className="public-form-row">
-            <label><Users size={15} /> Guests<input type="number" name="guests" min="1" max={guestLimit ?? undefined} value={draft.guests} onChange={(event) => updateDraft('guests', event.target.value)} required /></label>
+            <label><span className="public-label-text"><Users size={15} /> Guests <span className="public-required" aria-label={t.required}>*</span></span><input type="number" name="guests" min="1" max={guestLimit ?? undefined} value={draft.guests} onChange={(event) => updateDraft('guests', event.target.value)} required /></label>
             <label>Coupon<input name="coupon_code" value={draft.couponCode} onChange={(event) => updateDraft('coupon_code', event.target.value)} /></label>
           </div>
           <div className="public-price-preview" aria-live="polite">
-            <div>
+            <div className="public-price-preview__box public-price-preview__box--quote">
               <span>{t.pricePreview}</span>
               <strong>{quote ? quote.displaySubtotal : 'Choose a stay for an exact quote'}</strong>
               <small>{quote ? `${quote.displayNightly}/night · ${quote.nights} night${quote.nights === 1 ? '' : 's'}` : 'G-101/G-102 pricing appears here before you send.'}</small>
             </div>
-            <div>
+            <div className="public-price-preview__box public-price-preview__box--payment">
               <span>{t.stayPayment}</span>
               <strong>{quote ? quote.displaySubtotal : '$0.00 USD'}</strong>
-              <small>{selectedStay?.pricing.label ?? 'Select a stay and guest count.'}</small>
+              <small>Held now, charged 24 hours before check-in.</small>
             </div>
-            <div>
+            <div className="public-price-preview__box public-price-preview__box--deposit">
               <span>Damage deposit</span>
               <strong>{snapshot.depositAmount}</strong>
-              <small>Refundable authorization hold.</small>
+              <small>Refundable hold.</small>
             </div>
           </div>
-          {quote && quote.extraGuestCount > 0 && (
-            <p className="public-price-note">
-              {quote.extraGuestCount} added guest{quote.extraGuestCount === 1 ? '' : 's'} included at {selectedStay?.pricing.displayExtraGuestPrice}/night each.
-            </p>
-          )}
+          <p className="public-price-note">
+            <strong>{selectedStay?.pricing.extraGuestRuleLabel() ?? '$10/night per added guest, max 7 guests.'}</strong>
+            {quote && quote.extraGuestCount > 0 && (
+              <span>{quote.extraGuestCount} added guest{quote.extraGuestCount === 1 ? '' : 's'} included at {selectedStay?.pricing.displayExtraGuestPrice}/night each.</span>
+            )}
+          </p>
           {overGuestLimit && (
             <p className="public-deposit-modal__error" role="alert">This stay allows up to {guestLimit} guests.</p>
           )}

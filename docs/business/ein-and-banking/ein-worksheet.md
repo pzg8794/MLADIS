@@ -1,6 +1,6 @@
 # EIN Worksheet For MLADIS LLC
 
-Use this worksheet before starting the official IRS EIN Assistant. The IRS tool must be completed in one session and should be handled on `irs.gov`.
+Historical worksheet used before starting the official IRS EIN Assistant. The EIN step is complete; keep this file as a non-sensitive audit record and use the private CP 575 letter for official EIN entry.
 
 Status update: MLADIS LLC's EIN was issued on 2026-06-03. The EIN value and IRS CP 575 confirmation letter must stay in private records and out of Git.
 
@@ -24,17 +24,17 @@ Status update: MLADIS LLC's EIN was issued on 2026-06-03. The EIN value and IRS 
 | Business activity | Lodging, vacation rental, booking operations, and software/AI-enabled business services |
 | Primary business description | Direct-booking and hospitality operations for vacation rentals, supported by MLADIS software and AI agent systems |
 
-## Before Opening IRS EIN Assistant
+## Before Opening IRS EIN Assistant - Completed
 
-- [ ] Confirm whether the LLC will hire employees in the next 12 months.
-- [ ] Confirm principal address and mailing address.
-- [ ] Have responsible party SSN/ITIN ready.
-- [ ] Have the saved formation confirmation and filing acknowledgement/receipt nearby.
-- [ ] Be ready to print/save the EIN confirmation letter immediately.
+- [x] Confirm whether the LLC will hire employees in the next 12 months.
+- [x] Confirm principal address and mailing address.
+- [x] Have responsible party SSN/ITIN ready for direct entry on IRS.gov only.
+- [x] Have the saved formation confirmation and filing acknowledgement/receipt nearby.
+- [x] Be ready to print/save the EIN confirmation letter immediately.
 
 ## After EIN Is Issued
 
 - [x] Save IRS EIN confirmation letter in private records outside public app assets.
-- [ ] Record EIN in a secure password manager or private business vault, not in Git.
+- [x] Record EIN in a secure private business vault, not in Git.
 - [ ] Update bank, Stripe/PayPal, payment processors, tax systems, and business email provider as needed.
 - [x] Update this repo only with non-sensitive status, for example: `EIN issued and stored in private vault`.

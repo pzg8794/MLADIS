@@ -1,6 +1,6 @@
 # ADR 0002: Operations Workboard and Gentelella Admin Shell
 
-Status: Proposed for MVP implementation  
+Status: Accepted / MVP implemented locally
 Scope: MLADIS internal management system, Operations neuron, Gentelella UI shell  
 Related document: `docs/architecture/0001-mladis-universe-neuron-model.md`
 
@@ -317,85 +317,81 @@ The MVP should seed or manually create these initial work items:
 
 - [x] Add ADR 0001 for MLADIS Universe neuron model.
 - [x] Add ADR 0002 for Operations Workboard and Gentelella plan.
-- [ ] Add README link to both ADRs.
-- [ ] Add a short implementation note under `docs/implementation/operations-workboard-mvp.md` if more technical detail is needed.
+- [x] Add README link to both ADRs.
+- [x] Keep this ADR aligned with the implemented MVP.
 
 ### Phase 2: Django app foundation
 
-- [ ] Create `operations/` Django app.
-- [ ] Add `operations` to `INSTALLED_APPS`.
-- [ ] Create `operations/models.py` with `WorkItem`.
-- [ ] Create `operations/admin.py` for admin management.
-- [ ] Create and run migrations.
-- [ ] Add tests for model defaults and status choices.
+- [x] Create `operations/` Django app.
+- [x] Add `operations` to `INSTALLED_APPS`.
+- [x] Create `operations/models.py` with `OperationsWorkItem`.
+- [x] Create `operations/admin.py` for admin management.
+- [x] Create migrations and seed starter work items.
+- [x] Add access and completion tests for the owner-only workboard.
 
 ### Phase 3: OOP service/repository layer
 
-- [ ] Create `operations/repositories.py`.
-- [ ] Create `WorkItemRepository`.
-- [ ] Add repository method: `list_active()`.
-- [ ] Add repository method: `group_by_status()`.
-- [ ] Add repository method: `list_blocked()`.
-- [ ] Add repository method: `list_recently_updated()`.
-- [ ] Create `operations/services.py`.
-- [ ] Create `WorkboardService`.
-- [ ] Add service method: `get_board_context()`.
-- [ ] Add service method: `move_item()`.
-- [ ] Add service method: `complete_item()`.
-- [ ] Add service method: `get_today_focus()`.
+- [x] Create `operations/repositories.py`.
+- [x] Create `WorkItemRepository`.
+- [x] Add repository method: `active_items()`.
+- [x] Add repository method: `groups_by_list()`.
+- [x] Add repository method: `focus_items()`.
+- [x] Create `operations/services.py`.
+- [x] Create `WorkboardService`.
+- [x] Add service method: `snapshot_for()`.
+- [x] Add service method: `set_completion()`.
+- [x] Add access policy method: `require_owner()`.
 
 ### Phase 4: Views and URLs
 
-- [ ] Create `operations/views.py`.
-- [ ] Create `WorkboardView`.
-- [ ] Create `operations/urls.py`.
-- [ ] Register route: `/ops/workboard/`.
-- [ ] Add authentication/staff protection.
-- [ ] Add graceful empty state when no work items exist.
+- [x] Create `operations/views.py`.
+- [x] Create `ModernOperationsWorkboardView`.
+- [x] Create `operations/urls.py`.
+- [x] Register route: `/ops/workboard/`.
+- [x] Add owner-only protection for the page and APIs.
+- [x] Add graceful empty state when no work items exist.
 
 ### Phase 5: Gentelella UI shell
 
-- [ ] Review Gentelella license and preserve attribution/notice.
-- [ ] Add Gentelella source/reference in a controlled location if needed.
-- [ ] Add compiled/customized assets under static assets.
-- [ ] Create base shell template: `templates/layouts/ops_shell.html`.
-- [ ] Create Workboard template: `operations/templates/operations/workboard.html`.
-- [ ] Keep Gentelella as View-only.
-- [ ] Do not put domain rules in JavaScript or templates.
+- [x] Keep Gentelella as visual reference only.
+- [x] Use the existing modern operations shell for `/ops/workboard/`.
+- [x] Keep Gentelella as View-only.
+- [x] Do not put domain rules in JavaScript or templates.
+- [ ] Preserve any direct Gentelella source/license notice if vendor assets are copied later.
 
 ### Phase 6: Workboard UX
 
-- [ ] Add Today's Focus panel.
-- [ ] Add Kanban columns.
-- [ ] Add status cards.
-- [ ] Add neuron chips.
-- [ ] Add priority chips.
-- [ ] Add next-action text.
-- [ ] Add GitHub/Drive/source links.
-- [ ] Add mobile-friendly layout.
-- [ ] Add simple search/filter if time allows.
+- [x] Add Focus panel.
+- [x] Add grouped task lists.
+- [x] Add summary cards.
+- [x] Add neuron chips.
+- [x] Add priority chips.
+- [x] Add next-action text.
+- [x] Add GitHub/Drive/source links.
+- [x] Add mobile-friendly layout.
+- [ ] Add search/filter after the MVP has real usage.
 
 ### Phase 7: Seed data
 
-- [ ] Add management command or fixture for starter work items.
-- [ ] Seed ADR/documentation tasks.
-- [ ] Seed Booking re-architecture task.
-- [ ] Seed Finance foundation task.
-- [ ] Seed Pyramid foundation task.
-- [ ] Seed FairAgent foundation task.
-- [ ] Seed maintenance alignment task.
+- [x] Add migration seed for starter work items.
+- [x] Seed ADR/documentation tasks.
+- [x] Seed business-publication task.
+- [x] Seed bank/data-room tasks.
+- [x] Seed maintenance alignment task.
+- [x] Seed research-neuron migration task.
+- [ ] Seed Finance/Pyramid/FairAgent foundation tasks as separate cards when those scopes are ready.
 
 ### Phase 8: Validation
 
-- [ ] Run `python manage.py check`.
-- [ ] Run `python manage.py makemigrations --check --dry-run`.
-- [ ] Run migrations locally.
-- [ ] Run tests.
-- [ ] Verify `/ops/workboard/` loads locally.
-- [ ] Verify staff-only access.
-- [ ] Verify admin CRUD works.
-- [ ] Verify board groups cards by status.
-- [ ] Verify mobile layout is readable.
+- [x] Run `python manage.py check`.
+- [x] Run `python manage.py makemigrations --check --dry-run`.
+- [x] Run migrations locally.
+- [x] Run targeted tests for Operations and data-lake object state.
+- [x] Verify local health via `http://127.0.0.1:8000/healthz`.
+- [x] Verify stable tunnel health via `https://local.mladis.com/healthz`.
+- [x] Verify owner-only access through automated tests.
+- [x] Verify board groups cards by list/status in service payload.
+- [ ] Verify mobile layout manually in browser after the next visual QA pass.
 
 ### Phase 9: PR and review
 

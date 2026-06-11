@@ -1,78 +1,97 @@
-# MLADIS Data Store
+# MLADIS Object Lake
 
-Production-ready data lake contract for MLADIS operational data.
+Simple Drive-backed JSON object store for MLADIS operational data.
 
 Target Drive folder:
-[MLADIS Drive Data Store](https://drive.google.com/drive/folders/1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn)
+[MLADIS Drive Object Lake](https://drive.google.com/drive/folders/1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn)
 
 ## Purpose
 
-The Django database remains the transactional source of truth. The Drive-backed data store is the durable JSON/JSONL lake for:
+The Django database remains the transactional source of truth. The Drive-backed object lake stores readable JSON/JSONL records for:
 
-- registered accounts and customer profiles,
-- booking requests and reservation lifecycle records,
-- request/inquiry messages,
-- chatbot conversations and FAQ training signals,
-- deposits, donations, invoices, promotions, and feedback,
-- calendar availability and pricing records,
-- analytics-ready snapshots for future reporting and agent learning.
+- accounts and customer profiles,
+- bookings and reservations,
+- request/inquiry records,
+- agent conversations and FAQ training data,
+- transactions, deposits, invoices, coupons, and promotions,
+- stays, availability, pricing, and content,
+- maintenance and cleaning evidence,
+- app events for analytics and audits.
 
-## Core Rules
+## Folder Contract
 
-- Keep customer data out of Git. Commit only schemas, contracts, docs, and code.
-- Use JSONL for record collections because it is append-friendly, searchable by keys, and easy to load into future data tools.
-- Use JSON for manifests, schemas, catalogs, and operational metadata.
-- Store raw/private exports only in the protected Drive folder or a secure production storage provider.
-- Do not place SSNs, EIN letters, bank records, passwords, identity documents, reusable signatures, payment cards, or OAuth secrets in this lake.
-- Prefer redacted exports for analytics and agent-training experiments unless private contact fields are needed.
+Runtime data is organized by business object type:
 
-## Operator Commands
+```text
+BOOKINGS/
+CUSTOMERS/
+BOOKINGAGENTS/
+TRANSACTIONS/
+STAYS/
+MAINTENANCE/
+WEBSITE/
+ADMIN/
+EVENTS/
+EXPORTS/
+CATALOG.json
+README.md
+```
 
-Create the local schema/catalog skeleton only:
+Do not add `year/month/day` partitions for live object state. The point of this object lake is that humans and agents can open the folder and understand the business data immediately.
+
+## Live Object Writes
+
+When `MLADIS_DATASTORE_ROOT` is configured, relevant model saves/deletes write:
+
+```text
+<FOLDER>/<model>-<id>.json
+<FOLDER>/_history.jsonl
+```
+
+Example:
+
+```text
+BOOKINGS/bookinginquiry-15.json
+CUSTOMERS/customerprofile-47.json
+BOOKINGAGENTS/agentconversation-1.json
+TRANSACTIONS/damagedeposit-13.json
+```
+
+## Snapshot Exports
+
+Run this locally to refresh current JSONL snapshots in the same simple folders:
 
 ```bash
 cd airbnb_agent
-python manage.py export_data_lake --schema-only --include-placeholders
+python manage.py export_data_lake
 ```
 
-Create or refresh the schema/catalog skeleton directly in the configured Drive folder:
-
-```bash
-cd airbnb_agent
-python manage.py export_data_lake --schema-only --include-placeholders --sync-drive
-```
-
-Export all collections with direct private fields and write the current run to Drive:
+Run this only when you intentionally want to mirror the current local object lake to Drive:
 
 ```bash
 cd airbnb_agent
 python manage.py export_data_lake --sync-drive
 ```
 
-Export analytics-safe redacted records and write the current run to Drive:
+## Env Vars
 
-```bash
-cd airbnb_agent
-python manage.py export_data_lake --redacted --sync-drive
-```
-
-Export one collection and write it to Drive:
-
-```bash
-cd airbnb_agent
-python manage.py export_data_lake --collection agent_conversations --redacted --sync-drive
-```
-
-The Drive writer uses:
-
+- `MLADIS_DATASTORE_ROOT`
 - `MLADIS_DATASTORE_DRIVE_FOLDER_ID`
 - `MLADIS_DATASTORE_DRIVE_REMOTE`
-- `MLADIS_DATASTORE_DRIVE_PACER_MIN_SLEEP`
-- `MLADIS_DATASTORE_DRIVE_TPS_LIMIT`
+- `MLADIS_DATASTORE_DRIVE_COPY_TIMEOUT_SECONDS`
+- `MLADIS_DATASTORE_LIVE_SYNC_DRIVE`
+- `MLADIS_DATASTORE_LIVE_SYNC_ASYNC`
 
-The command writes only the current export run, schemas, catalog, manifest, and root README to Drive. It does not blindly upload older local JSONL runs.
+## Rules
+
+- Keep customer/runtime JSON out of Git.
+- Git stores code, tests, and contracts only.
+- Drive stores private runtime JSON/JSONL.
+- Use one current JSON file per object.
+- Use `_history.jsonl` only for append-only change history.
+- Do not store SSNs, EIN letters, raw signatures, bank records, passwords, OAuth secrets, identity documents, or payment cards.
 
 ## Documents
 
-- [Drive data lake contract](drive-data-lake-contract.md)
+- [Drive object lake contract](drive-data-lake-contract.md)
 - [Collection registry](collections.json)

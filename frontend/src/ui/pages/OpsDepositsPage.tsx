@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ChevronRight, CreditCard, ExternalLink, ReceiptText, Search, ShieldCheck } from 'lucide-react';
 import { OpsWorkspaceFactory } from '../../application/OpsWorkspaceFactory';
 import { OpsDepositRow, OpsDepositsSnapshot } from '../../domain/models';
-import { OpsListModal } from '../components/OpsListModal';
+import { OpsRecordSection } from '../components/OpsRecordSection';
 import { formatStayName } from '../helpers/stayNames';
 
 function statusTone(status: string) {
@@ -28,7 +28,6 @@ export function OpsDepositsPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
-  const [isListOpen, setIsListOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -134,39 +133,24 @@ export function OpsDepositsPage() {
         </div>
       </section>
 
-      <section className="ops-table-card">
-        <div className="ops-card-heading">
-          <div>
-            <span>Deposit ledger</span>
-            <h3>{rows.length} records shown</h3>
-          </div>
-          <div className="ops-card-heading__actions">
-            <button type="button" onClick={() => setIsListOpen(true)}><Search size={15} /> Open ledger</button>
-            <strong>$200 hold</strong>
-          </div>
-        </div>
-
-        {rows.length === 0 && (
+      <OpsRecordSection
+        rows={rows}
+        renderRow={renderDepositRow}
+        eyebrow="Deposit ledger"
+        title={`${rows.length} records shown`}
+        subtitle={`${snapshot.rows.length} total deposits available in this workspace.`}
+        modalTitle={`${rows.length} deposit records shown`}
+        modalSubtitle="Scroll the security deposit ledger, capture state, booking links, and provider actions."
+        actionLabel="Open ledger"
+        aside={<strong>$200 hold</strong>}
+        emptyState={(
           <article className="ops-empty-state">
             <ShieldCheck size={28} />
             <h3>No deposits match that view.</h3>
             <p>Clear the search or switch to a different status.</p>
           </article>
         )}
-
-        <div className="ops-list-scroll">
-          {rows.map(renderDepositRow)}
-        </div>
-      </section>
-
-      <OpsListModal
-        isOpen={isListOpen}
-        title={`${rows.length} deposit records shown`}
-        subtitle="Scroll the security deposit ledger, capture state, booking links, and provider actions."
-        onClose={() => setIsListOpen(false)}
-      >
-        {rows.map(renderDepositRow)}
-      </OpsListModal>
+      />
     </main>
   );
 }

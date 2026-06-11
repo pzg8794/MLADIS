@@ -62,7 +62,7 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 
 | Step | Action | Prepared support | Official place |
 | --- | --- | --- | --- |
-| 4 | Apply for EIN | Completed; private CP 575 letter saved in Google Drive outside Git | IRS EIN Assistant: https://www.irs.gov/ein |
+| 4 | EIN application / IRS CP 575 | Done; private CP 575 letter saved in Google Drive outside Git | No IRS action remains unless an official portal later asks for the EIN from the private record |
 | 5 | Open business bank account | `docs/business/ein-and-banking/bank-account-opening-packet.md` | Bank or fintech chosen by owner |
 | 6 | Queens newspaper designations | Done; designation letter received 2026-06-08 and archived in `docs/business/source-documents/` | Daily: NY Daily News. Weekly: The Forum. |
 | 7 | Place publication notices | **NY Daily News: DONE.** Order #87497, $235.00, paid 2026-06-08, run dates Jun 10–15 2026, Pending Approval. Affidavit emailed to garcp37@mladis.com after final run. **The Forum: WAITING.** Two emails sent 2026-06-08; reply pending. Once they reply: pay, confirm first date, track 6 weekly runs. | `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md` |

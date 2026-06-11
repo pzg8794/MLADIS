@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ChevronRight, ExternalLink, Mail, Search, Send, ShieldCheck, Users } from 'lucide-react';
 import { OpsWorkspaceFactory } from '../../application/OpsWorkspaceFactory';
 import { OpsCustomerRow, OpsCustomersSnapshot } from '../../domain/models';
-import { OpsListModal } from '../components/OpsListModal';
+import { OpsRecordSection } from '../components/OpsRecordSection';
 
 function contact(row: { email: string; phone: string }) {
   if (row.email && row.phone) return `${row.email} · ${row.phone}`;
@@ -17,8 +17,6 @@ export function OpsCustomersPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState(new URLSearchParams(window.location.search).get('segment') || '');
-  const [isListOpen, setIsListOpen] = useState(false);
-  const [visibleLimit, setVisibleLimit] = useState(2);
 
   useEffect(() => {
     let mounted = true;
@@ -52,11 +50,6 @@ export function OpsCustomersPage() {
       return matchesSegment && matchesSearch;
     });
   }, [search, segment, snapshot]);
-
-  const visibleRows = useMemo(() => {
-    if (visibleLimit <= 0) return rows;
-    return rows.slice(0, visibleLimit);
-  }, [rows, visibleLimit]);
 
   const renderCustomerRow = (row: OpsCustomerRow) => (
     <details className="ops-data-row ops-data-row--customers ops-expand-card" data-segment={row.segmentValue || 'average'} key={row.id}>
@@ -141,50 +134,23 @@ export function OpsCustomersPage() {
         </div>
       </section>
 
-      <section className="ops-table-card">
-        <div className="ops-card-heading">
-          <div>
-            <span>Customer list</span>
-            <h3>{rows.length} customers shown</h3>
-            <p>{visibleRows.length} visible here. Open the full list for scrolling.</p>
-          </div>
-          <div className="ops-card-heading__actions">
-            <label className="ops-inline-select">
-              Show
-              <select value={visibleLimit} onChange={(event) => setVisibleLimit(Number(event.target.value))} aria-label="Customers visible on page">
-                <option value={2}>2</option>
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={0}>All</option>
-              </select>
-            </label>
-            <button type="button" onClick={() => setIsListOpen(true)}><Search size={15} /> Open list</button>
-            <strong>{snapshot.rows.length}</strong>
-          </div>
-        </div>
-
-        {rows.length === 0 && (
+      <OpsRecordSection
+        rows={rows}
+        renderRow={renderCustomerRow}
+        eyebrow="Customer list"
+        title={`${rows.length} customers shown`}
+        subtitle={`${snapshot.rows.length} total customers available.`}
+        modalTitle={`${rows.length} customers shown`}
+        modalSubtitle="Scroll customer profiles, consent state, history, and actions without stretching the page."
+        aside={<strong>{snapshot.rows.length}</strong>}
+        emptyState={(
           <article className="ops-empty-state">
             <Users size={28} />
             <h3>No customers match that filter.</h3>
             <p>Clear the search or choose another customer group.</p>
           </article>
         )}
-
-        <div className="ops-list-scroll">
-          {visibleRows.map(renderCustomerRow)}
-        </div>
-      </section>
-
-      <OpsListModal
-        isOpen={isListOpen}
-        title={`${rows.length} customers shown`}
-        subtitle="Scroll customer profiles, consent state, history, and actions without stretching the page."
-        onClose={() => setIsListOpen(false)}
-      >
-        {rows.map(renderCustomerRow)}
-      </OpsListModal>
+      />
     </main>
   );
 }

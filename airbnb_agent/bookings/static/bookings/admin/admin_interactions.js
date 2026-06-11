@@ -1,4 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
+  setupFilterPanel();
+  setupLogoPreview();
+});
+
+function setupFilterPanel() {
   const filterPanel = document.querySelector("#changelist-filter");
   if (!filterPanel) return;
 
@@ -42,4 +47,46 @@ document.addEventListener("DOMContentLoaded", () => {
       heading.click();
     });
   });
-});
+}
+
+function setupLogoPreview() {
+  const input = document.querySelector('input[type="file"][name="logo"]');
+  if (!input) return;
+
+  const previewRow = document.querySelector(".field-logo_preview")
+    || document.querySelector(".form-row:has(.modern-admin-logo-preview)");
+  if (!previewRow) return;
+
+  const readonlyValue = previewRow.querySelector(".readonly")
+    || previewRow.querySelector("div:last-child")
+    || previewRow;
+
+  let livePreview = previewRow.querySelector(".modern-admin-logo-live-preview");
+  if (!livePreview) {
+    livePreview = document.createElement("div");
+    livePreview.className = "modern-admin-logo-live-preview";
+    readonlyValue.appendChild(livePreview);
+  }
+
+  let objectUrl = "";
+
+  input.addEventListener("change", () => {
+    const file = input.files && input.files[0];
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    livePreview.innerHTML = "";
+
+    if (!file || !file.type.startsWith("image/")) {
+      livePreview.hidden = true;
+      return;
+    }
+
+    objectUrl = URL.createObjectURL(file);
+    const image = document.createElement("img");
+    image.src = objectUrl;
+    image.alt = "Selected logo preview";
+    const label = document.createElement("span");
+    label.textContent = "Preview before save";
+    livePreview.append(image, label);
+    livePreview.hidden = false;
+  });
+}

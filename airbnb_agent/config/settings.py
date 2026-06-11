@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.microsoft",
     "allauth.socialaccount.providers.github",
     "bookings",
+    "operations",
 ]
 
 MIDDLEWARE = [
@@ -193,6 +194,14 @@ if GCS_MEDIA_BUCKET:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SITE_ID = 1
+MLADIS_WORKBOARD_OWNER_EMAILS = env_list(
+    "MLADIS_WORKBOARD_OWNER_EMAILS",
+    ["garciapiterz@gmail.com", "garcp37@mladis.com"],
+)
+MLADIS_WORKBOARD_OWNER_USERNAMES = env_list(
+    "MLADIS_WORKBOARD_OWNER_USERNAMES",
+    ["piter"],
+)
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",

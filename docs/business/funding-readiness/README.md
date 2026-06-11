@@ -10,7 +10,7 @@ This is not an application folder yet. It is the preparation layer that keeps ML
 
 ## Current Position
 
-MLADIS LLC is formed and approved in NYBE, but it is not yet fundable-ready.
+MLADIS LLC is formed, approved in NYBE, and has an issued EIN, but it is not yet fundable-ready.
 
 The strongest current assets are:
 
@@ -25,7 +25,7 @@ The main blockers are:
 
 - Final e-sign completion/audit trail still needs to be saved after Dropbox Sign.
 - Business bank account and bookkeeping system are not live yet.
-- NY publication is not complete: NY Daily News order/payment is still open, The Forum reply is pending, and the six-week run/affidavits/Certificate of Publication still need to be completed.
+- NY publication is not complete: NY Daily News is placed/paid and waiting for approval/run proof, The Forum reply/payment/first date is pending, and affidavits/Certificate of Publication still need to be completed.
 - Financial statements, business plan, and use-of-funds model are not yet prepared.
 
 ## Active Files

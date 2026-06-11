@@ -47,6 +47,19 @@ Private operations record. Last captured from New York Business Express on 2026-
 | Add-on certified copy | Not selected |
 | Add-on certificate of status | Not selected |
 
+## Strategic Scope Note
+
+MLADIS LLC is not intended to be only a vacation-rental or booking company. The
+current public product is MLADIS Bookings, but the broader company direction is
+an umbrella intelligence and operations platform for booking, finance/taxes,
+research, education, fitness, portfolio, and future branches connected through
+the MLADIS brain architecture.
+
+The repo architecture source of truth is
+`docs/architecture/0001-mladis-universe-neuron-model.md`. Product pages may
+describe the active booking branch, but internal business planning, funding
+readiness, and system design should preserve MLADIS as the broader umbrella.
+
 ## Service Of Process
 
 | Field | Value |

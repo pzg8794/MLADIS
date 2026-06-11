@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { OpsReservationsFactory } from '../../application/OpsReservationsFactory';
 import { OpsReservationRow, OpsReservationsSnapshot } from '../../domain/models';
-import { OpsListModal } from '../components/OpsListModal';
+import { OpsRecordSection } from '../components/OpsRecordSection';
 import { formatStayName } from '../helpers/stayNames';
 
 function csrfToken() {
@@ -47,8 +47,6 @@ export function OpsReservationsPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [actionMessage, setActionMessage] = useState('');
-  const [isListOpen, setIsListOpen] = useState(false);
-  const [visibleLimit, setVisibleLimit] = useState(2);
 
   const loadSnapshot = useCallback(() => {
     service
@@ -78,11 +76,6 @@ export function OpsReservationsPage() {
       || row.segment.toLowerCase().includes(query)
     ));
   }, [search, snapshot]);
-
-  const visibleRows = useMemo(() => {
-    if (visibleLimit <= 0) return filteredRows;
-    return filteredRows.slice(0, visibleLimit);
-  }, [filteredRows, visibleLimit]);
 
   async function updateStatus(row: OpsReservationRow, status: 'reviewing' | 'confirmed' | 'cancelled') {
     setActionMessage(`Updating ${row.name}...`);
@@ -218,49 +211,25 @@ export function OpsReservationsPage() {
 
       {actionMessage && <div className="ops-res-alert">{actionMessage}</div>}
 
-      <section className="ops-res-list" aria-label="Reservations and imported Airbnb guests">
-        <div className="ops-res-list__header">
-          <div>
-            <h3>{filteredRows.length} guests shown</h3>
-            <p>{visibleRows.length} visible here. {snapshot.rows.length} total records available in the current segment.</p>
-          </div>
-          <div className="ops-card-heading__actions">
-            <label className="ops-inline-select">
-              Show
-              <select value={visibleLimit} onChange={(event) => setVisibleLimit(Number(event.target.value))} aria-label="Reservations visible on page">
-                <option value={2}>2</option>
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={0}>All</option>
-              </select>
-            </label>
-            <button type="button" onClick={() => setIsListOpen(true)}><Search size={15} /> Open list</button>
-            <span><ShieldCheck size={15} /> Consent-aware CRM</span>
-          </div>
-        </div>
-
-        {filteredRows.length === 0 && (
+      <OpsRecordSection
+        rows={filteredRows}
+        renderRow={renderReservationRow}
+        eyebrow="Reservations and imported Airbnb guests"
+        title={`${filteredRows.length} guests shown`}
+        subtitle={`${snapshot.rows.length} total records available in the current segment.`}
+        modalTitle={`${filteredRows.length} guests shown`}
+        modalSubtitle="Scroll the full reservation and imported Airbnb customer list."
+        aside={<span><ShieldCheck size={15} /> Consent-aware CRM</span>}
+        className="ops-res-list"
+        defaultVisible={2}
+        emptyState={(
           <article className="ops-res-empty">
             <Users size={28} />
             <h3>No records match this filter yet.</h3>
             <p>Import Airbnb guests or clear the search to see the complete local customer list.</p>
           </article>
         )}
-
-        <div className="ops-list-scroll">
-          {visibleRows.map(renderReservationRow)}
-        </div>
-      </section>
-
-      <OpsListModal
-        isOpen={isListOpen}
-        title={`${filteredRows.length} guests shown`}
-        subtitle="Scroll the full reservation and imported Airbnb customer list."
-        onClose={() => setIsListOpen(false)}
-      >
-        {filteredRows.map(renderReservationRow)}
-      </OpsListModal>
+      />
     </main>
   );
 }

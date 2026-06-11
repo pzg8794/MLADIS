@@ -1,6 +1,7 @@
 # Financial Institution Readiness Resume Plan
 
 Created: 2026-06-04.
+Last status sweep: 2026-06-10.
 
 This is the resume plan for getting MLADIS LLC ready to approach banks, CDFIs, SBA-backed lenders, NYC/NYS financing support, and later grant or investor conversations.
 
@@ -23,6 +24,8 @@ Those are tracked separately in the signing and publication folders. Use this fi
 
 | Area | Current status | Resume action |
 | --- | --- | --- |
+| Formation / EIN | Done | Use filed Articles, Piter-signed governance docs, and private CP 575 letter when a bank or official portal asks for proof. |
+| NY publication | In progress | NY Daily News is placed/paid; wait for approval/run proof. The Forum still needs reply/payment/first date. Certificate of Publication comes after both affidavits. |
 | Bank account | Not opened | Use [bank-account-opening-packet.md](../ein-and-banking/bank-account-opening-packet.md) and private EIN letter to open MLADIS LLC business checking. |
 | Airbnb/revenue export | Not built into lender packet | Export payout/reservation data, store private raw exports, and prepare sanitized monthly summaries. |
 | Expense history | Not built into lender packet | Gather receipts, software, ads, repairs, cleaning, contractor, compliance, and banking costs. |

@@ -12,7 +12,7 @@ Private preparation notes for EIN, banking, bookkeeping, and direct-booking read
 
 ## Files
 
-- [ein-worksheet.md](ein-worksheet.md) - values to have ready before opening the IRS EIN Assistant.
+- [ein-worksheet.md](ein-worksheet.md) - historical EIN worksheet and post-issuance checklist; EIN is already issued.
 - [bank-account-checklist.md](bank-account-checklist.md) - documents and controls for opening a business bank account.
 - [bank-account-opening-packet.md](bank-account-opening-packet.md) - bank-ready cover package and application-answer guide.
 - [bank-credit-loan-and-grant-guide.md](bank-credit-loan-and-grant-guide.md) - bank shortlist, credit sequence, and loan/grant program guide.

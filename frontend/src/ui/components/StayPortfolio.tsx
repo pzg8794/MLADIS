@@ -38,11 +38,11 @@ export function StayPortfolio({ stays }: StayPortfolioProps) {
                 <p>{stay.subtitle}</p>
               </div>
               <div className="stay-card__meta">
-                <span><Star size={15} /> {stay.rating}</span>
-                <span><Percent size={15} /> {stay.occupancyLabel}</span>
-                <strong><CircleDollarSign size={15} /> {stay.revenueLabel}</strong>
+                <span className="stay-card__metric stay-card__metric--rating"><Star size={15} /> {stay.rating}</span>
+                <span className="stay-card__metric stay-card__metric--occupancy"><Percent size={15} /> {stay.occupancyLabel}</span>
+                <strong className="stay-card__metric stay-card__metric--price"><CircleDollarSign size={15} /> {stay.revenueLabel}</strong>
+                <StatusBadge label={labelForStatus(stay.status)} tone={toneForStatus(stay.status)} />
               </div>
-              <StatusBadge label={labelForStatus(stay.status)} tone={toneForStatus(stay.status)} />
             </div>
           </a>
         ))}

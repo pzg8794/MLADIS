@@ -38,6 +38,31 @@ export class HttpClient {
     return (await response.json()) as T;
   }
 
+  async postForm<T>(path: string, body: FormData): Promise<T> {
+    const response = await fetch(this.url(path), {
+      method: 'POST',
+      credentials: this.options.credentials ?? 'include',
+      headers: {
+        Accept: 'application/json',
+        'X-CSRFToken': this.csrfToken(),
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      let message = `POST ${path} failed with ${response.status}`;
+      try {
+        const payload = await response.json();
+        message = JSON.stringify(payload);
+      } catch {
+        // Keep the default status message when the server returns non-JSON.
+      }
+      throw new Error(message);
+    }
+
+    return (await response.json()) as T;
+  }
+
   async delete<T>(path: string, body: unknown): Promise<T> {
     const response = await fetch(this.url(path), {
       method: 'DELETE',

@@ -14,7 +14,7 @@ These records are meant to give the MLADIS app, agents, and future automation wo
 - [Operations roles](operations/README.md): private operating-role notes for people helping run MLADIS business branches.
 - [Business visitor package](immigration/README.md): B-1-aligned planning process, Diana visit policy, invitation template, travel packet checklist, and official source links.
 - [Publication package](publication/README.md): Queens County Clerk publication workflow, email draft, notice draft, and completion checklist.
-- [EIN and banking package](ein-and-banking/README.md): EIN worksheet, bank checklist, and bookkeeping starter categories.
+- [EIN and banking package](ein-and-banking/README.md): completed EIN status, private CP 575 storage pointer, bank checklist, and bookkeeping starter categories.
 - [Funding readiness package](funding-readiness/README.md): fundable-company goal, resume plan, todo list, data-room index, and lender/grant/certification readiness notes.
 - [Signing controls](signing/README.md): rules for signing assistance and why reusable signature assets stay outside Git.
 - [Data store contract](../data-store/README.md): Drive-backed JSON/JSONL data lake structure for MLADIS accounts, bookings, requests, chatbot logs, payments, feedback, and analytics exports.

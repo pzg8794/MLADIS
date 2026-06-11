@@ -9,6 +9,9 @@
 ## Architecture Discipline
 
 - OOP and MVC are mandatory for MLADIS. Treat them as the system bible, not as optional style.
+- MLADIS is the umbrella intelligence platform, not only the current booking/vacation-rental product. Read `docs/architecture/0001-mladis-universe-neuron-model.md` before creating or reshaping Finance, Booking, Research, Education, Fitness, Portfolio, Pyramid, FairAgent, data-store, or cross-domain features.
+- Treat the neuron pattern as the system architecture rule: `Neuron [uses: OtherNeuron] -> Neuron.SubNeuron -> Neuron.SubNeuron.Object -> Neuron.SubNeuron.Object.Specialization`.
+- Use composition with `[uses: ...]` across neuron families. Use inheritance only when an object is truly a specialization inside the same family. Artifacts are not neurons.
 - Model/domain objects own business state, identity, invariants, and rules. For example, every visitor must be represented through a user/session context object, whether anonymous or authenticated.
 - Controllers coordinate the request/response flow, ask model/domain objects for decisions, and return explicit payloads. They must not bury business rules in templates or React components.
 - Views/templates/components render the model state they receive. They must not invent parallel auth, agent, booking, payment, or permission state.
@@ -17,6 +20,7 @@
 - Any shortcut that directly checks loose booleans in multiple views instead of using the shared model/context is a bug, even if the screen appears to work.
 - When fixing regressions, repair the model/controller boundary first, then simplify the view. Do not stack UI patches over a broken state model.
 - Read `docs/engineering/oop-mvc-contract.md` before changing login/logout, agent access, bookings, payments, reservations, customer accounts, or admin workflows.
+- The current `bookings/` Django app is the first Booking branch implementation. Do not hard-code MLADIS as only a booking company in architecture docs, funding docs, or reusable domain code. Product copy can describe the active booking product; system architecture should preserve MLADIS as the broader universe.
 
 ## Deployment Safety
 
@@ -101,13 +105,18 @@
 
 - Treat the Django database as the transactional source of truth and the Drive-backed MLADIS data store as the JSON/JSONL export lake for analytics, recovery, agent learning, and audit work.
 - Start from `docs/data-store/README.md` and `docs/data-store/drive-data-lake-contract.md` before changing subscriptions, bookings, requests, chatbot logs, payments, feedback, or analytics export behavior.
-- Use `python manage.py export_data_lake --schema-only --include-placeholders --sync-drive` to create or refresh the Drive folder/catalog/schema skeleton.
-- Use `python manage.py export_data_lake --sync-drive` when MLADIS operational records must be written to the configured Drive data store.
+- The runtime object lake must stay simple and human-readable: `BOOKINGS`, `CUSTOMERS`, `BOOKINGAGENTS`, `TRANSACTIONS`, `STAYS`, `MAINTENANCE`, `WEBSITE`, `ADMIN`, `EVENTS`, and `EXPORTS`.
+- Do not use `year/month/day`, `bronze`, `silver`, or other warehouse-style partitions for live business object state. Current object state belongs in `<FOLDER>/<model>-<id>.json`; change history belongs in `<FOLDER>/_history.jsonl`.
+- Use `python manage.py export_data_lake` to refresh local collection snapshots such as `CUSTOMERS/customer_profiles.jsonl` and `BOOKINGS/booking_requests.jsonl`.
+- Use `python manage.py export_data_lake --sync-drive` only when MLADIS operational records must be mirrored to the configured Drive data store.
 - Use `python manage.py export_data_lake --redacted --sync-drive` for analytics and agent-training experiments unless the task explicitly requires private contact fields.
 - Do not commit generated JSONL exports, customer contact data, chatbot private messages, payment processor IDs, identity records, or raw production lake files. Keep generated exports in the protected Drive folder or another approved private storage target.
 - The current Drive target is `https://drive.google.com/drive/folders/1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn`; keep `MLADIS_DATASTORE_DRIVE_FOLDER_ID` aligned with that folder unless the owner explicitly changes the storage location.
-- Every functional customer, booking, request, payment, agent, invoice, promotion, cancellation, or admin-action object needs a data-store path. Prefer a transactional model plus export collection; add a live `object_events` JSONL log for lifecycle actions where possible.
-- If `MLADIS_DATASTORE_ROOT` is configured, reservation and deposit workflows should append live object events without blocking the customer if the data-store write fails.
+- Every functional customer, booking, request, payment, agent, invoice, promotion, cancellation, maintenance, calendar, content, or admin-action object needs a transactional model and a live data-store path.
+- If `MLADIS_DATASTORE_ROOT` is configured, relevant model saves/deletes must update the simple object JSON file and append the folder's `_history.jsonl`; this is the object-state contract for OOP/MVC recoverability.
+- Workflow actions should also append focused `<FOLDER>/_events.jsonl` rows for business events such as checkout-created, email-sent, provider-failed, or request-created.
+- If `MLADIS_DATASTORE_LIVE_SYNC_DRIVE=True`, touched live JSONL files are mirrored to the configured Drive folder ID. Keep `MLADIS_DATASTORE_LIVE_SYNC_ASYNC=True` for request paths so Drive latency cannot freeze bookings or admin work. Git is never the production data lake; it stores code, schemas, and contracts only.
+- Data-store writes must never block or break the customer/admin transaction path if the local file or Drive mirror fails.
 
 ## Maintenance Operations
 
