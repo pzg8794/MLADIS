@@ -1,7 +1,12 @@
 {% extends "layouts/ops_shell.html" %}
+{% load static %}
 
 {% block title %}MLADIS Workboard{% endblock %}
 {% block page_title %}MLADIS Workboard{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'operations/css/workboard_next_actions.css' %}">
+{% endblock %}
 
 {% block content %}
 <section class="ml-focus-grid">
@@ -56,9 +61,18 @@
             {% if item.description %}
               <p>{{ item.description|truncatewords:24 }}</p>
             {% endif %}
-            <div class="ml-next-action">
-              <span>Next</span>
-              <strong>{{ item.next_action|default:"Define the next tiny action." }}</strong>
+            <div class="ml-next-action ml-next-action--collapsible is-collapsed" data-next-action>
+              <button
+                class="ml-next-action__toggle"
+                type="button"
+                data-next-action-toggle
+                aria-expanded="false"
+                aria-controls="next-action-{{ item.pk }}">
+                Show next action
+              </button>
+              <strong class="ml-next-action__content" id="next-action-{{ item.pk }}" data-next-action-content>
+                {{ item.next_action|default:"Define the next tiny action." }}
+              </strong>
             </div>
             <div class="ml-work-links">
               {% if item.github_url %}<a href="{{ item.github_url }}" target="_blank" rel="noopener">GitHub</a>{% endif %}
@@ -74,4 +88,5 @@
     </div>
   {% endfor %}
 </section>
+<script src="{% static 'operations/js/workboard_next_actions.js' %}"></script>
 {% endblock %}
