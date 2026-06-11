@@ -11,6 +11,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        ("bookings", "0016_agentfaq"),
     ]
 
     operations = [
@@ -34,6 +35,8 @@ class Migration(migrations.Migration):
                 ("updated_at", models.DateTimeField(auto_now=True)),
                 ("assigned_to", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="assigned_work_items", to=settings.AUTH_USER_MODEL)),
                 ("created_by", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="created_work_items", to=settings.AUTH_USER_MODEL)),
+                ("item", models.ForeignKey(blank=True, help_text="Optional listing/resource this work item affects.", null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="operations_work_items", to="bookings.bookableitem")),
+                ("inquiry", models.ForeignKey(blank=True, help_text="Optional reservation/request this work item supports.", null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="operations_work_items", to="bookings.bookinginquiry")),
             ],
             options={
                 "ordering": ["status", "sort_order", "-updated_at"],
@@ -50,6 +53,14 @@ class Migration(migrations.Migration):
         migrations.AddIndex(
             model_name="workitem",
             index=models.Index(fields=["priority", "status"], name="operations_priorit_b5dcb7_idx"),
+        ),
+        migrations.AddIndex(
+            model_name="workitem",
+            index=models.Index(fields=["item", "status"], name="operations_item_9ddb1c_idx"),
+        ),
+        migrations.AddIndex(
+            model_name="workitem",
+            index=models.Index(fields=["inquiry", "status"], name="operations_inquiry_8890ae_idx"),
         ),
         migrations.AddIndex(
             model_name="workitem",
