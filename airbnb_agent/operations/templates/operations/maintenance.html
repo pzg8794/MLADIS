@@ -1,0 +1,74 @@
+{% extends "layouts/ops_shell.html" %}
+
+{% block title %}MLADIS Maintenance Work{% endblock %}
+{% block page_title %}Maintenance Work Items{% endblock %}
+
+{% block content %}
+<section class="ml-focus-grid">
+  <article class="ml-panel">
+    <p class="ml-ops-eyebrow">Attach work to booking context</p>
+    <h2>Create maintenance/work item</h2>
+    <p class="ml-muted">Attach work to a listing and/or reservation so MLADIS can later generate stronger reports, bills, expense records, and evidence packets.</p>
+
+    <form class="ml-form-grid" method="post">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for field in form %}
+        <label class="ml-form-field">
+          <span>{{ field.label }}</span>
+          {{ field }}
+          {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+          {% for error in field.errors %}<strong class="ml-form-error">{{ error }}</strong>{% endfor %}
+        </label>
+      {% endfor %}
+      <button class="ml-button-primary" type="submit">Save work item</button>
+    </form>
+  </article>
+
+  <article class="ml-panel">
+    <p class="ml-ops-eyebrow">Report context</p>
+    <h2>Why this matters</h2>
+    <ul class="ml-mini-list">
+      <li>
+        <strong>Listing link</strong>
+        <span>Shows which property/resource the work affects.</span>
+      </li>
+      <li>
+        <strong>Reservation link</strong>
+        <span>Shows which guest stay/request the work supports.</span>
+      </li>
+      <li>
+        <strong>Finance-ready context</strong>
+        <span>Gives future bills, expenses, and tax reports a clean source object.</span>
+      </li>
+    </ul>
+  </article>
+</section>
+
+<section class="ml-panel">
+  <p class="ml-ops-eyebrow">Attached maintenance/work items</p>
+  <div class="ml-maintenance-list">
+    {% for item in maintenance_items %}
+      <article class="ml-work-card">
+        <div class="ml-work-card__topline">
+          <span class="ml-chip ml-chip--{{ item.neuron }}">{{ item.get_neuron_display }}</span>
+          <span class="ml-chip ml-chip--{{ item.priority }}">{{ item.get_priority_display }}</span>
+          <span class="ml-chip">{{ item.get_status_display }}</span>
+        </div>
+        <h3>{{ item.title }}</h3>
+        <p>{{ item.description|default:"No description yet."|truncatewords:28 }}</p>
+        <div class="ml-next-action">
+          <span>Context</span>
+          <strong>{{ item.context_label }}</strong>
+        </div>
+        <div class="ml-next-action">
+          <span>Next</span>
+          <strong>{{ item.next_action|default:"Define the next tiny action." }}</strong>
+        </div>
+      </article>
+    {% empty %}
+      <div class="ml-empty-card">No maintenance/work items have been attached yet.</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
