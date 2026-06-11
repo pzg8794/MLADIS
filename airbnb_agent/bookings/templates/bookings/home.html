@@ -147,6 +147,14 @@
     </div>
   </section>
 
+  <section class="agent-band" id="agent" aria-labelledby="agent-title">
+    <div>
+      <h2 id="agent-title">{% trans "Ask before booking." %}</h2>
+      <p>Start with dates, fit, services, or special requests. The current agent stores conversations and is ready for the real intelligence layer.</p>
+    </div>
+    {% include "bookings/partials/agent_panel.html" with panel_title="Ask the travel agent" panel_intro="Ask about dates, amenities, rules, deposits, airport pickup, or which stay fits your group." %}
+  </section>
+
   <section class="booking-band" id="booking" aria-labelledby="booking-title">
     <div class="booking-copy">
       <h2 id="booking-title">{% trans "Start booking with an agent beside you." %}</h2>
@@ -250,14 +258,6 @@
       <p>Guests can donate to the MLADIS mission fund for children with cancer, school support, and community care. Donations are processed through Stripe.</p>
     </div>
     <a class="button primary" href="{% url 'bookings:about' %}#mission">{% trans "Donate to the mission" %}</a>
-  </section>
-
-  <section class="agent-band" id="agent" aria-labelledby="agent-title">
-    <div>
-      <h2 id="agent-title">{% trans "Ask before booking." %}</h2>
-      <p>Start with dates, fit, services, or special requests. The current agent stores conversations and is ready for the real intelligence layer.</p>
-    </div>
-    {% include "bookings/partials/agent_panel.html" with panel_title="Ask the travel agent" panel_intro="Ask about dates, amenities, rules, deposits, airport pickup, or which stay fits your group." %}
   </section>
 </main>
 <script src="{% static 'bookings/stay_collapse.js' %}"></script>
