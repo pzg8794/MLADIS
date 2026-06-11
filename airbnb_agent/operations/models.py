@@ -38,6 +38,23 @@ class WorkItem(models.Model):
     priority = models.CharField(max_length=16, choices=Priority.choices, default=Priority.MEDIUM)
     next_action = models.CharField(max_length=255, blank=True)
 
+    item = models.ForeignKey(
+        "bookings.BookableItem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="operations_work_items",
+        help_text="Optional listing/resource this work item affects.",
+    )
+    inquiry = models.ForeignKey(
+        "bookings.BookingInquiry",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="operations_work_items",
+        help_text="Optional reservation/request this work item supports.",
+    )
+
     source_url = models.URLField(blank=True)
     github_url = models.URLField(blank=True)
     drive_url = models.URLField(blank=True)
@@ -69,6 +86,8 @@ class WorkItem(models.Model):
             models.Index(fields=["status", "sort_order"]),
             models.Index(fields=["neuron", "status"]),
             models.Index(fields=["priority", "status"]),
+            models.Index(fields=["item", "status"]),
+            models.Index(fields=["inquiry", "status"]),
             models.Index(fields=["-updated_at"]),
         ]
 
@@ -82,6 +101,54 @@ class WorkItem(models.Model):
     @property
     def is_blocked(self):
         return self.status == self.Status.BLOCKED
+
+    @property
+    def listing_label(self):
+        return self.item.name if self.item else ""
+
+    @property
+    def reservation_label(self):
+        if not self.inquiry:
+            return ""
+        item_name = self.inquiry.item.name if self.inquiry.item else "Any listing"
+        return f"{self.inquiry.guest_name} - {item_name} ({self.inquiry.check_in} to {self.inquiry.check_out})"
+
+    @property
+    def context_label(self):
+        if self.inquiry:
+            return self.reservation_label
+        if self.item:
+            return self.listing_label
+        return "General MLADIS work"
+
+    def to_report_context(self):
+        """Return billing/report context without moving Booking logic into Operations."""
+        inquiry = self.inquiry
+        item = self.item or (inquiry.item if inquiry else None)
+        return {
+            "work_item_id": self.pk,
+            "title": self.title,
+            "neuron": self.neuron,
+            "status": self.status,
+            "priority": self.priority,
+            "next_action": self.next_action,
+            "listing": {
+                "id": item.pk,
+                "name": item.name,
+                "slug": item.slug,
+            } if item else None,
+            "reservation": {
+                "id": inquiry.pk,
+                "guest_name": inquiry.guest_name,
+                "email": inquiry.email,
+                "check_in": inquiry.check_in.isoformat(),
+                "check_out": inquiry.check_out.isoformat(),
+                "guests": inquiry.guests,
+                "status": inquiry.status,
+                "total_cents": inquiry.total_cents,
+                "currency": inquiry.currency,
+            } if inquiry else None,
+        }
 
     def mark_done(self):
         self.status = self.Status.DONE
