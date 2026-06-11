@@ -43,6 +43,23 @@ class WorkboardService:
             "next_action": main_focus.next_action if main_focus else "Create or select the next tiny action.",
         }
 
+    def get_report_context_for_listing(self, item):
+        work_items = list(self.repository.list_for_listing(item))
+        return {
+            "listing": item,
+            "work_items": work_items,
+            "work_item_payloads": [work_item.to_report_context() for work_item in work_items],
+        }
+
+    def get_report_context_for_reservation(self, inquiry):
+        work_items = list(self.repository.list_for_reservation(inquiry))
+        return {
+            "reservation": inquiry,
+            "listing": inquiry.item,
+            "work_items": work_items,
+            "work_item_payloads": [work_item.to_report_context() for work_item in work_items],
+        }
+
     def move_item(self, item, status):
         status_values = {choice.value for choice in WorkItem.Status}
         if status not in status_values:
