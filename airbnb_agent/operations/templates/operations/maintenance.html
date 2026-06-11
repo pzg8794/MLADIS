@@ -1,4 +1,5 @@
 {% extends "layouts/ops_shell.html" %}
+{% load static %}
 
 {% block title %}MLADIS Maintenance Work{% endblock %}
 {% block page_title %}Maintenance Work Items{% endblock %}
@@ -10,7 +11,7 @@
     <h2>Create maintenance/work item</h2>
     <p class="ml-muted">Attach work to a listing and/or reservation so MLADIS can later generate stronger reports, bills, expense records, and evidence packets.</p>
 
-    <form class="ml-form-grid" method="post">
+    <form class="ml-form-grid" method="post" data-maintenance-form>
       {% csrf_token %}
       {{ form.non_field_errors }}
       {% for field in form %}
@@ -21,7 +22,10 @@
           {% for error in field.errors %}<strong class="ml-form-error">{{ error }}</strong>{% endfor %}
         </label>
       {% endfor %}
-      <button class="ml-button-primary" type="submit">Save work item</button>
+      <div class="ml-form-actions">
+        <button class="ml-button-secondary" type="button" data-open-generate-modal>Auto-generate</button>
+        <button class="ml-button-primary" type="submit">Save work item</button>
+      </div>
     </form>
   </article>
 
@@ -29,18 +33,9 @@
     <p class="ml-ops-eyebrow">Report context</p>
     <h2>Why this matters</h2>
     <ul class="ml-mini-list">
-      <li>
-        <strong>Listing link</strong>
-        <span>Shows which property/resource the work affects.</span>
-      </li>
-      <li>
-        <strong>Reservation link</strong>
-        <span>Shows which guest stay/request the work supports.</span>
-      </li>
-      <li>
-        <strong>Finance-ready context</strong>
-        <span>Gives future bills, expenses, and tax reports a clean source object.</span>
-      </li>
+      <li><strong>Listing link</strong><span>Shows which property/resource the work affects.</span></li>
+      <li><strong>Reservation link</strong><span>Shows which guest stay/request the work supports.</span></li>
+      <li><strong>Finance-ready context</strong><span>Gives future bills, expenses, and tax reports a clean source object.</span></li>
     </ul>
   </article>
 </section>
@@ -57,18 +52,38 @@
         </div>
         <h3>{{ item.title }}</h3>
         <p>{{ item.description|default:"No description yet."|truncatewords:28 }}</p>
-        <div class="ml-next-action">
-          <span>Context</span>
-          <strong>{{ item.context_label }}</strong>
-        </div>
-        <div class="ml-next-action">
-          <span>Next</span>
-          <strong>{{ item.next_action|default:"Define the next tiny action." }}</strong>
-        </div>
+        <div class="ml-next-action"><span>Context</span><strong>{{ item.context_label }}</strong></div>
+        <div class="ml-next-action"><span>Next</span><strong>{{ item.next_action|default:"Define the next tiny action." }}</strong></div>
       </article>
     {% empty %}
       <div class="ml-empty-card">No maintenance/work items have been attached yet.</div>
     {% endfor %}
   </div>
 </section>
+
+<div class="ml-modal" data-generate-modal hidden>
+  <div class="ml-modal__backdrop" data-close-generate-modal></div>
+  <section class="ml-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="maintenance-generator-title">
+    <header class="ml-modal__header">
+      <div>
+        <p class="ml-ops-eyebrow">Draft preview</p>
+        <h2 id="maintenance-generator-title">Auto-generated work item</h2>
+      </div>
+      <button class="ml-icon-button" type="button" aria-label="Close auto-generate popup" data-close-generate-modal>X</button>
+    </header>
+
+    <div class="ml-generator-preview">
+      <label><span>Generated title</span><textarea rows="2" data-generated-title></textarea></label>
+      <label><span>Generated description</span><textarea rows="6" data-generated-description></textarea></label>
+      <label><span>Generated next action</span><textarea rows="3" data-generated-next-action></textarea></label>
+    </div>
+
+    <footer class="ml-modal__actions">
+      <button class="ml-button-secondary" type="button" data-auto-generate-again>Auto-generate again</button>
+      <button class="ml-button-primary" type="button" data-use-generated-work-item>Use generated text</button>
+    </footer>
+  </section>
+</div>
+
+<script src="{% static 'operations/js/maintenance_generator.js' %}"></script>
 {% endblock %}
