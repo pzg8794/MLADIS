@@ -1,8 +1,12 @@
 {% extends "bookings/base.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}MLADIS Santo Domingo Vacation Stays{% endblock %}
 {% block body_class %}home-page{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'bookings/stay_collapse.css' %}">
+{% endblock %}
 
 {% block content %}
 <main>
@@ -52,8 +56,8 @@
 
     <div class="listing-grid">
       {% for item in featured_items %}
-        <article class="listing-card image-card" id="item-{{ item.slug }}">
-          <a class="listing-image" href="{{ item.get_absolute_url }}" aria-label="View {{ item.name }}">
+        <article class="listing-card image-card stay-collapsible{% if not item.image or 'demo' in item.slug or 'demo' in item.name|lower %} is-image-collapsed{% endif %}" id="item-{{ item.slug }}" data-stay-card>
+          <a class="listing-image" href="{{ item.get_absolute_url }}" aria-label="View {{ item.name }}" data-stay-image>
             {% if item.image %}
               <img src="{{ item.image }}" alt="{{ item.image_alt|default:item.name }}" loading="lazy">
             {% endif %}
@@ -62,9 +66,19 @@
           <div class="listing-body">
             <div class="listing-title-row">
               <h3>{{ item.name }}</h3>
-              {% if item.airbnb_rating %}
-                <span class="rating">★ {{ item.airbnb_rating }}</span>
-              {% endif %}
+              <div class="listing-title-actions">
+                {% if item.airbnb_rating %}
+                  <span class="rating">★ {{ item.airbnb_rating }}</span>
+                {% endif %}
+                <button
+                  class="stay-collapse-toggle"
+                  type="button"
+                  data-stay-image-toggle
+                  aria-controls="stay-image-{{ item.slug }}"
+                  aria-expanded="{% if not item.image or 'demo' in item.slug or 'demo' in item.name|lower %}false{% else %}true{% endif %}">
+                  {% if not item.image or 'demo' in item.slug or 'demo' in item.name|lower %}{% trans "Show image" %}{% else %}{% trans "Hide image" %}{% endif %}
+                </button>
+              </div>
             </div>
             <p>{{ item.short_description }}</p>
             <ul class="stat-row" aria-label="{{ item.name }} details">
@@ -246,4 +260,5 @@
     {% include "bookings/partials/agent_panel.html" with panel_title="Ask the travel agent" panel_intro="Ask about dates, amenities, rules, deposits, airport pickup, or which stay fits your group." %}
   </section>
 </main>
+<script src="{% static 'bookings/stay_collapse.js' %}"></script>
 {% endblock %}
