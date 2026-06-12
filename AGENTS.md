@@ -21,6 +21,7 @@
 - When fixing regressions, repair the model/controller boundary first, then simplify the view. Do not stack UI patches over a broken state model.
 - Read `docs/engineering/oop-mvc-contract.md` before changing login/logout, agent access, bookings, payments, reservations, customer accounts, or admin workflows.
 - The current `bookings/` Django app is the first Booking branch implementation. Do not hard-code MLADIS as only a booking company in architecture docs, funding docs, or reusable domain code. Product copy can describe the active booking product; system architecture should preserve MLADIS as the broader universe.
+- Read `docs/architecture/0003-gentelella-v4-full-site-rebrand.md` before broad frontend, admin, public-site, mobile, dashboard, or theme work. Gentelella v4 is the selected View-system reference only; do not move MLADIS domain rules into CSS, templates, or React page components, and do not show framework names such as Gentelella, Django, React, or Vite in customer/operator UI copy unless the owner explicitly asks.
 
 ## Deployment Safety
 

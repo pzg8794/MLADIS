@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { FocusEvent, ReactNode, useState } from 'react';
 import { getConfiguredLogoUrl } from '../helpers/brand';
+import { opsTheme } from '../theme/opsTheme';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -55,7 +56,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="dashboard-shell">
+    <div className="dashboard-shell" data-theme-reference={opsTheme.referenceName}>
       <aside
         className={`modern-admin-sidebar${railExpanded ? ' is-expanded' : ''}`}
         onBlur={handleRailBlur}
@@ -70,8 +71,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <a className="modern-admin-brand" href="/">
           <img src={logoUrl} alt="MLADIS" />
           <div>
-            <strong>MLADIS</strong>
-            <small>Stay operations</small>
+            <strong>{opsTheme.brandTitle}</strong>
+            <small>{opsTheme.brandSubtitle}</small>
           </div>
         </a>
         <nav aria-label="Dashboard sections">
@@ -87,8 +88,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           })}
         </nav>
         <div className="modern-admin-sidecard">
-          <span>Protected controls</span>
-          <p>Sensitive edits, payments, calendar records, and publishing controls stay permissioned.</p>
+          <span>{opsTheme.shellTitle}</span>
+          <p>{opsTheme.shellDescription}</p>
         </div>
         <a className={`modern-admin-back${isNavActive(pathname, '/business/') ? ' is-active' : ''}`} href="/business/">
           <BriefcaseBusiness className="modern-admin-rail-icon" aria-hidden="true" size={18} />

@@ -10,6 +10,7 @@ See:
 
 - [MLADIS Universe and Neuron Architecture](docs/architecture/0001-mladis-universe-neuron-model.md)
 - [Operations Workboard ADR](docs/architecture/0002-operations-workboard-gentelella.md)
+- [Gentelella v4 Full-Site Rebrand ADR](docs/architecture/0003-gentelella-v4-full-site-rebrand.md)
 - [MLADIS Master TODO / Roadmap](docs/roadmap/MLADIS_MASTER_TODO.md)
 - [MLADIS Business Blueprint](docs/business/MLADIS_BUSINESS_BLUEPRINT.md)
 
@@ -107,6 +108,11 @@ For cross-domain architecture work, use the MLADIS universe/neuron model in
 New Finance, Booking, Research, Education, Fitness, Portfolio, Pyramid, or
 FairAgent work should follow that document instead of treating the current
 booking app as the whole system.
+
+For full-site visual rebrand work, use
+[docs/architecture/0003-gentelella-v4-full-site-rebrand.md](docs/architecture/0003-gentelella-v4-full-site-rebrand.md).
+Gentelella v4 is the selected View-system reference; MLADIS domain behavior
+must remain in OOP/MVC models, repositories, services, and controllers.
 
 ---
 
