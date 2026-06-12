@@ -1009,9 +1009,16 @@ function HomeExperience({ snapshot, userContext, language }: { snapshot: PublicS
   const t = copy[language];
   const heroStay = snapshot.stays[0];
   const secondStay = snapshot.stays[1] ?? heroStay;
+  const heroStats = [
+    { label: 'Ready stays', value: String(snapshot.stays.length), icon: <Home size={18} />, tone: 'green' },
+    { label: 'Guest rating', value: heroStay?.rating || '4.9', icon: <Star size={18} />, tone: 'blue' },
+    { label: 'Deposit hold', value: snapshot.depositAmount, icon: <CreditCard size={18} />, tone: 'orange' },
+    { label: 'Agent limit', value: `${userContext.agent.questionLimit}/user`, icon: <Bot size={18} />, tone: 'indigo' },
+  ];
+
   return (
     <>
-      <section className="public-hero">
+      <section className="public-hero public-hero--v4">
         <div className="public-hero__copy">
           <h1>{t.heroTitle}</h1>
           <p>{t.heroText}</p>
@@ -1019,10 +1026,14 @@ function HomeExperience({ snapshot, userContext, language }: { snapshot: PublicS
             <a href="#booking" onClick={handleBookingLinkClick}>{t.primary} <ArrowUpRight size={17} /></a>
             <a href="#stays">{t.secondary}</a>
           </div>
-          <div className="public-proof-strip">
-            <span><Star size={16} /> {heroStay?.rating || '4.9'}</span>
-            <span><MapPin size={16} /> {snapshot.publicAddressLabel}</span>
-            <span><ShieldCheck size={16} /> {snapshot.depositAmount} deposit hold</span>
+          <div className="public-home-metrics">
+            {heroStats.map((stat) => (
+              <article className={`public-home-metric public-home-metric--${stat.tone}`} key={stat.label}>
+                <span>{stat.icon}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.label}</small>
+              </article>
+            ))}
           </div>
         </div>
         {heroStay && (
@@ -1039,6 +1050,29 @@ function HomeExperience({ snapshot, userContext, language }: { snapshot: PublicS
             </div>
           </a>
         )}
+      </section>
+
+      <section className="public-home-command-grid" aria-label="Booking workflow">
+        <a href="#stays">
+          <CalendarDays size={22} />
+          <span>Choose stay</span>
+          <strong>{snapshot.stays.length} options</strong>
+        </a>
+        <a href={userContext.agent.canAsk ? '#booking' : userContext.agent.loginUrl} onClick={userContext.agent.canAsk ? handleBookingLinkClick : undefined}>
+          <Bot size={22} />
+          <span>{userContext.agent.canAsk ? 'Ask agent' : 'Sign in for agent'}</span>
+          <strong>{userContext.agent.canAsk ? `${userContext.agent.remainingQuestions ?? userContext.agent.questionLimit} left` : 'Account required'}</strong>
+        </a>
+        <a href="#booking" onClick={handleBookingLinkClick}>
+          <ShieldCheck size={22} />
+          <span>Secure holds</span>
+          <strong>{snapshot.depositAmount} deposit</strong>
+        </a>
+        <a href="/accounts/">
+          <ReceiptText size={22} />
+          <span>Account center</span>
+          <strong>Requests + invoices</strong>
+        </a>
       </section>
 
       <section id="stays" className="public-section">
@@ -1803,19 +1837,6 @@ export function PublicSitePage() {
         onLanguageChange={setLanguage}
         onSignOutStart={() => setUserContext(PublicUserContext.anonymous(resolvedUserContext.agent))}
       />
-      <section className="public-v4-command" aria-label="Gentelella v4 preview">
-        <div>
-          <span>Gentelella v4 Preview</span>
-          <h1>MLADIS operating layer</h1>
-          <p>Previewing the redesigned booking, maintenance, finance, and agent workspace before it replaces the current public experience.</p>
-        </div>
-        <div className="public-v4-command__grid">
-          <strong>Booking</strong>
-          <strong>Maintenance</strong>
-          <strong>Finance</strong>
-          <strong>Agent</strong>
-        </div>
-      </section>
       {content}
     </main>
   );
