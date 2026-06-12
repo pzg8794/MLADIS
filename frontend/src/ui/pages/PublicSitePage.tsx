@@ -1795,7 +1795,7 @@ export function PublicSitePage() {
   if (path.startsWith('/accounts')) content = <AccountExperience snapshot={snapshot} userContext={resolvedUserContext} language={language} />;
 
   return (
-    <main className="public-site">
+    <main className="public-site public-site--v4-preview">
       <PublicNav
         snapshot={snapshot}
         userContext={resolvedUserContext}
@@ -1803,6 +1803,19 @@ export function PublicSitePage() {
         onLanguageChange={setLanguage}
         onSignOutStart={() => setUserContext(PublicUserContext.anonymous(resolvedUserContext.agent))}
       />
+      <section className="public-v4-command" aria-label="Gentelella v4 preview">
+        <div>
+          <span>Gentelella v4 Preview</span>
+          <h1>MLADIS operating layer</h1>
+          <p>Previewing the redesigned booking, maintenance, finance, and agent workspace before it replaces the current public experience.</p>
+        </div>
+        <div className="public-v4-command__grid">
+          <strong>Booking</strong>
+          <strong>Maintenance</strong>
+          <strong>Finance</strong>
+          <strong>Agent</strong>
+        </div>
+      </section>
       {content}
     </main>
   );

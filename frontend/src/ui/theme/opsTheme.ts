@@ -1,7 +1,7 @@
 export const opsTheme = {
   brandTitle: 'MLADIS',
-  brandSubtitle: 'Operations',
-  shellTitle: 'Command shell',
-  shellDescription: 'Compact controls, reusable views, and domain-owned workflows.',
+  brandSubtitle: 'v4 Preview',
+  shellTitle: 'Gentelella v4 shell',
+  shellDescription: 'A cleaner command layer for booking, finance, maintenance, and agent work.',
   referenceName: 'gentelella-v4',
 } as const;

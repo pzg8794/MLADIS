@@ -113,6 +113,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </header>
         )}
+        <section className="gentelella-preview-strip" aria-label="Gentelella v4 preview status">
+          <div>
+            <span>Gentelella v4 Preview</span>
+            <strong>Modern command system</strong>
+          </div>
+          <p>Testing the next MLADIS operations shell on port 8010 before replacing the current app.</p>
+        </section>
         {children}
       </div>
     </div>

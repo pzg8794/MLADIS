@@ -6,11 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#eef3f4">
     <link rel="icon" href="{% static 'frontend/modern-dashboard/favicon.svg' %}" type="image/svg+xml">
-    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}">
+    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}?v=gentelella-v4-preview-2">
     <title>{% trans "Create account" %} | MLADIS</title>
   </head>
   <body>
     <main class="modern-auth-page">
+      <section class="modern-auth-preview">
+        <span>Gentelella v4 Preview</span>
+        <strong>Testing the next MLADIS shell on port 8010.</strong>
+      </section>
       <section class="modern-auth-hero">
         <a class="public-brand" href="/">
           {% if site_settings.logo_display_url %}
