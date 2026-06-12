@@ -1010,6 +1010,7 @@ class MaintenanceEvent(models.Model):
         return self.description or self.ai_description
 
     def to_agent_payload(self):
+        booking = self.booking
         return {
             "maintenance_event_id": str(self.pk),
             "title": self.title,
@@ -1023,6 +1024,19 @@ class MaintenanceEvent(models.Model):
                 "slug": self.item.slug if self.item else "",
             },
             "booking_request_id": self.booking_id,
+            "reservation": {
+                "id": booking.pk if booking else None,
+                "request_key": booking.request_key if booking else "",
+                "guest_name": booking.guest_name if booking else "",
+                "guest_email": booking.email if booking else "",
+                "status": booking.status if booking else "",
+                "status_label": booking.get_status_display() if booking else "",
+                "check_in": booking.check_in.isoformat() if booking and booking.check_in else "",
+                "check_out": booking.check_out.isoformat() if booking and booking.check_out else "",
+                "nights": booking.nights if booking else 0,
+                "guests": booking.guests if booking else 0,
+                "reservation_total": booking.display_total if booking else "",
+            },
             "cost": self.money,
             "time": self.time_window,
             "vendor": {

@@ -1841,6 +1841,7 @@ class OpsMaintenanceAPIView(View):
         rows = [self._event_payload(request, event) for event in events]
         total_cost = sum(event.cost_amount for event in events)
         tax_ready = sum(1 for event in events if event.is_tax_ready)
+        reservations = BookingInquiry.objects.select_related("item").order_by("-check_in", "-created_at")[:300]
         open_statuses = {
             MaintenanceStatus.LOGGED,
             MaintenanceStatus.SCHEDULED,
@@ -1861,6 +1862,7 @@ class OpsMaintenanceAPIView(View):
                 "status_options": self._choice_options(MaintenanceStatus.choices, rows, "status"),
                 "payment_status_options": self._choice_options(MaintenancePaymentStatus.choices, rows, "payment_status"),
                 "stays": [self._stay_payload(stay) for stay in BookableItem.objects.filter(is_active=True, category=BookingCategory.STAY).order_by("name")],
+                "reservations": [self._booking_payload(booking) for booking in reservations],
                 "rows": rows,
                 "admin_url": reverse("admin:bookings_maintenanceevent_changelist"),
                 "add_admin_url": reverse("admin:bookings_maintenanceevent_add"),
@@ -1910,6 +1912,27 @@ class OpsMaintenanceAPIView(View):
         }
 
     @staticmethod
+    def _booking_payload(booking):
+        item_name = booking.item.business_display_name if booking.item else "Unassigned stay"
+        date_range = f"{booking.check_in:%b %-d, %Y} to {booking.check_out:%b %-d, %Y}"
+        return {
+            "id": booking.pk,
+            "request_key": booking.request_key,
+            "label": f"{booking.request_key} · {booking.guest_name} · {item_name}",
+            "guest_name": booking.guest_name,
+            "item_id": booking.item_id,
+            "item_name": item_name,
+            "check_in": booking.check_in.isoformat() if booking.check_in else "",
+            "check_out": booking.check_out.isoformat() if booking.check_out else "",
+            "date_range": date_range,
+            "guests": booking.guests or 0,
+            "status": booking.status,
+            "status_label": booking.get_status_display(),
+            "display_total": booking.display_total,
+            "admin_url": reverse("admin:bookings_bookinginquiry_change", args=[booking.pk]),
+        }
+
+    @staticmethod
     def _choice_options(choices, rows, field):
         counts = {}
         for row in rows:
@@ -1926,12 +1949,18 @@ class OpsMaintenanceAPIView(View):
     def _event_payload(self, request, event):
         photos = list(event.photos.all())
         cover = next((photo for photo in photos if photo.is_cover), photos[0] if photos else None)
+        booking = event.booking
         return {
             "id": str(event.pk),
             "title": event.title,
             "item_id": event.item_id,
             "item_name": event.item.business_display_name if event.item else "",
             "booking_id": event.booking_id,
+            "booking_request_key": booking.request_key if booking else "",
+            "booking_label": f"{booking.guest_name} · {booking.check_in:%b %-d} to {booking.check_out:%b %-d}" if booking else "",
+            "booking_guest_name": booking.guest_name if booking else "",
+            "booking_date_range": f"{booking.check_in:%Y-%m-%d} to {booking.check_out:%Y-%m-%d}" if booking else "",
+            "booking_admin_url": request.build_absolute_uri(reverse("admin:bookings_bookinginquiry_change", args=[booking.pk])) if booking else "",
             "work_type": event.work_type,
             "work_type_label": event.get_work_type_display(),
             "status": event.status,

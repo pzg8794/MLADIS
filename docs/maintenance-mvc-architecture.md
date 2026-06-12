@@ -102,6 +102,13 @@ Recommended fields:
 - `approved_by`
 - timestamps
 
+Attachment rule:
+
+- Every maintenance record must attach to a listing through `item`.
+- A maintenance record may also attach to a reservation through `booking`.
+- When `booking` is present, `MaintenanceEvent.clean()` must ensure the reservation belongs to the same listing as `item`.
+- Agent, report, bill, and data-lake payloads must include listing identity plus reservation request key, guest, dates, nights, guest count, and status when a reservation is attached.
+
 ### MaintenancePhoto
 
 Fields:
@@ -260,6 +267,8 @@ Implemented frontend objects:
 - `OpsMaintenanceSnapshot`
 - `OpsMaintenanceEvent`
 - `OpsMaintenancePhoto`
+- `OpsMaintenanceStay`
+- `OpsMaintenanceReservation`
 - `OpsMaintenancePage`
 
 Implemented data-lake collection:

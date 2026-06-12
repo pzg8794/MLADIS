@@ -1346,11 +1346,22 @@ class MLADISDataLakeExporter:
             .order_by("created_at", "id")
         )
         for event in queryset:
+            booking = event.booking
             data = {
                 "maintenance_event_id": str(event.id),
                 "item_id": event.item_id,
                 "item_name": event.item.business_display_name if event.item else "",
                 "booking_inquiry_id": event.booking_id,
+                "reservation": {
+                    "request_key": booking.request_key if booking else "",
+                    "guest_name": "" if self.redacted or not booking else booking.guest_name,
+                    "guest_email": "" if self.redacted or not booking else booking.email,
+                    "check_in": booking.check_in if booking else None,
+                    "check_out": booking.check_out if booking else None,
+                    "nights": booking.nights if booking else 0,
+                    "guests": booking.guests if booking else 0,
+                    "status": booking.status if booking else "",
+                },
                 "title": event.title,
                 "work_type": event.work_type,
                 "status": event.status,
@@ -1396,6 +1407,10 @@ class MLADISDataLakeExporter:
                 source_model="bookings.MaintenanceEvent",
                 entity_id=event.id,
                 occurred_at=event.reported_at or event.created_at,
-                natural_keys={"item_slug": event.item.slug if event.item else "", "work_type": event.work_type},
+                natural_keys={
+                    "item_slug": event.item.slug if event.item else "",
+                    "request_key": booking.request_key if booking else "",
+                    "work_type": event.work_type,
+                },
                 data=data,
             )

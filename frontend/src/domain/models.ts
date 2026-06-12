@@ -792,6 +792,25 @@ export class OpsMaintenanceStay {
   ) {}
 }
 
+export class OpsMaintenanceReservation {
+  constructor(
+    public readonly id: number,
+    public readonly requestKey: string,
+    public readonly label: string,
+    public readonly guestName: string,
+    public readonly itemId: number | null,
+    public readonly itemName: string,
+    public readonly checkIn: string,
+    public readonly checkOut: string,
+    public readonly dateRange: string,
+    public readonly guests: number,
+    public readonly status: string,
+    public readonly statusLabel: string,
+    public readonly displayTotal: string,
+    public readonly adminUrl: string,
+  ) {}
+}
+
 export class OpsMaintenancePhoto {
   constructor(
     public readonly id: string,
@@ -813,6 +832,11 @@ export class OpsMaintenanceEvent {
     public readonly itemId: number,
     public readonly itemName: string,
     public readonly bookingId: number | null,
+    public readonly bookingRequestKey: string,
+    public readonly bookingLabel: string,
+    public readonly bookingGuestName: string,
+    public readonly bookingDateRange: string,
+    public readonly bookingAdminUrl: string,
     public readonly workType: string,
     public readonly workTypeLabel: string,
     public readonly status: string,
@@ -859,6 +883,7 @@ export class OpsMaintenanceSnapshot {
     public readonly statusOptions: OpsMaintenanceOption[],
     public readonly paymentStatusOptions: OpsMaintenanceOption[],
     public readonly stays: OpsMaintenanceStay[],
+    public readonly reservations: OpsMaintenanceReservation[],
     public readonly rows: OpsMaintenanceEvent[],
     public readonly adminUrl: string,
     public readonly addAdminUrl: string,

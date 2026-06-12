@@ -1275,10 +1275,15 @@ class MaintenanceService:
         if status in self.REQUIRED_PHOTO_STATUSES and not uploaded_photos:
             raise ValidationError({"photos": "Add at least one photo for maintenance evidence."})
 
+        booking = self._booking(payload.get("booking"))
+        item_id = payload.get("item") or (booking.item_id if booking else None)
+        if booking and not item_id:
+            raise ValidationError({"booking": "Selected reservation is not attached to a listing."})
+
         with transaction.atomic():
             event = MaintenanceEvent(
-                item_id=payload.get("item"),
-                booking_id=payload.get("booking") or None,
+                item_id=item_id,
+                booking=booking,
                 title=(payload.get("title") or "").strip(),
                 work_type=payload.get("work_type") or "cleaning",
                 status=status,
@@ -1436,6 +1441,19 @@ class MaintenanceService:
         if value in (None, ""):
             return Decimal("0.00")
         return Decimal(str(value))
+
+    @staticmethod
+    def _booking(value):
+        if not value:
+            return None
+        try:
+            booking_id = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({"booking": "Choose a valid reservation."}) from exc
+        booking = BookingInquiry.objects.select_related("item").filter(pk=booking_id).first()
+        if not booking:
+            raise ValidationError({"booking": "Selected reservation was not found."})
+        return booking
 
     @staticmethod
     def _checksum(upload):

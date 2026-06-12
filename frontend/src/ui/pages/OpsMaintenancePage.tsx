@@ -61,6 +61,7 @@ export function OpsMaintenancePage() {
   const [workType, setWorkType] = useState('');
   const [status, setStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
+  const [reservationFilter, setReservationFilter] = useState('');
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [payload, setPayload] = useState<Record<string, unknown> | null>(null);
@@ -71,6 +72,7 @@ export function OpsMaintenancePage() {
   const [descriptionModes, setDescriptionModes] = useState<Record<string, 'manual' | 'ai'>>({});
   const [formValues, setFormValues] = useState({
     item: '',
+    booking: '',
     title: '',
     work_type: 'cleaning',
     status: 'completed',
@@ -119,18 +121,38 @@ export function OpsMaintenancePage() {
         row.vendorName,
         row.description,
         row.aiDescription,
+        row.bookingRequestKey,
+        row.bookingGuestName,
+        row.bookingDateRange,
         row.workTypeLabel,
         row.statusLabel,
       ].some((value) => value.toLowerCase().includes(query));
       return matchesSearch
         && (!workType || row.workType === workType)
         && (!status || row.status === status)
-        && (!paymentStatus || row.paymentStatus === paymentStatus);
+        && (!paymentStatus || row.paymentStatus === paymentStatus)
+        && (!reservationFilter || String(row.bookingId || '') === reservationFilter);
     });
-  }, [paymentStatus, search, snapshot, status, workType]);
+  }, [paymentStatus, reservationFilter, search, snapshot, status, workType]);
+
+  const reservationOptions = useMemo(() => {
+    if (!snapshot) return [];
+    if (!formValues.item) return snapshot.reservations;
+    const itemId = Number(formValues.item);
+    return snapshot.reservations.filter((reservation) => reservation.itemId === itemId);
+  }, [formValues.item, snapshot]);
 
   function updateForm(event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     const { name, value } = event.target;
+    if (name === 'booking') {
+      const reservation = snapshot?.reservations.find((item) => String(item.id) === value);
+      setFormValues((current) => ({
+        ...current,
+        booking: value,
+        item: reservation?.itemId ? String(reservation.itemId) : current.item,
+      }));
+      return;
+    }
     setFormValues((current) => ({ ...current, [name]: value }));
   }
 
@@ -150,6 +172,7 @@ export function OpsMaintenancePage() {
       setPhotoFiles([]);
       setFormValues((current) => ({
         ...current,
+        booking: '',
         title: '',
         cost_amount: '',
         started_at: '',
@@ -285,6 +308,11 @@ export function OpsMaintenancePage() {
           <p>{row.paymentStatusLabel} {row.invoiceNumber ? `· Invoice ${row.invoiceNumber}` : ''}</p>
           <small>{row.proofOfPaymentRef || row.taxCategoryCode || 'Receipt/tax reference pending'}</small>
         </div>
+        <div>
+          <span>Linked reservation</span>
+          <p>{row.bookingRequestKey || 'Listing-level work'}</p>
+          <small>{row.bookingLabel || 'No reservation attached.'}</small>
+        </div>
         <div className="ops-row-actions">
           <button
             type="button"
@@ -295,6 +323,7 @@ export function OpsMaintenancePage() {
             <Sparkles size={14} /> {describingId === row.id ? 'Reading photos...' : 'Auto-generate description'}
           </button>
           <button type="button" onClick={() => openPayload(row)}><FileJson size={14} /> Agent payload</button>
+          {row.bookingAdminUrl && <a href={row.bookingAdminUrl}>Reservation</a>}
           <a href={row.adminUrl}>Record</a>
         </div>
         {row.photos.length > 0 && (
@@ -352,6 +381,17 @@ export function OpsMaintenancePage() {
               <select name="item" value={formValues.item} onChange={updateForm} required>
                 {snapshot.stays.map((stay) => (
                   <option value={stay.id} key={stay.id}>{formatStayName(stay.name)}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Attach reservation
+              <select name="booking" value={formValues.booking} onChange={updateForm}>
+                <option value="">Listing-level work</option>
+                {reservationOptions.map((reservation) => (
+                  <option value={reservation.id} key={reservation.id}>
+                    {reservation.requestKey} · {reservation.guestName} · {reservation.dateRange}
+                  </option>
                 ))}
               </select>
             </label>
@@ -487,6 +527,14 @@ export function OpsMaintenancePage() {
                 </select>
                 <select value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)} aria-label="Payment status">
                   {snapshot.paymentStatusOptions.map((option) => <option value={option.value} key={option.value || 'all'}>{option.label} ({option.count})</option>)}
+                </select>
+                <select value={reservationFilter} onChange={(event) => setReservationFilter(event.target.value)} aria-label="Linked reservation">
+                  <option value="">All reservations</option>
+                  {snapshot.reservations.map((reservation) => (
+                    <option value={reservation.id} key={reservation.id}>
+                      {reservation.requestKey} · {reservation.guestName}
+                    </option>
+                  ))}
                 </select>
               </section>
             )}

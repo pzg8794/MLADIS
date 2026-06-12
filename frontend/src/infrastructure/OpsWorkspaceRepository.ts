@@ -20,6 +20,7 @@ import {
   OpsMaintenanceEvent,
   OpsMaintenanceOption,
   OpsMaintenancePhoto,
+  OpsMaintenanceReservation,
   OpsMaintenanceSnapshot,
   OpsMaintenanceStay,
   OpsMetric,
@@ -259,6 +260,23 @@ interface ApiOpsMaintenanceStay {
   max_guests: number;
 }
 
+interface ApiOpsMaintenanceReservation {
+  id: number;
+  request_key: string;
+  label: string;
+  guest_name: string;
+  item_id: number | null;
+  item_name: string;
+  check_in: string;
+  check_out: string;
+  date_range: string;
+  guests: number;
+  status: string;
+  status_label: string;
+  display_total: string;
+  admin_url: string;
+}
+
 interface ApiOpsMaintenancePhoto {
   id: string;
   url: string;
@@ -277,6 +295,11 @@ interface ApiOpsMaintenanceEvent {
   item_id: number;
   item_name: string;
   booking_id: number | null;
+  booking_request_key: string;
+  booking_label: string;
+  booking_guest_name: string;
+  booking_date_range: string;
+  booking_admin_url: string;
   work_type: string;
   work_type_label: string;
   status: string;
@@ -321,6 +344,7 @@ interface ApiOpsMaintenanceSnapshot {
   status_options: ApiOpsMaintenanceOption[];
   payment_status_options: ApiOpsMaintenanceOption[];
   stays: ApiOpsMaintenanceStay[];
+  reservations: ApiOpsMaintenanceReservation[];
   rows: ApiOpsMaintenanceEvent[];
   admin_url: string;
   add_admin_url: string;
@@ -617,6 +641,7 @@ export class ApiOpsWorkspaceRepository implements OpsWorkspaceRepository {
       data.status_options.map(toMaintenanceOption),
       data.payment_status_options.map(toMaintenanceOption),
       data.stays.map(toMaintenanceStay),
+      data.reservations.map(toMaintenanceReservation),
       data.rows.map(toMaintenanceEvent),
       data.admin_url,
       data.add_admin_url,
@@ -774,6 +799,25 @@ function toMaintenancePhoto(item: ApiOpsMaintenancePhoto): OpsMaintenancePhoto {
   );
 }
 
+function toMaintenanceReservation(item: ApiOpsMaintenanceReservation): OpsMaintenanceReservation {
+  return new OpsMaintenanceReservation(
+    item.id,
+    item.request_key,
+    item.label,
+    item.guest_name,
+    item.item_id,
+    item.item_name,
+    item.check_in,
+    item.check_out,
+    item.date_range,
+    item.guests,
+    item.status,
+    item.status_label,
+    item.display_total,
+    item.admin_url,
+  );
+}
+
 function toMaintenanceEvent(item: ApiOpsMaintenanceEvent): OpsMaintenanceEvent {
   return new OpsMaintenanceEvent(
     item.id,
@@ -781,6 +825,11 @@ function toMaintenanceEvent(item: ApiOpsMaintenanceEvent): OpsMaintenanceEvent {
     item.item_id,
     item.item_name,
     item.booking_id,
+    item.booking_request_key,
+    item.booking_label,
+    item.booking_guest_name,
+    item.booking_date_range,
+    item.booking_admin_url,
     item.work_type,
     item.work_type_label,
     item.status,

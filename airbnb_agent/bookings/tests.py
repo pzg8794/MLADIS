@@ -3583,6 +3583,22 @@ class MaintenanceOpsTests(TestCase):
             short_description="Maintenance test stay.",
             is_active=True,
         )
+        self.other_item = BookableItem.objects.create(
+            name="6 Bedrooms Vacation Home & Pool G-102",
+            slug="maintenance-g-102",
+            category=BookingCategory.STAY,
+            short_description="Second maintenance test stay.",
+            is_active=True,
+        )
+        self.booking = BookingInquiry.objects.create(
+            item=self.item,
+            guest_name="Maintenance Guest",
+            email="guest@example.com",
+            check_in=date(2026, 6, 10),
+            check_out=date(2026, 6, 12),
+            guests=2,
+            status=BookingStatus.CONFIRMED,
+        )
 
     def test_maintenance_ops_requires_staff_login(self):
         response = self.client.get(reverse("bookings:ops-maintenance"))
@@ -3665,6 +3681,63 @@ class MaintenanceOpsTests(TestCase):
         self.assertEqual(payload["cost"]["amount"], "75.50")
         self.assertEqual(payload["time"]["duration_minutes"], 45)
         self.assertEqual(len(payload["pictures"]), 1)
+
+    def test_maintenance_event_can_link_to_reservation_for_billing_payload(self):
+        self.client.force_login(self.user)
+        with TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root, MEDIA_URL="/media/"):
+                response = self.client.post(
+                    reverse("bookings:ops-maintenance-api"),
+                    {
+                        "item": self.item.pk,
+                        "booking": self.booking.pk,
+                        "title": "Post-checkout cleaning",
+                        "work_type": "cleaning",
+                        "status": "completed",
+                        "cost_amount": "60.00",
+                        "cost_currency": "USD",
+                        "reported_at": "2026-06-12T10:00",
+                        "payment_status": "pending",
+                        "description": "Cleaning after guest checkout.",
+                        "photos": SimpleUploadedFile("cleaning.png", TINY_PNG_BYTES, content_type="image/png"),
+                    },
+                )
+                event = MaintenanceEvent.objects.get(title="Post-checkout cleaning")
+                payload_response = self.client.get(
+                    reverse("bookings:ops-maintenance-agent-payload-api", args=[event.pk])
+                )
+
+        self.assertEqual(response.status_code, 201)
+        event_payload = response.json()["event"]
+        self.assertEqual(event_payload["booking_id"], self.booking.pk)
+        self.assertEqual(event_payload["booking_request_key"], self.booking.request_key)
+        self.assertIn("Maintenance Guest", event_payload["booking_label"])
+        event.refresh_from_db()
+        self.assertEqual(event.booking, self.booking)
+        report_payload = payload_response.json()
+        self.assertEqual(report_payload["reservation"]["request_key"], self.booking.request_key)
+        self.assertEqual(report_payload["reservation"]["guest_name"], "Maintenance Guest")
+        self.assertEqual(report_payload["reservation"]["nights"], 2)
+
+    def test_maintenance_event_rejects_reservation_for_different_listing(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("bookings:ops-maintenance-api"),
+            {
+                "item": self.other_item.pk,
+                "booking": self.booking.pk,
+                "title": "Wrong stay assignment",
+                "work_type": "inspection",
+                "status": "draft",
+                "cost_amount": "0.00",
+                "cost_currency": "USD",
+                "reported_at": "2026-06-12T10:00",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("booking", response.json()["errors"])
 
     def test_maintenance_ai_description_requires_openai_configuration(self):
         self.client.force_login(self.user)
@@ -3798,3 +3871,4 @@ class MaintenanceOpsTests(TestCase):
         self.assertEqual(payload["rows"][0]["title"], "Inventory count")
         self.assertIn("Cleaning", [option["label"] for option in payload["work_type_options"]])
         self.assertIn("3 Beds Apt", payload["stays"][0]["name"])
+        self.assertEqual(payload["reservations"][0]["request_key"], self.booking.request_key)
