@@ -21,22 +21,22 @@ class AdminHealthItem {
 }
 
 const shortcuts = [
-  new AdminShortcut('Settings console', 'Open protected records and configuration.', '/admin/', ShieldCheck, 'blue'),
-  new AdminShortcut('Brand settings', 'Update logo, public name, contact details, and site branding.', '/admin/bookings/sitesettings/1/change/', Settings, 'violet'),
-  new AdminShortcut('Reservations', 'Review booking requests, guest notes, coupons, and confirmations.', '/ops/reservations/', CalendarDays, 'teal'),
-  new AdminShortcut('Customers', 'Manage customer profiles, Airbnb imports, and marketing consent.', '/ops/customers/', Users, 'violet'),
-  new AdminShortcut('Damage deposits', 'Review Stripe and PayPal authorization holds.', '/ops/deposits/', CreditCard, 'amber'),
-  new AdminShortcut('Agent workspace', 'Edit local FAQ answers and learn from customer questions.', '/ops/agent/', Bot, 'rose'),
-  new AdminShortcut('Business calendar', 'Block dates, set overrides, and audit availability.', '/ops/calendar/', Database, 'teal'),
-  new AdminShortcut('Reports', 'Open the modern reporting dashboard.', '/ops/reports/', FileText, 'blue'),
-  new AdminShortcut('OAuth setup', 'Check Google/Airbnb-connected setup diagnostics.', '/ops/oauth/', KeyRound, 'violet'),
+  new AdminShortcut('Records', 'Protected database edits and advanced configuration.', '/admin/', ShieldCheck, 'blue'),
+  new AdminShortcut('Brand settings', 'Logo, public name, contacts, and booking copy.', '/admin/bookings/sitesettings/1/change/', Settings, 'violet'),
+  new AdminShortcut('Reservations', 'Requests, guest notes, coupons, and confirmations.', '/ops/reservations/', CalendarDays, 'teal'),
+  new AdminShortcut('Customers', 'Profiles, Airbnb imports, feedback, and consent.', '/ops/customers/', Users, 'violet'),
+  new AdminShortcut('Deposits', 'Stripe and PayPal authorization holds.', '/ops/deposits/', CreditCard, 'amber'),
+  new AdminShortcut('Agent', 'FAQ answers and customer-question training.', '/ops/agent/', Bot, 'rose'),
+  new AdminShortcut('Calendar', 'Blocks, pricing overrides, and availability audit.', '/ops/calendar/', Database, 'teal'),
+  new AdminShortcut('Reports', 'Operational charts and daily business signals.', '/ops/reports/', FileText, 'blue'),
+  new AdminShortcut('OAuth setup', 'Provider callbacks and sign-in diagnostics.', '/ops/oauth/', KeyRound, 'violet'),
 ];
 
 const healthItems = [
-  new AdminHealthItem('Protected records', 'Permissioned', 'Sensitive edits stay behind staff controls until the APIs are finalized.'),
-  new AdminHealthItem('Booking mutations', 'Locked down', 'No React-side payment/deposit mutations in this prototype.'),
-  new AdminHealthItem('Agent FAQ layer', 'Needs review', 'Confirm AgentFAQ exists in admin and can be edited.', 'review'),
-  new AdminHealthItem('Static deployment', 'Build required', 'Run npm build before copying frontend assets.', 'attention'),
+  new AdminHealthItem('Access', 'Staff only', 'Protected tools stay behind authenticated staff sessions.'),
+  new AdminHealthItem('Payments', 'Controlled', 'Payment and deposit changes stay server-side.'),
+  new AdminHealthItem('Agent FAQ', 'Review', 'FAQ training records should remain editable by staff.', 'review'),
+  new AdminHealthItem('Frontend', 'Build gated', 'Preview assets require a clean Vite build before release.', 'attention'),
 ];
 
 export function AdminPage() {
@@ -44,12 +44,12 @@ export function AdminPage() {
     <main className="dashboard-content admin-page">
       <section className="admin-hero">
         <div>
-          <span><ShieldCheck size={16} /> Staff operations</span>
+          <span><ShieldCheck size={16} /> Staff workspace</span>
           <h2>Admin command center</h2>
-          <p>Modern shortcuts for protected edits, daily ops, reporting, and booking control.</p>
+          <p>Control records, reservations, brand settings, reports, agent training, and booking operations from one clean surface.</p>
         </div>
         <a href="/admin/" className="admin-primary-link">
-          Open admin
+          Open records
           <ExternalLink size={16} />
         </a>
       </section>
@@ -66,10 +66,10 @@ export function AdminPage() {
 
       <section className="admin-section-header">
         <div>
-          <h3>Admin shortcuts</h3>
-          <p>Jump into the exact operational area without hunting through old admin menus.</p>
+          <h3>Control groups</h3>
+          <p>Jump directly into the workspace that owns the task.</p>
         </div>
-        <span><Activity size={15} /> Safe bridge mode</span>
+        <span><Activity size={15} /> Controlled edits</span>
       </section>
 
       <section className="admin-shortcut-grid">

@@ -10090,10 +10090,14 @@ svg.modern-admin-rail-icon:not([stroke]) {
 /* Gentelella v4 exploration branch. This layer intentionally makes the 8010
    preview feel different from the current production-facing interface. */
 .dashboard-shell[data-theme-reference="gentelella-v4"] {
-  grid-template-columns: 228px minmax(0, 1fr);
+  grid-template-columns: 72px minmax(0, 1fr);
   gap: 0;
   padding: 0;
   background: #f8fafc;
+}
+
+.dashboard-shell[data-theme-reference="gentelella-v4"].is-sidebar-expanded {
+  grid-template-columns: 228px minmax(0, 1fr);
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"] .dashboard-main {
@@ -10106,7 +10110,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar {
   position: sticky;
   top: 0;
-  width: 228px;
+  width: 72px;
   height: 100vh;
   padding: 18px 10px 10px;
   border: 0;
@@ -10114,12 +10118,29 @@ svg.modern-admin-rail-icon:not([stroke]) {
   background:
     linear-gradient(180deg, rgba(0, 96, 106, 0.94), rgba(4, 28, 54, 0.99) 31%, #031b33 100%);
   box-shadow: 4px 0 24px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+  transition: width 220ms ease, box-shadow 220ms ease;
+  z-index: 90;
+}
+
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded {
+  width: 228px;
+  box-shadow: 16px 0 42px rgba(15, 23, 42, 0.2);
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-brand {
   gap: 12px;
   min-height: 42px;
   padding: 0 10px 18px;
+  justify-content: center;
+}
+
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover .modern-admin-brand,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within .modern-admin-brand,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded .modern-admin-brand {
+  justify-content: flex-start;
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-brand img {
@@ -10139,6 +10160,32 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-brand small {
   color: rgba(226, 245, 246, 0.65);
   font-size: 0.72rem;
+}
+
+.dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-brand div,
+.dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-nav-label,
+.dashboard-shell[data-theme-reference="gentelella-v4"] .v4-nav-group,
+.dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-back .modern-admin-nav-label {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: translateX(-8px);
+  transition: max-width 220ms ease, opacity 180ms ease, transform 180ms ease;
+}
+
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover .modern-admin-brand div,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within .modern-admin-brand div,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded .modern-admin-brand div,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover .modern-admin-nav-label,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within .modern-admin-nav-label,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded .modern-admin-nav-label,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover .v4-nav-group,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within .v4-nav-group,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded .v4-nav-group {
+  max-width: 190px;
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-sidebar nav {
@@ -10162,13 +10209,24 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-sidebar nav a,
 .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-back {
   position: relative;
+  justify-content: center;
   min-height: 38px;
   margin: 1px 0;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: 6px;
   color: rgba(238, 248, 250, 0.86);
   font-size: 0.86rem;
   font-weight: 720;
+}
+
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover nav a,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within nav a,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded nav a,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover .modern-admin-back,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within .modern-admin-back,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded .modern-admin-back {
+  justify-content: flex-start;
+  padding: 8px 12px;
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-sidebar nav a:hover,
@@ -10186,6 +10244,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .v4-nav-count {
+  display: none;
   margin-left: auto;
   min-width: 26px;
   border-radius: 5px;
@@ -10194,6 +10253,12 @@ svg.modern-admin-rail-icon:not([stroke]) {
   background: rgba(148, 163, 184, 0.38);
   font-size: 0.72rem;
   text-align: center;
+}
+
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover .v4-nav-count,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within .v4-nav-count,
+.dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded .v4-nav-count {
+  display: inline-block;
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-back {
@@ -10809,24 +10874,8 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 @media (min-width: 1181px) {
-  .dashboard-shell[data-theme-reference="gentelella-v4"] {
+  .dashboard-shell[data-theme-reference="gentelella-v4"].is-sidebar-expanded {
     grid-template-columns: 228px minmax(0, 1fr);
-  }
-
-  .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar,
-  .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover,
-  .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within,
-  .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded {
-    width: 228px;
-  }
-
-  .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-brand div,
-  .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-nav-label,
-  .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-sidecard span,
-  .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-sidecard p {
-    max-width: 190px;
-    opacity: 1;
-    transform: none;
   }
 }
 
@@ -10859,12 +10908,39 @@ svg.modern-admin-rail-icon:not([stroke]) {
   }
 
   .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-sidebar nav {
-    display: flex;
-    gap: 8px;
+    display: none;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+    gap: 4px;
     width: 100%;
-    overflow-x: auto;
-    padding: 0 2px 3px;
+    max-height: min(58vh, 560px);
+    overflow-y: auto;
+    padding: 4px 0 10px;
     scrollbar-width: none;
+  }
+
+  .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded nav {
+    display: grid;
+  }
+
+  .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-back {
+    display: none;
+  }
+
+  .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded .modern-admin-back {
+    display: inline-flex;
+  }
+
+  .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-brand {
+    justify-content: flex-start;
+  }
+
+  .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-brand div,
+  .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-nav-label,
+  .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-back .modern-admin-nav-label {
+    max-width: 190px;
+    opacity: 1;
+    transform: none;
   }
 
   .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-sidebar nav::-webkit-scrollbar {
@@ -10872,9 +10948,12 @@ svg.modern-admin-rail-icon:not([stroke]) {
   }
 
   .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-sidebar nav a {
-    flex: 0 0 auto;
-    min-width: 148px;
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     white-space: nowrap;
+    justify-content: flex-start;
   }
 
   .dashboard-shell[data-theme-reference="gentelella-v4"] .v4-nav-group {
@@ -10945,7 +11024,6 @@ svg.modern-admin-rail-icon:not([stroke]) {
   }
 
   .dashboard-shell[data-theme-reference="gentelella-v4"] .modern-admin-sidebar nav a {
-    min-width: 132px;
     font-size: 0.82rem;
   }
 
@@ -11011,7 +11089,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 /* Gentelella v4 public landing exploration. Scoped to the preview shell so the
    current production-facing branch can stay stable while we try the new brand. */
 .public-site--v4-preview {
-  grid-template-columns: 228px minmax(0, 1fr);
+  grid-template-columns: 72px minmax(0, 1fr);
   align-items: start;
   width: min(1540px, 100%);
   gap: 16px;
@@ -11019,6 +11097,10 @@ svg.modern-admin-rail-icon:not([stroke]) {
   background:
     radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.1), transparent 32%),
     linear-gradient(180deg, #f8fafc 0%, #eef7fb 44%, #ffffff 100%);
+}
+
+.public-site--v4-preview.public-site--nav-open {
+  grid-template-columns: 228px minmax(0, 1fr);
 }
 
 .public-site--v4-preview > :not(.public-nav) {
@@ -11034,10 +11116,10 @@ svg.modern-admin-rail-icon:not([stroke]) {
   flex-direction: column;
   gap: 18px;
   align-self: start;
-  width: 100%;
+  width: 72px;
   height: 100vh;
   margin: 0;
-  padding: 18px 10px;
+  padding: 14px 10px;
   border: 0;
   border-right: 1px solid rgba(125, 211, 252, 0.13);
   border-radius: 0;
@@ -11045,18 +11127,57 @@ svg.modern-admin-rail-icon:not([stroke]) {
     radial-gradient(circle at 18% 3%, rgba(20, 184, 166, 0.35), transparent 26%),
     linear-gradient(180deg, #063f46 0%, #031b33 55%, #021225 100%);
   box-shadow: 18px 0 44px rgba(2, 18, 37, 0.16);
+  overflow: hidden;
+  transition: width 220ms ease, box-shadow 220ms ease;
+  z-index: 30;
 }
 
-.public-site--v4-preview .public-brand {
-  gap: 12px;
+.public-site--v4-preview .public-nav:hover,
+.public-site--v4-preview.public-site--nav-open .public-nav {
+  width: 228px;
+}
+
+.public-site--v4-preview .public-nav__topline {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
   min-height: 52px;
   padding: 0 10px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+.public-site--v4-preview .public-nav:hover .public-nav__topline,
+.public-site--v4-preview.public-site--nav-open .public-nav__topline {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.public-site--v4-preview .public-nav__toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 9px;
+  color: #ecfeff;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.public-site--v4-preview .public-nav__toggle:hover {
+  background: rgba(14, 165, 233, 0.18);
+}
+
+.public-site--v4-preview .public-brand {
+  gap: 12px;
+  min-width: 0;
+}
+
 .public-site--v4-preview .public-brand img {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border: 1px solid #dbe3ee;
   border-radius: 9px;
   box-shadow: 0 14px 28px rgba(20, 184, 166, 0.18);
@@ -11067,6 +11188,16 @@ svg.modern-admin-rail-icon:not([stroke]) {
   font-size: 1rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
+  opacity: 0;
+  white-space: nowrap;
+  transform: translateX(-8px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.public-site--v4-preview .public-nav:hover .public-brand strong,
+.public-site--v4-preview.public-site--nav-open .public-brand strong {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .public-site--v4-preview .public-nav nav {
@@ -11082,7 +11213,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .public-site--v4-preview .public-nav nav a,
 .public-site--v4-preview .public-nav__actions a,
 .public-site--v4-preview .public-nav__actions button {
-  justify-content: flex-start;
+  justify-content: center;
   min-height: 42px;
   width: 100%;
   border-radius: 8px;
@@ -11091,6 +11222,34 @@ svg.modern-admin-rail-icon:not([stroke]) {
   background: transparent;
   box-shadow: none;
   font-size: 0.88rem;
+}
+
+.public-site--v4-preview .public-nav nav a span,
+.public-site--v4-preview .public-nav__actions a span,
+.public-site--v4-preview .public-nav__actions button span {
+  opacity: 0;
+  white-space: nowrap;
+  transform: translateX(-8px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.public-site--v4-preview .public-nav:hover nav a,
+.public-site--v4-preview .public-nav:hover .public-nav__actions a,
+.public-site--v4-preview .public-nav:hover .public-nav__actions button,
+.public-site--v4-preview.public-site--nav-open .public-nav nav a,
+.public-site--v4-preview.public-site--nav-open .public-nav__actions a,
+.public-site--v4-preview.public-site--nav-open .public-nav__actions button {
+  justify-content: flex-start;
+}
+
+.public-site--v4-preview .public-nav:hover nav a span,
+.public-site--v4-preview .public-nav:hover .public-nav__actions a span,
+.public-site--v4-preview .public-nav:hover .public-nav__actions button span,
+.public-site--v4-preview.public-site--nav-open .public-nav nav a span,
+.public-site--v4-preview.public-site--nav-open .public-nav__actions a span,
+.public-site--v4-preview.public-site--nav-open .public-nav__actions button span {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .public-site--v4-preview .public-nav nav a:hover,
@@ -11413,6 +11572,285 @@ svg.modern-admin-rail-icon:not([stroke]) {
   border-left-color: #f97316;
 }
 
+.public-admin-v4 {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.public-admin-v4__hero,
+.public-admin-v4__panel,
+.public-admin-v4__tile,
+.public-admin-v4__metric {
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.055);
+}
+
+.public-admin-v4__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: end;
+  min-height: 180px;
+  padding: 22px;
+  color: #ecfeff;
+  background:
+    radial-gradient(circle at 86% 4%, rgba(20, 184, 166, 0.28), transparent 34%),
+    linear-gradient(135deg, #063f46 0%, #031b33 64%, #021225 100%);
+}
+
+.public-admin-v4__hero span,
+.public-admin-v4__panel-head span,
+.public-admin-v4__record span {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 930;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.public-admin-v4__hero span {
+  color: #7dd3fc;
+}
+
+.public-admin-v4__hero h1,
+.public-admin-v4__panel-head h2 {
+  margin: 4px 0 0;
+  color: inherit;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+}
+
+.public-admin-v4__hero h1 {
+  font-size: clamp(2rem, 4vw, 4.25rem);
+}
+
+.public-admin-v4__hero p {
+  max-width: 680px;
+  margin: 10px 0 0;
+  color: rgba(236, 254, 255, 0.74);
+  line-height: 1.5;
+}
+
+.public-admin-v4__hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: end;
+}
+
+.public-admin-v4__hero-actions a,
+.public-admin-v4__panel-head a,
+.public-admin-v4__record-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid #cbd6e2;
+  border-radius: 7px;
+  padding: 8px 12px;
+  color: #075985;
+  background: #ffffff;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.public-admin-v4__hero-actions a {
+  color: #ecfeff;
+  border-color: rgba(125, 211, 252, 0.24);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.public-admin-v4__notice {
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #166534;
+  background: #f0fdf4;
+  font-weight: 850;
+}
+
+.public-admin-v4__metrics,
+.public-admin-v4__tiles {
+  display: grid;
+  gap: 12px;
+}
+
+.public-admin-v4__metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.public-admin-v4__metric {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  align-content: center;
+  padding: 14px;
+  color: var(--public-admin-tone, #0891b2);
+}
+
+.public-admin-v4__metric span,
+.public-admin-v4__tile > span {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: #ffffff;
+  background: var(--public-admin-tone, #0891b2);
+}
+
+.public-admin-v4__metric strong {
+  color: #0f172a;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.public-admin-v4__metric small,
+.public-admin-v4__tile small,
+.public-admin-v4__record small {
+  color: #64748b;
+  font-weight: 760;
+}
+
+.public-admin-v4__metric--orange,
+.public-admin-v4__tile--orange { --public-admin-tone: #f97316; }
+.public-admin-v4__metric--green,
+.public-admin-v4__tile--green { --public-admin-tone: #16a34a; }
+.public-admin-v4__metric--red { --public-admin-tone: #ef4444; }
+.public-admin-v4__metric--blue,
+.public-admin-v4__tile--blue { --public-admin-tone: #2563eb; }
+.public-admin-v4__tile--indigo { --public-admin-tone: #4f46e5; }
+.public-admin-v4__tile--teal { --public-admin-tone: #0891b2; }
+.public-admin-v4__tile--violet { --public-admin-tone: #7c3aed; }
+
+.public-admin-v4__tiles {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.public-admin-v4__tile {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 4px 12px;
+  min-height: 96px;
+  align-items: center;
+  padding: 14px;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.public-admin-v4__tile > span {
+  grid-row: span 2;
+}
+
+.public-admin-v4__tile strong {
+  font-size: 1rem;
+}
+
+.public-admin-v4__panel {
+  overflow: hidden;
+}
+
+.public-admin-v4__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.public-admin-v4__panel-head h2 {
+  color: #0f172a;
+  font-size: 1.45rem;
+}
+
+.public-admin-v4__empty {
+  margin: 0;
+  padding: 18px;
+  color: #64748b;
+}
+
+.public-admin-v4__records {
+  display: grid;
+}
+
+.public-admin-v4__record {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(180px, 1.2fr) minmax(190px, 1fr) minmax(120px, 0.7fr) minmax(150px, 0.8fr);
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.public-admin-v4__record:last-child {
+  border-bottom: 0;
+}
+
+.public-admin-v4__record > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.public-admin-v4__record strong {
+  color: #0f172a;
+}
+
+.public-admin-v4__record-actions {
+  justify-items: end;
+}
+
+.public-admin-v4__record-actions > div {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: end;
+}
+
+.public-admin-v4__record-actions button:first-child {
+  border-color: #bbf7d0;
+  color: #166534;
+  background: #f0fdf4;
+}
+
+.public-admin-v4__record-actions button:last-child {
+  border-color: #fecaca;
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.public-admin-v4__status {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.76rem;
+  font-weight: 930;
+  text-transform: capitalize;
+}
+
+.public-admin-v4__status--confirmed {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.public-admin-v4__status--pending {
+  color: #9a3412;
+  background: #ffedd5;
+}
+
+.public-admin-v4__status--cancelled {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
 @media (max-width: 1180px) {
   .public-site--v4-preview .public-hero--v4,
   .public-site--v4-preview .public-booking__grid {
@@ -11420,12 +11858,22 @@ svg.modern-admin-rail-icon:not([stroke]) {
   }
 
   .public-site--v4-preview {
-    grid-template-columns: 198px minmax(0, 1fr);
+    grid-template-columns: 72px minmax(0, 1fr);
     padding-right: 12px;
   }
 
+  .public-site--v4-preview.public-site--nav-open {
+    grid-template-columns: 198px minmax(0, 1fr);
+  }
+
   .public-home-metrics,
-  .public-home-command-grid {
+  .public-home-command-grid,
+  .public-admin-v4__metrics,
+  .public-admin-v4__tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .public-admin-v4__record {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -11458,6 +11906,18 @@ svg.modern-admin-rail-icon:not([stroke]) {
     box-shadow: 0 16px 36px rgba(2, 18, 37, 0.16);
   }
 
+  .public-site--v4-preview .public-nav:hover {
+    width: 100%;
+  }
+
+  .public-site--v4-preview .public-nav__topline,
+  .public-site--v4-preview .public-nav:hover .public-nav__topline,
+  .public-site--v4-preview.public-site--nav-open .public-nav__topline {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
   .public-site--v4-preview .public-brand {
     min-height: 44px;
     padding: 0;
@@ -11469,8 +11929,13 @@ svg.modern-admin-rail-icon:not([stroke]) {
     height: 40px;
   }
 
+  .public-site--v4-preview .public-brand strong {
+    opacity: 1;
+    transform: none;
+  }
+
   .public-site--v4-preview .public-nav nav {
-    display: grid;
+    display: none;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: flex-start;
     overflow: visible;
@@ -11481,6 +11946,10 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
   .public-site--v4-preview .public-nav nav::-webkit-scrollbar {
     display: none;
+  }
+
+  .public-site--v4-preview.public-site--nav-open .public-nav nav {
+    display: grid;
   }
 
   .public-site--v4-preview .public-nav nav a {
@@ -11494,9 +11963,13 @@ svg.modern-admin-rail-icon:not([stroke]) {
   }
 
   .public-site--v4-preview .public-nav__actions {
-    display: grid;
+    display: none;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin: 0;
+  }
+
+  .public-site--v4-preview.public-site--nav-open .public-nav__actions {
+    display: grid;
   }
 
   .public-site--v4-preview .public-nav__actions a,
@@ -11504,6 +11977,13 @@ svg.modern-admin-rail-icon:not([stroke]) {
     min-height: 38px;
     justify-content: center;
     padding: 7px 8px;
+  }
+
+  .public-site--v4-preview .public-nav nav a span,
+  .public-site--v4-preview .public-nav__actions a span,
+  .public-site--v4-preview .public-nav__actions button span {
+    opacity: 1;
+    transform: none;
   }
 
   .public-site--v4-preview .public-hero--v4 {
@@ -11548,6 +12028,46 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
   .public-home-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .public-admin-v4 {
+    margin-top: 0;
+  }
+
+  .public-admin-v4__hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: 16px;
+  }
+
+  .public-admin-v4__hero-actions {
+    justify-content: stretch;
+  }
+
+  .public-admin-v4__hero-actions a {
+    flex: 1 1 130px;
+  }
+
+  .public-admin-v4__metrics,
+  .public-admin-v4__tiles,
+  .public-admin-v4__record {
+    grid-template-columns: 1fr;
+  }
+
+  .public-admin-v4__metric {
+    min-height: 88px;
+  }
+
+  .public-admin-v4__panel-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .public-admin-v4__panel-head a,
+  .public-admin-v4__record-actions,
+  .public-admin-v4__record-actions > div {
+    justify-content: start;
+    justify-items: start;
   }
 
   .public-home-metric {

@@ -19,7 +19,7 @@ import {
   Users,
   Wrench,
 } from 'lucide-react';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { getConfiguredLogoUrl } from '../helpers/brand';
 import { opsTheme } from '../theme/opsTheme';
 
@@ -53,11 +53,15 @@ function isNavActive(pathname: string, href: string) {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = window.location.pathname;
   const logoUrl = getConfiguredLogoUrl();
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   let previousGroup = '';
 
   return (
-    <div className="dashboard-shell" data-theme-reference={opsTheme.referenceName}>
-      <aside className="modern-admin-sidebar v4-command-sidebar">
+    <div
+      className={`dashboard-shell${sidebarExpanded ? ' is-sidebar-expanded' : ''}`}
+      data-theme-reference={opsTheme.referenceName}
+    >
+      <aside className={`modern-admin-sidebar v4-command-sidebar${sidebarExpanded ? ' is-expanded' : ''}`}>
         <a className="modern-admin-brand" href="/">
           <img src={logoUrl} alt="MLADIS" />
           <div>
@@ -90,7 +94,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </aside>
       <div className="dashboard-main">
         <header className="dashboard-topbar v4-commandbar">
-          <button className="v4-icon-button" type="button" aria-label="Toggle menu"><Menu size={19} /></button>
+          <button
+            className="v4-icon-button"
+            type="button"
+            aria-label={sidebarExpanded ? 'Collapse menu' : 'Expand menu'}
+            aria-expanded={sidebarExpanded}
+            onClick={() => setSidebarExpanded((current) => !current)}
+          >
+            <Menu size={19} />
+          </button>
           <label className="dashboard-search v4-command-search">
             <Search size={17} />
             <input aria-label="Search dashboard" placeholder="Search or type a command..." />

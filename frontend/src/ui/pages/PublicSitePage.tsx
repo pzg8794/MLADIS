@@ -11,6 +11,7 @@ import {
   Home,
   LogIn,
   MapPin,
+  Menu,
   MessageSquareText,
   PencilLine,
   ReceiptText,
@@ -343,13 +344,17 @@ function PublicNav({
   snapshot,
   userContext,
   language,
+  navOpen,
   onLanguageChange,
+  onNavToggle,
   onSignOutStart,
 }: {
   snapshot: PublicSiteSnapshot;
   userContext: PublicUserContext;
   language: Language;
+  navOpen: boolean;
   onLanguageChange: (language: Language) => void;
+  onNavToggle: () => void;
   onSignOutStart: () => void;
 }) {
   const t = copy[language];
@@ -359,42 +364,53 @@ function PublicNav({
 
   return (
     <header className="public-nav">
-      <a className="public-brand" href="/">
-        <img src={logoUrl} alt={snapshot.siteName} />
-        <strong>{snapshot.siteName}</strong>
-      </a>
+      <div className="public-nav__topline">
+        <button
+          type="button"
+          className="public-nav__toggle"
+          aria-label={navOpen ? 'Collapse menu' : 'Expand menu'}
+          aria-expanded={navOpen}
+          onClick={onNavToggle}
+        >
+          <Menu size={20} />
+        </button>
+        <a className="public-brand" href="/">
+          <img src={logoUrl} alt={snapshot.siteName} />
+          <strong>{snapshot.siteName}</strong>
+        </a>
+      </div>
       <nav aria-label="Primary">
-        <a href="/#stays">{t.navStays}</a>
-        <a href="/#area">{t.navArea}</a>
-        <a href="/about/">{t.navAbout}</a>
-        <a href="#booking" onClick={handleBookingLinkClick}>{t.navBooking}</a>
+        <a href="/#stays"><Home size={17} /><span>{t.navStays}</span></a>
+        <a href="/#area"><MapPin size={17} /><span>{t.navArea}</span></a>
+        <a href="/about/"><HeartHandshake size={17} /><span>{t.navAbout}</span></a>
+        <a href="#booking" onClick={handleBookingLinkClick}><CalendarDays size={17} /><span>{t.navBooking}</span></a>
       </nav>
       <div className="public-nav__actions">
         <button type="button" onClick={() => onLanguageChange(language === 'en' ? 'es' : 'en')}>
-          <Globe2 size={16} /> {language === 'en' ? 'ES' : 'EN'}
+          <Globe2 size={16} /> <span>{language === 'en' ? 'ES' : 'EN'}</span>
         </button>
 
         {isAuthenticated ? (
           <>
             <a href="/accounts/" title={userContext.displayName ? `Signed in as ${userContext.displayName}` : 'Signed in'}>
-              <Home size={16} /> {t.navAccount}
+              <Home size={16} /> <span>{t.navAccount}</span>
             </a>
             {showAdmin && (
               <a href="/ops/admin/">
-                <ShieldCheck size={16} /> Admin
+                <ShieldCheck size={16} /> <span>Admin</span>
               </a>
             )}
             <form method="post" action="/accounts/logout/" className="public-nav-logout" onSubmit={onSignOutStart}>
               <input type="hidden" name="csrfmiddlewaretoken" value={csrfToken()} />
               <button type="submit">
-                <LogIn size={16} /> Sign out
+                <LogIn size={16} /> <span>Sign out</span>
               </button>
             </form>
           </>
         ) : (
           <>
             <a href="/accounts/login/?next=/accounts/">
-              <LogIn size={16} /> {userContext.status === 'checking' ? 'Checking...' : t.signIn}
+              <LogIn size={16} /> <span>{userContext.status === 'checking' ? 'Checking...' : t.signIn}</span>
             </a>
           </>
         )}
@@ -1553,11 +1569,12 @@ function AdminExperience({ language }: { language: Language }) {
 
   if (loading) {
     return (
-      <section className="public-section">
-        <div className="account-modern">
-          <div className="account-header">
-            <h1>Admin Dashboard</h1>
-            <p>Loading admin data...</p>
+      <section className="public-admin-v4">
+        <div className="public-admin-v4__hero">
+          <div>
+            <span>Admin workspace</span>
+            <h1>Loading command center</h1>
+            <p>Pulling reservation status, revenue, and action queues.</p>
           </div>
         </div>
       </section>
@@ -1566,171 +1583,123 @@ function AdminExperience({ language }: { language: Language }) {
 
   if (!adminData) {
     return (
-      <section className="public-section">
-        <div className="account-modern">
-          <div className="account-header">
-            <h1>Admin Dashboard</h1>
-            <p>Unable to load admin data. Please check your permissions.</p>
+      <section className="public-admin-v4">
+        <div className="public-admin-v4__hero">
+          <div>
+            <span>Admin workspace</span>
+            <h1>Permission needed</h1>
+            <p>Unable to load admin data. Please check that this account has staff access.</p>
           </div>
         </div>
       </section>
     );
   }
 
+  const adminMetrics = [
+    { label: 'Pending', value: String(adminData.pendingCount), icon: <Clock size={18} />, tone: 'orange' },
+    { label: 'Confirmed', value: String(adminData.confirmedCount), icon: <CheckCircle2 size={18} />, tone: 'green' },
+    { label: 'Cancelled', value: String(adminData.cancelledCount), icon: <XCircle size={18} />, tone: 'red' },
+    { label: 'Revenue', value: adminData.totalRevenue, icon: <DollarSign size={18} />, tone: 'blue' },
+  ];
+  const adminTiles = [
+    { label: 'Records', text: 'Protected system tables', href: '/admin/', icon: <ShieldCheck size={20} />, tone: 'blue' },
+    { label: 'Brand', text: 'Logo, site text, public settings', href: '/admin/bookings/sitesettings/1/change/', icon: <Sparkles size={20} />, tone: 'green' },
+    { label: 'Reservations', text: 'Requests, guests, imported stays', href: '/ops/reservations/', icon: <CalendarDays size={20} />, tone: 'orange' },
+    { label: 'Reports', text: 'Revenue, agent, customer signals', href: '/ops/reports/', icon: <FileText size={20} />, tone: 'indigo' },
+    { label: 'Maintenance', text: 'Work orders and evidence', href: '/ops/maintenance/', icon: <PencilLine size={20} />, tone: 'teal' },
+    { label: 'Agent', text: 'FAQ training and questions', href: '/ops/agent/', icon: <Bot size={20} />, tone: 'violet' },
+  ];
+
   return (
-    <section className="public-section account-modern">
-      <div className="account-header">
-        <h1>
-          <ShieldCheck size={24} /> Admin Dashboard
-        </h1>
-        <p>Manage reservations and view system statistics</p>
+    <section className="public-admin-v4">
+      <div className="public-admin-v4__hero">
+        <div>
+          <span>Admin workspace</span>
+          <h1>Command center</h1>
+          <p>Protected records, booking controls, brand settings, reports, and agent operations in one workspace.</p>
+        </div>
+        <div className="public-admin-v4__hero-actions">
+          <a href="/admin/"><ShieldCheck size={17} /> Records</a>
+          <a href="/ops/dashboard/"><Home size={17} /> Ops dashboard</a>
+        </div>
       </div>
 
       {actionMessage && (
-        <div style={{
-          padding: 'var(--space-4)',
-          background: 'var(--color-success-highlight)',
-          color: 'var(--color-success)',
-          borderRadius: 'var(--radius-md)',
-          marginBottom: 'var(--space-6)'
-        }}>
+        <div className="public-admin-v4__notice" role="status">
           {actionMessage}
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="account-stats">
-        <span>
-          <Clock size={16} /> {adminData.pendingCount} pending
-        </span>
-        <span>
-          <CheckCircle2 size={16} /> {adminData.confirmedCount} confirmed
-        </span>
-        <span>
-          <XCircle size={16} /> {adminData.cancelledCount} cancelled
-        </span>
-        <span>
-          <DollarSign size={16} /> {adminData.totalRevenue} total revenue
-        </span>
+      <div className="public-admin-v4__metrics">
+        {adminMetrics.map((metric) => (
+          <article className={`public-admin-v4__metric public-admin-v4__metric--${metric.tone}`} key={metric.label}>
+            <span>{metric.icon}</span>
+            <strong>{metric.value}</strong>
+            <small>{metric.label}</small>
+          </article>
+        ))}
       </div>
 
-      {/* Reservations Table */}
-      <div className="account-grid">
-        <article className="account-list" style={{ gridColumn: '1 / -1' }}>
-          <h2>All Reservations ({adminData.reservations.length})</h2>
-
-          {adminData.reservations.length === 0 ? (
-            <p>No reservations in the system yet.</p>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                fontSize: 'var(--text-sm)'
-              }}>
-                <thead>
-                  <tr style={{
-                    borderBottom: '2px solid var(--color-divider)',
-                    textAlign: 'left'
-                  }}>
-                    <th style={{ padding: 'var(--space-3)' }}>Guest</th>
-                    <th style={{ padding: 'var(--space-3)' }}>Stay</th>
-                    <th style={{ padding: 'var(--space-3)' }}>Dates</th>
-                    <th style={{ padding: 'var(--space-3)' }}>Guests</th>
-                    <th style={{ padding: 'var(--space-3)' }}>Total</th>
-                    <th style={{ padding: 'var(--space-3)' }}>Status</th>
-                    <th style={{ padding: 'var(--space-3)' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminData.reservations.map((reservation) => (
-                    <tr
-                      key={reservation.id}
-                      style={{
-                        borderBottom: '1px solid var(--color-divider)'
-                      }}
-                    >
-                      <td style={{ padding: 'var(--space-3)' }}>
-                        <strong>{reservation.guestName}</strong><br />
-                        <small style={{ color: 'var(--color-text-muted)' }}>
-                          {reservation.guestEmail}
-                        </small>
-                        {reservation.phone && (
-                          <><br /><small style={{ color: 'var(--color-text-muted)' }}>
-                            {reservation.phone}
-                          </small></>
-                        )}
-                      </td>
-                      <td style={{ padding: 'var(--space-3)' }}>{reservation.stayName}</td>
-                      <td style={{ padding: 'var(--space-3)' }}>
-                        {formatDate(reservation.checkIn)} → {formatDate(reservation.checkOut)}
-                      </td>
-                      <td style={{ padding: 'var(--space-3)' }}>{reservation.guests}</td>
-                      <td style={{ padding: 'var(--space-3)' }}>
-                        <strong>{reservation.totalDisplay}</strong>
-                      </td>
-                      <td style={{ padding: 'var(--space-3)' }}>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: 'var(--space-1) var(--space-2)',
-                          borderRadius: 'var(--radius-full)',
-                          fontSize: 'var(--text-xs)',
-                          fontWeight: 500,
-                          background:
-                            reservation.status === 'confirmed' ? 'var(--color-success-highlight)' :
-                            reservation.status === 'cancelled' ? 'var(--color-error-highlight)' :
-                            'var(--color-warning-highlight)',
-                          color:
-                            reservation.status === 'confirmed' ? 'var(--color-success)' :
-                            reservation.status === 'cancelled' ? 'var(--color-error)' :
-                            'var(--color-warning)'
-                        }}>
-                          {reservation.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: 'var(--space-3)' }}>
-                        {reservation.status === 'pending' && (
-                          <>
-                            <button
-                              onClick={() => handleStatusChange(reservation.id, 'confirmed')}
-                              style={{
-                                padding: 'var(--space-1) var(--space-3)',
-                                marginRight: 'var(--space-2)',
-                                background: 'var(--color-success)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: 'var(--radius-sm)',
-                                cursor: 'pointer',
-                                fontSize: 'var(--text-xs)'
-                              }}
-                            >
-                              Confirm
-                            </button>
-                            <button
-                              onClick={() => handleStatusChange(reservation.id, 'cancelled')}
-                              style={{
-                                padding: 'var(--space-1) var(--space-3)',
-                                background: 'var(--color-error)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: 'var(--radius-sm)',
-                                cursor: 'pointer',
-                                fontSize: 'var(--text-xs)'
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </article>
+      <div className="public-admin-v4__tiles">
+        {adminTiles.map((tile) => (
+          <a className={`public-admin-v4__tile public-admin-v4__tile--${tile.tone}`} href={tile.href} key={tile.label}>
+            <span>{tile.icon}</span>
+            <strong>{tile.label}</strong>
+            <small>{tile.text}</small>
+          </a>
+        ))}
       </div>
+
+      <article className="public-admin-v4__panel">
+        <div className="public-admin-v4__panel-head">
+          <div>
+            <span>Reservation queue</span>
+            <h2>{adminData.reservations.length} records</h2>
+          </div>
+          <a href="/ops/reservations/">Open reservations <ArrowUpRight size={16} /></a>
+        </div>
+
+        {adminData.reservations.length === 0 ? (
+          <p className="public-admin-v4__empty">No reservations in the system yet.</p>
+        ) : (
+          <div className="public-admin-v4__records">
+            {adminData.reservations.map((reservation) => (
+              <article className="public-admin-v4__record" key={reservation.id}>
+                <div>
+                  <strong>{reservation.guestName}</strong>
+                  <small>{reservation.guestEmail}</small>
+                  {reservation.phone && <small>{reservation.phone}</small>}
+                </div>
+                <div>
+                  <span>Stay</span>
+                  <strong>{reservation.stayName}</strong>
+                </div>
+                <div>
+                  <span>Dates</span>
+                  <strong>{formatDate(reservation.checkIn)} → {formatDate(reservation.checkOut)}</strong>
+                  <small>{reservation.guests} guests</small>
+                </div>
+                <div>
+                  <span>Total</span>
+                  <strong>{reservation.totalDisplay}</strong>
+                  <small>{reservation.createdAt}</small>
+                </div>
+                <div className="public-admin-v4__record-actions">
+                  <span className={`public-admin-v4__status public-admin-v4__status--${reservation.status}`}>
+                    {reservation.status}
+                  </span>
+                  {reservation.status === 'pending' && (
+                    <div>
+                      <button type="button" onClick={() => handleStatusChange(reservation.id, 'confirmed')}>Confirm</button>
+                      <button type="button" onClick={() => handleStatusChange(reservation.id, 'cancelled')}>Cancel</button>
+                    </div>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </article>
     </section>
   );
 }
@@ -1741,6 +1710,7 @@ export function PublicSitePage() {
   const [userContext, setUserContext] = useState<PublicUserContext | null>(null);
   const [error, setError] = useState('');
   const [language, setLanguage] = useState<Language>(() => (window.localStorage.getItem('mladis_language') === 'es' ? 'es' : 'en'));
+  const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
     window.localStorage.setItem('mladis_language', language);
@@ -1829,12 +1799,14 @@ export function PublicSitePage() {
   if (path.startsWith('/accounts')) content = <AccountExperience snapshot={snapshot} userContext={resolvedUserContext} language={language} />;
 
   return (
-    <main className="public-site public-site--v4-preview">
+    <main className={`public-site public-site--v4-preview${navOpen ? ' public-site--nav-open' : ''}`}>
       <PublicNav
         snapshot={snapshot}
         userContext={resolvedUserContext}
         language={language}
+        navOpen={navOpen}
         onLanguageChange={setLanguage}
+        onNavToggle={() => setNavOpen((current) => !current)}
         onSignOutStart={() => setUserContext(PublicUserContext.anonymous(resolvedUserContext.agent))}
       />
       {content}
