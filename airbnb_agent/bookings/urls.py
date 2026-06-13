@@ -107,6 +107,7 @@ urlpatterns = [
     path("ops/maintenance/", ModernOpsMaintenanceView.as_view(), name="ops-maintenance"),
     path("ops/calendar/", ModernOpsCalendarView.as_view(), name="calendar-ops"),
     path("ops/stays/", ModernOpsStaysView.as_view(), name="ops-stays"),
+    path("ops/settings/", ModernOpsDashboardView.as_view(), name="ops-settings"),
     path("ops/calendar/list/", ModernOpsCalendarView.as_view(), name="calendar-ops-list"),
     path("ops/calendar/rooms/", ModernOpsCalendarView.as_view(), name="calendar-ops-rooms"),
     path("ops/calendar/analytics/", ModernOpsCalendarView.as_view(), name="calendar-ops-analytics"),

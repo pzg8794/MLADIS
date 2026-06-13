@@ -1,8 +1,6 @@
 import {
   BarChart3,
   Bell,
-  Bot,
-  BriefcaseBusiness,
   Building2,
   CalendarDays,
   ChevronDown,
@@ -15,9 +13,10 @@ import {
   ReceiptText,
   Search,
   Settings,
-  ShieldCheck,
   Users,
   Wrench,
+  Sparkles,
+  UserCog,
 } from 'lucide-react';
 import { ReactNode, useState } from 'react';
 import { getConfiguredLogoUrl } from '../helpers/brand';
@@ -28,20 +27,22 @@ interface DashboardLayoutProps {
 }
 
 const navItems = [
-  { group: 'Overview', label: 'Dashboard', icon: LayoutDashboard, href: '/ops/dashboard/' },
+  { group: '', label: 'Command Center', icon: LayoutDashboard, href: '/ops/dashboard/' },
   { group: 'Operations', label: 'Reservations', icon: ClipboardList, href: '/ops/reservations/' },
   { group: 'Operations', label: 'Calendar', icon: CalendarDays, href: '/ops/calendar/' },
-  { group: 'Operations', label: 'Stays', icon: Building2, href: '/ops/stays/' },
+  { group: 'Operations', label: 'Guests', icon: Users, href: '/ops/customers/' },
+  { group: 'Operations', label: 'Properties', icon: Building2, href: '/ops/stays/' },
   { group: 'Operations', label: 'Maintenance', icon: Wrench, href: '/ops/maintenance/' },
+  { group: 'Operations', label: 'Work Orders', icon: Wrench, href: '/ops/maintenance/' },
   { group: 'Operations', label: 'Payments', icon: CreditCard, href: '/ops/deposits/' },
   { group: 'Operations', label: 'Deposits', icon: ReceiptText, href: '/ops/deposits/' },
   { group: 'Operations', label: 'Reports', icon: BarChart3, href: '/ops/reports/' },
-  { group: 'Operations', label: 'Agent Intelligence', icon: Bot, href: '/ops/agent/' },
+  { group: 'Operations', label: 'FairAgent', icon: Sparkles, href: '/ops/agent/' },
   { group: 'Business', label: 'Listings', icon: Building2, href: '/ops/stays/' },
   { group: 'Business', label: 'Customers', icon: Users, href: '/ops/customers/' },
   { group: 'Business', label: 'Tasks', icon: ListChecks, href: '/ops/workboard/' },
-  { group: 'Admin', label: 'Settings', icon: Settings, href: '/admin/' },
-  { group: 'Admin', label: 'Admin', icon: ShieldCheck, href: '/ops/admin/' },
+  { group: 'Admin', label: 'Settings', icon: Settings, href: '/ops/settings/' },
+  { group: 'Admin', label: 'Users', icon: UserCog, href: '/ops/admin/' },
 ];
 
 function isNavActive(pathname: string, href: string) {
@@ -53,7 +54,7 @@ function isNavActive(pathname: string, href: string) {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = window.location.pathname;
   const logoUrl = getConfiguredLogoUrl();
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   let previousGroup = '';
 
   return (
@@ -77,7 +78,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             previousGroup = item.group;
             return (
               <div className="v4-nav-cluster" key={`${item.group}-${item.label}`}>
-                {showGroup && <span className="v4-nav-group">{item.group}</span>}
+                {showGroup && item.group && <span className="v4-nav-group">{item.group}</span>}
                 <a className={isActive ? 'is-active' : ''} href={item.href}>
                   <Icon className="modern-admin-rail-icon" aria-hidden="true" size={18} />
                   <span className="modern-admin-nav-label">{item.label}</span>
@@ -87,10 +88,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             );
           })}
         </nav>
-        <a className={`modern-admin-back${isNavActive(pathname, '/business/') ? ' is-active' : ''}`} href="/business/">
-          <BriefcaseBusiness className="modern-admin-rail-icon" aria-hidden="true" size={18} />
-          <span className="modern-admin-nav-label">Business profile</span>
-        </a>
+        <div className="v4-sidebar-user">
+          <span>PG</span>
+          <div>
+            <strong>Piter Garcia</strong>
+            <small>Operator</small>
+          </div>
+          <ChevronDown size={15} />
+        </div>
       </aside>
       <div className="dashboard-main">
         <header className="dashboard-topbar v4-commandbar">
@@ -105,7 +110,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </button>
           <label className="dashboard-search v4-command-search">
             <Search size={17} />
-            <input aria-label="Search dashboard" placeholder="Search or type a command..." />
+            <input aria-label="Search dashboard" placeholder="Search reservations, guests, properties..." />
             <kbd>⌘ K</kbd>
           </label>
           <div className="v4-commandbar__actions">
