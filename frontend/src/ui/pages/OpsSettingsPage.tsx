@@ -860,6 +860,228 @@ function MetricCard({
   );
 }
 
+function MiniToggle({ active = true }: { active?: boolean }) {
+  return (
+    <span className={`settings-v4-mini-toggle${active ? ' is-active' : ''}`} aria-hidden="true">
+      <i />
+    </span>
+  );
+}
+
+function WorkflowStep({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className={`settings-v4-workflow-step${active ? ' is-active' : ''}`} onClick={onClick}>
+      <span><Icon size={17} /></span>
+      <strong>{label}</strong>
+      <MiniToggle active={active} />
+    </button>
+  );
+}
+
+function PolicySummaryRow({ title, detail }: { title: string; detail: string }) {
+  return (
+    <article className="settings-v4-policy-row">
+      <strong>{title}</strong>
+      <small>{detail}</small>
+      <StatusBadge>Active <CheckCircle2 size={12} /></StatusBadge>
+    </article>
+  );
+}
+
+function AvatarCluster({ count }: { count: number }) {
+  const initials = ['PG', 'MR', 'DG'];
+  return (
+    <span className="settings-v4-avatar-cluster" aria-label={`${count} profiles`}>
+      {initials.map((initial, index) => <i key={initial} className={`settings-v4-avatar settings-v4-avatar--${index}`}>{initial}</i>)}
+      <em>+{Math.max(1, count - initials.length)}</em>
+    </span>
+  );
+}
+
+function RecipientRow({
+  title,
+  count,
+  accent,
+  onEdit,
+}: {
+  title: string;
+  count: number;
+  accent: Tone;
+  onEdit: () => void;
+}) {
+  return (
+    <article className="settings-v4-recipient-row">
+      <div>
+        <strong>{title}</strong>
+        <small>{count} recipients</small>
+      </div>
+      <AvatarCluster count={count} />
+      <StatusBadge tone={accent}>+{Math.max(1, count - 4)}</StatusBadge>
+      <TinyButton onClick={onEdit}>Edit</TinyButton>
+    </article>
+  );
+}
+
+function FinanceSummaryChart() {
+  return (
+    <div className="settings-v4-finance-chart">
+      <div className="settings-v4-finance-legend">
+        <span><i /> Gross Revenue</span>
+        <span><i /> Net Revenue</span>
+      </div>
+      <svg viewBox="0 0 720 190" aria-label="Finance summary revenue chart" role="img">
+        <g className="settings-v4-chart-grid">
+          {[36, 72, 108, 144].map((y) => <line key={y} x1="22" x2="700" y1={y} y2={y} />)}
+        </g>
+        <polyline className="settings-v4-chart-line settings-v4-chart-line--blue" points="24,142 64,128 104,102 144,88 184,92 224,78 264,86 304,74 344,62 384,74 424,68 464,58 504,82 544,74 584,64 624,48 664,54 700,40" />
+        <polyline className="settings-v4-chart-line settings-v4-chart-line--green" points="24,154 64,136 104,124 144,112 184,118 224,108 264,114 304,104 344,96 384,105 424,98 464,92 504,108 544,101 584,94 624,84 664,91 700,82" />
+        <g className="settings-v4-chart-axis">
+          <text x="24" y="182">May 6</text>
+          <text x="188" y="182">May 13</text>
+          <text x="352" y="182">May 20</text>
+          <text x="516" y="182">May 27</text>
+          <text x="656" y="182">Jun 3</text>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+function FinanceSummaryPanel() {
+  const summaryCards: Array<{ icon: LucideIcon; label: string; value: string; trend: string; tone: Tone }> = [
+    { icon: CalendarDays, label: 'Total Bookings', value: '86', trend: '+12.5% vs last month', tone: 'green' },
+    { icon: CircleDollarSign, label: 'Gross Revenue', value: '$48,952', trend: '+18.7% vs last month', tone: 'blue' },
+    { icon: Wallet, label: 'Deposits Collected', value: '$18,430', trend: '+15.3% vs last month', tone: 'cyan' },
+    { icon: CreditCard, label: 'Payouts Sent', value: '$24,510', trend: '+10.1% vs last month', tone: 'violet' },
+  ];
+
+  return (
+    <div className="settings-v4-finance-summary">
+      {summaryCards.map(({ icon: Icon, label, value, trend, tone }) => (
+        <article key={label}>
+          <IconBadge icon={Icon} tone={tone} />
+          <div>
+            <span>{label}</span>
+            <strong>{value}</strong>
+            <small>{trend}</small>
+          </div>
+          <MiniSparkline tone={tone} />
+        </article>
+      ))}
+      <FinanceSummaryChart />
+    </div>
+  );
+}
+
+function QuickAccessShortcuts({ runAction }: { runAction: (message: string) => void }) {
+  const shortcuts: Array<{ icon: LucideIcon; title: string; meta: string; tone: Tone }> = [
+    { icon: Users, title: 'Manage Users & Roles', meta: 'Add users, set roles, and manage permissions.', tone: 'blue' },
+    { icon: Mail, title: 'Notification Templates', meta: 'Customize email and SMS templates.', tone: 'cyan' },
+    { icon: CreditCard, title: 'Payment Gateways', meta: 'Connect and manage payment providers.', tone: 'violet' },
+    { icon: Workflow, title: 'Automation Rules', meta: 'Create workflows and automations.', tone: 'orange' },
+    { icon: KeyRound, title: 'API Keys', meta: 'Manage API keys and access tokens.', tone: 'rose' },
+    { icon: Webhook, title: 'Webhooks', meta: 'Configure webhook endpoints.', tone: 'blue' },
+  ];
+
+  return (
+    <section className="settings-v4-shortcuts">
+      <h2>Quick Access Shortcuts</h2>
+      <div>
+        {shortcuts.map(({ icon: Icon, title, meta, tone }) => (
+          <button key={title} type="button" className="settings-v4-shortcut" onClick={() => runAction(`${title} opened`)}>
+            <IconBadge icon={Icon} tone={tone} />
+            <span>
+              <strong>{title}</strong>
+              <small>{meta}</small>
+            </span>
+            <ChevronRight size={14} />
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ChannelOption({
+  icon: Icon,
+  label,
+  meta,
+  active,
+  onChange,
+}: {
+  icon: LucideIcon;
+  label: string;
+  meta: string;
+  active: boolean;
+  onChange: (active: boolean) => void;
+}) {
+  return (
+    <label className={`settings-v4-channel-option${active ? ' is-active' : ''}`}>
+      <IconBadge icon={Icon} tone={active ? 'blue' : 'slate'} />
+      <span>
+        <strong>{label}</strong>
+        <small>{meta}</small>
+      </span>
+      <input type="checkbox" checked={active} onChange={(event) => onChange(event.target.checked)} />
+    </label>
+  );
+}
+
+function KnowledgeMetricRow({ label, value }: { label: string; value: string }) {
+  return (
+    <article className="settings-v4-knowledge-metric">
+      <strong>{label}</strong>
+      <StatusBadge tone="blue">{value}</StatusBadge>
+    </article>
+  );
+}
+
+function SyncStatusRow({ icon: Icon, title, meta }: { icon: LucideIcon; title: string; meta: string }) {
+  return (
+    <article className="settings-v4-sync-row">
+      <IconBadge icon={Icon} tone="blue" />
+      <div>
+        <strong>{title}</strong>
+        <small>Up to date | {meta}</small>
+      </div>
+      <CheckCircle2 size={15} />
+    </article>
+  );
+}
+
+function IntegrationTestRow({
+  icon: Icon,
+  title,
+  meta,
+  onClick,
+}: {
+  icon: LucideIcon;
+  title: string;
+  meta: string;
+  onClick: () => void;
+}) {
+  return (
+    <article className="settings-v4-test-row">
+      <IconBadge icon={Icon} tone="blue" />
+      <div>
+        <strong>{title}</strong>
+        <small>{meta}</small>
+      </div>
+      <TinyButton onClick={onClick}>Test Connection</TinyButton>
+    </article>
+  );
+}
+
 function LogoPreview({
   compact = false,
   dark = false,
@@ -1121,7 +1343,7 @@ function SideRail({
   );
 }
 
-function BusinessProfileTab({ settings, runtime, updateSection, updateToggle }: SettingsTabProps) {
+function BusinessProfileTab({ settings, runtime, updateSection, updateToggle, runAction }: SettingsTabProps) {
   return (
     <>
       <SettingsPanel title="Business Information" className="settings-v4-panel--business">
@@ -1194,6 +1416,8 @@ function BusinessProfileTab({ settings, runtime, updateSection, updateToggle }: 
           <RuntimeSwitch runtime={runtime} switchKey="autoExportReports" onChange={updateToggle} title="Automatically export reports" caption="Email monthly reports automatically." />
         </div>
       </SettingsPanel>
+
+      <QuickAccessShortcuts runAction={runAction} />
     </>
   );
 }
@@ -1361,26 +1585,33 @@ function BookingDefaultsTab({ settings, runtime, updateSection, updateField, upd
       <SettingsPanel title="Reservation Workflow" subtitle="Configure default reservation workflow steps." className="settings-v4-panel--span-2">
         <div className="settings-v4-workflow-strip">
           {[
-            ['Payment authorization', 'requireCard'],
-            ['ID verification', 'guestVerification'],
-            ['Rental agreement', 'customPolicyPerListing'],
-            ['Damage deposit hold', 'autoHold'],
-            ['Pre-arrival message', 'emailEnabled'],
-            ['Post-stay review', 'faqReview'],
-          ].map(([label, key]) => (
-            <button key={label} type="button" className={getToggle(runtime, key) || Boolean((settings as unknown as Record<string, Record<string, boolean>>).finance?.[key]) ? 'is-active' : ''} onClick={() => runAction(`${label} workflow selected`)}>
-              <Workflow size={18} />
-              <span>{label}</span>
-            </button>
+            ['Payment authorization', 'requireCard', Workflow],
+            ['ID verification', 'guestVerification', FileText],
+            ['Rental agreement', 'customPolicyPerListing', Copy],
+            ['Damage deposit hold', 'autoHold', Users],
+            ['Pre-arrival message', 'emailEnabled', MessageSquare],
+            ['Post-stay review', 'faqReview', CalendarDays],
+          ].map(([label, key, Icon]) => (
+            <WorkflowStep
+              key={label as string}
+              icon={Icon as LucideIcon}
+              label={label as string}
+              active={getToggle(runtime, key as string) || Boolean((settings as unknown as Record<string, Record<string, boolean>>).finance?.[key as string])}
+              onClick={() => runAction(`${label} workflow selected`)}
+            />
           ))}
         </div>
       </SettingsPanel>
 
       <SettingsPanel title="Active Booking Policies Summary" subtitle="Overview of your active booking policy settings.">
-        <div className="settings-v4-status-list">
-          {['Stay requirements', 'Cancellation policy', 'Deposits', 'Instant booking', 'Check-in / Check-out'].map((item) => (
-            <ListCard key={item} title={item} meta="Active policy is configured" status={<StatusBadge>Active</StatusBadge>} />
-          ))}
+        <div className="settings-v4-policy-summary">
+          {[
+            ['Stay requirements', 'Min 2 nights · Max 30 nights'],
+            ['Cancellation policy', '7d free · 14d partial · 30d no refund'],
+            ['Deposits', '20% · Held for 24 hours · Released on check-out'],
+            ['Instant booking', 'Enabled · Auto-approve · Verified payment'],
+            ['Check-in / Check-out', 'Check-in 03:00 PM · Check-out 11:00 AM'],
+          ].map(([title, detail]) => <PolicySummaryRow key={title} title={title} detail={detail} />)}
         </div>
       </SettingsPanel>
     </>
@@ -1477,13 +1708,8 @@ function FinanceTab({ settings, runtime, updateSection, updateField, updateToggl
         <TinyButton onClick={() => runAction('Transaction export generated')}><Download size={14} /> Export Now</TinyButton>
       </SettingsPanel>
 
-      <SettingsPanel title="Finance Summary" className="settings-v4-panel--span-2" action={<EditableField label="Range" value="This Month" onChange={() => runAction('Finance summary range ready for backend binding')} variant="select" options={['This Month', 'This Quarter']} />}>
-        <div className="settings-v4-metric-row">
-          <MetricCard icon={CalendarDays} title="Total Bookings" value="86" caption="+12.5% vs last month" tone="green" />
-          <MetricCard icon={CircleDollarSign} title="Gross Revenue" value="$48,952" caption="+18.7% vs last month" tone="blue" />
-          <MetricCard icon={Wallet} title="Deposits Collected" value="$18,430" caption="+15.3% vs last month" tone="cyan" />
-          <MetricCard icon={CreditCard} title="Payouts Sent" value="$24,510" caption="+10.1% vs last month" tone="violet" />
-        </div>
+      <SettingsPanel title="Finance Summary" className="settings-v4-panel--span-2 settings-v4-panel--finance-summary" action={<EditableField label="Range" value="This Month" onChange={() => runAction('Finance summary range ready for backend binding')} variant="select" options={['This Month', 'This Quarter']} />}>
+        <FinanceSummaryPanel />
       </SettingsPanel>
     </>
   );
@@ -1555,9 +1781,23 @@ function NotificationsTab({ settings, runtime, updateSection, updateField, updat
       </SettingsPanel>
 
       <SettingsPanel title="Notification Recipients" subtitle="Manage who receives specific types of notifications.">
-        {['Administrators', 'Property Managers', 'Maintenance Team', 'Accounting Team'].map((group, index) => (
-          <ListCard key={group} title={group} meta={`${5 + index} recipients`} status={<StatusBadge tone={index % 2 ? 'blue' : 'green'}>+{index + 1}</StatusBadge>} action={<TinyButton onClick={() => runAction(`${group} recipients opened`)}>Edit</TinyButton>} />
-        ))}
+        <div className="settings-v4-recipient-list">
+          {[
+            ['Administrators', 5, 'green'],
+            ['Property Managers', 8, 'blue'],
+            ['Maintenance Team', 6, 'green'],
+            ['Accounting Team', 4, 'blue'],
+          ].map(([group, count, tone]) => (
+            <RecipientRow
+              key={group as string}
+              title={group as string}
+              count={count as number}
+              accent={tone as Tone}
+              onEdit={() => runAction(`${group} recipients opened`)}
+            />
+          ))}
+        </div>
+        <TinyButton onClick={() => runAction('Recipient groups opened')}>View all recipient groups <ChevronRight size={14} /></TinyButton>
       </SettingsPanel>
 
       <SettingsPanel title="Delivery Status" subtitle="Last 7 Days">
@@ -1663,7 +1903,7 @@ function AiTab({ settings, runtime, updateSection, updateField, updateToggle, up
       </SettingsPanel>
 
       <SettingsPanel title="Supported Channels" subtitle="Choose where FairAgent is available." className="settings-v4-panel--span-2">
-        <div className="settings-v4-grid settings-v4-grid--3">
+        <div className="settings-v4-channel-option-grid">
           {[
             ['Web Chat', 'Live', 'webChatChannel', MessageSquare],
             ['WhatsApp', 'Live', 'whatsappChannel', MessageSquare],
@@ -1672,7 +1912,14 @@ function AiTab({ settings, runtime, updateSection, updateField, updateToggle, up
             ['Facebook', 'Disabled', 'facebookChannel', Users],
             ['Instagram', 'Disabled', 'instagramChannel', Globe2],
           ].map(([label, meta, key, Icon]) => (
-            <CheckLine key={key as string} checked={getToggle(runtime, key as string)} onChange={(checked) => updateToggle(key as string, checked)} label={label as string} meta={meta as string} />
+            <ChannelOption
+              key={key as string}
+              icon={Icon as LucideIcon}
+              label={label as string}
+              meta={meta as string}
+              active={getToggle(runtime, key as string)}
+              onChange={(checked) => updateToggle(key as string, checked)}
+            />
           ))}
         </div>
       </SettingsPanel>
@@ -1684,7 +1931,7 @@ function AiTab({ settings, runtime, updateSection, updateField, updateToggle, up
 function KnowledgeTab({ runtime, updateField, updateToggle, runAction }: SettingsTabProps) {
   return (
     <>
-      <SettingsPanel title="FAQ Collections" subtitle="Organize FAQs into collections for different audiences.">
+      <SettingsPanel title="FAQ Collections" subtitle="Organize FAQs into collections for different audiences." className="settings-v4-panel--kb-top">
         {[
           ['Guest FAQs', '24 Articles', 'Active'],
           ['Property Owner FAQs', '18 Articles', 'Active'],
@@ -1693,7 +1940,7 @@ function KnowledgeTab({ runtime, updateField, updateToggle, runAction }: Setting
         <TinyButton onClick={() => runAction('New FAQ collection opened')}><Plus size={14} /> New Collection</TinyButton>
       </SettingsPanel>
 
-      <SettingsPanel title="Categories" subtitle="Manage categories to keep content organized.">
+      <SettingsPanel title="Categories" subtitle="Manage categories to keep content organized." className="settings-v4-panel--kb-top">
         {[
           ['Booking & Reservations', '15'],
           ['Payments & Deposits', '12'],
@@ -1704,7 +1951,7 @@ function KnowledgeTab({ runtime, updateField, updateToggle, runAction }: Setting
         <TinyButton onClick={() => runAction('New category opened')}><Plus size={14} /> New Category</TinyButton>
       </SettingsPanel>
 
-      <SettingsPanel title="Article Manager" subtitle="Create, edit, and manage knowledge base articles.">
+      <SettingsPanel title="Article Manager" subtitle="Create, edit, and manage knowledge base articles." className="settings-v4-panel--kb-top">
         {[
           ['Total Articles', '84'],
           ['Published', '68'],
@@ -1723,16 +1970,16 @@ function KnowledgeTab({ runtime, updateField, updateToggle, runAction }: Setting
             <RuntimeSwitch runtime={runtime} switchKey="manualSync" onChange={updateToggle} title="Property Manuals (PDF)" caption="Extract and sync from uploaded manuals." />
             <RuntimeSwitch runtime={runtime} switchKey="helpdeskSync" onChange={updateToggle} title="Helpdesk Tickets" caption="Sync resolved tickets as articles." />
           </div>
-          <div className="settings-v4-status-list">
+          <div className="settings-v4-sync-list">
             {['Website', 'Google Drive', 'Manuals', 'Helpdesk'].map((item, index) => (
-              <ListCard key={item} icon={[Globe2, Cloud, FileText, MessageSquare][index]} title={item} meta={`Synced ${index + 1} hours ago`} status={<CheckCircle2 size={14} />} />
+              <SyncStatusRow key={item} icon={[Globe2, Cloud, FileText, MessageSquare][index]} title={item} meta={`Synced ${index + 1} hours ago`} />
             ))}
             <TinyButton onClick={() => runAction('Knowledge sync started')}>Sync Now</TinyButton>
           </div>
         </div>
       </SettingsPanel>
 
-      <SettingsPanel title="Search Weighting" subtitle="Prioritize content sources in AI responses.">
+      <SettingsPanel title="Search Weighting" subtitle="Prioritize content sources in AI responses." className="settings-v4-panel--kb-quarter">
         {[
           ['Knowledge Base Articles', 60],
           ['Website Content', 20],
@@ -1747,7 +1994,7 @@ function KnowledgeTab({ runtime, updateField, updateToggle, runAction }: Setting
         ))}
       </SettingsPanel>
 
-      <SettingsPanel title="Multilingual Support" subtitle="Manage supported languages.">
+      <SettingsPanel title="Multilingual Support" subtitle="Manage supported languages." className="settings-v4-panel--kb-quarter">
         <RuntimeSwitch runtime={runtime} switchKey="englishEnabled" onChange={updateToggle} title="English (Default)" />
         <RuntimeSwitch runtime={runtime} switchKey="spanishEnabled" onChange={updateToggle} title="Espanol (Spanish)" />
         <RuntimeSwitch runtime={runtime} switchKey="frenchEnabled" onChange={updateToggle} title="Francais (French)" />
@@ -1755,20 +2002,22 @@ function KnowledgeTab({ runtime, updateField, updateToggle, runAction }: Setting
         <TinyButton onClick={() => runAction('Language manager opened')}><Plus size={14} /> Add Language</TinyButton>
       </SettingsPanel>
 
-      <SettingsPanel title="Approval Workflow" subtitle="Require review before publishing.">
+      <SettingsPanel title="Approval Workflow" subtitle="Require review before publishing." className="settings-v4-panel--kb-quarter">
         <RuntimeSwitch runtime={runtime} switchKey="requireApproval" onChange={updateToggle} title="Require Approval" />
         <RuntimeField label="Default Approver" runtime={runtime} fieldKey="faqApprover" onChange={updateField} variant="select" options={['Knowledge Manager', 'Piter Garcia', 'Operations Lead']} />
         <RuntimeSwitch runtime={runtime} switchKey="autoExpireArticles" onChange={updateToggle} title="Auto-expire Articles" />
         <RuntimeField label="Review Every" runtime={runtime} fieldKey="reviewEvery" onChange={updateField} variant="select" options={['30 days', '60 days', '90 days']} />
       </SettingsPanel>
 
-      <SettingsPanel title="Content Usage Analytics" subtitle="Track how your content is used.">
-        {[
-          ['Searches This Month', '1,248'],
-          ['Top Viewed Articles', '152'],
-          ['No Results Searches', '38'],
-          ['Helpful Responses', '87%'],
-        ].map(([label, value]) => <ListCard key={label} title={label} status={<StatusBadge tone="blue">{value}</StatusBadge>} />)}
+      <SettingsPanel title="Content Usage Analytics" subtitle="Track how your content is used." className="settings-v4-panel--kb-quarter">
+        <div className="settings-v4-knowledge-metrics">
+          {[
+            ['Searches This Month', '1,248'],
+            ['Top Viewed Articles', '152'],
+            ['No Results Searches', '38'],
+            ['Helpful Responses', '87%'],
+          ].map(([label, value]) => <KnowledgeMetricRow key={label} label={label} value={value} />)}
+        </div>
         <TinyButton onClick={() => runAction('Knowledge analytics opened')}>View Full Analytics</TinyButton>
       </SettingsPanel>
 
@@ -1784,7 +2033,13 @@ function KnowledgeTab({ runtime, updateField, updateToggle, runAction }: Setting
               ].map((row) => (
                 <tr key={row[0]}>
                   {row.slice(0, 5).map((cell, index) => <td key={`${row[0]}-${cell}`}>{index === 2 ? <StatusBadge>{cell}</StatusBadge> : cell}</td>)}
-                  <td><TinyButton onClick={() => runAction(`${row[0]} source opened`)}><MoreVertical size={14} /></TinyButton></td>
+                  <td>
+                    <span className="settings-v4-source-actions">
+                      <TinyButton onClick={() => runAction(`${row[0]} source refreshed`)}><RotateCcw size={14} /></TinyButton>
+                      <TinyButton onClick={() => runAction(`${row[0]} source edited`)}><Settings2 size={14} /></TinyButton>
+                      <TinyButton onClick={() => runAction(`${row[0]} source opened`)}><MoreVertical size={14} /></TinyButton>
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1945,7 +2200,7 @@ function IntegrationsTab({ settings, runtime, updateSection, updateField, update
           ['Pricing Sync', '4 mins ago'],
           ['Availability Sync', '2 mins ago'],
           ['Guest Data Sync', '1 min ago'],
-        ].map(([title, meta]) => <ListCard key={title} icon={Server} title={title} meta={`Up to date | ${meta}`} status={<CheckCircle2 size={14} />} />)}
+        ].map(([title, meta]) => <SyncStatusRow key={title} icon={Server} title={title} meta={meta} />)}
         <TinyButton onClick={() => runAction('Sync logs opened')}>View sync logs</TinyButton>
       </SettingsPanel>
 
@@ -1955,24 +2210,28 @@ function IntegrationsTab({ settings, runtime, updateSection, updateField, update
           ['Stripe Connection', 'Test payment processing', CreditCard],
           ['Email Service', 'Test email delivery', Mail],
           ['SMS Service', 'Test SMS delivery', MessageSquare],
-        ].map(([title, meta, Icon]) => <ListCard key={title as string} icon={Icon as LucideIcon} title={title as string} meta={meta as string} action={<TinyButton onClick={() => runAction(`${title} test queued`)}>Test Connection</TinyButton>} />)}
+        ].map(([title, meta, Icon]) => (
+          <IntegrationTestRow
+            key={title as string}
+            icon={Icon as LucideIcon}
+            title={title as string}
+            meta={meta as string}
+            onClick={() => runAction(`${title} test queued`)}
+          />
+        ))}
         <TinyButton onClick={() => runAction('All integration tests queued')}>Run all tests</TinyButton>
       </SettingsPanel>
 
       <SettingsPanel title="Automation & Integration Rules" subtitle="Automate workflows between your apps." className="settings-v4-panel--span-2" action={<TinyButton onClick={() => runAction('New automation rule opened')}><Plus size={14} /> New Rule</TinyButton>}>
-        {[
-          ['Sync new reservations to Google Calendar', 'When reservation is confirmed', 'syncNewReservations'],
-          ['Send email on new booking', 'When reservation is confirmed', 'sendEmailOnBooking'],
-          ['Update availability on all channels', 'When reservation is created or updated', 'googleCalendar'],
-          ['Low occupancy alert', 'When occupancy falls below 20%', 'lowOccupancyAlert'],
-        ].map(([title, meta, key]) => <RuntimeSwitch key={key} runtime={runtime} switchKey={key} onChange={updateToggle} title={title} caption={meta} />)}
+        <div className="settings-v4-rule-list">
+          {[
+            ['Sync new reservations to Google Calendar', 'When reservation is confirmed', 'syncNewReservations'],
+            ['Send email on new booking', 'When reservation is confirmed', 'sendEmailOnBooking'],
+            ['Update availability on all channels', 'When reservation is created or updated', 'googleCalendar'],
+            ['Low occupancy alert', 'When occupancy falls below 20%', 'lowOccupancyAlert'],
+          ].map(([title, meta, key]) => <RuntimeSwitch key={key} runtime={runtime} switchKey={key} onChange={updateToggle} title={title} caption={meta} />)}
+        </div>
         <TinyButton onClick={() => runAction('Automation rules opened')}>View all automation rules</TinyButton>
-      </SettingsPanel>
-
-      <SettingsPanel title="Integration Endpoints" className="settings-v4-panel--span-3">
-        <EditableField label="Stripe mode" value={settings.integrations.stripeMode} onChange={(stripeMode) => updateSection('integrations', { stripeMode })} variant="select" options={selectOptions.stripeModes} />
-        <EditableField label="Airbnb/iCal status" value={settings.integrations.airbnbIcal} onChange={(airbnbIcal) => updateSection('integrations', { airbnbIcal })} />
-        <EditableField label="Webhook URL" value={settings.integrations.webhookUrl} onChange={(webhookUrl) => updateSection('integrations', { webhookUrl })} variant="url" wide />
       </SettingsPanel>
     </>
   );

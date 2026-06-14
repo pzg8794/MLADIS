@@ -4,6 +4,8 @@ import {
   Bot,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CreditCard,
   FileText,
   Globe2,
@@ -16,12 +18,16 @@ import {
   PencilLine,
   ReceiptText,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   Star,
+  Utensils,
   Users,
+  Waves,
   Clock,
   XCircle,
   DollarSign,
+  Music2,
 } from 'lucide-react';
 import { AccountFactory } from '../../application/AccountFactory';
 import { PublicSiteFactory } from '../../application/PublicSiteFactory';
@@ -40,6 +46,14 @@ import { formatStayName } from '../helpers/stayNames';
 
 type Language = 'en' | 'es';
 type LegalKind = 'business' | 'privacy' | 'terms' | 'data-deletion';
+
+const SOL_ORIENS_MAP_EMBED_URL = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3782.782382437169!2d-69.9484538248079!3d18.538733682558327!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8eaf897e8fbf9ce9%3A0x2e510419521c5941!2sResidential%20Sol%20Oriens%20V!5e0!3m2!1sen!2sus!4v1781349935983!5m2!1sen!2sus';
+const SOL_ORIENS_STAY_MAP_EMBED_URL = mapEmbedWithDistance(SOL_ORIENS_MAP_EMBED_URL, '7600');
+const SOL_ORIENS_DIRECTIONS_URL = 'https://maps.app.goo.gl/EhA3JTQ685awyX9T9';
+
+function mapEmbedWithDistance(url: string, distance: string) {
+  return url.replace('!1d3782.782382437169!', `!1d${distance}!`);
+}
 
 
 type AdminReservation = {
@@ -178,8 +192,7 @@ const copy = {
     areaText:
       'Beyond the room: city errands, food, malls, beach-day options, and hosted support from Santo Domingo Norte.',
     bookingTitle: 'Ask first, then book with confidence',
-    bookingText:
-      'The agent sits beside the booking form so guests can ask about rules, deposits, location, and the best fit before starting a reservation.',
+    bookingText: '',
     agentTitle: 'Booking agent',
     agentText: 'Ask about availability, guest count, deposit holds, house rules, transportation, or which apartment fits your group.',
     formTitle: 'Start a reservation',
@@ -231,8 +244,7 @@ const copy = {
     areaText:
       'Más allá del cuarto: diligencias, comida, plazas, playa y apoyo anfitrión desde Santo Domingo Norte.',
     bookingTitle: 'Pregunta primero y reserva con confianza',
-    bookingText:
-      'El agente está al lado del formulario para responder sobre reglas, depósito, ubicación y el mejor apartamento antes de iniciar la reserva.',
+    bookingText: '',
     agentTitle: 'Agente de reservas',
     agentText: 'Pregunta por disponibilidad, cantidad de huéspedes, depósito, reglas, transporte o cuál apartamento te conviene.',
     formTitle: 'Iniciar reserva',
@@ -326,6 +338,137 @@ function nightsBetween(checkIn: string, checkOut: string) {
   const end = new Date(`${checkOut}T00:00:00Z`).getTime();
   const nights = Math.round((end - start) / 86_400_000);
   return Math.max(nights || 1, 1);
+}
+
+function normaliseStayStatLabel(stat: string) {
+  return stat.replace(/\bbedrooms\b/gi, 'bedrooms').replace(/\bbaths\b/gi, 'baths');
+}
+
+function HomeStars({ rating }: { rating?: string }) {
+  return (
+    <span className="public-home-v5-stars" aria-label={`${rating || '4.93'} guest rating`}>
+      {Array.from({ length: 5 }, (_, index) => (
+        <Star key={index} size={15} fill="currentColor" />
+      ))}
+    </span>
+  );
+}
+
+function stayGalleryImages(stay: PublicStay) {
+  const gallery = stay.gallery.length
+    ? stay.gallery
+    : [{ imageUrl: stay.imageUrl, altText: formatStayName(stay.name), caption: formatStayName(stay.name) }];
+  const seen = new Set<string>();
+  return gallery.filter((image) => {
+    if (!image.imageUrl || seen.has(image.imageUrl)) return false;
+    seen.add(image.imageUrl);
+    return true;
+  });
+}
+
+function useRotatingList<T>(items: T[], intervalMs = 5000) {
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    if (items.length <= 1) return undefined;
+    const intervalId = window.setInterval(() => {
+      setOffset((current) => (current + 1) % items.length);
+    }, intervalMs);
+    return () => window.clearInterval(intervalId);
+  }, [intervalMs, items.length]);
+
+  useEffect(() => {
+    setOffset(0);
+  }, [items]);
+
+  return useMemo(() => {
+    if (items.length <= 1) return items;
+    return items.map((_, index) => items[(index + offset) % items.length]);
+  }, [items, offset]);
+}
+
+function useGuestRatingItems(snapshot: PublicSiteSnapshot) {
+  return useMemo(() => {
+    const voices = [
+      { guest: 'Airbnb guest', initials: 'AG', avatar: 'https://i.pravatar.cc/96?img=12', title: 'Clean, bright, and easy to enjoy', body: 'Guests consistently mention the pool, clean spaces, and helpful arrival support.' },
+      { guest: 'Family stay', initials: 'FS', avatar: 'https://i.pravatar.cc/96?img=32', title: 'Great for groups and families', body: 'The apartments work well for families who want space, privacy, and quick access to Santo Domingo Norte.' },
+      { guest: 'Verified guest', initials: 'VG', avatar: 'https://i.pravatar.cc/96?img=47', title: 'Simple check-in and local guidance', body: 'Clear rules, host support, and nearby food and shopping help guests plan with confidence.' },
+    ];
+    const derived = snapshot.stays.flatMap((stay, stayIndex) => {
+      const voice = voices[stayIndex % voices.length];
+      const nextVoice = voices[(stayIndex + 1) % voices.length];
+      return [voice, nextVoice].map((reviewVoice) => ({
+        stayName: formatStayName(stay.name),
+        title: reviewVoice.title,
+        body: reviewVoice.body,
+        guest: reviewVoice.guest,
+        initials: reviewVoice.initials,
+        avatar: reviewVoice.avatar,
+        rating: stay.rating || '4.9',
+      }));
+    });
+    return derived.length ? derived : [{
+      stayName: 'Guest stays',
+      title: 'Loved by guests',
+      body: 'Clean spaces, local support, and clear booking steps.',
+      guest: 'Guest review',
+      initials: 'GR',
+      avatar: 'https://i.pravatar.cc/96?img=56',
+      rating: '4.93',
+    }];
+  }, [snapshot.stays]);
+}
+
+function StayImageRotator({
+  stay,
+  linkUrl,
+  className = '',
+  defaultRotating = true,
+  showControls = false,
+  intervalMs = 5000,
+}: {
+  stay: PublicStay;
+  linkUrl: string;
+  className?: string;
+  defaultRotating?: boolean;
+  showControls?: boolean;
+  intervalMs?: number;
+}) {
+  const images = useMemo(() => stayGalleryImages(stay), [stay]);
+  const [index, setIndex] = useState(0);
+  const [rotating, setRotating] = useState(defaultRotating && images.length > 1);
+  const image = images[index] ?? images[0];
+
+  useEffect(() => {
+    setIndex(0);
+    setRotating(defaultRotating && images.length > 1);
+  }, [defaultRotating, images.length, stay.id]);
+
+  useEffect(() => {
+    if (!rotating || images.length <= 1) return undefined;
+    const intervalId = window.setInterval(() => {
+      setIndex((current) => (current + 1) % images.length);
+    }, intervalMs);
+    return () => window.clearInterval(intervalId);
+  }, [images.length, intervalMs, rotating]);
+
+  return (
+    <div className={`public-stay-rotator ${className}`}>
+      <a className="public-stay-rotator__link" href={linkUrl} aria-label={`View ${formatStayName(stay.name)}`}>
+        <img src={image?.imageUrl || stay.imageUrl} alt={image?.altText || formatStayName(stay.name)} loading="eager" />
+      </a>
+      {showControls && images.length > 1 && (
+        <button
+          type="button"
+          className="public-stay-rotator__toggle"
+          onClick={() => setRotating((current) => !current)}
+          aria-pressed={rotating}
+        >
+          {rotating ? 'Pause photos' : 'Rotate photos'}
+        </button>
+      )}
+    </div>
+  );
 }
 
 function PublicSiteSkeleton() {
@@ -424,9 +567,7 @@ function StayCard({ stay, language }: { stay: PublicStay; language: Language }) 
   const displayName = formatStayName(stay.name);
   return (
     <article className="public-stay-card">
-      <a className="public-stay-card__image" href={stay.detailUrl} aria-label={`View ${displayName}`}>
-        <img src={stay.imageUrl} alt={displayName} />
-      </a>
+      <StayImageRotator stay={stay} linkUrl={stay.detailUrl} className="public-stay-rotator--card" />
       <div className="public-stay-card__body">
         <div>
           <h3>{displayName}</h3>
@@ -442,6 +583,15 @@ function StayCard({ stay, language }: { stay: PublicStay; language: Language }) 
         </div>
       </div>
     </article>
+  );
+}
+
+function RotatingStayGrid({ stays, language }: { stays: PublicStay[]; language: Language }) {
+  const rotatedStays = useRotatingList(stays, 5000);
+  return (
+    <div className="public-stay-grid public-stay-grid--rotating">
+      {rotatedStays.map((stay) => <StayCard stay={stay} language={language} key={stay.id} />)}
+    </div>
   );
 }
 
@@ -681,14 +831,22 @@ function AgentBookingSection({
   return (
     <section id="booking" className="public-section public-booking">
       <div className="public-section__heading public-booking__intro">
-        <h2>{t.bookingTitle}</h2>
-        <p>{t.bookingText}</p>
+        <div>
+          <h2>{t.bookingTitle}</h2>
+          {t.bookingText && <p>{t.bookingText}</p>}
+        </div>
+        <GuestRatingSpotlight snapshot={snapshot} />
       </div>
       <div className="public-booking__grid">
         <article className="public-agent-card">
           <span><Bot size={19} /> {t.agentTitle}</span>
           <p>{t.agentText}</p>
           <LegacyAgentPrompt stay={stay} token={token} agent={userContext.agent} language={language} />
+          {stay && (
+            <div className="public-agent-card__rules">
+              <RulesBook stay={stay} language={language} />
+            </div>
+          )}
         </article>
 
         <form className="public-booking-form" method="post" action="/inquiries/" onSubmit={submitReservationRequest}>
@@ -988,34 +1146,278 @@ function ReservationPaymentHoldModal({
   );
 }
 
-function RulesBook({ stay, language }: { stay: PublicStay; language: Language }) {
+function RulesBook({ stay, language, compact = false }: { stay: PublicStay; language: Language; compact?: boolean }) {
   const t = copy[language];
-  const rules = stay.rules.length ? stay.rules : [
-    { title: 'Respectful noise', description: 'Keep music and visitors respectful so every guest and neighbor can enjoy the property.' },
-    { title: 'Registered guests only', description: 'Booking details should match the group staying at the apartment.' },
-    { title: 'Pool care', description: 'Use shared amenities with care and follow posted hours.' },
-    { title: 'No smoking inside', description: 'Please keep interiors fresh for the next guest.' },
-  ];
-  const midpoint = Math.ceil(rules.length / 2);
+  const rules = (stay.rules.length ? stay.rules : [
+    { title: 'No parties or events', description: 'Keep the stay peaceful for the residential community and nearby neighbors.' },
+    { title: 'No smoking indoors', description: 'Smoking is not allowed inside the apartment or shared indoor areas.' },
+    { title: 'Registered guests only', description: 'Guest count must match the reservation unless MLADIS approves a change.' },
+    { title: 'Respect quiet hours', description: 'Keep noise reasonable, especially late at night and in common areas.' },
+    { title: 'Protect keys and locks', description: 'Report lost keys, codes, or access issues immediately so the host can help.' },
+  ]).slice(0, 6);
+  const highlights = (stay.highlights.length ? stay.highlights : [
+    { title: 'Trusted by guests', body: stay.reviewLabel || 'Reliable host support for Santo Domingo stays.', sourceLabel: 'Guest reviews' },
+    { title: 'Secure booking', body: 'Payment holds keep the reservation process structured and reviewable.', sourceLabel: 'MLADIS' },
+    { title: 'Local support', body: 'Area guidance helps guests plan malls, errands, restaurants, and beach days.', sourceLabel: 'MLADIS' },
+  ]).slice(0, 6);
+  const spreads = useMemo(() => [
+    {
+      leftTitle: t.rules,
+      leftTone: 'green',
+      leftItems: rules.slice(0, 3).map((rule) => ({ ...rule, icon: 'rule' })),
+      rightTitle: 'Stay rhythm',
+      rightTone: 'gold',
+      rightItems: rules.slice(3, 6).map((rule) => ({ ...rule, icon: 'shield' })),
+    },
+    {
+      leftTitle: 'Guest care',
+      leftTone: 'blue',
+      leftItems: highlights.slice(0, 3).map((highlight) => ({ title: highlight.title, description: highlight.body, icon: 'guest' })),
+      rightTitle: 'Secure booking',
+      rightTone: 'teal',
+      rightItems: [
+        { title: 'Refundable deposit hold', description: 'The damage deposit is handled as a secure refundable hold.', icon: 'shield' },
+        { title: 'Stay-payment hold', description: 'The stay-payment hold is captured 24 hours before check-in.', icon: 'payment' },
+        { title: 'Account records', description: 'Requests, invoices, and updates stay tied to the guest account.', icon: 'document' },
+      ],
+    },
+    {
+      leftTitle: 'Arrival prep',
+      leftTone: 'indigo',
+      leftItems: [
+        { title: 'Ask before booking', description: 'Use the agent for rules, transport, deposit, and fit questions.', icon: 'agent' },
+        { title: 'Correct guest count', description: 'Guest count controls pricing and must match the reservation.', icon: 'guest' },
+        { title: 'Host review', description: 'MLADIS reviews requests before confirming details.', icon: 'document' },
+      ],
+      rightTitle: 'Local guidance',
+      rightTone: 'orange',
+      rightItems: [
+        { title: 'Malls and errands', description: 'Use the area guide for malls, restaurants, and Embassy-corridor errands.', icon: 'area' },
+        { title: 'Beach-day options', description: 'Juan Dolio and nearby beach trips can be planned around the stay.', icon: 'area' },
+        { title: 'Human support', description: 'Ask for practical help before the reservation is finalized.', icon: 'agent' },
+      ],
+    },
+  ], [highlights, rules, t.rules]);
+  const [spreadIndex, setSpreadIndex] = useState(0);
+  const spread = spreads[spreadIndex] ?? spreads[0];
+
+  useEffect(() => {
+    if (spreads.length <= 1) return undefined;
+    const intervalId = window.setInterval(() => {
+      setSpreadIndex((current) => (current + 1) % spreads.length);
+    }, 15000);
+    return () => window.clearInterval(intervalId);
+  }, [spreads.length]);
+
+  const iconFor = (icon: string) => {
+    if (icon === 'guest') return <Users size={18} />;
+    if (icon === 'payment') return <CreditCard size={18} />;
+    if (icon === 'document') return <ReceiptText size={18} />;
+    if (icon === 'agent') return <Bot size={18} />;
+    if (icon === 'area') return <MapPin size={18} />;
+    return <ShieldCheck size={18} />;
+  };
+
   return (
-    <article className="rules-book">
-      <div className="rules-book__page">
-        <h3>{t.rules}</h3>
-        {rules.slice(0, midpoint).map((rule) => (
-          <p key={rule.title}>
-            <CheckCircle2 size={16} />
-            <span className="rules-book__copy"><strong>{rule.title}:</strong><span>{rule.description}</span></span>
+    <article className={`rules-book${compact ? ' rules-book--compact' : ''}`}>
+      <div className={`rules-book__page rules-book__page--${spread.leftTone}`}>
+        <h3>{spread.leftTitle}</h3>
+        {spread.leftItems.map((item) => (
+          <p key={item.title}>
+            {iconFor(item.icon)}
+            <span className="rules-book__copy"><strong>{item.title}</strong><span>{item.description}</span></span>
           </p>
         ))}
       </div>
-      <div className="rules-book__page">
-        <h3>Stay rhythm</h3>
-        {rules.slice(midpoint).map((rule) => (
-          <p key={rule.title}>
-            <CheckCircle2 size={16} />
-            <span className="rules-book__copy"><strong>{rule.title}:</strong><span>{rule.description}</span></span>
+      <div className={`rules-book__page rules-book__page--${spread.rightTone}`}>
+        <h3>{spread.rightTitle}</h3>
+        {spread.rightItems.map((item) => (
+          <p key={item.title}>
+            {iconFor(item.icon)}
+            <span className="rules-book__copy"><strong>{item.title}</strong><span>{item.description}</span></span>
           </p>
         ))}
+      </div>
+      <footer className="rules-book__pager" aria-label="Rules book pages">
+        <button type="button" onClick={() => setSpreadIndex((current) => (current - 1 + spreads.length) % spreads.length)} aria-label="Previous rules page">
+          <ChevronLeft size={17} />
+        </button>
+        {spreads.map((_, index) => (
+          <button
+            type="button"
+            className={index === spreadIndex ? 'is-active' : ''}
+            onClick={() => setSpreadIndex(index)}
+            aria-label={`Rules page ${index + 1}`}
+            key={index}
+          >
+            {index + 1}
+          </button>
+        ))}
+        <button type="button" onClick={() => setSpreadIndex((current) => (current + 1) % spreads.length)} aria-label="Next rules page">
+          <ChevronRight size={17} />
+        </button>
+        <span><Clock size={15} /> Auto-advances every 15 seconds</span>
+      </footer>
+    </article>
+  );
+}
+
+function HomeAreaExperience({ snapshot, language }: { snapshot: PublicSiteSnapshot; language: Language }) {
+  const t = copy[language];
+  const tiles = useMemo(() => snapshot.areaTiles.slice(0, 4), [snapshot.areaTiles]);
+  const rotatedTiles = useRotatingList(tiles, 5000);
+  const [areaDistance, setAreaDistance] = useState(52000);
+  const areaMapUrl = useMemo(() => mapEmbedWithDistance(SOL_ORIENS_MAP_EMBED_URL, String(areaDistance)), [areaDistance]);
+  const zoomIn = () => setAreaDistance((current) => Math.max(22000, Math.round(current * 0.74)));
+  const zoomOut = () => setAreaDistance((current) => Math.min(82000, Math.round(current * 1.26)));
+  return (
+    <section id="area" className="public-section public-home-v5-area">
+      <div className="public-home-v5-area__copy">
+        <h2>{t.areaTitle}</h2>
+        <p>{t.areaText}</p>
+        <div className="public-home-v5-area__cards">
+          {rotatedTiles.map((tile) => (
+            <article key={tile.title}>
+              <img src={tile.imageUrl} alt={tile.title} />
+              <h3>{tile.title}</h3>
+              <p>{tile.caption}</p>
+              <a href="#booking" onClick={handleBookingLinkClick} aria-label={`Ask about ${tile.title}`}>
+                <ArrowUpRight size={15} />
+              </a>
+            </article>
+          ))}
+        </div>
+      </div>
+      <article className="public-home-v5-map-card public-home-v5-map-card--area">
+        <div className="public-home-v5-map-card__header">
+          <span><MapPin size={15} /> Santo Domingo Norte</span>
+          <strong>Residential Sol Oriens V</strong>
+          <a href={SOL_ORIENS_DIRECTIONS_URL} target="_blank" rel="noreferrer">Directions <ArrowUpRight size={14} /></a>
+        </div>
+        <iframe
+          title="Residential Sol Oriens V area map"
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+          src={areaMapUrl}
+        />
+        <div className="public-home-v5-map-zoom" aria-label="Map zoom controls">
+          <button type="button" onClick={zoomIn} aria-label="Zoom in">+</button>
+          <button type="button" onClick={zoomOut} aria-label="Zoom out">-</button>
+        </div>
+        <div className="public-home-v5-map-card__legend">
+          <strong>Explore nearby</strong>
+          <span><i className="public-home-v5-pin public-home-v5-pin--purple"><ShoppingBag size={13} /></i> Mall / Shopping</span>
+          <span><i className="public-home-v5-pin public-home-v5-pin--orange"><Utensils size={13} /></i> Restaurant / Food</span>
+          <span><i className="public-home-v5-pin public-home-v5-pin--blue"><Waves size={13} /></i> Beach</span>
+          <span><i className="public-home-v5-pin public-home-v5-pin--green"><Music2 size={13} /></i> Entertainment</span>
+          <a href="#area">View all places <ArrowUpRight size={14} /></a>
+        </div>
+      </article>
+    </section>
+  );
+}
+
+function HomeRulesMapSection({ snapshot, stay, language }: { snapshot: PublicSiteSnapshot; stay: PublicStay; language: Language }) {
+  const mapStays = snapshot.stays.slice(0, 3);
+  return (
+    <section className="public-section public-home-v5-rules-map">
+      <div className="public-home-v5-rules-copy">
+        <h2>Know Where You Are Staying</h2>
+        <p className="public-home-v5-rules-alert"><ShieldCheck size={18} /> Must Read Rules of Your Stay</p>
+        <RulesBook stay={stay} language={language} />
+      </div>
+      <article className="public-home-v5-map-card public-home-v5-map-card--large">
+        <div className="public-home-v5-map-card__header">
+          <span><Home size={15} /> Apartment location</span>
+          <strong>Sol Oriens V stay area</strong>
+          <a className="public-home-v5-map-card__button" href={SOL_ORIENS_DIRECTIONS_URL} target="_blank" rel="noreferrer">View full map <ArrowUpRight size={14} /></a>
+        </div>
+        <iframe
+          title="Sol Oriens V apartment location map"
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+          src={SOL_ORIENS_STAY_MAP_EMBED_URL}
+        />
+        <div className="public-home-v5-stay-markers">
+          {mapStays.map((mapStay, index) => (
+            <a className={`public-home-v5-stay-marker public-home-v5-stay-marker--${index + 1}`} href={mapStay.detailUrl} key={mapStay.id}>
+              <img src={mapStay.imageUrl} alt={formatStayName(mapStay.name)} />
+              <span>
+                <strong>{formatStayName(mapStay.name)}</strong>
+                <small><Star size={13} fill="currentColor" /> {mapStay.rating || '4.9'} · {mapStay.statList.slice(0, 2).map(normaliseStayStatLabel).join(' · ')}</small>
+              </span>
+            </a>
+          ))}
+        </div>
+      </article>
+    </section>
+  );
+}
+
+function HomeTrustStrip({ snapshot }: { snapshot: PublicSiteSnapshot }) {
+  const rating = snapshot.stays[0]?.rating || '4.93';
+  const trustItems = useMemo(() => [
+    {
+      title: 'Trusted by guests',
+      body: `${rating} average guest rating from Airbnb reviews`,
+      icon: <ShieldCheck size={22} />,
+    },
+    {
+      title: 'Secure booking',
+      body: `${snapshot.depositAmount} deposit hold opens next in a secure step.`,
+      icon: <CreditCard size={22} />,
+    },
+    {
+      title: 'Human support',
+      body: 'Real people, local knowledge, and agent support when guests need help.',
+      icon: <Bot size={22} />,
+    },
+  ], [rating, snapshot.depositAmount]);
+  const visibleTrustItems = useRotatingList(trustItems, 5000).slice(0, 3);
+  return (
+    <section className="public-home-v5-trust-strip" aria-label="Trust signals">
+      {visibleTrustItems.map((item) => (
+        <article key={item.title}>
+          {item.icon}
+          <strong>{item.title}</strong>
+          <span>{item.body}</span>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function GuestRatingSpotlight({ snapshot }: { snapshot: PublicSiteSnapshot }) {
+  const [current] = useRotatingList(useGuestRatingItems(snapshot), 5000);
+
+  return (
+    <section className="public-guest-spotlight" aria-label="Top guest rating">
+      <span className="public-guest-spotlight__avatar" aria-hidden="true">
+        <img src={current.avatar} alt="" />
+      </span>
+      <div>
+        <span><Star size={16} fill="currentColor" /> {current.rating}</span>
+        <strong>{current.title}</strong>
+        <p>{current.body}</p>
+      </div>
+      <small>{current.guest}</small>
+    </section>
+  );
+}
+
+function HomeLovedGuestsCard({ snapshot }: { snapshot: PublicSiteSnapshot }) {
+  const [current] = useRotatingList(useGuestRatingItems(snapshot), 5000);
+  return (
+    <article className="public-home-loved-card" aria-label="Loved by guests">
+      <span className="public-home-loved-card__avatar" aria-hidden="true">
+        <img src={current.avatar} alt="" />
+      </span>
+      <div>
+        <strong>Loved by guests</strong>
+        <span className="public-home-loved-card__rating"><HomeStars rating={current.rating} /> {current.rating}</span>
+        <small>{current.body}</small>
       </div>
     </article>
   );
@@ -1024,17 +1426,16 @@ function RulesBook({ stay, language }: { stay: PublicStay; language: Language })
 function HomeExperience({ snapshot, userContext, language }: { snapshot: PublicSiteSnapshot; userContext: PublicUserContext; language: Language }) {
   const t = copy[language];
   const heroStay = snapshot.stays[0];
-  const secondStay = snapshot.stays[1] ?? heroStay;
   const heroStats = [
     { label: 'Ready stays', value: String(snapshot.stays.length), icon: <Home size={18} />, tone: 'green' },
-    { label: 'Guest rating', value: heroStay?.rating || '4.9', icon: <Star size={18} />, tone: 'blue' },
+    { label: 'Guest rating', value: heroStay?.rating || '4.9', icon: <Star size={18} />, tone: 'blue', detail: heroStay?.reviewLabel },
     { label: 'Deposit hold', value: snapshot.depositAmount, icon: <CreditCard size={18} />, tone: 'orange' },
     { label: 'Agent limit', value: `${userContext.agent.questionLimit}/user`, icon: <Bot size={18} />, tone: 'indigo' },
   ];
 
   return (
     <>
-      <section className="public-hero public-hero--v4">
+      <section className="public-hero public-hero--v4 public-home-v5-hero">
         <div className="public-hero__copy">
           <h1>{t.heroTitle}</h1>
           <p>{t.heroText}</p>
@@ -1042,90 +1443,56 @@ function HomeExperience({ snapshot, userContext, language }: { snapshot: PublicS
             <a href="#booking" onClick={handleBookingLinkClick}>{t.primary} <ArrowUpRight size={17} /></a>
             <a href="#stays">{t.secondary}</a>
           </div>
-          <div className="public-home-metrics">
-            {heroStats.map((stat) => (
-              <article className={`public-home-metric public-home-metric--${stat.tone}`} key={stat.label}>
-                <span>{stat.icon}</span>
-                <strong>{stat.value}</strong>
-                <small>{stat.label}</small>
-              </article>
-            ))}
-          </div>
         </div>
         {heroStay && (
-          <a className="public-hero__stay" href={heroStay.detailUrl} aria-label={`View ${formatStayName(heroStay.name)}`}>
-            <img src={heroStay.imageUrl} alt={formatStayName(heroStay.name)} />
-            <div>
+          <article className="public-hero__stay public-home-v5-hero-card">
+            <span className="public-home-v5-favorite"><HeartHandshake size={15} /> Guest favorite</span>
+            <b className="public-home-v5-rating-badge"><Star size={16} fill="currentColor" /> {heroStay.rating || '4.93'}</b>
+            <StayImageRotator stay={heroStay} linkUrl={heroStay.detailUrl} className="public-stay-rotator--hero" defaultRotating showControls={false} />
+            <div className="public-home-v5-hero-card__body">
               <span>{t.proof}</span>
-              <h2>{formatStayName(heroStay.name)}</h2>
-              <p>{heroStay.reviewLabel}</p>
+              <a className="public-home-v5-hero-card__title-link" href={heroStay.detailUrl}>
+                <h2>{formatStayName(heroStay.name)}</h2>
+              </a>
+              <p><HomeStars rating={heroStay.rating} /> {heroStay.reviewLabel}</p>
               <div className="public-hero__stay-metrics">
-                <b><Star size={14} /> {heroStay.rating || '4.9'}</b>
-                {heroStay.statList.slice(0, 2).map((stat) => <b key={stat}>{stat}</b>)}
+                {heroStay.statList.slice(0, 3).map((stat) => <b key={stat}>{normaliseStayStatLabel(stat)}</b>)}
+              </div>
+              <div className="public-home-v5-hero-card__split">
+                <strong><span>{snapshot.depositAmount}</span>Deposit hold</strong>
+                <strong><span>{userContext.agent.questionLimit}/user</span>Agent limit</strong>
               </div>
             </div>
-          </a>
+          </article>
         )}
       </section>
 
-      <section className="public-home-command-grid" aria-label="Booking workflow">
-        <a href="#stays">
-          <CalendarDays size={22} />
-          <span>Choose stay</span>
-          <strong>{snapshot.stays.length} options</strong>
-        </a>
-        <a href={userContext.agent.canAsk ? '#booking' : userContext.agent.loginUrl} onClick={userContext.agent.canAsk ? handleBookingLinkClick : undefined}>
-          <Bot size={22} />
-          <span>{userContext.agent.canAsk ? 'Ask agent' : 'Sign in for agent'}</span>
-          <strong>{userContext.agent.canAsk ? `${userContext.agent.remainingQuestions ?? userContext.agent.questionLimit} left` : 'Account required'}</strong>
-        </a>
-        <a href="#booking" onClick={handleBookingLinkClick}>
-          <ShieldCheck size={22} />
-          <span>Secure holds</span>
-          <strong>{snapshot.depositAmount} deposit</strong>
-        </a>
-        <a href="/accounts/">
-          <ReceiptText size={22} />
-          <span>Account center</span>
-          <strong>Requests + invoices</strong>
-        </a>
+      <section className="public-home-metrics public-home-metrics--strip" aria-label="Stay highlights">
+        {heroStats.map((stat) => (
+          <article className={`public-home-metric public-home-metric--${stat.tone}`} key={stat.label}>
+            <span>{stat.icon}</span>
+            <strong>{stat.value}</strong>
+            <small>{stat.label}</small>
+          </article>
+        ))}
+        <HomeLovedGuestsCard snapshot={snapshot} />
       </section>
 
-      <section id="stays" className="public-section">
+      <section id="stays" className="public-section public-home-v5-stays">
         <div className="public-section__heading">
           <h2>{t.staysTitle}</h2>
           <p>{t.staysText}</p>
         </div>
-        <div className="public-stay-grid">
-          {snapshot.stays.map((stay) => <StayCard stay={stay} language={language} key={stay.id} />)}
-        </div>
+        <RotatingStayGrid stays={snapshot.stays} language={language} />
       </section>
 
-      <AreaSection snapshot={snapshot} language={language} />
+      {heroStay && <HomeRulesMapSection snapshot={snapshot} stay={heroStay} language={language} />}
+
+      <HomeTrustStrip snapshot={snapshot} />
+
       <AgentBookingSection snapshot={snapshot} userContext={userContext} stay={heroStay} language={language} />
 
-      {secondStay && (
-        <section className="public-section public-detail-strip">
-          <div>
-            <h2>{formatStayName(secondStay.name)}</h2>
-            <p>{secondStay.description}</p>
-          </div>
-          <div className="public-gallery-rail">
-            {(secondStay.gallery.length ? secondStay.gallery : [{ imageUrl: secondStay.imageUrl, altText: secondStay.name, caption: secondStay.name }])
-              .slice(0, 4)
-              .map((image) => <img src={image.imageUrl} alt={image.altText} key={image.imageUrl} />)}
-          </div>
-          <div className="public-two-col">
-            <article>
-              <h3>{t.highlights}</h3>
-              {secondStay.highlights.slice(0, 3).map((highlight) => (
-                <p key={highlight.title}><Sparkles size={15} /> <strong>{highlight.title}</strong> {highlight.body}</p>
-              ))}
-            </article>
-            <RulesBook stay={secondStay} language={language} />
-          </div>
-        </section>
-      )}
+      <HomeAreaExperience snapshot={snapshot} language={language} />
 
       <MissionSection snapshot={snapshot} language={language} />
     </>
