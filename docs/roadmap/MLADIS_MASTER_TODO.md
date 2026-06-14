@@ -97,7 +97,7 @@ Sensitive values and official private records must stay in the private Google Dr
 | --- | --- | --- | --- |
 | High | Document MLADIS universe / neuron architecture | Done | See `docs/architecture/0001-mladis-universe-neuron-model.md`. |
 | High | Build owner-only Operations Workboard MVP | In progress | `Operations.WorkItem` model/API/UI exists at `/ops/workboard/`; continue search/filter and broader seed coverage after MVP verification. |
-| High | Prototype Gentelella v4 full-site rebrand | In progress | See `docs/architecture/0003-gentelella-v4-full-site-rebrand.md`; isolated branch `feature/gentelella-v4-rebrand` previews on port 8010. |
+| High | Prototype Gentelella v4 full-site rebrand | In progress | See `docs/architecture/0003-gentelella-v4-full-site-rebrand.md`; old port `8010` preview is retired, and active rebrand testing uses the canonical launcher/local origin. |
 | High | Create master TODO / roadmap | Done | This file. |
 | High | Update business blueprint statuses | Done | `docs/business/MLADIS_BUSINESS_BLUEPRINT.md` refreshed with latest status sweep. |
 | High | Update README to describe MLADIS as universe / connected intelligence platform | Done | README now links to architecture and roadmap. |

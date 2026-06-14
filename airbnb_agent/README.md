@@ -20,8 +20,8 @@ From the parent `MLADIS` folder, use the one-file launcher:
 The launcher uses `airbnb_agent/.env`, creates or reuses `.venv`, installs
 requirements when `requirements.txt` changes, builds the React UI into Django
 static assets, runs migrations, syncs OAuth apps, runs Django checks, stops
-stale Django/tunnel processes on the same port, starts Django at
-`http://127.0.0.1:8000`, and starts the stable Cloudflare named tunnel
+stale Django/tunnel processes on the configured port, starts Django at the
+derived local origin, normally `http://127.0.0.1:8000`, and starts the stable Cloudflare named tunnel
 `https://local.mladis.com` when `cloudflared` is installed and authorized. Use
 `https://local.mladis.com` as the browser URL when Facebook sign-in matters. The
 launcher exports `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com` for the
@@ -70,7 +70,7 @@ bash scripts/test_signin_contracts.sh
 ```
 
 Use `https://local.mladis.com` for browser testing when Facebook sign-in
-matters. `http://127.0.0.1:8000` is the internal Django origin and the
+matters. The derived local origin, normally `http://127.0.0.1:8000`, is the internal Django origin and the
 Google/GitHub local callback origin. Do not test Django/allauth login
 through the Vite dev server at `http://127.0.0.1:5173`.
 
@@ -169,8 +169,8 @@ knowledge over time. Without a key, it falls back to setup-mode replies.
 - Social providers are scaffolded with django-allauth. By default, `.env` is the source of truth for Google, Facebook, Microsoft, and GitHub credentials; set `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK=True` only if you intentionally want `/admin/socialaccount/socialapp/` rows to enable providers without matching env vars.
 - Environment-based setup auto-syncs `SocialApp` records for the current `SITE_ID` when the login/signup page loads or a provider login starts.
 - Local env variables: `SITE_DOMAIN`, `SITE_NAME`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `USE_X_FORWARDED_PROTO`, `ACCOUNT_DEFAULT_HTTP_PROTOCOL`, `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK`, `SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS`, `SOCIAL_AUTH_CANONICAL_ORIGIN`, `SOCIAL_AUTH_GOOGLE_ORIGIN`, `SOCIAL_AUTH_FACEBOOK_ORIGIN`, `SOCIAL_AUTH_MICROSOFT_ORIGIN`, `SOCIAL_AUTH_GITHUB_ORIGIN`, `MLADIS_AGENT_ADMIN_EMAIL`, `MLADIS_AGENT_ADMIN_NAME`, `MLADIS_AGENT_ADMIN_PHONE`, `MLADIS_AGENT_ADMIN_USERNAME`, `MLADIS_AGENT_ADMIN_PASSWORD`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_CLIENT_ID`, `FACEBOOK_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_SCOPE`, `MICROSOFT_OAUTH_CLIENT_ID`, `MICROSOFT_OAUTH_CLIENT_SECRET`, `MICROSOFT_OAUTH_TENANT`, `MICROSOFT_OAUTH_LOGIN_URL`, `MICROSOFT_GRAPH_URL`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`.
-- Keep provider callback URLs aligned with the provider-specific origin vars. For example, use `SOCIAL_AUTH_GOOGLE_ORIGIN=http://127.0.0.1:8000` and `SOCIAL_AUTH_GITHUB_ORIGIN=http://127.0.0.1:8000` locally, while `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com` gives Facebook the stable HTTPS callback it requires.
-- `SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS=microsoft` hides Microsoft from the login/signup UI until its client ID and secret exist.
+- Keep provider callback URLs aligned with the provider-specific origin vars. Google and GitHub use the launcher-derived local origin, normally `http://127.0.0.1:8000`, while `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com` gives Facebook the stable HTTPS callback it requires.
+- `SOCIAL_AUTH_HIDDEN_PROVIDERS=microsoft` hides Microsoft from the login/signup UI even if legacy credentials exist. Remove it only when Microsoft login is intentionally ready for the product surface. `SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS=microsoft` is the softer fallback for providers that should disappear only while unconfigured.
 - `SOCIAL_AUTH_CANONICAL_ORIGIN` is now only a fallback. Leave it empty for mixed local testing so Google/GitHub do not inherit the temporary Facebook tunnel origin.
 - Microsoft local callback URL for Azure App Registration: `http://127.0.0.1:8000/oauth/microsoft/login/callback/`. Use `MICROSOFT_OAUTH_TENANT=common` for consumer + work accounts, `organizations` for work/school accounts, or the tenant ID if your Azure app is single-tenant.
 - Keep `ACCOUNT_DEFAULT_HTTP_PROTOCOL=http` for plain local `127.0.0.1` logins. When requests come through Cloudflare Tunnel, `USE_X_FORWARDED_PROTO=True` lets Django/allauth keep the tunnel callback on `https` without forcing local callbacks to `https`.

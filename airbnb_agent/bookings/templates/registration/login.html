@@ -12,8 +12,8 @@
   <body>
     <main class="modern-auth-page">
       <section class="modern-auth-preview">
-        <span>Gentelella v4 Preview</span>
-        <strong>Testing the next MLADIS shell on port 8010.</strong>
+        <span>MLADIS account access</span>
+        <strong>Use the canonical local MLADIS runtime for sign-in testing.</strong>
       </section>
       <section class="modern-auth-hero">
         <a class="public-brand" href="/">
@@ -61,7 +61,7 @@
         {% elif social_login_provider_count %}
           <p class="modern-auth-note">{% trans "Some social sign-in providers are configured but still need a callback route or credential refresh before they can launch." %}</p>
         {% else %}
-          <p class="modern-auth-note">{% trans "Social sign-in turns on automatically after OAuth credentials are added in the environment or admin. Use email login for now." %}</p>
+          <p class="modern-auth-note">{% trans "Social sign-in is unavailable in this runtime. Use email login for now." %}</p>
         {% endif %}
         <div class="modern-auth-divider"><span>{% trans "or use email" %}</span></div>
         <form method="post" class="modern-auth-form">

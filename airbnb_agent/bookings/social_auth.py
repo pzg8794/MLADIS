@@ -196,6 +196,7 @@ def sync_social_apps_from_env():
 def get_social_login_providers(request=None):
     env_configured = set()
     admin_configured = set()
+    hidden_providers = set(getattr(settings, "SOCIAL_AUTH_HIDDEN_PROVIDERS", []))
     hidden_unconfigured = set(getattr(settings, "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS", []))
     try:
         env_configured |= sync_social_apps_from_env()
@@ -209,6 +210,8 @@ def get_social_login_providers(request=None):
 
     providers = []
     for provider in SOCIAL_LOGIN_PROVIDER_SPECS:
+        if provider["id"] in hidden_providers:
+            continue
         try:
             login_url = reverse(provider["url_name"])
             next_url = request.GET.get("next", "") if request else ""

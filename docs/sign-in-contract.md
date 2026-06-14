@@ -27,9 +27,23 @@ or OAuth launch routes must keep these guarantees true.
   such as `~/Documents/MLADIS-dev` and push changes through GitHub. Copy only
   `airbnb_agent/.env` from the Drive checkout when you need the same local
   secrets.
+- On this Mac, the active fast checkout is
+  `/Users/pitergarcia/Desktop/MLADIS-deploy-rebrand`. Do not run auth tests from
+  older duplicate checkouts unless the owner explicitly tells you to switch.
 
 ## Provider Contract
 
+- OAuth credentials are sourced from the canonical `airbnb_agent/.env` and synced
+  into Django with `python manage.py sync_socialapps`.
+- If provider buttons disappear or show setup/fallback states, verify `.env`
+  presence first with boolean/length-only checks, run `sync_socialapps`, restart
+  the launcher, and rerun this contract before touching templates.
+- If `.env` is missing values, recover them only from an approved provider
+  dashboard/secret manager or a prior known-working local database. Never print
+  secrets and never create a second runtime as a workaround.
+- `SOCIAL_AUTH_HIDDEN_PROVIDERS=microsoft` keeps Microsoft out of the login UI
+  even if legacy credentials are present. Remove it only when Microsoft sign-in
+  is intentionally part of the tested product surface.
 - Google local origin: `SOCIAL_AUTH_GOOGLE_ORIGIN=http://127.0.0.1:8000`.
 - GitHub local origin: `SOCIAL_AUTH_GITHUB_ORIGIN=http://127.0.0.1:8000`.
 - Facebook local origin:

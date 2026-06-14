@@ -23,6 +23,50 @@ The launcher creates one Django app instance with two testing URLs:
 
 These are not two different apps and not two different startup methods. They must point to the same running Django process.
 
+## Single Local Origin Rule
+
+Local domain and port are defined once by the launcher:
+
+```bash
+MLADIS_LOCAL_DOMAIN=127.0.0.1
+MLADIS_PORT=8000
+MLADIS_LOCAL_ORIGIN=http://$MLADIS_LOCAL_DOMAIN:$MLADIS_PORT
+```
+
+Agents may override `MLADIS_LOCAL_DOMAIN` or `MLADIS_PORT` only for an explicit owner-approved exception. Do not set or hardcode a separate local origin. Do not run the old `8010` preview service during normal work.
+
+## No Port-Specific Copies
+
+Do not create duplicate MLADIS checkouts, duplicate `.env` files, or duplicate services just to test a different port or preview branch. That creates OAuth drift: one runtime can have working provider credentials while another silently falls back to empty/example credentials.
+
+The canonical rule is one active local Django service, one canonical `airbnb_agent/.env`, one launcher path, and one stable HTTPS tunnel mapped to that same service.
+
+If social sign-in shows disabled providers, first verify the canonical `.env` and run `python manage.py sync_socialapps`. Do not change templates, create another checkout, or start a second port until the credential source has been checked.
+
+## Canonical Local Checkout
+
+On this Mac, the active fast checkout is:
+
+```txt
+/Users/pitergarcia/Desktop/MLADIS-deploy-rebrand
+```
+
+Run local MLADIS from that checkout unless the owner explicitly tells you to switch. The older Google Drive checkout is a legacy/reference checkout and must not be used as a parallel runtime.
+
+## Credential Recovery Order
+
+Agents must not guess where OAuth, Stripe, email, PayPal, or other provider credentials live.
+
+When credentials appear missing:
+
+1. Check the canonical `airbnb_agent/.env` with boolean, prefix, or length-only diagnostics. Never print secret values.
+2. Run `python manage.py sync_socialapps` so Django `SocialApp` rows match the canonical `.env`.
+3. Restart with `./run_mladis_live.command`.
+4. Verify `/accounts/login/`, `/healthz`, `check_local_runtime_contract.sh`, and the sign-in contract.
+5. If the canonical `.env` is genuinely missing values, recover them only from an owner-approved secret manager/provider dashboard or a prior working local database. Treat database recovery as a last-resort emergency path and never print the recovered values.
+
+Do not edit login templates, create fallback UI, create a second checkout, start another port, or ask the owner to redo setup until this recovery order has been followed.
+
 ## Forbidden Normal Startup Paths
 
 Do not use these during normal MLADIS work:
@@ -33,6 +77,7 @@ python manage.py runserver
 npm run dev
 nohup python manage.py runserver ...
 preview_* scripts
+port 8010 prototype servers
 random trycloudflare URLs
 ```
 

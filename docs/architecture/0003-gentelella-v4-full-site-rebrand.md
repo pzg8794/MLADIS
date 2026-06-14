@@ -1,8 +1,8 @@
 # ADR 0003: Gentelella v4 Full-Site Rebrand Foundation
 
-Status: Accepted for isolated prototype branch
+Status: Accepted for active rebrand work
 Branch: `feature/gentelella-v4-rebrand`
-Preview: `http://127.0.0.1:8010/`
+Runtime: canonical launcher, normally `http://127.0.0.1:8000/`
 Related:
 
 - `docs/architecture/0001-mladis-universe-neuron-model.md`
@@ -23,6 +23,10 @@ The rule is:
 Gentelella v4 = View system reference.
 MLADIS OOP/MVC = Model, service, repository, controller, and domain behavior.
 ```
+
+The old isolated `8010` preview path is retired. Rebrand work now runs through
+the normal MLADIS local runtime contract so auth, static files, and provider
+callbacks do not drift.
 
 The implementation path is a **design-system adaptation**:
 
@@ -212,8 +216,8 @@ Mobile can use smaller fonts and horizontal chips when needed, but it must not d
 ### Phase 1: Prototype branch
 
 - Branch: `feature/gentelella-v4-rebrand`
-- Preview: `http://127.0.0.1:8010/`
-- Keep production/current local branch untouched.
+- Runtime: canonical launcher/local origin, normally `http://127.0.0.1:8000/`.
+- The old `8010` preview service is retired.
 
 ### Phase 2: Shared component layer
 

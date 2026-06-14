@@ -1944,6 +1944,7 @@ class AccountReservationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Continue with Microsoft")
 
+    @override_settings(SOCIAL_AUTH_HIDDEN_PROVIDERS=[])
     def test_login_page_auto_configures_microsoft_from_environment(self):
         with patch.dict(
             os.environ,

@@ -12,6 +12,21 @@ Runtime secrets and provider credentials live in runtime environment files or se
 | Live VM | `/home/pitergarcia/airbnb_agent/.env` | Used by the `mladis` systemd service. Never overwrite during deploy. |
 | Future managed hosting | Provider secret manager | Render/Fly/Cloud Run/etc. equivalent. |
 
+On the owner's Mac, the active local checkout is `/Users/pitergarcia/Desktop/MLADIS-deploy-rebrand`. Do not run provider setup from older or duplicate checkouts unless the owner explicitly directs it.
+
+Provider credential recovery order:
+
+1. Confirm the active checkout's `airbnb_agent/.env` has the expected variables using boolean, prefix, or length-only checks.
+2. Rebuild Django provider rows from that `.env` with `python manage.py sync_socialapps`.
+3. Restart through `./run_mladis_live.command`.
+4. If the `.env` is missing values, recover them only from the approved provider dashboard/secret manager or a prior known-working local database. Never print secrets and never commit recovered values.
+
+Creating a new checkout, new `.env`, new service, or new port is not credential recovery. It is a regression risk.
+
+Hidden provider rule:
+
+- `SOCIAL_AUTH_HIDDEN_PROVIDERS=microsoft` keeps Microsoft out of the customer/operator login UI even if legacy Microsoft credentials exist in the runtime. Remove it only when Microsoft login is intentionally configured, tested, documented, and approved.
+
 ## One-Time Setup Rule
 
 If a provider has already been configured in the correct environment, agents must not restart the setup from scratch.

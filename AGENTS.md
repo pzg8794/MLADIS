@@ -36,11 +36,17 @@
 - Use `./run_mladis_live.command` from the repo root for the working local Django app. This is the only normal local startup path.
 - Do not start MLADIS with ad hoc `python manage.py runserver`, `npm run dev`, `preview_*` scripts, `nohup`, or background shell servers during normal testing.
 - Never tell the owner to use `http://0.0.0.0:8000`. `0.0.0.0` is a bind address, not the owner-facing MLADIS test URL.
-- The launcher builds the React frontend into Django static assets by default, runs Django setup, stops stale Django processes on the same port, starts the stable `mladis-local` Cloudflare named tunnel, exports `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com`, then starts Django on `http://127.0.0.1:8000`.
-- Use `https://local.mladis.com` for browser testing when Facebook sign-in matters. `http://127.0.0.1:8000` is the internal local Django origin and the Google/GitHub local callback origin.
+- The launcher defines the local runtime from exactly two variables: `MLADIS_LOCAL_DOMAIN` and `MLADIS_PORT`. Defaults are `127.0.0.1` and `8000`; `MLADIS_LOCAL_ORIGIN` is derived from those values and must not be hardcoded elsewhere.
+- The launcher builds the React frontend into Django static assets by default, runs Django setup, stops stale Django processes on the configured port, starts the stable `mladis-local` Cloudflare named tunnel, exports `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com`, then starts Django on the derived local origin, normally `http://127.0.0.1:8000`.
+- Use `https://local.mladis.com` for browser testing when Facebook sign-in matters. The derived local origin is the internal local Django origin and the Google/GitHub local callback origin.
 - Do not test Django/allauth social sign-in through the Vite dev server at `http://127.0.0.1:5173`.
 - If you must restart for migrations, static assets, env changes, or a broken server, restart through the same launcher immediately and verify `/healthz` before reporting back.
 - Before any final response after local web work, confirm the owner has a live test URL, normally `http://127.0.0.1:8000` and, when the tunnel is healthy, `https://local.mladis.com`.
+- Do not run a second MLADIS service on port `8010` during normal work. That old rebrand-preview path is retired; test the active app through the canonical launcher and configured local port.
+- Do not create or keep separate repo copies, `.env` copies, or service copies for different local ports. OAuth credentials belong in the canonical `airbnb_agent/.env`, and `sync_socialapps` must recreate provider rows from that file. If social login regresses, check that `.env` and `SocialApp` sync first; do not create another port-specific runtime.
+- On this Mac, the active fast local checkout is `/Users/pitergarcia/Desktop/MLADIS-deploy-rebrand`. Treat the older Google Drive checkout as a legacy/reference checkout unless the owner explicitly says to work there.
+- Never guess where OAuth/payment/email secrets are. The source-of-truth order is: canonical `airbnb_agent/.env`, then an owner-approved secret manager or provider dashboard, then a prior working local database only as a last-resort recovery source. Never print recovered secrets.
+- If social login says providers are unavailable, do not edit UI copy first. Confirm `.env` contains provider credentials with boolean/length-only checks, run `python manage.py sync_socialapps`, restart through `./run_mladis_live.command`, and only then inspect templates.
 - If frontend preview servers are running in parallel, stop them before debugging auth so redirects and cookies stay easy to reason about.
 - If the Google Drive checkout is slow or Git starts hanging on ignored files, create a fast clone under `~/Documents` or `~/Desktop`, copy only `airbnb_agent/.env` if needed, and use GitHub as the synchronization point.
 - The local launcher caches dependency installs by `requirements.txt`, skips local `collectstatic` unless `MLADIS_COLLECTSTATIC=1`, builds frontend assets unless `MLADIS_BUILD_FRONTEND=0`, writes named-tunnel output to `/private/tmp/mladis-tunnel.log`, and defaults to a 60 second startup timeout.
@@ -51,7 +57,7 @@
 - Read `docs/sign-in-contract.md` before changing auth settings, allauth provider config, login/signup templates, OAuth middleware, or social launch routes.
 - Run `bash airbnb_agent/scripts/test_signin_contracts.sh` before committing or pushing any sign-in change.
 - Keep `SOCIAL_AUTH_CANONICAL_ORIGIN` empty during mixed local testing; use provider-specific origins instead.
-- Keep Google and GitHub local callbacks on `http://127.0.0.1:8000`.
+- Keep Google and GitHub local callbacks aligned with the derived local origin, normally `http://127.0.0.1:8000`.
 - Use the Cloudflare named tunnel for Facebook local callbacks. The launcher exports `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com` unless an explicit shell override is provided.
 - Do not validate Facebook from plain `http://127.0.0.1:8000`; Meta requires the stable HTTPS callback.
 - Keep Meta allow-listed with `https://local.mladis.com/oauth/facebook/login/callback/` for local testing and `https://mladis.com/oauth/facebook/login/callback/` for production.

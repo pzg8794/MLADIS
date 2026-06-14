@@ -40,8 +40,8 @@ Run `./run_mladis_live.command` from this folder, or double-click it in Finder.
 
 This is the only normal way to run the local MLADIS site. It uses
 `airbnb_agent/.env`, builds the React UI into Django static assets, prepares the
-Django app, stops stale Django/tunnel processes on the same port, starts Django
-at `http://127.0.0.1:8000`, and opens the stable Cloudflare named-tunnel URL
+Django app, stops stale Django/tunnel processes on the configured port, starts
+Django at the derived local origin, normally `http://127.0.0.1:8000`, and opens the stable Cloudflare named-tunnel URL
 `https://local.mladis.com` when `cloudflared` is installed and authorized. It
 exports `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com` for the Django
 process it starts, so normal UI/Django restarts do not rotate the Facebook
@@ -53,7 +53,11 @@ changes, or a server failure, the agent should restart it through this same
 launcher immediately and verify `/healthz` before saying the work is ready.
 Do not use or share `http://0.0.0.0:8000` as a MLADIS test URL; it is only a
 bind address. Owner-facing testing uses `https://local.mladis.com` and internal
-local checks use `http://127.0.0.1:8000`.
+local checks use the derived local origin, normally `http://127.0.0.1:8000`.
+
+The local origin is derived from exactly two variables in the launcher:
+`MLADIS_LOCAL_DOMAIN` and `MLADIS_PORT`. Do not hardcode alternate local ports
+or run the retired `8010` preview service during normal MLADIS testing.
 
 Use `https://local.mladis.com` for browser testing when Facebook sign-in
 matters. Use `http://127.0.0.1:8000` as the internal local
