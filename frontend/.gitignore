@@ -1,0 +1,9 @@
+.env
+node_modules/
+dist/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# Local package tarballs (e.g. npm pack artifacts)
+*.tgz

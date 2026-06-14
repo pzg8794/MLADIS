@@ -18,10 +18,15 @@ From the parent `MLADIS` folder, use the one-file launcher:
 ```
 
 The launcher uses `airbnb_agent/.env`, creates or reuses `.venv`, installs
-requirements, runs migrations, syncs OAuth apps, runs Django checks, collects
-static files, starts `http://127.0.0.1:8000`, and starts a temporary
-Cloudflare tunnel when `cloudflared` is installed. The tunnel URL can be used
-for live demos without going through Google Cloud.
+requirements when `requirements.txt` changes, builds the React UI into Django
+static assets, runs migrations, syncs OAuth apps, runs Django checks, stops
+stale Django/tunnel processes on the same port, starts Django at
+`http://127.0.0.1:8000`, and starts the stable Cloudflare named tunnel
+`https://local.mladis.com` when `cloudflared` is installed and authorized. Use
+`https://local.mladis.com` as the browser URL when Facebook sign-in matters. The
+launcher exports `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com` for the
+Django process it starts unless an explicit shell override is provided. The
+named-tunnel output is also written to `/private/tmp/mladis-tunnel.log`.
 
 Useful options:
 
@@ -29,9 +34,19 @@ Useful options:
 MLADIS_PUBLIC_TUNNEL=0 ./run_mladis_live.command
 MLADIS_CHECK_ONLY=1 ./run_mladis_live.command
 MLADIS_SERVER=gunicorn ./run_mladis_live.command
+MLADIS_FORCE_INSTALL=1 ./run_mladis_live.command
+MLADIS_FORCE_NPM_INSTALL=1 ./run_mladis_live.command
+MLADIS_COLLECTSTATIC=1 ./run_mladis_live.command
+MLADIS_STARTUP_TIMEOUT=120 ./run_mladis_live.command
 ```
 
-Manual local setup is still available:
+For repeated development, local `collectstatic` is skipped unless
+`MLADIS_COLLECTSTATIC=1`. Production deploy still collects static files through
+the deployment script.
+
+Manual local setup is for one-off debugging only. Do not use it for normal
+MLADIS testing, auth testing, or UI review, because it bypasses the one-file
+startup contract:
 
 ```bash
 python -m venv .venv
@@ -43,6 +58,24 @@ python manage.py runserver 0.0.0.0:8000
 ```
 
 Visit `http://localhost:8000`.
+
+## Sign-In Contract
+
+Social sign-in is protected by a local and GitHub CI contract. Before changing
+OAuth settings, allauth provider settings, login/signup templates, OAuth
+middleware, or social launch routes, run:
+
+```bash
+bash scripts/test_signin_contracts.sh
+```
+
+Use `https://local.mladis.com` for browser testing when Facebook sign-in
+matters. `http://127.0.0.1:8000` is the internal Django origin and the
+Google/GitHub local callback origin. Do not test Django/allauth login
+through the Vite dev server at `http://127.0.0.1:5173`.
+
+The full contract is documented in
+[../docs/sign-in-contract.md](../docs/sign-in-contract.md).
 
 ## Deployment
 
@@ -125,21 +158,25 @@ knowledge over time. Without a key, it falls back to setup-mode replies.
 - Seeded owner/admin access: `Piter Garcia <garciapiterz@gmail.com>`, business phone `631-575-4841`.
 - Seeded admin access: `Diana Garcia <garciabdianas@gmail.com>`.
 - Optional automation/agent admin access is provisioned from `.env` by `python manage.py provision_agent_admin`.
-- Set `MLADIS_AGENT_ADMIN_EMAIL`, `MLADIS_AGENT_ADMIN_NAME`, `MLADIS_AGENT_ADMIN_PHONE`, `MLADIS_AGENT_ADMIN_USERNAME`, and optionally `MLADIS_AGENT_ADMIN_PASSWORD`. If no password is set, the user is created for social-login automation only.
+- Dedicated automation/admin login instructions are documented in `../docs/agent-admin-login.md`.
+- Use `bash scripts/ensure_agent_admin_credentials.sh` to create missing `MLADIS_AGENT_ADMIN_*` `.env` values, generate a hidden random password when needed, and run `python manage.py provision_agent_admin`.
+- `MLADIS_AGENT_ADMIN_EMAIL`, `MLADIS_AGENT_ADMIN_NAME`, `MLADIS_AGENT_ADMIN_PHONE`, `MLADIS_AGENT_ADMIN_USERNAME`, and `MLADIS_AGENT_ADMIN_PASSWORD` are runtime secrets/configuration. Do not commit or print them.
+- Agents should log in with `MLADIS_AGENT_ADMIN_EMAIL`. `MLADIS_AGENT_ADMIN_USERNAME` is only a preferred Django username and may differ on a live database if the preferred username was already taken.
+- The owner should not be asked to know, invent, or type the agent admin password; the helper creates or rotates the hidden runtime secret.
 - Any password, Google, Facebook, Microsoft, or GitHub login with that email is promoted to staff/superuser by the `AdminAccess` table.
 - Manual `AdminAccess` entries in `/admin/` also work immediately on the current live database.
 - Local test user created for this workspace: username `piter`. Change the password in `/admin/` before sharing or deploying.
 - Social providers are scaffolded with django-allauth. By default, `.env` is the source of truth for Google, Facebook, Microsoft, and GitHub credentials; set `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK=True` only if you intentionally want `/admin/socialaccount/socialapp/` rows to enable providers without matching env vars.
 - Environment-based setup auto-syncs `SocialApp` records for the current `SITE_ID` when the login/signup page loads or a provider login starts.
-- Local env variables: `SITE_DOMAIN`, `SITE_NAME`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `USE_X_FORWARDED_PROTO`, `ACCOUNT_DEFAULT_HTTP_PROTOCOL`, `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK`, `SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS`, `SOCIAL_AUTH_CANONICAL_ORIGIN`, `MLADIS_AGENT_ADMIN_EMAIL`, `MLADIS_AGENT_ADMIN_NAME`, `MLADIS_AGENT_ADMIN_PHONE`, `MLADIS_AGENT_ADMIN_USERNAME`, `MLADIS_AGENT_ADMIN_PASSWORD`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_CLIENT_ID`, `FACEBOOK_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_SCOPE`, `MICROSOFT_OAUTH_CLIENT_ID`, `MICROSOFT_OAUTH_CLIENT_SECRET`, `MICROSOFT_OAUTH_TENANT`, `MICROSOFT_OAUTH_LOGIN_URL`, `MICROSOFT_GRAPH_URL`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`.
-- Keep the provider callback URLs aligned with the host in `SITE_DOMAIN`, for example `http://127.0.0.1:8000` locally or your production domain.
+- Local env variables: `SITE_DOMAIN`, `SITE_NAME`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `USE_X_FORWARDED_PROTO`, `ACCOUNT_DEFAULT_HTTP_PROTOCOL`, `SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK`, `SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS`, `SOCIAL_AUTH_CANONICAL_ORIGIN`, `SOCIAL_AUTH_GOOGLE_ORIGIN`, `SOCIAL_AUTH_FACEBOOK_ORIGIN`, `SOCIAL_AUTH_MICROSOFT_ORIGIN`, `SOCIAL_AUTH_GITHUB_ORIGIN`, `MLADIS_AGENT_ADMIN_EMAIL`, `MLADIS_AGENT_ADMIN_NAME`, `MLADIS_AGENT_ADMIN_PHONE`, `MLADIS_AGENT_ADMIN_USERNAME`, `MLADIS_AGENT_ADMIN_PASSWORD`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_CLIENT_ID`, `FACEBOOK_OAUTH_CLIENT_SECRET`, `FACEBOOK_OAUTH_SCOPE`, `MICROSOFT_OAUTH_CLIENT_ID`, `MICROSOFT_OAUTH_CLIENT_SECRET`, `MICROSOFT_OAUTH_TENANT`, `MICROSOFT_OAUTH_LOGIN_URL`, `MICROSOFT_GRAPH_URL`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`.
+- Keep provider callback URLs aligned with the provider-specific origin vars. For example, use `SOCIAL_AUTH_GOOGLE_ORIGIN=http://127.0.0.1:8000` and `SOCIAL_AUTH_GITHUB_ORIGIN=http://127.0.0.1:8000` locally, while `SOCIAL_AUTH_FACEBOOK_ORIGIN=https://local.mladis.com` gives Facebook the stable HTTPS callback it requires.
 - `SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS=microsoft` hides Microsoft from the login/signup UI until its client ID and secret exist.
-- `SOCIAL_AUTH_CANONICAL_ORIGIN=http://127.0.0.1:8000` keeps social-login requests on the exact local origin registered with Google/Meta. If you open `localhost:8000`, the auth pages redirect to `127.0.0.1:8000` so Facebook receives the same callback every time.
+- `SOCIAL_AUTH_CANONICAL_ORIGIN` is now only a fallback. Leave it empty for mixed local testing so Google/GitHub do not inherit the temporary Facebook tunnel origin.
 - Microsoft local callback URL for Azure App Registration: `http://127.0.0.1:8000/oauth/microsoft/login/callback/`. Use `MICROSOFT_OAUTH_TENANT=common` for consumer + work accounts, `organizations` for work/school accounts, or the tenant ID if your Azure app is single-tenant.
 - Keep `ACCOUNT_DEFAULT_HTTP_PROTOCOL=http` for plain local `127.0.0.1` logins. When requests come through Cloudflare Tunnel, `USE_X_FORWARDED_PROTO=True` lets Django/allauth keep the tunnel callback on `https` without forcing local callbacks to `https`.
-- Facebook local development needs an HTTPS callback. A quick tunnel such as Cloudflare Tunnel works with `ALLOWED_HOSTS=localhost,127.0.0.1,.trycloudflare.com`, `CSRF_TRUSTED_ORIGINS=https://*.trycloudflare.com`, and `USE_X_FORWARDED_PROTO=True`.
-- For the current Meta app, `FACEBOOK_OAUTH_SCOPE=public_profile` is the working local default. If Meta later approves `email`, update the scope to `public_profile,email` and re-save the active tunnel callback URL plus app domain in Meta.
-- Meta basic settings can use the new public policy pages in this app: `https://<current-host>/privacy/` and `https://<current-host>/terms/`. For Facebook data deletion, use the callback URL option with `https://<current-host>/data-deletion/callback/`; the human-facing instructions page stays at `https://<current-host>/data-deletion/`. For the current Cloudflare tunnel, replace `<current-host>` with the active `.trycloudflare.com` hostname before saving the fields in Meta.
+- Facebook local development needs an HTTPS callback. The normal local callback is `https://local.mladis.com/oauth/facebook/login/callback/`, backed by the `mladis-local` Cloudflare named tunnel. Use `ALLOWED_HOSTS=localhost,127.0.0.1,local.mladis.com`, `CSRF_TRUSTED_ORIGINS=https://local.mladis.com`, and `USE_X_FORWARDED_PROTO=True`.
+- For the current Meta app, `FACEBOOK_OAUTH_SCOPE=public_profile` is the working local default. If Meta later approves `email`, update the scope to `public_profile,email` and keep the stable local and production callback URLs allow-listed in Meta.
+- Meta basic settings can use the new public policy pages in this app: `https://mladis.com/privacy/` and `https://mladis.com/terms/`. For Facebook data deletion, use the callback URL option with `https://mladis.com/data-deletion/callback/`; the human-facing instructions page stays at `https://mladis.com/data-deletion/`. For local testing, Meta should allow `https://local.mladis.com/oauth/facebook/login/callback/`; for production, it should allow `https://mladis.com/oauth/facebook/login/callback/`.
 
 ## Damage Deposit Flow
 

@@ -1,14 +1,17 @@
-# Admin Business Calendar
+# Business Calendar
 
-This document covers the new business calendar inside Django Admin for MLADIS stays.
+This document covers the modern business calendar for stays, availability, manual holds, nightly pricing, and future Airbnb feed sync.
 
 ## Where It Lives
 
-- Open Django Admin.
-- Go to `Bookings` -> `Bookable items`.
-- For a stay row, use the `Open calendar` link.
+- Primary operator route: `/ops/calendar/`.
+- Calendar subviews:
+  - `/ops/calendar/list/`
+  - `/ops/calendar/rooms/`
+  - `/ops/calendar/analytics/`
+- Django Admin fallback links under `Bookings` -> `Bookable items` redirect staff to the modern `/ops/calendar/` route.
 
-The calendar route is the custom admin view under `BookableItem` admin and is intended to be the main operator-facing calendar surface.
+The modern ops calendar is the main operator-facing calendar surface. The old admin calendar should remain only as a safe redirect/fallback while this surface is tested.
 
 ## What The Calendar Shows
 
@@ -70,6 +73,34 @@ That means the calendar is the visual scheduling surface, while the `BookingInqu
 - `BookingInquiry`: active reservations shown as booked days.
 - `AvailabilityBlock`: manual closures for owner holds, maintenance, or blackout dates.
 - `DailyPriceOverride`: temporary nightly pricing for selected date ranges.
+- `CalendarFeed`: Airbnb iCal and Google Calendar feed metadata for each stay.
+
+## Airbnb iCal Sync Roadmap
+
+MLADIS already stores Airbnb iCal URLs on `CalendarFeed.airbnb_ical_url`. The calendar UI must not pretend a stay is synced just because a URL exists. Treat these as separate states:
+
+- `feed configured`: `CalendarFeed.airbnb_ical_url` exists and the feed record is active.
+- `feed synced`: a backend sync job successfully imported or updated events from that feed.
+- `calendar rendered`: imported reservations, manual blocks, and price overrides are shown through the existing calendar API.
+
+Recommended implementation:
+
+1. Add a backend service named `AirbnbICalSyncService`.
+2. Add a management command named `sync_calendar_feeds`.
+3. For each active `CalendarFeed` with an `airbnb_ical_url`, fetch the iCal feed, parse `VEVENT` records, and persist them through the booking domain.
+4. Preserve external identity using Airbnb/iCal fields such as `UID`, `DTSTART`, `DTEND`, `SUMMARY`, and `LAST-MODIFIED`. Add explicit external-source fields or an `ExternalCalendarEvent` model before mutating reservations if the current `BookingInquiry` schema cannot safely store that identity.
+5. Upsert records instead of blindly creating duplicates.
+6. Store sync metadata on `CalendarFeed`: last sync time, last status, last error, and imported count.
+7. Show sync warnings in `/ops/calendar/` notifications when a feed is missing, stale, or failed.
+
+The source of truth for the rendered calendar remains:
+
+- `BookingInquiry` for reservations.
+- `AvailabilityBlock` for manual blocks.
+- `DailyPriceOverride` for price overrides.
+- `CalendarFeed` for external-feed configuration and health.
+
+Do not fake imported Airbnb reservations in the UI. If a feed is not synced, the UI should say the feed is configured but awaiting sync.
 
 ## Validation Commands
 

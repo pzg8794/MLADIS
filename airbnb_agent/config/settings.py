@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -50,6 +51,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.microsoft",
     "allauth.socialaccount.providers.github",
     "bookings",
+    "operations",
 ]
 
 MIDDLEWARE = [
@@ -58,11 +60,11 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "bookings.middleware.SocialAuthCanonicalOriginMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "bookings.middleware.SocialAuthCanonicalOriginMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "bookings.middleware.PageVisitMiddleware",
 ]
@@ -192,6 +194,14 @@ if GCS_MEDIA_BUCKET:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SITE_ID = 1
+MLADIS_WORKBOARD_OWNER_EMAILS = env_list(
+    "MLADIS_WORKBOARD_OWNER_EMAILS",
+    ["garciapiterz@gmail.com", "garcp37@mladis.com"],
+)
+MLADIS_WORKBOARD_OWNER_USERNAMES = env_list(
+    "MLADIS_WORKBOARD_OWNER_USERNAMES",
+    ["piter"],
+)
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
@@ -213,10 +223,28 @@ SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS = env_list(
     ["microsoft"],
 )
 SOCIAL_AUTH_CANONICAL_ORIGIN = os.getenv("SOCIAL_AUTH_CANONICAL_ORIGIN", "").strip().rstrip("/")
+SOCIAL_AUTH_PROVIDER_ORIGINS = {
+    "google": (
+        os.getenv("SOCIAL_AUTH_GOOGLE_ORIGIN", "").strip()
+        or os.getenv("GOOGLE_OAUTH_ORIGIN", "").strip()
+    ).rstrip("/"),
+    "facebook": (
+        os.getenv("SOCIAL_AUTH_FACEBOOK_ORIGIN", "").strip()
+        or os.getenv("FACEBOOK_OAUTH_ORIGIN", "").strip()
+    ).rstrip("/"),
+    "microsoft": (
+        os.getenv("SOCIAL_AUTH_MICROSOFT_ORIGIN", "").strip()
+        or os.getenv("MICROSOFT_OAUTH_ORIGIN", "").strip()
+    ).rstrip("/"),
+    "github": (
+        os.getenv("SOCIAL_AUTH_GITHUB_ORIGIN", "").strip()
+        or os.getenv("GITHUB_OAUTH_ORIGIN", "").strip()
+    ).rstrip("/"),
+}
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "SCOPE": ["profile", "email"],
-        "AUTH_PARAMS": {"access_type": "online"},
+        "AUTH_PARAMS": {"access_type": "online", "prompt": "select_account"},
     },
     "facebook": {
         "METHOD": "oauth2",
@@ -228,11 +256,20 @@ SOCIALACCOUNT_PROVIDERS = {
     },
     "github": {
         "SCOPE": ["user:email"],
+        "AUTH_PARAMS": {"prompt": "select_account"},
     },
 }
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_AGENT_MODEL = os.getenv("OPENAI_AGENT_MODEL", "gpt-5.4-nano").strip() or "gpt-5.4-nano"
+OPENAI_MAINTENANCE_VISION_MODEL = (
+    os.getenv("OPENAI_MAINTENANCE_VISION_MODEL", OPENAI_AGENT_MODEL).strip() or OPENAI_AGENT_MODEL
+)
+MAINTENANCE_AI_MAX_PHOTOS = int(os.getenv("MAINTENANCE_AI_MAX_PHOTOS", "6"))
+OPENAI_CHATKIT_API_URL = os.getenv("OPENAI_CHATKIT_API_URL", "").strip()
+OPENAI_CHATKIT_DOMAIN_KEY = os.getenv("OPENAI_CHATKIT_DOMAIN_KEY", "").strip()
+OPENAI_CHATKIT_WORKFLOW_ID = os.getenv("OPENAI_CHATKIT_WORKFLOW_ID", "").strip()
+OPENAI_CHATKIT_WORKFLOW_VERSION = os.getenv("OPENAI_CHATKIT_WORKFLOW_VERSION", "").strip()
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_API_VERSION = "2026-02-25.clover"
@@ -243,6 +280,19 @@ PAYPAL_BRAND_NAME = os.getenv("PAYPAL_BRAND_NAME", "MLADIS")
 DEPOSIT_AMOUNT_CENTS = int(os.getenv("DEPOSIT_AMOUNT_CENTS", "20000"))
 DEPOSIT_CURRENCY = os.getenv("DEPOSIT_CURRENCY", "usd").lower()
 DONATION_CURRENCY = os.getenv("DONATION_CURRENCY", DEPOSIT_CURRENCY).lower()
+RUNNING_TESTS = "test" in sys.argv
+
+MLADIS_DATASTORE_ROOT = "" if RUNNING_TESTS else os.getenv("MLADIS_DATASTORE_ROOT", "").strip()
+MLADIS_DATASTORE_DRIVE_FOLDER_ID = os.getenv(
+    "MLADIS_DATASTORE_DRIVE_FOLDER_ID",
+    "1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn",
+).strip()
+MLADIS_DATASTORE_DRIVE_REMOTE = os.getenv("MLADIS_DATASTORE_DRIVE_REMOTE", "equitable_mydrive").strip()
+MLADIS_DATASTORE_DRIVE_PACER_MIN_SLEEP = os.getenv("MLADIS_DATASTORE_DRIVE_PACER_MIN_SLEEP", "3s").strip()
+MLADIS_DATASTORE_DRIVE_TPS_LIMIT = os.getenv("MLADIS_DATASTORE_DRIVE_TPS_LIMIT", "0.25").strip()
+MLADIS_DATASTORE_DRIVE_COPY_TIMEOUT_SECONDS = int(os.getenv("MLADIS_DATASTORE_DRIVE_COPY_TIMEOUT_SECONDS", "25"))
+MLADIS_DATASTORE_LIVE_SYNC_DRIVE = False if RUNNING_TESTS else env_bool("MLADIS_DATASTORE_LIVE_SYNC_DRIVE", default=False)
+MLADIS_DATASTORE_LIVE_SYNC_ASYNC = False if RUNNING_TESTS else env_bool("MLADIS_DATASTORE_LIVE_SYNC_ASYNC", default=True)
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "MLADIS Bookings <bookings@mladis.local>")
 BOOKING_INQUIRY_RECIPIENTS = env_list("BOOKING_INQUIRY_RECIPIENTS", ["garciapiterz@gmail.com"])

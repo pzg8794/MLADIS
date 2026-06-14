@@ -1,18 +1,30 @@
 {% extends "admin/base.html" %}
 {% load i18n static %}
 
-{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('MLADIS Admin') }}{% endblock %}
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Admin') }}{% endblock %}
 
 {% block extrastyle %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'bookings/admin/mladis_admin.css' %}">
+<link rel="stylesheet" href="{% static 'bookings/admin/modern_admin.css' %}">
 {% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script defer src="{% static 'bookings/admin/admin_interactions.js' %}"></script>
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} modern-admin-django-page{% endblock %}
 
 {% block branding %}
 <div class="mladis-admin-brand">
-  <div class="mladis-admin-mark" aria-hidden="true">M</div>
+  {% if site_settings.logo_display_url %}
+    <img class="mladis-admin-mark" src="{{ site_settings.logo_display_url }}" alt="" aria-hidden="true">
+  {% else %}
+    <img class="mladis-admin-mark" src="{% static 'bookings/brand/mladis-connected-intelligence.png' %}" alt="" aria-hidden="true">
+  {% endif %}
   <div class="mladis-admin-brand-text">
-    <div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('MLADIS Admin') }}</a></div>
+    <div id="site-name"><a href="{% url 'bookings:home' %}">{{ site_header|default:_('Admin') }}</a></div>
     <p>{% trans "Vacation homes, guests, deposits, and agent operations" %}</p>
   </div>
 </div>
@@ -23,14 +35,27 @@
 
 {% block nav-global %}
 {% if has_permission %}
-<nav class="mladis-admin-shortcuts" aria-label="{% trans 'MLADIS admin shortcuts' %}">
-  <a class="primary" href="{% url 'admin:bookings_bookableitem_calendar' %}">{% trans "Business calendar" %}</a>
-  <a href="{% url 'bookings:ops-dashboard' %}">{% trans "Owner dashboard" %}</a>
-  <a href="{% url 'admin:bookings_bookinginquiry_changelist' %}">{% trans "Reservations" %}</a>
-  <a href="{% url 'admin:bookings_customerprofile_changelist' %}">{% trans "Customers" %}</a>
-  <a href="{% url 'admin:bookings_airbnbguestrecord_changelist' %}">{% trans "Airbnb guests" %}</a>
-  <a href="{% url 'admin:bookings_agentconversation_changelist' %}">{% trans "Agent logs" %}</a>
-  <a href="{% url 'bookings:ops-reports' %}">{% trans "Reports" %}</a>
+{% url 'admin:index' as admin_index_url %}
+<nav class="mladis-admin-left-rail" aria-label="{% trans 'Admin shortcuts' %}">
+  <a class="mladis-admin-left-rail__brand" href="{% url 'bookings:home' %}">
+    {% if site_settings.logo_display_url %}
+      <img src="{{ site_settings.logo_display_url }}" alt="" aria-hidden="true">
+    {% else %}
+      <img src="{% static 'bookings/brand/mladis-connected-intelligence.png' %}" alt="" aria-hidden="true">
+    {% endif %}
+    <span class="mladis-admin-left-rail__label">MLADIS</span>
+  </a>
+  <a href="{% url 'bookings:ops-dashboard' %}">{% include "admin/includes/rail_icon.html" with icon="dashboard" %}<span class="mladis-admin-left-rail__label">{% trans "Dashboard" %}</span></a>
+  <a href="{% url 'bookings:ops-admin' %}">{% include "admin/includes/rail_icon.html" with icon="admin" %}<span class="mladis-admin-left-rail__label">{% trans "Admin" %}</span></a>
+  <a class="{% if request.path == admin_index_url or '/admin/' in request.path %}primary{% endif %}" href="{{ admin_index_url }}">{% include "admin/includes/rail_icon.html" with icon="settings" %}<span class="mladis-admin-left-rail__label">{% trans "Settings" %}</span></a>
+  <a href="{% url 'bookings:ops-reservations' %}">{% include "admin/includes/rail_icon.html" with icon="reservations" %}<span class="mladis-admin-left-rail__label">{% trans "Reservations" %}</span></a>
+  <a href="{% url 'bookings:calendar-ops' %}">{% include "admin/includes/rail_icon.html" with icon="calendar" %}<span class="mladis-admin-left-rail__label">{% trans "Calendar" %}</span></a>
+  <a href="{% url 'bookings:ops-stays' %}">{% include "admin/includes/rail_icon.html" with icon="stays" %}<span class="mladis-admin-left-rail__label">{% trans "Stay portfolio" %}</span></a>
+  <a href="{% url 'bookings:ops-reports' %}">{% include "admin/includes/rail_icon.html" with icon="reports" %}<span class="mladis-admin-left-rail__label">{% trans "Reports" %}</span></a>
+  <a href="{% url 'bookings:ops-customers' %}">{% include "admin/includes/rail_icon.html" with icon="customers" %}<span class="mladis-admin-left-rail__label">{% trans "Customers" %}</span></a>
+  <a href="{% url 'bookings:ops-deposits' %}">{% include "admin/includes/rail_icon.html" with icon="deposits" %}<span class="mladis-admin-left-rail__label">{% trans "Deposits" %}</span></a>
+  <a href="{% url 'bookings:ops-maintenance' %}">{% include "admin/includes/rail_icon.html" with icon="maintenance" %}<span class="mladis-admin-left-rail__label">{% trans "Maintenance" %}</span></a>
+  <a href="{% url 'bookings:ops-agent' %}">{% include "admin/includes/rail_icon.html" with icon="agent" %}<span class="mladis-admin-left-rail__label">{% trans "Agent" %}</span></a>
 </nav>
 {% endif %}
 {% endblock %}

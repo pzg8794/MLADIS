@@ -1,5 +1,7 @@
 from decimal import Decimal
 from datetime import datetime, time, timedelta
+import hashlib
+import re
 from uuid import uuid4
 
 from django.conf import settings
@@ -95,6 +97,35 @@ class DonationStatus(models.TextChoices):
     FAILED = "failed", "Failed"
 
 
+class MaintenanceWorkType(models.TextChoices):
+    CLEANING = "cleaning", "Cleaning"
+    REPAIR = "repair", "Repair"
+    REPLACEMENT = "replacement", "Replacement"
+    INSPECTION = "inspection", "Inspection"
+    SUPPLIES = "supplies", "Supplies"
+    PENALTY = "penalty", "Penalty"
+    OTHER = "other", "Other"
+
+
+class MaintenanceStatus(models.TextChoices):
+    DRAFT = "draft", "Draft"
+    LOGGED = "logged", "Logged"
+    SCHEDULED = "scheduled", "Scheduled"
+    IN_PROGRESS = "in_progress", "In progress"
+    COMPLETED = "completed", "Completed"
+    DOCUMENTED = "documented", "Documented"
+    BILLED = "billed", "Billed"
+    ARCHIVED = "archived", "Archived"
+
+
+class MaintenancePaymentStatus(models.TextChoices):
+    UNPAID = "unpaid", "Unpaid"
+    PENDING = "pending", "Pending"
+    PAID = "paid", "Paid"
+    REIMBURSED = "reimbursed", "Reimbursed"
+    DISPUTED = "disputed", "Disputed"
+
+
 class AgentKnowledgeSourceType(models.TextChoices):
     INLINE = "inline", "Inline text"
     REPO_FILE = "repo_file", "Repo file"
@@ -113,6 +144,26 @@ class AgentFAQCategory(models.TextChoices):
     GENERAL = "general", "General"
 
 
+def format_stay_display_name(value, *, separator=", "):
+    clean = re.sub(r"\s+", " ", value or "").strip()
+    clean = re.sub(r"^MLADIS\s*[-–—]\s*", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"\bBedrooms?\b", "Beds", clean, flags=re.IGNORECASE)
+    unit_match = re.search(r"\b([A-Z])[-\s]?(\d{3}|All)\b", clean, flags=re.IGNORECASE)
+    bed_match = re.search(r"\b(\d+)\s+Beds?\b", clean, flags=re.IGNORECASE)
+    title = re.sub(r"\b[A-Z][-\s]?(?:\d{3}|All)\b", "", clean, flags=re.IGNORECASE)
+    title = re.sub(r"\b\d+\s+Beds?\b", "", title, flags=re.IGNORECASE)
+    title = re.sub(r"\(?\bapartments?\b\)?", "", title, flags=re.IGNORECASE)
+    title = re.sub(r"\s*[-–—]\s*", " ", title)
+    title = re.sub(r"\s+", " ", title).strip() or "Vacation Home & Pool"
+    if not bed_match:
+        return clean
+    property_type = "Apts" if bed_match.group(1) == "6" and not unit_match else "Apt"
+    unit = ""
+    if unit_match:
+        unit = f"{unit_match.group(1).upper()}-{unit_match.group(2)}"
+    return separator.join(part for part in [f"{bed_match.group(1)} Beds {property_type}", title, unit] if part)
+
+
 class CancellationPolicy(models.Model):
     name = models.CharField(max_length=120)
     slug = models.SlugField(unique=True)
@@ -129,7 +180,11 @@ class CancellationPolicy(models.Model):
         verbose_name_plural = "cancellation policies"
 
     def __str__(self):
-        return self.name
+        return self.business_display_name
+
+    @property
+    def business_display_name(self):
+        return format_stay_display_name(self.name)
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -391,7 +446,11 @@ class BookableItem(models.Model):
         ordering = ["category", "name"]
 
     def __str__(self):
-        return self.name
+        return self.business_display_name
+
+    @property
+    def business_display_name(self):
+        return format_stay_display_name(self.name)
 
     def get_absolute_url(self):
         if self.category == BookingCategory.STAY:
@@ -684,11 +743,20 @@ class BookingInquiry(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        item_name = self.item.name if self.item else "Any booking"
+        item_name = self.item.business_display_name if self.item else "Any booking"
         return f"{self.guest_name} - {item_name}"
 
     @property
+    def request_key(self):
+        if not self.pk:
+            return "MLADIS-REQ-PENDING"
+        created = self.created_at or timezone.now()
+        return f"MLADIS-REQ-{created:%Y%m%d}-{self.pk:06d}"
+
+    @property
     def nights(self):
+        if not self.check_in or not self.check_out:
+            return 0
         return max((self.check_out - self.check_in).days, 0)
 
     @property
@@ -700,8 +768,20 @@ class BookingInquiry(models.Model):
         return self._display_money(self.discount_cents)
 
     @property
+    def display_deposit(self):
+        return self._display_money(self.deposit_cents)
+
+    @property
     def display_total(self):
         return self._display_money(self.total_cents)
+
+    @property
+    def reservation_payment_cents(self):
+        return max(self.subtotal_cents - self.discount_cents, 0)
+
+    @property
+    def display_reservation_payment(self):
+        return self._display_money(self.reservation_payment_cents)
 
     @property
     def can_customer_cancel(self):
@@ -780,6 +860,285 @@ class DailyPriceOverride(models.Model):
             raise ValidationError(errors)
 
 
+def maintenance_upload_path(instance, filename):
+    event_id = instance.event_id or "pending"
+    clean_name = slugify(str(filename).rsplit("/", 1)[-1].rsplit(".", 1)[0]) or "photo"
+    extension = ""
+    if "." in filename:
+        extension = "." + filename.rsplit(".", 1)[-1].lower()
+    return f"maintenance/events/{event_id}/{uuid4().hex}-{clean_name}{extension}"
+
+
+class MaintenanceEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    item = models.ForeignKey(
+        BookableItem,
+        on_delete=models.PROTECT,
+        related_name="maintenance_events",
+    )
+    booking = models.ForeignKey(
+        BookingInquiry,
+        on_delete=models.SET_NULL,
+        related_name="maintenance_events",
+        null=True,
+        blank=True,
+    )
+    title = models.CharField(max_length=200)
+    work_type = models.CharField(
+        max_length=24,
+        choices=MaintenanceWorkType.choices,
+        default=MaintenanceWorkType.CLEANING,
+    )
+    status = models.CharField(
+        max_length=24,
+        choices=MaintenanceStatus.choices,
+        default=MaintenanceStatus.COMPLETED,
+    )
+    cost_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    cost_currency = models.CharField(max_length=3, default="USD")
+    reported_at = models.DateTimeField(default=timezone.now)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    timezone_name = models.CharField(max_length=64, default="America/Santo_Domingo")
+    vendor_name = models.CharField(max_length=160, blank=True)
+    vendor_contact = models.CharField(max_length=160, blank=True)
+    invoice_number = models.CharField(max_length=80, blank=True)
+    proof_of_payment_ref = models.CharField(max_length=180, blank=True)
+    payment_status = models.CharField(
+        max_length=24,
+        choices=MaintenancePaymentStatus.choices,
+        default=MaintenancePaymentStatus.PENDING,
+    )
+    tax_category_code = models.CharField(max_length=80, blank=True)
+    description = models.TextField(blank=True)
+    ai_description = models.TextField(blank=True)
+    ai_description_generated_at = models.DateTimeField(null=True, blank=True)
+    ai_description_model = models.CharField(max_length=120, blank=True)
+    ai_description_metadata = models.JSONField(default=dict, blank=True)
+    use_ai_description = models.BooleanField(default=False)
+    admin_notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_maintenance_events",
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="approved_maintenance_events",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-reported_at", "-created_at"]
+        verbose_name = "maintenance event"
+        verbose_name_plural = "maintenance events"
+
+    def __str__(self):
+        return f"{self.title} - {self.item.business_display_name}"
+
+    def clean(self):
+        errors = {}
+        if self.cost_amount is not None and self.cost_amount < 0:
+            errors["cost_amount"] = "Cost must be zero or greater."
+        currency = (self.cost_currency or "").strip().upper()
+        if len(currency) != 3 or not currency.isalpha():
+            errors["cost_currency"] = "Use a three-letter currency code such as USD."
+        else:
+            self.cost_currency = currency
+        if self.started_at and self.completed_at and self.completed_at < self.started_at:
+            errors["completed_at"] = "Completed time must be after started time."
+        if self.payment_status in {MaintenancePaymentStatus.PAID, MaintenancePaymentStatus.REIMBURSED}:
+            if not (self.proof_of_payment_ref or self.invoice_number):
+                errors["proof_of_payment_ref"] = "Paid or reimbursed maintenance needs a receipt, invoice, or payment reference."
+        if self.booking_id and self.item_id and self.booking and self.booking.item_id and self.booking.item_id != self.item_id:
+            errors["booking"] = "Linked booking must belong to the selected stay."
+        if errors:
+            raise ValidationError(errors)
+
+    @property
+    def duration_minutes(self):
+        if not self.started_at or not self.completed_at:
+            return None
+        return max(int((self.completed_at - self.started_at).total_seconds() // 60), 0)
+
+    @property
+    def money(self):
+        return {
+            "amount": str(self.cost_amount),
+            "currency": self.cost_currency,
+            "display": self.display_cost,
+        }
+
+    @property
+    def time_window(self):
+        return {
+            "reported_at": self.reported_at.isoformat() if self.reported_at else "",
+            "started_at": self.started_at.isoformat() if self.started_at else "",
+            "completed_at": self.completed_at.isoformat() if self.completed_at else "",
+            "duration_minutes": self.duration_minutes,
+            "timezone": self.timezone_name,
+        }
+
+    @property
+    def display_cost(self):
+        return f"${self.cost_amount:,.2f} {self.cost_currency}"
+
+    @property
+    def photo_count(self):
+        if not self.pk:
+            return 0
+        return self.photos.count()
+
+    @property
+    def is_tax_ready(self):
+        return bool(
+            self.title
+            and self.cost_amount is not None
+            and self.reported_at
+            and self.photo_count
+            and (self.effective_description or self.invoice_number or self.proof_of_payment_ref)
+        )
+
+    @property
+    def effective_description(self):
+        if self.use_ai_description and self.ai_description:
+            return self.ai_description
+        return self.description or self.ai_description
+
+    def to_agent_payload(self):
+        booking = self.booking
+        return {
+            "maintenance_event_id": str(self.pk),
+            "title": self.title,
+            "work_type": self.work_type,
+            "work_type_label": self.get_work_type_display(),
+            "status": self.status,
+            "status_label": self.get_status_display(),
+            "property": {
+                "id": self.item_id,
+                "name": self.item.business_display_name if self.item else "",
+                "slug": self.item.slug if self.item else "",
+            },
+            "booking_request_id": self.booking_id,
+            "reservation": {
+                "id": booking.pk if booking else None,
+                "request_key": booking.request_key if booking else "",
+                "guest_name": booking.guest_name if booking else "",
+                "guest_email": booking.email if booking else "",
+                "status": booking.status if booking else "",
+                "status_label": booking.get_status_display() if booking else "",
+                "check_in": booking.check_in.isoformat() if booking and booking.check_in else "",
+                "check_out": booking.check_out.isoformat() if booking and booking.check_out else "",
+                "nights": booking.nights if booking else 0,
+                "guests": booking.guests if booking else 0,
+                "reservation_total": booking.display_total if booking else "",
+            },
+            "cost": self.money,
+            "time": self.time_window,
+            "vendor": {
+                "name": self.vendor_name,
+                "contact": self.vendor_contact,
+            },
+            "payment": {
+                "status": self.payment_status,
+                "status_label": self.get_payment_status_display(),
+                "invoice_number": self.invoice_number,
+                "proof_reference": self.proof_of_payment_ref,
+                "tax_category_code": self.tax_category_code,
+            },
+            "description": self.effective_description,
+            "work_description": {
+                "active": "ai" if self.use_ai_description and self.ai_description else "manual",
+                "manual": self.description,
+                "ai": self.ai_description,
+                "ai_generated_at": self.ai_description_generated_at.isoformat() if self.ai_description_generated_at else "",
+                "ai_model": self.ai_description_model,
+                "ai_metadata": self.ai_description_metadata,
+                "use_ai_description": self.use_ai_description,
+            },
+            "admin_notes": self.admin_notes,
+            "created_by_id": self.created_by_id,
+            "approved_by_id": self.approved_by_id,
+            "is_tax_ready": self.is_tax_ready,
+            "pictures": [photo.to_agent_payload() for photo in self.photos.all()],
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+            "updated_at": self.updated_at.isoformat() if self.updated_at else "",
+        }
+
+
+class MaintenancePhoto(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    event = models.ForeignKey(
+        MaintenanceEvent,
+        on_delete=models.CASCADE,
+        related_name="photos",
+    )
+    image = models.FileField(upload_to=maintenance_upload_path)
+    caption = models.CharField(max_length=180, blank=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    is_cover = models.BooleanField(default=False)
+    checksum_sha256 = models.CharField(max_length=64, blank=True)
+    mime_type = models.CharField(max_length=120, blank=True)
+    file_size_bytes = models.PositiveIntegerField(default=0)
+    captured_at = models.DateTimeField(null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["event", "sort_order", "uploaded_at"]
+        verbose_name = "maintenance photo"
+        verbose_name_plural = "maintenance photos"
+
+    def __str__(self):
+        return self.caption or f"Photo for {self.event.title}"
+
+    def save(self, *args, **kwargs):
+        if self.image:
+            self.file_size_bytes = getattr(self.image, "size", self.file_size_bytes) or self.file_size_bytes
+            content_type = getattr(self.image.file, "content_type", "") or getattr(self.image, "content_type", "")
+            if content_type and not self.mime_type:
+                self.mime_type = content_type
+            if not self.checksum_sha256:
+                self.checksum_sha256 = self._checksum()
+        super().save(*args, **kwargs)
+
+    @property
+    def image_url(self):
+        try:
+            return self.image.url
+        except ValueError:
+            return ""
+
+    def _checksum(self):
+        digest = hashlib.sha256()
+        position = None
+        if hasattr(self.image, "tell") and hasattr(self.image, "seek"):
+            position = self.image.tell()
+            self.image.seek(0)
+        for chunk in self.image.chunks():
+            digest.update(chunk)
+        if position is not None:
+            self.image.seek(position)
+        return digest.hexdigest()
+
+    def to_agent_payload(self):
+        return {
+            "photo_id": str(self.pk),
+            "url": self.image_url,
+            "caption": self.caption,
+            "sort_order": self.sort_order,
+            "is_cover": self.is_cover,
+            "checksum_sha256": self.checksum_sha256,
+            "mime_type": self.mime_type,
+            "file_size_bytes": self.file_size_bytes,
+            "captured_at": self.captured_at.isoformat() if self.captured_at else "",
+            "uploaded_at": self.uploaded_at.isoformat() if self.uploaded_at else "",
+        }
+
+
 class DamageDeposit(models.Model):
     inquiry = models.ForeignKey(
         BookingInquiry,
@@ -824,6 +1183,61 @@ class DamageDeposit(models.Model):
     def __str__(self):
         item_name = self.item.name if self.item else "booking"
         return f"{self.display_amount} deposit for {item_name}"
+
+    @property
+    def amount(self):
+        return self.amount_cents / 100
+
+    @property
+    def display_amount(self):
+        return f"${self.amount:,.0f} {self.currency.upper()}"
+
+
+class ReservationPaymentHold(models.Model):
+    inquiry = models.ForeignKey(
+        BookingInquiry,
+        on_delete=models.SET_NULL,
+        related_name="payment_holds",
+        null=True,
+        blank=True,
+    )
+    item = models.ForeignKey(
+        BookableItem,
+        on_delete=models.SET_NULL,
+        related_name="payment_holds",
+        null=True,
+        blank=True,
+    )
+    guest_name = models.CharField(max_length=160)
+    email = models.EmailField()
+    amount_cents = models.PositiveIntegerField(default=0)
+    currency = models.CharField(max_length=3, default="usd")
+    payment_provider = models.CharField(
+        max_length=20,
+        choices=DepositProvider.choices,
+        default=DepositProvider.STRIPE,
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=DepositStatus.choices,
+        default=DepositStatus.NEW,
+    )
+    stripe_checkout_session_id = models.CharField(max_length=255, blank=True)
+    stripe_payment_intent_id = models.CharField(max_length=255, blank=True)
+    checkout_url = models.URLField(blank=True, max_length=1000)
+    capture_after = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "reservation payment hold"
+        verbose_name_plural = "reservation payment holds"
+
+    def __str__(self):
+        item_name = self.item.business_display_name if self.item else "booking"
+        return f"{self.display_amount} reservation hold for {item_name}"
 
     @property
     def amount(self):
@@ -1086,6 +1500,13 @@ class CalendarFeed(models.Model):
 
 
 class AgentConversation(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="agent_conversations",
+        null=True,
+        blank=True,
+    )
     session_id = models.CharField(max_length=80, db_index=True)
     item = models.ForeignKey(
         BookableItem,
@@ -1133,13 +1554,29 @@ class PageVisit(models.Model):
 
 
 class SiteSettings(models.Model):
-    site_name = models.CharField(max_length=80, default="MLADIS")
+    site_name = models.CharField(max_length=80, default="MLADIS LLC")
     logo = models.FileField(upload_to="site/", blank=True)
     logo_url = models.URLField(blank=True, max_length=1000)
     contact_email = models.EmailField(blank=True)
+    request_notifications_email = models.BooleanField(
+        default=True,
+        help_text="Send new reservation requests to admin email recipients.",
+    )
+    request_notifications_sms = models.BooleanField(
+        default=False,
+        help_text="Future channel flag. Requires an SMS provider before messages can be sent.",
+    )
+    request_notifications_whatsapp = models.BooleanField(
+        default=False,
+        help_text="Future channel flag. Requires a WhatsApp provider before messages can be sent.",
+    )
     public_address_label = models.CharField(
         max_length=220,
         default="Santo Domingo Norte, Dominican Republic",
+    )
+    agent_question_limit = models.PositiveSmallIntegerField(
+        default=5,
+        help_text="Maximum public agent questions per signed-in user. Use 0 for unlimited.",
     )
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1150,9 +1587,32 @@ class SiteSettings(models.Model):
     def __str__(self):
         return self.site_name
 
+    def uploaded_logo_is_displayable(self):
+        if not self.logo:
+            return False
+
+        name = self.logo.name.lower()
+        if "test-logo" in name:
+            return False
+        try:
+            if not self.logo.storage.exists(self.logo.name):
+                return False
+            with self.logo.storage.open(self.logo.name, "rb") as logo_file:
+                header = logo_file.read(512)
+        except (OSError, ValueError):
+            return False
+
+        if not header:
+            return False
+        if name.endswith(".svg"):
+            return b"<svg" in header.lower()
+        if header.startswith((b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"GIF87a", b"GIF89a")):
+            return True
+        return header.startswith(b"RIFF") and header[8:12] == b"WEBP"
+
     @property
     def logo_display_url(self):
-        if self.logo:
+        if self.uploaded_logo_is_displayable():
             return self.logo.url
         return self.logo_url
 

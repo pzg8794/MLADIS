@@ -1,0 +1,40 @@
+# EIN Worksheet For MLADIS LLC
+
+Historical worksheet used before starting the official IRS EIN Assistant. The EIN step is complete; keep this file as a non-sensitive audit record and use the private CP 575 letter for official EIN entry.
+
+Status update: MLADIS LLC's EIN was issued on 2026-06-03. The EIN value and IRS CP 575 confirmation letter must stay in private records and out of Git.
+
+## Confirmed Business Information
+
+| IRS prompt area | Prepared answer |
+| --- | --- |
+| Legal name | MLADIS LLC |
+| Entity type | Limited Liability Company |
+| State formed | New York |
+| Formation date | 06/03/2026 |
+| County | Queens |
+| Number of LLC members | 1 |
+| Responsible party | Piter Zacari Garcia Bautista |
+| Responsible party SSN/ITIN | Enter only on IRS.gov |
+| Mailing address | IRS EIN filing used a separate private mailing address; use the CP 575 letter for bank verification |
+| Physical/principal address | 109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375 |
+| Reason for applying | Started a new business |
+| First date wages paid | None, unless employees are being hired now |
+| Has employees now? | No, unless this changed |
+| Business activity | Lodging, vacation rental, booking operations, and software/AI-enabled business services |
+| Primary business description | Direct-booking and hospitality operations for vacation rentals, supported by MLADIS software and AI agent systems |
+
+## Before Opening IRS EIN Assistant - Completed
+
+- [x] Confirm whether the LLC will hire employees in the next 12 months.
+- [x] Confirm principal address and mailing address.
+- [x] Have responsible party SSN/ITIN ready for direct entry on IRS.gov only.
+- [x] Have the saved formation confirmation and filing acknowledgement/receipt nearby.
+- [x] Be ready to print/save the EIN confirmation letter immediately.
+
+## After EIN Is Issued
+
+- [x] Save IRS EIN confirmation letter in private records outside public app assets.
+- [x] Record EIN in a secure private business vault, not in Git.
+- [ ] Update bank, Stripe/PayPal, payment processors, tax systems, and business email provider as needed.
+- [x] Update this repo only with non-sensitive status, for example: `EIN issued and stored in private vault`.

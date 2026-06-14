@@ -90,7 +90,7 @@ def seed_platform(apps, _schema_editor):
     SiteSettings.objects.update_or_create(
         pk=1,
         defaults={
-            "site_name": "MLADIS",
+            "site_name": "MLADIS LLC",
             "contact_email": "garciapiterz@gmail.com",
             "public_address_label": "Santo Domingo Norte, Dominican Republic",
         },

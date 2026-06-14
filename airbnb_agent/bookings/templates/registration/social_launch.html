@@ -1,0 +1,39 @@
+{% load i18n static %}
+<!doctype html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#eef3f4">
+    <link rel="icon" href="{% static 'frontend/modern-dashboard/favicon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}">
+    <title>{% blocktrans with provider_name=provider.label %}Connecting to {{ provider_name }}{% endblocktrans %} | MLADIS</title>
+  </head>
+  <body>
+    <main class="modern-auth-page modern-auth-page--launch">
+      <section class="modern-auth-hero">
+        <a class="public-brand" href="/">
+          {% if site_settings.logo_display_url %}
+            <img src="{{ site_settings.logo_display_url }}" alt="MLADIS">
+          {% else %}
+            <img src="{% static 'bookings/brand/mladis-connected-intelligence.png' %}" alt="MLADIS">
+          {% endif %}
+          <strong>MLADIS</strong>
+        </a>
+        <h1>{% trans "One moment while we connect your account." %}</h1>
+        <p>{% blocktrans with provider_name=provider.label %}MLADIS is opening {{ provider_name }} sign-in with the callback URL registered for this environment.{% endblocktrans %}</p>
+      </section>
+      <section class="modern-auth-panel">
+        <h2>{% blocktrans with provider_name=provider.label %}Continue with {{ provider_name }}{% endblocktrans %}</h2>
+        <p>{% trans "If the sign-in page does not open automatically, continue below." %}</p>
+        <form id="social-launch-form" method="post" action="{{ login_url }}" class="modern-auth-form">
+          {% csrf_token %}
+          <button type="submit">{% blocktrans with provider_name=provider.label %}Continue with {{ provider_name }}{% endblocktrans %}</button>
+        </form>
+      </section>
+    </main>
+    <script>
+      document.getElementById("social-launch-form").submit();
+    </script>
+  </body>
+</html>

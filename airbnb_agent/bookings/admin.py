@@ -1,10 +1,8 @@
 import csv
-from datetime import date
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from urllib.parse import urlencode
 
-from django import forms as django_forms
 import requests
 import stripe
 
@@ -18,7 +16,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 
 from .airbnb_import import AirbnbGuestImportService
-from .forms import AirbnbGuestImportForm, AvailabilityBlockForm, DailyPriceOverrideForm
+from .forms import AirbnbGuestImportForm
 from .models import (
     AdminAccess,
     AgentKnowledgeSource,
@@ -45,17 +43,19 @@ from .models import (
     Invoice,
     InvoiceLineItem,
     MarketingConsentStatus,
+    MaintenanceEvent,
+    MaintenancePhoto,
     MissionCause,
     PageVisit,
     Promotion,
     PromotionRecipient,
+    ReservationPaymentHold,
     ReviewTheme,
     SiteContentBlock,
     SiteSettings,
     StayGalleryImage,
 )
 from .services import (
-    BookingCalendarService,
     InvoiceEmailService,
     MarketingConsentEmailService,
     PayPalAPIError,
@@ -102,6 +102,13 @@ class CalendarFeedInline(admin.StackedInline):
     max_num = 1
 
 
+class MaintenancePhotoInline(admin.TabularInline):
+    model = MaintenancePhoto
+    extra = 0
+    fields = ("image", "caption", "sort_order", "is_cover", "mime_type", "file_size_bytes", "checksum_sha256")
+    readonly_fields = ("mime_type", "file_size_bytes", "checksum_sha256")
+
+
 @admin.register(BookableItem)
 class BookableItemAdmin(admin.ModelAdmin):
     change_list_template = "admin/bookings/bookableitem/change_list.html"
@@ -128,6 +135,11 @@ class BookableItemAdmin(admin.ModelAdmin):
                 "calendar/",
                 self.admin_site.admin_view(self.calendar_view),
                 name=self._calendar_url_name(),
+            ),
+            path(
+                "calendar-v2/",
+                self.admin_site.admin_view(self.calendar_v2_view),
+                name=f"{self._calendar_url_name()}_v2",
             )
         ]
         return custom_urls + urls
@@ -141,169 +153,46 @@ class BookableItemAdmin(admin.ModelAdmin):
     def calendar_view(self, request):
         if not self.has_view_or_change_permission(request):
             raise PermissionDenied
+        return HttpResponseRedirect(self._calendar_url_from_request(request))
 
-        stays = list(
-            BookableItem.objects.filter(
-                is_active=True,
-                category=BookingCategory.STAY,
-            ).order_by("name")
-        )
-        selected_item = self._selected_calendar_item(request, stays)
-        month_start = self._calendar_month_start(request.POST.get("month") or request.GET.get("month"))
-        block_form = self._calendar_block_form(selected_item)
-        price_form = self._calendar_price_form(selected_item)
-
-        if request.method == "POST" and selected_item:
-            action = request.POST.get("calendar_action")
-            if action == "add_block":
-                block_form = self._calendar_block_form(selected_item, data=request.POST)
-                if block_form.is_valid():
-                    block = block_form.save()
-                    self.message_user(
-                        request,
-                        f"Blocked {block.start_date} to {block.end_date} for {block.item.name}.",
-                        level=messages.SUCCESS,
-                    )
-                    return HttpResponseRedirect(self._calendar_url(item=selected_item, month=month_start))
-            elif action == "add_price":
-                price_form = self._calendar_price_form(selected_item, data=request.POST)
-                if price_form.is_valid():
-                    override = price_form.save()
-                    self.message_user(
-                        request,
-                        f"Saved nightly price override for {override.item.name}.",
-                        level=messages.SUCCESS,
-                    )
-                    return HttpResponseRedirect(self._calendar_url(item=selected_item, month=month_start))
-            elif action == "remove_block":
-                block = AvailabilityBlock.objects.filter(
-                    pk=request.POST.get("block_id"),
-                    item=selected_item,
-                ).first()
-                if block:
-                    block.delete()
-                    self.message_user(request, "Removed manual block.", level=messages.SUCCESS)
-                else:
-                    self.message_user(request, "Could not find that block.", level=messages.WARNING)
-                return HttpResponseRedirect(self._calendar_url(item=selected_item, month=month_start))
-            elif action == "remove_price":
-                override = DailyPriceOverride.objects.filter(
-                    pk=request.POST.get("price_id"),
-                    item=selected_item,
-                ).first()
-                if override:
-                    override.delete()
-                    self.message_user(request, "Removed nightly price override.", level=messages.SUCCESS)
-                else:
-                    self.message_user(request, "Could not find that price override.", level=messages.WARNING)
-                return HttpResponseRedirect(self._calendar_url(item=selected_item, month=month_start))
-
-        calendar_data = (
-            BookingCalendarService().build_month(selected_item, month_start)
-            if selected_item
-            else {"weeks": [], "reservations": [], "blocks": [], "price_overrides": []}
-        )
-        context = {
-            **self.admin_site.each_context(request),
-            "opts": self.model._meta,
-            "title": "Business calendar",
-            "stays": stays,
-            "selected_item": selected_item,
-            "selected_item_change_url": self._change_url(selected_item) if selected_item else "",
-            "changelist_url": self._changelist_url(),
-            "month_start": month_start,
-            "month_label": month_start.strftime("%B %Y"),
-            "month_value": month_start.strftime("%Y-%m"),
-            "previous_month_url": self._calendar_url(item=selected_item, month=self._shift_month(month_start, -1)),
-            "next_month_url": self._calendar_url(item=selected_item, month=self._shift_month(month_start, 1)),
-            "calendar_weeks": calendar_data["weeks"],
-            "default_price_display": self._display_price(selected_item.starting_price) if selected_item else "",
-            "reservation_rows": [
-                {
-                    "reservation": reservation,
-                    "url": reverse("admin:bookings_bookinginquiry_change", args=[quote(reservation.pk)]),
-                }
-                for reservation in calendar_data["reservations"]
-            ],
-            "block_rows": calendar_data["blocks"],
-            "price_rows": calendar_data["price_overrides"],
-            "block_form": block_form,
-            "price_form": price_form,
-        }
-        return TemplateResponse(request, "admin/bookings/bookableitem/calendar.html", context)
+    def calendar_v2_view(self, request):
+        if not self.has_view_or_change_permission(request):
+            raise PermissionDenied
+        return HttpResponseRedirect(self._calendar_url_from_request(request))
 
     def _calendar_url_name(self):
         return f"{self.model._meta.app_label}_{self.model._meta.model_name}_calendar"
 
-    def _calendar_url(self, item=None, month=None):
+    def _calendar_url(self, item=None, month=None, date_value=None):
         params = {}
         if item:
-            params["item"] = item.pk
-        if month:
-            params["month"] = month.strftime("%Y-%m")
-        url = reverse(f"admin:{self._calendar_url_name()}")
+            params["item"] = item.pk if hasattr(item, "pk") else item
+        if date_value:
+            params["date"] = date_value
+        elif month:
+            params["date"] = month.strftime("%Y-%m-01") if hasattr(month, "strftime") else self._calendar_month_to_date(month)
+        url = reverse("bookings:calendar-ops")
         return f"{url}?{urlencode(params)}" if params else url
 
-    def _selected_calendar_item(self, request, stays):
+    def _calendar_url_from_request(self, request):
         selected_id = (
             request.POST.get("item")
             or request.POST.get("block-item")
             or request.POST.get("price-item")
             or request.GET.get("item")
         )
-        if selected_id and str(selected_id).isdigit():
-            selected_pk = int(selected_id)
-            for stay in stays:
-                if stay.pk == selected_pk:
-                    return stay
-        return stays[0] if stays else None
-
-    def _calendar_month_start(self, value):
-        if value:
-            try:
-                return date.fromisoformat(f"{value}-01")
-            except ValueError:
-                pass
-        return date.today().replace(day=1)
-
-    def _shift_month(self, month_start, delta):
-        month_index = (month_start.year * 12 + month_start.month - 1) + delta
-        year, month_zero_index = divmod(month_index, 12)
-        return date(year, month_zero_index + 1, 1)
-
-    def _calendar_block_form(self, selected_item, data=None):
-        initial = {"item": selected_item.pk} if selected_item else None
-        if selected_item and data is not None and "block-item" not in data:
-            data = data.copy()
-            data["block-item"] = str(selected_item.pk)
-        form = AvailabilityBlockForm(data=data, prefix="block", initial=initial)
-        if selected_item:
-            form.fields["item"].widget = django_forms.HiddenInput()
-        return form
-
-    def _calendar_price_form(self, selected_item, data=None):
-        initial = {"item": selected_item.pk} if selected_item else None
-        if selected_item and data is not None and "price-item" not in data:
-            data = data.copy()
-            data["price-item"] = str(selected_item.pk)
-        form = DailyPriceOverrideForm(data=data, prefix="price", initial=initial)
-        if selected_item:
-            form.fields["item"].widget = django_forms.HiddenInput()
-        return form
-
-    def _change_url(self, item):
-        return reverse(
-            f"admin:{self.model._meta.app_label}_{self.model._meta.model_name}_change",
-            args=[quote(item.pk)],
+        item = selected_id if selected_id and str(selected_id).isdigit() else None
+        return self._calendar_url(
+            item=item,
+            date_value=request.POST.get("date") or request.GET.get("date"),
+            month=request.POST.get("month") or request.GET.get("month"),
         )
 
-    def _changelist_url(self):
-        return reverse(f"admin:{self.model._meta.app_label}_{self.model._meta.model_name}_changelist")
-
-    def _display_price(self, value):
-        if value is None:
-            return "Not set"
-        return f"${value:,.2f}"
+    def _calendar_month_to_date(self, value):
+        value = str(value)
+        if len(value) == 7:
+            return f"{value}-01"
+        return value
 
 
 @admin.register(BookingInquiry)
@@ -371,6 +260,55 @@ class CancellationPolicyAdmin(admin.ModelAdmin):
     list_filter = ("allow_guest_cancellation", "is_default", "is_active")
     prepopulated_fields = {"slug": ("name",)}
     search_fields = ("name", "description")
+
+
+@admin.register(MaintenanceEvent)
+class MaintenanceEventAdmin(admin.ModelAdmin):
+    list_display = (
+        "title",
+        "item",
+        "work_type",
+        "status",
+        "display_cost",
+        "payment_status",
+        "photo_count",
+        "is_tax_ready",
+        "use_ai_description",
+        "reported_at",
+        "created_by",
+    )
+    list_filter = ("work_type", "status", "payment_status", "item", "reported_at")
+    search_fields = ("title", "description", "ai_description", "vendor_name", "vendor_contact", "invoice_number", "proof_of_payment_ref")
+    autocomplete_fields = ("item", "booking", "created_by", "approved_by")
+    readonly_fields = ("id", "created_at", "updated_at", "photo_count", "is_tax_ready", "ai_description_generated_at", "ai_description_model", "ai_description_metadata")
+    fieldsets = (
+        ("Core record", {"fields": ("id", "item", "booking", "title", "work_type", "status")}),
+        ("Cost and time", {"fields": ("cost_amount", "cost_currency", "reported_at", "started_at", "completed_at", "timezone_name")}),
+        ("Vendor and tax evidence", {"fields": ("vendor_name", "vendor_contact", "payment_status", "invoice_number", "proof_of_payment_ref", "tax_category_code")}),
+        ("Notes", {"fields": ("description", "admin_notes")}),
+        ("AI work description", {"fields": ("use_ai_description", "ai_description", "ai_description_generated_at", "ai_description_model", "ai_description_metadata")}),
+        ("Ownership", {"fields": ("created_by", "approved_by", "created_at", "updated_at", "photo_count", "is_tax_ready")}),
+    )
+    inlines = (MaintenancePhotoInline,)
+
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+        initial.setdefault("created_by", request.user.pk)
+        return initial
+
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by_id:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(MaintenancePhoto)
+class MaintenancePhotoAdmin(admin.ModelAdmin):
+    list_display = ("event", "caption", "sort_order", "is_cover", "mime_type", "file_size_bytes", "uploaded_at")
+    list_filter = ("is_cover", "mime_type", "uploaded_at")
+    search_fields = ("caption", "event__title", "event__item__name", "checksum_sha256")
+    autocomplete_fields = ("event",)
+    readonly_fields = ("checksum_sha256", "mime_type", "file_size_bytes", "uploaded_at")
 
 
 class CustomerProfileFeedbackInline(admin.TabularInline):
@@ -967,6 +905,14 @@ class MissionCauseAdmin(admin.ModelAdmin):
     search_fields = ("name", "description")
 
 
+@admin.register(ReservationPaymentHold)
+class ReservationPaymentHoldAdmin(admin.ModelAdmin):
+    list_display = ("guest_name", "item", "display_amount", "status", "capture_after", "created_at")
+    list_filter = ("status", "currency", "item")
+    search_fields = ("guest_name", "email", "stripe_checkout_session_id", "stripe_payment_intent_id")
+    readonly_fields = ("created_at", "updated_at", "display_amount")
+
+
 @admin.register(Donation)
 class DonationAdmin(admin.ModelAdmin):
     list_display = ("donor_name", "email", "cause", "display_amount", "status", "created_at")
@@ -1044,11 +990,32 @@ class PageVisitAdmin(admin.ModelAdmin):
 
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
-    list_display = ("site_name", "logo_status", "contact_email", "public_address_label", "updated_at")
+    list_display = (
+        "site_name",
+        "logo_status",
+        "agent_question_limit",
+        "contact_email",
+        "request_notifications_email",
+        "request_notifications_sms",
+        "request_notifications_whatsapp",
+        "updated_at",
+    )
     readonly_fields = ("logo_preview", "updated_at")
     fieldsets = (
         ("Branding", {"fields": ("site_name", "logo", "logo_url", "logo_preview")}),
-        ("Contact", {"fields": ("contact_email", "public_address_label", "updated_at")}),
+        ("Agent settings", {"fields": ("agent_question_limit",)}),
+        (
+            "Request notifications",
+            {
+                "fields": (
+                    "contact_email",
+                    "request_notifications_email",
+                    "request_notifications_sms",
+                    "request_notifications_whatsapp",
+                )
+            },
+        ),
+        ("Public contact", {"fields": ("public_address_label", "updated_at")}),
     )
 
     @admin.display(description="Logo")
@@ -1059,10 +1026,10 @@ class SiteSettingsAdmin(admin.ModelAdmin):
     def logo_preview(self, obj):
         if not obj.logo_display_url:
             return format_html(
-                '<div style="display:grid;place-items:center;width:72px;height:72px;color:#fff;background:#10665f;border-radius:10px;font-weight:900;font-size:2rem;">M</div>'
+                '<div class="modern-admin-logo-preview modern-admin-logo-preview--fallback">M</div>'
             )
         return format_html(
-            '<img src="{}" alt="{} logo" style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid #dbe4dc;">',
+            '<div class="modern-admin-logo-preview"><img src="{}" alt="{} logo"></div>',
             obj.logo_display_url,
             obj.site_name,
         )

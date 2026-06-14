@@ -42,6 +42,8 @@ Sensitive records and private evidence stay in the private Google Drive business
 | TODO index | MLADIS TODO Index | `docs/roadmap/MLADIS_TODO_INDEX.md` | Active | This file tracks all TODO lists and their completion state. | Update whenever a new checklist is created or an old one changes status. |
 | Business/legal blueprint | MLADIS Business Blueprint | `docs/business/MLADIS_BUSINESS_BLUEPRINT.md` | In progress | Formation, EIN, operating agreement, and initial governance are done; publication, bank account, CPA/tax confirmation remain open. | Update after legal, tax, banking, publication, or business-account changes. |
 | Universe architecture | ADR 0001: MLADIS Universe and Neuron Architecture | `docs/architecture/0001-mladis-universe-neuron-model.md` | Done / guiding | Core architecture accepted; future work should follow the neuron/composition model. | Update only through a deliberate architecture revision or a new ADR. |
+| Operations workboard | ADR 0002: Operations Workboard and Gentelella Admin Shell | `docs/architecture/0002-operations-workboard-gentelella.md` + `/ops/workboard/` | In progress | Owner-only visual workboard MVP exists with seeded tasks, completion toggles, and Operations.WorkItem MVC/OOP structure. | Update after workboard model, API, UI, seed data, or owner-access changes. |
+| Full-site rebrand | ADR 0003: Gentelella v4 Full-Site Rebrand Foundation | `docs/architecture/0003-gentelella-v4-full-site-rebrand.md` + `feature/gentelella-v4-rebrand` | In progress | Gentelella v4 selected as View-system reference; APITable/Tabler/AdminLTE are references only. Prototype branch runs separately on port 8010. | Update after shell, theme tokens, shared components, mobile QA, or page migration changes. |
 | Live deployment | MLADIS Live VM Deployment | `docs/live-vm-deployment.md` | Active | Live VM deployment/runbook exists; per-deploy checks still recur. | Update when VM, domain, deploy command, service, DB, static/media, or rollback behavior changes. |
 | Admin business calendar | Admin Business Calendar | `docs/admin-business-calendar.md` | Active | Calendar documentation exists; continue smoke-testing after deploys. | Update when calendar UI, range helper, blocks, price overrides, or tests change. |
 | Deposit operations | Deposit Admin Operations | `docs/deposit-admin-operations.md` | Active | Capture/release workflow documented; keep aligned with provider behavior. | Update when Stripe/PayPal deposit lifecycle or admin actions change. |
@@ -78,6 +80,7 @@ Sensitive records and private evidence stay in the private Google Drive business
 | Bookkeeping | In progress | Starter structure exists; final MLADIS Finance/Booking integration still needed. |
 | Account identity updates | In progress | Many done; bank/billing/payout/deferred transfers remain. |
 | MLADIS architecture | Done / guiding | ADR 0001 accepted as guide. |
+| Operations workboard | In progress | Owner-only MVP exists at `/ops/workboard/`; continue improving search/filter and seeded task coverage. |
 | Master roadmap | Active | Created and should be maintained. |
 | README alignment | Done / monitor | Updated to universe framing; old code paths remain during transition. |
 | Booking platform | In progress | Operational app exists; OOP cleanup still needed. |

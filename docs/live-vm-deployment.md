@@ -26,7 +26,7 @@ This is the current live hosting setup for MLADIS and the deployment workflow fo
 
 ## OAuth And Canonical Domain
 
-Google OAuth and Django must stay aligned with the public domain.
+OAuth providers and Django must stay aligned with the public domain.
 
 Required live environment values:
 
@@ -36,7 +36,18 @@ Required live environment values:
 - `ALLOWED_HOSTS` must include `mladis.com`, `www.mladis.com`, and the staging host when needed
 - `CSRF_TRUSTED_ORIGINS` must include the live HTTPS origins
 
-Google OAuth must include the live origins and callbacks for both `mladis.com` and `www.mladis.com`.
+Provider dashboards must include the live origins and callbacks:
+
+```txt
+Google:   https://mladis.com/oauth/google/login/callback/
+GitHub:   https://mladis.com/oauth/github/login/callback/
+Facebook: https://mladis.com/oauth/facebook/login/callback/
+```
+
+If a provider can begin login from `www.mladis.com` before Caddy redirects to
+the apex domain, include the matching `https://www.mladis.com/oauth/...`
+callbacks too. The Meta app should also allow the stable local callback
+`https://local.mladis.com/oauth/facebook/login/callback/` for development.
 
 ## One-File Deployment Pipeline
 

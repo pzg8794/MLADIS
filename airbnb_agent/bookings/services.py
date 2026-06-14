@@ -1,17 +1,22 @@
 import calendar
+import base64
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from functools import lru_cache
+import hashlib
+import json
 from pathlib import Path
 import re
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from django.db import transaction
 from django.db.models import F
 from django.urls import reverse
 from django.utils import timezone
-from openai import OpenAI
+from django.utils.dateparse import parse_datetime
 import requests
 import stripe
 
@@ -36,9 +41,15 @@ from .models import (
     Invoice,
     InvoiceStatus,
     MarketingConsentStatus,
+    MaintenanceEvent,
+    MaintenancePhoto,
+    MaintenanceWorkType,
+    MaintenanceStatus,
     Promotion,
     PromotionRecipient,
     PromotionStatus,
+    ReservationPaymentHold,
+    SiteSettings,
 )
 
 
@@ -46,6 +57,80 @@ APP_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAX_AGENT_SOURCE_SNIPPETS = 12
 MAX_TOTAL_AGENT_SOURCES = 6
+
+
+def _build_openai_client(api_key):
+    from openai import OpenAI
+
+    return OpenAI(api_key=api_key)
+
+
+def _stripe_object_id(value):
+    if not value:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return value.get("id", "")
+    return getattr(value, "id", "") or str(value)
+
+
+def _stripe_object_status(value):
+    if not value:
+        return ""
+    if isinstance(value, dict):
+        return value.get("status", "")
+    return getattr(value, "status", "")
+
+
+def _stripe_payment_intent_status(payment_intent):
+    if not payment_intent:
+        return ""
+    status = _stripe_object_status(payment_intent)
+    if status:
+        return status
+    payment_intent_id = _stripe_object_id(payment_intent)
+    if not payment_intent_id:
+        return ""
+    retrieved = stripe.PaymentIntent.retrieve(payment_intent_id)
+    return _stripe_object_status(retrieved)
+
+
+def _stripe_checkout_successful(session):
+    if getattr(session, "status", "") == "complete":
+        return True
+    payment_status = getattr(session, "payment_status", "")
+    if payment_status in {"paid", "no_payment_required"}:
+        return True
+    return _stripe_payment_intent_status(getattr(session, "payment_intent", "")) in {
+        "requires_capture",
+        "succeeded",
+    }
+
+
+class PaymentAuthorization:
+    """Payment object for a successful or unsuccessful provider return."""
+
+    def __init__(self, record, session):
+        self.record = record
+        self.session = session
+        self.payment_intent_id = _stripe_object_id(getattr(session, "payment_intent", ""))
+        self.successful = _stripe_checkout_successful(session)
+
+    def persist(self):
+        if self.payment_intent_id:
+            self.record.stripe_payment_intent_id = self.payment_intent_id
+        if self.successful:
+            self.record.status = DepositStatus.REQUIRES_CAPTURE
+        self.record.save(update_fields=["status", "stripe_payment_intent_id", "updated_at"])
+        return self.record
+
+    def send_confirmation(self, email_service, request=None):
+        if not self.successful:
+            return False
+        if isinstance(self.record, ReservationPaymentHold):
+            return email_service.send_reservation_payment_confirmation(self.record, request=request)
+        return email_service.send_damage_deposit_confirmation(self.record, request=request)
 
 
 REPO_KNOWLEDGE_HEADINGS = (
@@ -252,10 +337,142 @@ def _agent_knowledge_source_snippets():
 
 
 @dataclass(frozen=True)
+class AgentInstance:
+    key: str
+    name: str
+    question_limit: int
+    login_url: str
+
+    @classmethod
+    def from_request(cls, request):
+        settings_obj = SiteSettings.current()
+        return cls(
+            key="public-booking-agent",
+            name="Booking agent",
+            question_limit=max(int(settings_obj.agent_question_limit or 0), 0),
+            login_url=f"{reverse('bookings:login')}?next={reverse('bookings:dashboard')}",
+        )
+
+
+@dataclass(frozen=True)
+class AgentUserContext:
+    user: object
+    agent: AgentInstance
+    questions_used: int
+    visitor_key: str
+
+    @classmethod
+    def from_request(cls, request):
+        agent = AgentInstance.from_request(request)
+        user = request.user
+        try:
+            setattr(user, "mladis_agent", agent)
+        except Exception:
+            pass
+        questions_used = 0
+        if getattr(user, "is_authenticated", False):
+            questions_used = AgentConversation.objects.filter(user=user).count()
+            visitor_key = f"user:{user.pk}"
+        else:
+            visitor_key = cls._anonymous_visitor_key(request)
+        return cls(user=user, agent=agent, questions_used=questions_used, visitor_key=visitor_key)
+
+    @staticmethod
+    def _anonymous_visitor_key(request):
+        session = getattr(request, "session", None)
+        if session is None:
+            return "anon:untracked"
+        if session.session_key is None:
+            session.save()
+        return f"anon:{session.session_key}"
+
+    @property
+    def is_authenticated(self):
+        return bool(getattr(self.user, "is_authenticated", False))
+
+
+@dataclass(frozen=True)
+class AgentAccessContext:
+    actor: AgentUserContext
+
+    @classmethod
+    def from_request(cls, request):
+        return cls(actor=AgentUserContext.from_request(request))
+
+    @property
+    def user(self):
+        return self.actor.user
+
+    @property
+    def agent(self):
+        return self.actor.agent
+
+    @property
+    def question_limit(self):
+        return self.agent.question_limit
+
+    @property
+    def questions_used(self):
+        return self.actor.questions_used
+
+    @property
+    def login_url(self):
+        return self.agent.login_url
+
+    @property
+    def is_authenticated(self):
+        return self.actor.is_authenticated
+
+    @property
+    def remaining_questions(self):
+        if self.question_limit <= 0:
+            return None
+        return max(self.question_limit - self.questions_used, 0)
+
+    @property
+    def can_ask(self):
+        if not self.is_authenticated:
+            return False
+        return self.question_limit <= 0 or self.questions_used < self.question_limit
+
+    @property
+    def denial_status(self):
+        return 401 if not self.is_authenticated else 429
+
+    def denial_payload(self):
+        if not self.is_authenticated:
+            return {
+                "error": "Please sign in before asking the booking agent.",
+                "code": "authentication_required",
+                "login_url": self.login_url,
+                **self.to_public_payload(),
+            }
+        return {
+            "error": "You have reached the booking-agent question limit for this account.",
+            "code": "question_limit_reached",
+            "login_url": self.login_url,
+            **self.to_public_payload(),
+        }
+
+    def to_public_payload(self):
+        return {
+            "agent_key": self.agent.key,
+            "agent_name": self.agent.name,
+            "is_authenticated": self.is_authenticated,
+            "question_limit": self.question_limit,
+            "questions_used": self.questions_used,
+            "remaining_questions": self.remaining_questions,
+            "can_ask": self.can_ask,
+            "login_url": self.login_url,
+        }
+
+
+@dataclass(frozen=True)
 class AgentRequest:
     message: str
     session_id: str
     item_id: int | None = None
+    user_id: int | None = None
     visitor_name: str = ""
     visitor_email: str = ""
 
@@ -271,6 +488,113 @@ class DepositCheckoutResult:
     success: bool
     message: str
     checkout_url: str = ""
+
+
+@dataclass(frozen=True)
+class ReservationPricingPolicy:
+    base_price_cents: int
+    included_guests: int
+    extra_guest_cents: int
+    max_guests: int
+    currency: str
+    label: str
+
+
+@dataclass(frozen=True)
+class ReservationPricingQuote:
+    policy: ReservationPricingPolicy
+    guests: int
+    nights: int
+    nightly_cents: int
+    subtotal_cents: int
+
+    @property
+    def extra_guest_count(self):
+        return max(self.guests - self.policy.included_guests, 0)
+
+
+class ReservationPricingService:
+    THREE_BED_BASE_CENTS = 5000
+    THREE_BED_EXTRA_GUEST_CENTS = 1000
+    THREE_BED_INCLUDED_GUESTS = 1
+    THREE_BED_MAX_GUESTS = 7
+    SIX_BED_BASE_CENTS = 10000
+    SIX_BED_INCLUDED_GUESTS = 12
+    SIX_BED_EXTRA_GUEST_CENTS = 1000
+    SIX_BED_MAX_GUESTS = 14
+
+    def policy_for_item(self, item: BookableItem | None) -> ReservationPricingPolicy:
+        currency = settings.DEPOSIT_CURRENCY
+        if not item:
+            return ReservationPricingPolicy(
+                base_price_cents=0,
+                included_guests=1,
+                extra_guest_cents=0,
+                max_guests=self.SIX_BED_MAX_GUESTS,
+                currency=currency,
+                label="Choose a stay for an exact quote.",
+            )
+
+        if self._is_six_bed_stay(item):
+            return ReservationPricingPolicy(
+                base_price_cents=self.SIX_BED_BASE_CENTS,
+                included_guests=self.SIX_BED_INCLUDED_GUESTS,
+                extra_guest_cents=self.SIX_BED_EXTRA_GUEST_CENTS,
+                max_guests=self.SIX_BED_MAX_GUESTS,
+                currency=currency,
+                label="$100/night for 12 guests, then $10/night per added guest, max 14 guests.",
+            )
+
+        return ReservationPricingPolicy(
+            base_price_cents=self.THREE_BED_BASE_CENTS,
+            included_guests=self.THREE_BED_INCLUDED_GUESTS,
+            extra_guest_cents=self.THREE_BED_EXTRA_GUEST_CENTS,
+            max_guests=self.THREE_BED_MAX_GUESTS,
+            currency=currency,
+            label="$50/night for 1 guest, then $10/night per added guest, max 7 guests.",
+        )
+
+    def quote(self, item: BookableItem | None, guests=1, nights=1) -> ReservationPricingQuote:
+        policy = self.policy_for_item(item)
+        guests = max(int(guests or 1), 1)
+        nights = max(int(nights or 1), 1)
+        if guests > policy.max_guests:
+            raise ValueError(f"This stay allows up to {policy.max_guests} guests.")
+        extra_guest_count = max(guests - policy.included_guests, 0)
+        nightly_cents = policy.base_price_cents + (extra_guest_count * policy.extra_guest_cents)
+        return ReservationPricingQuote(
+            policy=policy,
+            guests=guests,
+            nights=nights,
+            nightly_cents=nightly_cents,
+            subtotal_cents=nightly_cents * nights,
+        )
+
+    def preview_payload(self, item: BookableItem | None):
+        policy = self.policy_for_item(item)
+        return {
+            "base_price_cents": policy.base_price_cents,
+            "included_guests": policy.included_guests,
+            "extra_guest_cents": policy.extra_guest_cents,
+            "max_guests": policy.max_guests,
+            "currency": policy.currency,
+            "label": policy.label,
+            "display_base_price": self.display_money(policy.base_price_cents, policy.currency),
+            "display_extra_guest_price": self.display_money(policy.extra_guest_cents, policy.currency),
+        }
+
+    def display_money(self, cents, currency=None):
+        currency = (currency or settings.DEPOSIT_CURRENCY).upper()
+        return f"${int(cents or 0) / 100:,.2f} {currency}"
+
+    def _is_six_bed_stay(self, item):
+        name = (item.name or "").lower()
+        return bool(
+            (item.bedrooms and item.bedrooms >= 6)
+            or (item.beds and item.beds >= 6)
+            or (item.max_guests and item.max_guests >= self.SIX_BED_MAX_GUESTS)
+            or re.search(r"\b6\s+(bed|beds|bedroom|bedrooms)\b", name)
+        )
 
 
 class PayPalAPIError(Exception):
@@ -466,7 +790,7 @@ class BookingAgentService:
     def __init__(self, api_key=None, client=None):
         self.api_key = api_key if api_key is not None else settings.OPENAI_API_KEY
         self.model = settings.OPENAI_AGENT_MODEL
-        self.client = client or (OpenAI(api_key=self.api_key) if self.api_key else None)
+        self.client = client
 
     def reply(self, request: AgentRequest) -> AgentResponse:
         item = self._get_item(request.item_id)
@@ -501,6 +825,7 @@ class BookingAgentService:
                 )
 
         conversation = AgentConversation.objects.create(
+            user_id=request.user_id,
             session_id=request.session_id,
             item=item,
             visitor_name=request.visitor_name,
@@ -558,7 +883,8 @@ class BookingAgentService:
         )
 
     def _openai_reply(self, request, item):
-        response = self.client.responses.create(
+        client = self.client or _build_openai_client(self.api_key)
+        response = client.responses.create(
             model=self.model,
             instructions=self._instructions(),
             input=self._prompt(request, item),
@@ -840,7 +1166,16 @@ class QuestionAnalyticsService:
 
 
 class ReservationRequestService:
-    def prepare(self, inquiry: BookingInquiry, coupon=None):
+    def create_from_form(self, form, request):
+        inquiry = form.save(commit=False)
+        if request.user.is_authenticated:
+            inquiry.user = request.user
+        self.prepare(inquiry, coupon=form.coupon, redeem_coupon=True)
+        inquiry.save()
+        self.log_object_event(inquiry, "reservation_request.created", request=request)
+        return inquiry
+
+    def prepare(self, inquiry: BookingInquiry, coupon=None, redeem_coupon=False):
         inquiry.customer_profile = CustomerProfile.find_or_create_for_email(
             inquiry.email,
             defaults={
@@ -848,6 +1183,9 @@ class ReservationRequestService:
                 "phone": inquiry.phone,
             },
         )
+        if inquiry.customer_profile and inquiry.user_id and not inquiry.customer_profile.user_id:
+            inquiry.customer_profile.user = inquiry.user
+            inquiry.customer_profile.save(update_fields=["user", "updated_at"])
         inquiry.is_blacklist_flagged = bool(
             inquiry.customer_profile and inquiry.customer_profile.segment == ClientSegment.BLACKLISTED
         )
@@ -855,27 +1193,464 @@ class ReservationRequestService:
         inquiry.currency = settings.DEPOSIT_CURRENCY
         inquiry.deposit_cents = settings.DEPOSIT_AMOUNT_CENTS
 
-        if coupon:
-            inquiry.coupon = coupon
-            inquiry.coupon_code = coupon.code
-            inquiry.discount_cents = coupon.discount_for(inquiry.subtotal_cents)
-            type(coupon).objects.filter(pk=coupon.pk).update(redemption_count=F("redemption_count") + 1)
-
         if inquiry.is_admin_test:
             inquiry.subtotal_cents = 0
             inquiry.discount_cents = 0
             inquiry.deposit_cents = 0
             inquiry.total_cents = 0
-        else:
-            inquiry.total_cents = max(
-                inquiry.subtotal_cents - inquiry.discount_cents + inquiry.deposit_cents,
-                0,
-            )
+            return inquiry
+
+        self.apply_pricing(inquiry)
+
+        if coupon:
+            inquiry.coupon = coupon
+            inquiry.coupon_code = coupon.code
+            inquiry.discount_cents = coupon.discount_for(inquiry.subtotal_cents)
+            if redeem_coupon:
+                type(coupon).objects.filter(pk=coupon.pk).update(redemption_count=F("redemption_count") + 1)
+        elif not inquiry.coupon_id:
+            inquiry.discount_cents = 0
+
+        inquiry.total_cents = max(
+            inquiry.reservation_payment_cents + inquiry.deposit_cents,
+            0,
+        )
         return inquiry
+
+    def apply_pricing(self, inquiry: BookingInquiry):
+        quote = ReservationPricingService().quote(
+            inquiry.item,
+            guests=inquiry.guests,
+            nights=inquiry.nights or 1,
+        )
+        inquiry.subtotal_cents = quote.subtotal_cents
+        inquiry.currency = quote.policy.currency
+        return quote
+
+    def log_object_event(self, inquiry, event_name, request=None):
+        try:
+            from .data_lake import DataLakeObjectEventWriter
+
+            DataLakeObjectEventWriter.from_settings().write_model_event(
+                event_name=event_name,
+                instance=inquiry,
+                request=request,
+                data={
+                    "request_key": inquiry.request_key,
+                    "status": inquiry.status,
+                    "item_id": inquiry.item_id,
+                    "customer_profile_id": inquiry.customer_profile_id,
+                    "user_id": inquiry.user_id,
+                    "email_delivery_status": inquiry.email_delivery_status,
+                    "subtotal_cents": inquiry.subtotal_cents,
+                    "reservation_payment_cents": inquiry.reservation_payment_cents,
+                    "deposit_cents": inquiry.deposit_cents,
+                    "total_cents": inquiry.total_cents,
+                },
+            )
+        except Exception:
+            # Data-lake writes are audit side effects and must not block a guest request.
+            return
+
+
+class MaintenanceService:
+    """Application service for maintenance event creation and evidence logging."""
+
+    REQUIRED_PHOTO_STATUSES = {
+        MaintenanceStatus.LOGGED,
+        MaintenanceStatus.SCHEDULED,
+        MaintenanceStatus.IN_PROGRESS,
+        MaintenanceStatus.COMPLETED,
+        MaintenanceStatus.DOCUMENTED,
+        MaintenanceStatus.BILLED,
+        MaintenanceStatus.ARCHIVED,
+    }
+
+    DATETIME_FIELDS = ("reported_at", "started_at", "completed_at", "captured_at")
+
+    def create_event(self, *, user, data, files, request=None):
+        payload = self._mutable_payload(data)
+        uploaded_photos = self._uploaded_photos(files)
+        status = payload.get("status") or MaintenanceStatus.COMPLETED
+        if status in self.REQUIRED_PHOTO_STATUSES and not uploaded_photos:
+            raise ValidationError({"photos": "Add at least one photo for maintenance evidence."})
+
+        booking = self._booking(payload.get("booking"))
+        item_id = payload.get("item") or (booking.item_id if booking else None)
+        if booking and not item_id:
+            raise ValidationError({"booking": "Selected reservation is not attached to a listing."})
+
+        with transaction.atomic():
+            event = MaintenanceEvent(
+                item_id=item_id,
+                booking=booking,
+                title=(payload.get("title") or "").strip(),
+                work_type=payload.get("work_type") or "cleaning",
+                status=status,
+                cost_amount=self._decimal(payload.get("cost_amount")),
+                cost_currency=(payload.get("cost_currency") or "USD").strip().upper(),
+                reported_at=self._datetime(payload.get("reported_at")) or timezone.now(),
+                started_at=self._datetime(payload.get("started_at")),
+                completed_at=self._datetime(payload.get("completed_at")),
+                timezone_name=(payload.get("timezone_name") or "America/Santo_Domingo").strip(),
+                vendor_name=(payload.get("vendor_name") or "").strip(),
+                vendor_contact=(payload.get("vendor_contact") or "").strip(),
+                invoice_number=(payload.get("invoice_number") or "").strip(),
+                proof_of_payment_ref=(payload.get("proof_of_payment_ref") or "").strip(),
+                payment_status=payload.get("payment_status") or "pending",
+                tax_category_code=(payload.get("tax_category_code") or "").strip(),
+                description=(payload.get("description") or "").strip(),
+                admin_notes=(payload.get("admin_notes") or "").strip(),
+                created_by=user,
+            )
+            event.full_clean()
+            event.save()
+
+            captions = self._list_values(data, "photo_captions")
+            captured_values = self._list_values(data, "photo_captured_at")
+            for index, upload in enumerate(uploaded_photos):
+                photo = MaintenancePhoto(
+                    event=event,
+                    image=upload,
+                    caption=(captions[index] if index < len(captions) else upload.name).strip(),
+                    sort_order=index,
+                    is_cover=index == 0,
+                    checksum_sha256=self._checksum(upload),
+                    mime_type=getattr(upload, "content_type", "") or "",
+                    file_size_bytes=getattr(upload, "size", 0) or 0,
+                    captured_at=self._datetime(captured_values[index]) if index < len(captured_values) else None,
+                )
+                photo.full_clean()
+                photo.save()
+
+        self.log_object_event(event, "maintenance_event.created", request=request)
+        return event
+
+    def agent_payload(self, event):
+        return event.to_agent_payload()
+
+    def generate_ai_description(self, event, request=None):
+        result = MaintenanceVisionAgent().describe(event)
+        event.ai_description = result.description
+        event.ai_description_generated_at = timezone.now()
+        event.ai_description_model = result.model
+        event.ai_description_metadata = {
+            "confidence": result.confidence,
+            "observations": result.observations,
+        }
+        event.use_ai_description = True
+        if not event.description:
+            event.description = result.description
+        event.full_clean()
+        event.save(
+            update_fields=[
+                "description",
+                "ai_description",
+                "ai_description_generated_at",
+                "ai_description_model",
+                "ai_description_metadata",
+                "use_ai_description",
+                "updated_at",
+            ]
+        )
+        self.log_object_event(event, "maintenance_event.ai_description_generated", request=request)
+        return event
+
+    def preview_ai_description(self, *, data, files):
+        payload = self._mutable_payload(data)
+        uploaded_photos = self._uploaded_photos(files)
+        if not uploaded_photos:
+            raise ValidationError({"photos": "Add at least one photo before auto-generating the work description."})
+
+        item_name = ""
+        item_id = payload.get("item")
+        if item_id:
+            item = BookableItem.objects.filter(pk=item_id).first()
+            item_name = item.business_display_name if item else ""
+
+        work_type = payload.get("work_type") or "cleaning"
+        status = payload.get("status") or MaintenanceStatus.COMPLETED
+        amount = self._decimal(payload.get("cost_amount"))
+        currency = (payload.get("cost_currency") or "USD").strip().upper()
+        context = MaintenanceDescriptionContext(
+            title=(payload.get("title") or "Maintenance work").strip(),
+            item_name=item_name,
+            work_type_label=dict(MaintenanceWorkType.choices).get(work_type, work_type),
+            status_label=dict(MaintenanceStatus.choices).get(status, status),
+            display_cost=f"{currency} {amount:,.2f}",
+            manual_notes=(payload.get("description") or "").strip(),
+        )
+        return MaintenanceVisionAgent().describe_uploads(context, uploaded_photos)
+
+    def log_object_event(self, event, event_name, request=None):
+        try:
+            from .data_lake import DataLakeObjectEventWriter
+
+            DataLakeObjectEventWriter.from_settings().write_model_event(
+                event_name=event_name,
+                instance=event,
+                request=request,
+                data={
+                    "item_id": event.item_id,
+                    "booking_id": event.booking_id,
+                    "work_type": event.work_type,
+                    "status": event.status,
+                    "cost_amount": str(event.cost_amount),
+                    "cost_currency": event.cost_currency,
+                    "photo_count": event.photo_count,
+                    "is_tax_ready": event.is_tax_ready,
+                },
+            )
+        except Exception:
+            return
+
+    @staticmethod
+    def _mutable_payload(data):
+        return {key: data.get(key) for key in data.keys()}
+
+    @staticmethod
+    def _uploaded_photos(files):
+        if hasattr(files, "getlist"):
+            return list(files.getlist("photos") or files.getlist("photo") or [])
+        photo = files.get("photos") or files.get("photo") if files else None
+        return [photo] if photo else []
+
+    @staticmethod
+    def _list_values(data, key):
+        if hasattr(data, "getlist"):
+            return [value for value in data.getlist(key) if value]
+        value = data.get(key) if data else ""
+        if isinstance(value, (list, tuple)):
+            return [item for item in value if item]
+        return [value] if value else []
+
+    @staticmethod
+    def _datetime(value):
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            parsed = value
+        else:
+            parsed = parse_datetime(str(value))
+        if parsed and timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+        return parsed
+
+    @staticmethod
+    def _decimal(value):
+        if value in (None, ""):
+            return Decimal("0.00")
+        return Decimal(str(value))
+
+    @staticmethod
+    def _booking(value):
+        if not value:
+            return None
+        try:
+            booking_id = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({"booking": "Choose a valid reservation."}) from exc
+        booking = BookingInquiry.objects.select_related("item").filter(pk=booking_id).first()
+        if not booking:
+            raise ValidationError({"booking": "Selected reservation was not found."})
+        return booking
+
+    @staticmethod
+    def _checksum(upload):
+        digest = hashlib.sha256()
+        position = None
+        if hasattr(upload, "tell") and hasattr(upload, "seek"):
+            position = upload.tell()
+            upload.seek(0)
+        for chunk in upload.chunks():
+            digest.update(chunk)
+        if position is not None:
+            upload.seek(position)
+        return digest.hexdigest()
+
+
+@dataclass(frozen=True)
+class MaintenanceDescriptionResult:
+    description: str
+    observations: list[str]
+    confidence: str
+    model: str
+
+
+@dataclass(frozen=True)
+class MaintenanceDescriptionContext:
+    title: str
+    item_name: str
+    work_type_label: str
+    status_label: str
+    display_cost: str
+    manual_notes: str
+
+
+class MaintenanceVisionAgent:
+    """Vision-backed agent for turning maintenance photos into work notes."""
+
+    MAX_PHOTOS = 6
+
+    def __init__(self, api_key=None, model=None, max_photos=None):
+        self.api_key = api_key if api_key is not None else settings.OPENAI_API_KEY
+        self.model = (
+            model
+            or getattr(settings, "OPENAI_MAINTENANCE_VISION_MODEL", "")
+            or settings.OPENAI_AGENT_MODEL
+        )
+        self.max_photos = max_photos or getattr(settings, "MAINTENANCE_AI_MAX_PHOTOS", self.MAX_PHOTOS)
+
+    def describe(self, event):
+        if not self.api_key:
+            raise ValidationError(
+                {"ai_description": "OpenAI is not configured. Set OPENAI_API_KEY before using AI descriptions."}
+            )
+
+        photos = list(event.photos.all().order_by("sort_order", "uploaded_at")[: self.max_photos])
+        if not photos:
+            raise ValidationError({"photos": "Add at least one photo before generating an AI work description."})
+
+        context = MaintenanceDescriptionContext(
+            title=event.title,
+            item_name=event.item.business_display_name if event.item else "",
+            work_type_label=event.get_work_type_display(),
+            status_label=event.get_status_display(),
+            display_cost=event.display_cost,
+            manual_notes=event.description or "",
+        )
+        response_text = self._call_model(context, [self._photo_data_url(photo) for photo in photos])
+        result = self._parse_response(response_text)
+        if not result.description:
+            raise ValidationError({"ai_description": "The maintenance agent did not return a usable description."})
+        return result
+
+    def describe_uploads(self, context, uploads):
+        if not self.api_key:
+            raise ValidationError(
+                {"ai_description": "OpenAI is not configured. Set OPENAI_API_KEY before using AI descriptions."}
+            )
+        image_urls = [self._upload_data_url(upload) for upload in uploads[: self.max_photos]]
+        response_text = self._call_model(context, image_urls)
+        result = self._parse_response(response_text)
+        if not result.description:
+            raise ValidationError({"ai_description": "The maintenance agent did not return a usable description."})
+        return result
+
+    def _call_model(self, context, image_urls):
+        client = _build_openai_client(self.api_key)
+        content = [
+            {
+                "type": "input_text",
+                "text": self._prompt(context),
+            }
+        ]
+        for data_url in image_urls:
+            if data_url:
+                content.append({"type": "input_image", "image_url": data_url, "detail": "low"})
+
+        if len(content) == 1:
+            raise ValidationError({"photos": "The attached photos could not be read for AI description."})
+
+        response = client.responses.create(
+            model=self.model,
+            input=[{"role": "user", "content": content}],
+            max_output_tokens=700,
+        )
+        return getattr(response, "output_text", "") or ""
+
+    def _prompt(self, context):
+        return (
+            "You are a maintenance documentation assistant for MLADIS property operations. "
+            "Inspect the attached maintenance photos and create concise, business-ready work notes. "
+            "Use only evidence visible in the photos plus the provided record metadata; do not invent vendor names, "
+            "costs, dates, causes, or completed work that is not visible. "
+            "Return JSON only with keys: description, observations, confidence. "
+            "The description should be 2 to 4 sentences and suitable for a bill, tax record, or admin review. "
+            f"Record title: {context.title}. "
+            f"Stay: {context.item_name}. "
+            f"Work type: {context.work_type_label}. "
+            f"Status: {context.status_label}. "
+            f"Cost: {context.display_cost}. "
+            f"Manual notes: {context.manual_notes or 'none'}."
+        )
+
+    def _photo_data_url(self, photo):
+        try:
+            photo.image.open("rb")
+            raw = photo.image.read()
+        finally:
+            try:
+                photo.image.close()
+            except Exception:
+                pass
+        if not raw:
+            return ""
+        mime_type = photo.mime_type or "image/jpeg"
+        if not mime_type.startswith("image/"):
+            mime_type = "image/jpeg"
+        encoded = base64.b64encode(raw).decode("ascii")
+        return f"data:{mime_type};base64,{encoded}"
+
+    def _upload_data_url(self, upload):
+        position = None
+        raw = b""
+        try:
+            if hasattr(upload, "tell") and hasattr(upload, "seek"):
+                position = upload.tell()
+                upload.seek(0)
+            if hasattr(upload, "chunks"):
+                raw = b"".join(upload.chunks())
+            else:
+                raw = upload.read()
+        finally:
+            if position is not None:
+                upload.seek(position)
+        if not raw:
+            return ""
+        mime_type = getattr(upload, "content_type", "") or "image/jpeg"
+        if not mime_type.startswith("image/"):
+            mime_type = "image/jpeg"
+        encoded = base64.b64encode(raw).decode("ascii")
+        return f"data:{mime_type};base64,{encoded}"
+
+    def _parse_response(self, response_text):
+        text = (response_text or "").strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```(?:json)?\s*", "", text)
+            text = re.sub(r"\s*```$", "", text)
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            payload = {"description": text, "observations": [], "confidence": "medium"}
+
+        description = str(payload.get("description") or "").strip()
+        observations = payload.get("observations") or []
+        if not isinstance(observations, list):
+            observations = [str(observations)]
+        confidence = str(payload.get("confidence") or "medium").strip().lower()
+        if confidence not in {"low", "medium", "high"}:
+            confidence = "medium"
+        return MaintenanceDescriptionResult(
+            description=description,
+            observations=[str(item).strip() for item in observations if str(item).strip()],
+            confidence=confidence,
+            model=self.model,
+        )
 
 
 class BookingEmailService:
+    DAMAGE_DEPOSIT_EMAIL_MARKER = "email_confirmed:damage_deposit_authorized"
+    RESERVATION_PAYMENT_EMAIL_MARKER = "email_confirmed:reservation_payment_authorized"
+
     def send_inquiry_notifications(self, inquiry: BookingInquiry, request=None):
+        site_settings = SiteSettings.current()
+        if not site_settings.request_notifications_email:
+            inquiry.email_delivery_status = EmailDeliveryStatus.PENDING
+            inquiry.email_error = "Admin email notifications disabled in Site Settings."
+            inquiry.save(update_fields=["email_delivery_status", "email_error", "updated_at"])
+            return False
+
         recipients = settings.BOOKING_INQUIRY_RECIPIENTS
         if not recipients:
             inquiry.email_delivery_status = EmailDeliveryStatus.FAILED
@@ -883,7 +1658,9 @@ class BookingEmailService:
             inquiry.save(update_fields=["email_delivery_status", "email_error", "updated_at"])
             return False
 
-        subject = f"New MLADIS booking request: {inquiry.guest_name}"
+        subject = self._subject(
+            f"{inquiry.request_key} | New reservation request | {inquiry.guest_name}"
+        )
         body = self._admin_body(inquiry, request)
         try:
             send_mail(
@@ -894,7 +1671,7 @@ class BookingEmailService:
                 fail_silently=False,
             )
             send_mail(
-                "We received your MLADIS reservation request",
+                self._subject("We received your MLADIS reservation request"),
                 self._customer_body(inquiry),
                 settings.DEFAULT_FROM_EMAIL,
                 [inquiry.email],
@@ -912,28 +1689,206 @@ class BookingEmailService:
         inquiry.save(update_fields=["email_delivery_status", "email_sent_at", "email_error", "updated_at"])
         return True
 
+    def send_damage_deposit_confirmation(self, deposit: DamageDeposit, request=None):
+        if not deposit or self.DAMAGE_DEPOSIT_EMAIL_MARKER in (deposit.notes or ""):
+            return False
+        if deposit.status not in {DepositStatus.REQUIRES_CAPTURE, DepositStatus.CAPTURED}:
+            return False
+
+        sent = self._send_transaction_confirmation(
+            code="MLADIS_DAMAGE_DEPOSIT_CONFIRMATION_V1",
+            subject=f"{self._request_key(deposit)} | Security deposit hold recorded | {deposit.guest_name}",
+            customer_subject="Your security deposit hold is recorded",
+            guest_name=deposit.guest_name,
+            guest_email=deposit.email,
+            amount=deposit.display_amount,
+            item_name=self._item_name(deposit),
+            status=deposit.status,
+            request_key=self._request_key(deposit),
+            admin_url=self._admin_url(request, "damagedeposit", deposit.id),
+            extra_lines=[
+                "transaction_type=security_deposit_hold",
+                f"damage_deposit_id={deposit.id}",
+                f"booking_inquiry_id={deposit.inquiry_id or ''}",
+                f"payment_provider={deposit.payment_provider}",
+                f"stripe_checkout_session_id={deposit.stripe_checkout_session_id}",
+                f"stripe_payment_intent_id={deposit.stripe_payment_intent_id}",
+                "capture_rule=refundable hold; capture only if needed for damages or approved charges",
+            ],
+            customer_note="The security deposit is a refundable authorization hold and is captured only if needed for approved damages or charges.",
+            provider=deposit.payment_provider,
+        )
+        if sent:
+            deposit.notes = self._append_note(
+                deposit.notes,
+                f"{self.DAMAGE_DEPOSIT_EMAIL_MARKER} at {timezone.now().isoformat()}",
+            )
+            deposit.save(update_fields=["notes", "updated_at"])
+            self._log_email_event(deposit, "damage_deposit.email_confirmed", request)
+        return sent
+
+    def send_reservation_payment_confirmation(self, hold: ReservationPaymentHold, request=None):
+        if not hold or self.RESERVATION_PAYMENT_EMAIL_MARKER in (hold.notes or ""):
+            return False
+        if hold.status not in {DepositStatus.REQUIRES_CAPTURE, DepositStatus.CAPTURED}:
+            return False
+
+        sent = self._send_transaction_confirmation(
+            code="MLADIS_RESERVATION_PAYMENT_CONFIRMATION_V1",
+            subject=f"{self._request_key(hold)} | Reservation payment hold recorded | {hold.guest_name}",
+            customer_subject="Your reservation payment hold is recorded",
+            guest_name=hold.guest_name,
+            guest_email=hold.email,
+            amount=hold.display_amount,
+            item_name=self._item_name(hold),
+            status=hold.status,
+            request_key=self._request_key(hold),
+            admin_url=self._admin_url(request, "reservationpaymenthold", hold.id),
+            extra_lines=[
+                "transaction_type=reservation_payment_hold",
+                f"reservation_payment_hold_id={hold.id}",
+                f"booking_inquiry_id={hold.inquiry_id or ''}",
+                f"payment_provider={hold.payment_provider}",
+                f"stripe_checkout_session_id={hold.stripe_checkout_session_id}",
+                f"stripe_payment_intent_id={hold.stripe_payment_intent_id}",
+                f"capture_after={hold.capture_after.isoformat() if hold.capture_after else ''}",
+                "capture_rule=manual capture 24 hours before check-in",
+            ],
+            customer_note="The reservation payment hold is captured 24 hours before check-in unless the request is changed or canceled under the active policy.",
+            provider=hold.payment_provider,
+        )
+        if sent:
+            hold.notes = self._append_note(
+                hold.notes,
+                f"{self.RESERVATION_PAYMENT_EMAIL_MARKER} at {timezone.now().isoformat()}",
+            )
+            hold.save(update_fields=["notes", "updated_at"])
+            self._log_email_event(hold, "reservation_payment_hold.email_confirmed", request)
+        return sent
+
+    def _send_transaction_confirmation(
+        self,
+        *,
+        code,
+        subject,
+        customer_subject,
+        guest_name,
+        guest_email,
+        amount,
+        item_name,
+        status,
+        request_key,
+        admin_url,
+        extra_lines,
+        customer_note,
+        provider,
+    ):
+        recipients = settings.BOOKING_INQUIRY_RECIPIENTS
+        if not recipients or not guest_email:
+            return False
+
+        mode = self._mode_label(provider)
+        admin_body = "\n".join(
+            [
+                code,
+                "",
+                "[transaction]",
+                f"mode={mode}",
+                f"request_key={request_key}",
+                f"guest_name={guest_name}",
+                f"guest_email={guest_email}",
+                f"item={item_name}",
+                f"amount={amount}",
+                f"status={status}",
+                *extra_lines,
+                "",
+                "[links]",
+                f"admin_url={admin_url}",
+            ]
+        )
+        customer_body = "\n".join(
+            [
+                f"Hi {guest_name},",
+                "",
+                f"{self._mode_header(provider)}Your {amount} authorization hold is recorded for {item_name}.",
+                f"Reference: {request_key}",
+                f"Status: {status}",
+                "",
+                "This is an authorization hold, not a final capture at this step.",
+                customer_note,
+                "",
+                "MLADIS",
+            ]
+        )
+
+        try:
+            send_mail(
+                self._subject(subject, provider=provider),
+                admin_body,
+                settings.DEFAULT_FROM_EMAIL,
+                recipients,
+                fail_silently=False,
+            )
+            send_mail(
+                self._subject(customer_subject, provider=provider),
+                customer_body,
+                settings.DEFAULT_FROM_EMAIL,
+                [guest_email],
+                fail_silently=False,
+            )
+        except Exception:
+            return False
+        return True
+
     def _admin_body(self, inquiry, request=None):
-        item_name = inquiry.item.name if inquiry.item else "Flexible / help me choose"
+        item_name = inquiry.item.business_display_name if inquiry.item else "Flexible / help me choose"
         admin_url = ""
         if request:
             admin_url = request.build_absolute_uri(f"/admin/bookings/bookinginquiry/{inquiry.id}/change/")
         return "\n".join(
             [
-                "New MLADIS booking request",
+                "MLADIS_RESERVATION_REQUEST_V1",
                 "",
-                f"Guest: {inquiry.guest_name}",
-                f"Email: {inquiry.email}",
-                f"Phone: {inquiry.phone or '-'}",
-                f"Stay: {item_name}",
-                f"Dates: {inquiry.check_in} to {inquiry.check_out} ({inquiry.nights} nights)",
-                f"Guests: {inquiry.guests}",
-                f"Coupon: {inquiry.coupon_code or '-'}",
-                f"Admin test: {'yes' if inquiry.is_admin_test else 'no'}",
-                f"Blacklisted flag: {'yes' if inquiry.is_blacklist_flagged else 'no'}",
+                "[request]",
+                f"mode={self._mode_label()}",
+                f"request_key={inquiry.request_key}",
+                f"request_id={inquiry.id}",
+                f"status={inquiry.status}",
+                f"created_at={inquiry.created_at.isoformat() if inquiry.created_at else ''}",
                 "",
-                inquiry.message or "No extra message.",
+                "[guest]",
+                f"name={inquiry.guest_name}",
+                f"email={inquiry.email}",
+                f"phone={inquiry.phone or ''}",
+                f"customer_profile_id={inquiry.customer_profile_id or ''}",
+                f"user_id={inquiry.user_id or ''}",
                 "",
-                admin_url,
+                "[stay]",
+                f"item_id={inquiry.item_id or ''}",
+                f"item={item_name}",
+                f"check_in={inquiry.check_in}",
+                f"check_out={inquiry.check_out}",
+                f"nights={inquiry.nights}",
+                f"guests={inquiry.guests}",
+                "",
+                "[pricing]",
+                f"coupon={inquiry.coupon_code or ''}",
+                f"subtotal_cents={inquiry.subtotal_cents}",
+                f"discount_cents={inquiry.discount_cents}",
+                f"reservation_payment_cents={inquiry.reservation_payment_cents}",
+                f"deposit_cents={inquiry.deposit_cents}",
+                f"total_cents={inquiry.total_cents}",
+                f"currency={inquiry.currency}",
+                "",
+                "[flags]",
+                f"admin_test={'true' if inquiry.is_admin_test else 'false'}",
+                f"blacklist_flagged={'true' if inquiry.is_blacklist_flagged else 'false'}",
+                "",
+                "[message]",
+                inquiry.message or "",
+                "",
+                "[links]",
+                f"admin_url={admin_url}",
             ]
         )
 
@@ -943,15 +1898,76 @@ class BookingEmailService:
             [
                 f"Hi {inquiry.guest_name},",
                 "",
-                f"We received your request for {item_name}.",
+                f"{self._mode_header()}We received your request for {item_name}.",
                 f"Dates: {inquiry.check_in} to {inquiry.check_out}",
                 f"Guests: {inquiry.guests}",
+                f"Reservation payment hold: {inquiry.display_reservation_payment}",
+                f"Security deposit hold: {inquiry.display_deposit}",
+                f"Estimated total authorization: {inquiry.display_total}",
                 "",
                 "This is an admin-confirmed request. We will review availability and follow up with the next step.",
                 "",
                 "MLADIS",
             ]
         )
+
+    def _subject(self, subject, provider=None):
+        prefix = "(TEST) " if self._is_test_mode(provider) and not subject.startswith("(TEST)") else ""
+        return f"{prefix}{subject}"
+
+    def _mode_header(self, provider=None):
+        return "(TEST) " if self._is_test_mode(provider) else ""
+
+    def _mode_label(self, provider=None):
+        return "TEST" if self._is_test_mode(provider) else "LIVE"
+
+    def _is_test_mode(self, provider=None):
+        email_backend = getattr(settings, "EMAIL_BACKEND", "")
+        if getattr(settings, "DEBUG", False):
+            return True
+        if email_backend.endswith(".console.EmailBackend") or email_backend.endswith(".locmem.EmailBackend"):
+            return True
+        if getattr(settings, "STRIPE_SECRET_KEY", "").startswith("sk_test"):
+            return True
+        return provider == DepositProvider.PAYPAL and getattr(settings, "PAYPAL_ENVIRONMENT", "") == "sandbox"
+
+    def _request_key(self, transaction):
+        inquiry = getattr(transaction, "inquiry", None)
+        return inquiry.request_key if inquiry else f"MLADIS-TXN-{transaction.id:06d}"
+
+    def _item_name(self, transaction):
+        item = getattr(transaction, "item", None)
+        return item.business_display_name if item else "your MLADIS reservation"
+
+    def _admin_url(self, request, model_name, object_id):
+        if not request or not object_id:
+            return ""
+        return request.build_absolute_uri(f"/admin/bookings/{model_name}/{object_id}/change/")
+
+    def _append_note(self, notes, note):
+        return f"{notes}\n{note}".strip() if notes else note
+
+    def _log_email_event(self, transaction, event_name, request=None):
+        try:
+            from .data_lake import DataLakeObjectEventWriter
+
+            DataLakeObjectEventWriter.from_settings().write_model_event(
+                event_name=event_name,
+                instance=transaction,
+                request=request,
+                data={
+                    "booking_inquiry_id": getattr(transaction, "inquiry_id", None),
+                    "request_key": self._request_key(transaction),
+                    "guest_email": getattr(transaction, "email", ""),
+                    "admin_recipient_count": len(settings.BOOKING_INQUIRY_RECIPIENTS),
+                    "status": getattr(transaction, "status", ""),
+                    "amount_cents": getattr(transaction, "amount_cents", 0),
+                    "currency": getattr(transaction, "currency", ""),
+                    "mode": self._mode_label(getattr(transaction, "payment_provider", None)),
+                },
+            )
+        except Exception:
+            return
 
 
 class InvoiceEmailService:
@@ -1121,6 +2137,7 @@ class DamageDepositService:
             deposit.status = DepositStatus.REQUIRES_CONFIGURATION
             deposit.notes = "Stripe is not configured. Set STRIPE_SECRET_KEY before collecting deposits."
             deposit.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
+            self._log_deposit_event(deposit, "damage_deposit.requires_configuration", request)
             return DepositCheckoutResult(
                 success=False,
                 message="Stripe is not configured yet, so no deposit hold was created.",
@@ -1130,6 +2147,7 @@ class DamageDepositService:
             session = stripe.checkout.Session.create(
                 mode="payment",
                 customer_email=deposit.email,
+                phone_number_collection={"enabled": True},
                 line_items=[
                     {
                         "price_data": {
@@ -1157,6 +2175,7 @@ class DamageDepositService:
             deposit.status = DepositStatus.FAILED
             deposit.notes = str(error)
             deposit.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
+            self._log_deposit_event(deposit, "damage_deposit.failed", request)
             return DepositCheckoutResult(success=False, message=str(error))
 
         deposit.status = DepositStatus.CHECKOUT_CREATED
@@ -1178,25 +2197,43 @@ class DamageDepositService:
                 "updated_at",
             ]
         )
+        self._log_deposit_event(deposit, "damage_deposit.checkout_created", request)
         return DepositCheckoutResult(
             success=True,
             message="Deposit checkout created.",
             checkout_url=deposit.checkout_url,
         )
 
-    def sync_checkout_session(self, session_id):
+    def _log_deposit_event(self, deposit, event_name, request=None):
+        try:
+            from .data_lake import DataLakeObjectEventWriter
+
+            DataLakeObjectEventWriter.from_settings().write_model_event(
+                event_name=event_name,
+                instance=deposit,
+                request=request,
+                data={
+                    "booking_inquiry_id": deposit.inquiry_id,
+                    "payment_provider": deposit.payment_provider,
+                    "status": deposit.status,
+                    "amount_cents": deposit.amount_cents,
+                    "currency": deposit.currency,
+                },
+            )
+        except Exception:
+            return
+
+    def sync_checkout_session(self, session_id, request=None):
         if not self.is_configured:
             return None
         session = stripe.checkout.Session.retrieve(session_id)
         deposit = DamageDeposit.objects.filter(stripe_checkout_session_id=session.id).first()
         if not deposit:
             return None
-        if session.payment_intent:
-            deposit.stripe_payment_intent_id = session.payment_intent
-        if session.payment_status == "paid":
-            deposit.status = DepositStatus.REQUIRES_CAPTURE
-        deposit.save(update_fields=["status", "stripe_payment_intent_id", "updated_at"])
-        return deposit
+        payment = PaymentAuthorization(deposit, session)
+        payment.persist()
+        payment.send_confirmation(BookingEmailService(), request=request)
+        return payment.record
 
     def capture_deposit(self, deposit: DamageDeposit):
         deposit = self._require_capturable_deposit(deposit)
@@ -1235,6 +2272,7 @@ class DamageDepositService:
                 deposit.stripe_payment_intent_id = payload.get("payment_intent") or ""
                 deposit.status = DepositStatus.REQUIRES_CAPTURE
                 deposit.save(update_fields=["stripe_payment_intent_id", "status", "updated_at"])
+                BookingEmailService().send_damage_deposit_confirmation(deposit)
             return deposit
 
         if event_type in {
@@ -1252,6 +2290,8 @@ class DamageDepositService:
             else:
                 deposit.status = DepositStatus.REQUIRES_CAPTURE
             deposit.save(update_fields=["status", "updated_at"])
+            if deposit.status == DepositStatus.REQUIRES_CAPTURE:
+                BookingEmailService().send_damage_deposit_confirmation(deposit)
             return deposit
 
         return None
@@ -1278,6 +2318,207 @@ class DamageDepositService:
         return deposit
 
 
+class ReservationPaymentHoldService:
+    def __init__(self, api_key=None):
+        self.api_key = api_key if api_key is not None else settings.STRIPE_SECRET_KEY
+        stripe.api_key = self.api_key
+        stripe.api_version = settings.STRIPE_API_VERSION
+
+    @property
+    def is_configured(self):
+        return bool(self.api_key)
+
+    def create_checkout_for_inquiry(self, inquiry: BookingInquiry, request) -> DepositCheckoutResult:
+        ReservationRequestService().prepare(inquiry, coupon=inquiry.coupon, redeem_coupon=False)
+        inquiry.save(
+            update_fields=[
+                "subtotal_cents",
+                "discount_cents",
+                "deposit_cents",
+                "total_cents",
+                "currency",
+                "updated_at",
+            ]
+        )
+        hold = ReservationPaymentHold.objects.filter(inquiry=inquiry).order_by("-created_at").first()
+        if not hold:
+            hold = ReservationPaymentHold(inquiry=inquiry)
+
+        hold.item = inquiry.item
+        hold.guest_name = inquiry.guest_name
+        hold.email = inquiry.email
+        hold.amount_cents = inquiry.reservation_payment_cents
+        hold.currency = inquiry.currency
+        hold.payment_provider = DepositProvider.STRIPE
+        hold.capture_after = self._capture_after(inquiry)
+        hold.save()
+
+        return self.create_checkout_session(hold, request)
+
+    def create_checkout_session(self, hold: ReservationPaymentHold, request) -> DepositCheckoutResult:
+        hold.payment_provider = DepositProvider.STRIPE
+        if hold.amount_cents <= 0:
+            hold.status = DepositStatus.CANCELED
+            hold.notes = self._append_note(hold.notes, "No reservation payment amount is due for this request.")
+            hold.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
+            self._log_payment_event(hold, "reservation_payment_hold.no_amount_due", request)
+            return DepositCheckoutResult(success=False, message="No reservation payment amount is due for this request.")
+
+        if not self.is_configured:
+            hold.status = DepositStatus.REQUIRES_CONFIGURATION
+            hold.notes = "Stripe is not configured. Set STRIPE_SECRET_KEY before collecting reservation payment holds."
+            hold.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
+            self._log_payment_event(hold, "reservation_payment_hold.requires_configuration", request)
+            return DepositCheckoutResult(
+                success=False,
+                message="Stripe is not configured yet, so no reservation payment hold was created.",
+            )
+
+        try:
+            session = stripe.checkout.Session.create(
+                mode="payment",
+                customer_email=hold.email,
+                phone_number_collection={"enabled": True},
+                line_items=[
+                    {
+                        "price_data": {
+                            "currency": hold.currency,
+                            "product_data": {
+                                "name": "MLADIS reservation payment hold",
+                                "description": "Authorization hold for the stay payment. Captured 24 hours before check-in.",
+                            },
+                            "unit_amount": hold.amount_cents,
+                        },
+                        "quantity": 1,
+                    }
+                ],
+                payment_intent_data={
+                    "capture_method": "manual",
+                    "description": "MLADIS reservation payment authorization hold",
+                    "metadata": self._metadata(hold),
+                },
+                metadata=self._metadata(hold),
+                success_url=request.build_absolute_uri(reverse("bookings:reservation-payment-success"))
+                + "?session_id={CHECKOUT_SESSION_ID}",
+                cancel_url=request.build_absolute_uri(reverse("bookings:home"))
+                + f"?payment_for={hold.inquiry_id or ''}#booking",
+            )
+        except stripe.StripeError as error:
+            hold.status = DepositStatus.FAILED
+            hold.notes = str(error)
+            hold.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
+            self._log_payment_event(hold, "reservation_payment_hold.failed", request)
+            return DepositCheckoutResult(success=False, message=str(error))
+
+        hold.status = DepositStatus.CHECKOUT_CREATED
+        hold.stripe_checkout_session_id = session.id
+        hold.checkout_url = session.url or ""
+        if session.payment_intent:
+            hold.stripe_payment_intent_id = session.payment_intent
+        hold.save(
+            update_fields=[
+                "payment_provider",
+                "status",
+                "stripe_checkout_session_id",
+                "stripe_payment_intent_id",
+                "checkout_url",
+                "capture_after",
+                "updated_at",
+            ]
+        )
+        self._log_payment_event(hold, "reservation_payment_hold.checkout_created", request)
+        return DepositCheckoutResult(
+            success=True,
+            message="Reservation payment checkout created.",
+            checkout_url=hold.checkout_url,
+        )
+
+    def sync_checkout_session(self, session_id, request=None):
+        if not self.is_configured:
+            return None
+        session = stripe.checkout.Session.retrieve(session_id)
+        hold = ReservationPaymentHold.objects.filter(stripe_checkout_session_id=session.id).first()
+        if not hold:
+            return None
+        payment = PaymentAuthorization(hold, session)
+        payment.persist()
+        payment.send_confirmation(BookingEmailService(), request=request)
+        return payment.record
+
+    def handle_event(self, event):
+        event_type = event.get("type")
+        payload = event.get("data", {}).get("object", {})
+
+        if event_type == "checkout.session.completed":
+            hold = ReservationPaymentHold.objects.filter(stripe_checkout_session_id=payload.get("id")).first()
+            if hold:
+                hold.stripe_payment_intent_id = payload.get("payment_intent") or ""
+                hold.status = DepositStatus.REQUIRES_CAPTURE
+                hold.save(update_fields=["stripe_payment_intent_id", "status", "updated_at"])
+                BookingEmailService().send_reservation_payment_confirmation(hold)
+            return hold
+
+        if event_type in {
+            "payment_intent.amount_capturable_updated",
+            "payment_intent.succeeded",
+            "payment_intent.canceled",
+        }:
+            hold = ReservationPaymentHold.objects.filter(stripe_payment_intent_id=payload.get("id")).first()
+            if not hold:
+                return None
+            if event_type == "payment_intent.succeeded":
+                hold.status = DepositStatus.CAPTURED
+            elif event_type == "payment_intent.canceled":
+                hold.status = DepositStatus.CANCELED
+            else:
+                hold.status = DepositStatus.REQUIRES_CAPTURE
+            hold.save(update_fields=["status", "updated_at"])
+            if hold.status == DepositStatus.REQUIRES_CAPTURE:
+                BookingEmailService().send_reservation_payment_confirmation(hold)
+            return hold
+
+        return None
+
+    def _capture_after(self, inquiry):
+        if not inquiry.check_in:
+            return None
+        check_in_start = timezone.make_aware(
+            datetime.combine(inquiry.check_in, time.min),
+            timezone.get_current_timezone(),
+        )
+        return check_in_start - timedelta(hours=24)
+
+    def _metadata(self, hold):
+        return {
+            "reservation_payment_hold_id": str(hold.id),
+            "bookable_item_id": str(hold.item_id or ""),
+            "booking_inquiry_id": str(hold.inquiry_id or ""),
+        }
+
+    def _log_payment_event(self, hold, event_name, request=None):
+        try:
+            from .data_lake import DataLakeObjectEventWriter
+
+            DataLakeObjectEventWriter.from_settings().write_model_event(
+                event_name=event_name,
+                instance=hold,
+                request=request,
+                data={
+                    "booking_inquiry_id": hold.inquiry_id,
+                    "payment_provider": hold.payment_provider,
+                    "status": hold.status,
+                    "amount_cents": hold.amount_cents,
+                    "currency": hold.currency,
+                    "capture_after": hold.capture_after.isoformat() if hold.capture_after else "",
+                },
+            )
+        except Exception:
+            return
+
+    def _append_note(self, notes, note):
+        return f"{notes}\n{note}".strip() if notes else note
+
+
 class PayPalDamageDepositService:
     def __init__(self, client_id=None, client_secret=None, environment=None):
         self.client_id = client_id if client_id is not None else settings.PAYPAL_CLIENT_ID
@@ -1300,6 +2541,7 @@ class PayPalDamageDepositService:
             deposit.status = DepositStatus.REQUIRES_CONFIGURATION
             deposit.notes = "PayPal is not configured. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET before collecting deposits."
             deposit.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
+            self._log_deposit_event(deposit, "damage_deposit.requires_configuration", request)
             return DepositCheckoutResult(
                 success=False,
                 message="PayPal is not configured yet, so no deposit hold was created.",
@@ -1320,6 +2562,7 @@ class PayPalDamageDepositService:
             deposit.status = DepositStatus.FAILED
             deposit.notes = str(error)
             deposit.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
+            self._log_deposit_event(deposit, "damage_deposit.failed", request)
             return DepositCheckoutResult(success=False, message=str(error))
 
         deposit.status = DepositStatus.CHECKOUT_CREATED
@@ -1340,13 +2583,33 @@ class PayPalDamageDepositService:
                 "updated_at",
             ]
         )
+        self._log_deposit_event(deposit, "damage_deposit.checkout_created", request)
         return DepositCheckoutResult(
             success=True,
             message="PayPal deposit checkout created.",
             checkout_url=deposit.checkout_url,
         )
 
-    def authorize_order(self, order_id):
+    def _log_deposit_event(self, deposit, event_name, request=None):
+        try:
+            from .data_lake import DataLakeObjectEventWriter
+
+            DataLakeObjectEventWriter.from_settings().write_model_event(
+                event_name=event_name,
+                instance=deposit,
+                request=request,
+                data={
+                    "booking_inquiry_id": deposit.inquiry_id,
+                    "payment_provider": deposit.payment_provider,
+                    "status": deposit.status,
+                    "amount_cents": deposit.amount_cents,
+                    "currency": deposit.currency,
+                },
+            )
+        except Exception:
+            return
+
+    def authorize_order(self, order_id, request=None):
         if not self.is_configured or not order_id:
             return None
 
@@ -1357,6 +2620,7 @@ class PayPalDamageDepositService:
             if deposit.status != DepositStatus.REQUIRES_CAPTURE:
                 deposit.status = DepositStatus.REQUIRES_CAPTURE
                 deposit.save(update_fields=["status", "updated_at"])
+            BookingEmailService().send_damage_deposit_confirmation(deposit, request=request)
             return deposit
 
         access_token = self._create_access_token()
@@ -1374,6 +2638,7 @@ class PayPalDamageDepositService:
         deposit.paypal_authorization_id = authorization_id
         deposit.status = DepositStatus.REQUIRES_CAPTURE
         deposit.save(update_fields=["payment_provider", "paypal_authorization_id", "status", "updated_at"])
+        BookingEmailService().send_damage_deposit_confirmation(deposit, request=request)
         return deposit
 
     def capture_deposit(self, deposit: DamageDeposit):

@@ -3,7 +3,7 @@
 
 {% block object-tools-items %}
   <li>
-    <a href="{% url 'admin:bookings_bookableitem_calendar' %}" class="viewsitelink">{% trans "Business calendar" %}</a>
+    <a href="{% url 'bookings:calendar-ops' %}" class="viewsitelink">{% trans "Business calendar" %}</a>
   </li>
   {{ block.super }}
 {% endblock %}

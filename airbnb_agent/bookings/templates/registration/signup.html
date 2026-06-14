@@ -1,55 +1,87 @@
-{% extends "bookings/base.html" %}
-{% load i18n %}
-
-{% block title %}{% trans "Create account" %} | MLADIS{% endblock %}
-
-{% block content %}
-<main class="auth-page">
-  <section class="auth-panel">
-    <h1>{% trans "Create your MLADIS account" %}</h1>
-    <p>{% trans "Track reservations, invoices, cancellation windows, and future booking updates." %}</p>
-    {% if messages %}
-      <div class="form-success" role="status">
-        {% for message in messages %}
-          <p>{{ message }}</p>
-        {% endfor %}
-      </div>
-    {% endif %}
-    <div class="social-auth-grid" aria-label="{% trans 'Social signup options' %}">
-      {% for provider in social_login_providers %}
-        {% if provider.is_configured %}
-          <form method="post" action="{{ provider.login_url }}">
-            {% csrf_token %}
-            <button class="button social full" type="submit">{{ provider.button_label }}</button>
-          </form>
-        {% else %}
-          <button class="button social full is-disabled" type="button" disabled>{{ provider.button_label }} <span>{% trans "setup needed" %}</span></button>
+{% load i18n static %}
+<!doctype html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#eef3f4">
+    <link rel="icon" href="{% static 'frontend/modern-dashboard/favicon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}?v=gentelella-v4-preview-3">
+    <title>{% trans "Create account" %} | MLADIS</title>
+  </head>
+  <body>
+    <main class="modern-auth-page">
+      <section class="modern-auth-preview">
+        <span>Gentelella v4 Preview</span>
+        <strong>Testing the next MLADIS shell on port 8010.</strong>
+      </section>
+      <section class="modern-auth-hero">
+        <a class="public-brand" href="/">
+          {% if site_settings.logo_display_url %}
+            <img src="{{ site_settings.logo_display_url }}" alt="MLADIS">
+          {% else %}
+            <img src="{% static 'bookings/brand/mladis-connected-intelligence.png' %}" alt="MLADIS">
+          {% endif %}
+          <strong>MLADIS</strong>
+        </a>
+        <h1>{% trans "Create your booking account." %}</h1>
+        <p>{% trans "Track reservations, cancellation windows, invoices, and future offers from one secure profile." %}</p>
+      </section>
+      <section class="modern-auth-panel">
+        <h2>{% trans "Create account" %}</h2>
+        <p>{% trans "Social signup can pull the basics quickly. Phone is collected when you book." %}</p>
+        {% if messages %}
+          <div class="public-success" role="status">
+            {% for message in messages %}
+              <p>{{ message }}</p>
+            {% endfor %}
+          </div>
         {% endif %}
-      {% endfor %}
-    </div>
-    {% if social_login_provider_count %}
-      <p class="auth-note">{% trans "Create your account with a social provider, or finish with email below." %}</p>
-    {% else %}
-      <p class="auth-note">{% trans "Social signup turns on automatically after OAuth credentials are added in the environment or admin. Use email signup for now." %}</p>
-    {% endif %}
-    <div class="auth-divider"><span>{% trans "or create with email" %}</span></div>
-    <form method="post" class="booking-form">
-      {% csrf_token %}
-      {% for field in form %}
-        <div class="field-group {% if field.errors %}has-error{% endif %}">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.help_text %}
-            <p class="field-help">{{ field.help_text }}</p>
-          {% endif %}
-          {% if field.errors %}
-            <p class="field-error">{{ field.errors|striptags }}</p>
-          {% endif %}
+        <div class="modern-social-grid" aria-label="{% trans 'Social signup options' %}">
+          {% for provider in social_login_providers %}
+            {% if provider.is_launchable %}
+              {% if provider.needs_origin_bridge %}
+                <a href="{{ provider.launch_url }}">{{ provider.button_label }}</a>
+              {% else %}
+                <form method="post" action="{{ provider.login_url }}">
+                  {% csrf_token %}
+                  <button type="submit">{{ provider.button_label }}</button>
+                </form>
+              {% endif %}
+            {% else %}
+              <button class="is-disabled" type="button" disabled title="{{ provider.help_text }}">
+                {{ provider.button_label }}
+                <span>{% if provider.disabled_reason %}{{ provider.disabled_reason }}{% else %}{% trans "setup needed" %}{% endif %}</span>
+              </button>
+            {% endif %}
+          {% endfor %}
         </div>
-      {% endfor %}
-      <button class="button primary full" type="submit">{% trans "Create account" %}</button>
-    </form>
-    <a class="text-link" href="{% url 'bookings:login' %}">{% trans "Already have an account?" %}</a>
-  </section>
-</main>
-{% endblock %}
+        {% if social_login_launchable_count %}
+          <p class="modern-auth-note">{% trans "Create your account with a social provider, or finish with email below." %}</p>
+        {% elif social_login_provider_count %}
+          <p class="modern-auth-note">{% trans "Some social signup providers are configured but still need a callback route or credential refresh before they can launch." %}</p>
+        {% else %}
+          <p class="modern-auth-note">{% trans "Social signup turns on automatically after OAuth credentials are added in the environment or admin. Use email signup for now." %}</p>
+        {% endif %}
+        <div class="modern-auth-divider"><span>{% trans "or create with email" %}</span></div>
+        <form method="post" class="modern-auth-form">
+          {% csrf_token %}
+          {% for field in form %}
+            <label for="{{ field.id_for_label }}">
+              {{ field.label }}
+              {{ field }}
+              {% if field.help_text %}
+                <small>{{ field.help_text }}</small>
+              {% endif %}
+              {% if field.errors %}
+                <span>{{ field.errors|striptags }}</span>
+              {% endif %}
+            </label>
+          {% endfor %}
+          <button type="submit">{% trans "Create account" %}</button>
+        </form>
+        <a class="modern-auth-link" href="{% url 'bookings:login' %}">{% trans "Already have an account?" %}</a>
+      </section>
+    </main>
+  </body>
+</html>

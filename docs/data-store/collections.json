@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "layout": "simple-object-folders",
+  "drive_folder_id": "1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn",
+  "drive_folder_url": "https://drive.google.com/drive/folders/1ta4MMXH8gjO3-uIiYG9pEvgafEueVfmn",
+  "folders": [
+    {
+      "name": "BOOKINGS",
+      "purpose": "Booked/reservation objects and booking request lifecycle.",
+      "collections": ["booking_requests", "reservations"]
+    },
+    {
+      "name": "CUSTOMERS",
+      "purpose": "Clients, user accounts, imported Airbnb guests, feedback, and consent.",
+      "collections": ["subscriptions", "customer_profiles", "airbnb_guest_records", "customer_feedback"]
+    },
+    {
+      "name": "BOOKINGAGENTS",
+      "purpose": "Chat agent conversations, FAQ, and training knowledge.",
+      "collections": ["agent_conversations", "agent_faq"]
+    },
+    {
+      "name": "TRANSACTIONS",
+      "purpose": "Payments, deposits, holds, invoices, donations, coupons, and promotions.",
+      "collections": ["damage_deposits", "reservation_payment_holds", "donations", "invoices", "promotions"]
+    },
+    {
+      "name": "STAYS",
+      "purpose": "Apartments, availability, pricing, rules, galleries, and calendar feeds.",
+      "collections": ["inventory", "availability_blocks", "daily_price_overrides"]
+    },
+    {
+      "name": "MAINTENANCE",
+      "purpose": "Cleaning, repair, maintenance, cost, time, and photo evidence objects.",
+      "collections": ["maintenance_events"]
+    },
+    {
+      "name": "WEBSITE",
+      "purpose": "Site settings, logo/content, and public copy records.",
+      "collections": []
+    },
+    {
+      "name": "ADMIN",
+      "purpose": "Admin access and internal business configuration.",
+      "collections": []
+    },
+    {
+      "name": "EVENTS",
+      "purpose": "App/page/workflow events that are not one durable business object.",
+      "collections": ["page_visits", "object_events", "object_states"]
+    }
+  ]
+}

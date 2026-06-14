@@ -1,10 +1,13 @@
 from datetime import timedelta
 
-from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncDate
+from django.http import JsonResponse
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.views import View
 from django.views.generic import TemplateView
 
 from .models import (
@@ -27,7 +30,13 @@ from .models import (
 )
 
 
-@method_decorator(staff_member_required, name="dispatch")
+ops_staff_required = user_passes_test(
+    lambda user: user.is_active and user.is_staff,
+    login_url=reverse_lazy("bookings:login"),
+)
+
+
+@method_decorator(ops_staff_required, name="dispatch")
 class OpsReportsView(TemplateView):
     template_name = "bookings/ops_reports.html"
 
@@ -60,8 +69,7 @@ class OpsReportsView(TemplateView):
                     self._card("Clients", clients.count(), "Customer profiles and segments."),
                     self._card("Feedback entries", feedback.count(), "Guest feedback linked to profiles, stays, and reservation records."),
                     self._card("Active listings", listings.filter(is_active=True).count(), "Bookable stays, services, experiences, and transport."),
-                    self._card("Coupons", coupons.count(), "Discount codes managed by admins."),
-                    self._card("Promotions", promotions.count(), "Campaigns created from the admin."),
+                    self._card("Coupons + promos", coupons.count() + promotions.count(), "Discount codes and campaigns managed together."),
                     self._card("Invoices", invoices.count(), "Draft, sent, paid, and canceled invoices."),
                     self._card("Invoice value", self._money(invoices.aggregate(total=Sum("total_cents"))["total"]), "Total invoice value tracked."),
                     self._card("Deposits", deposits.count(), "Damage deposit checkout records."),
@@ -133,13 +141,7 @@ class OpsReportsView(TemplateView):
                     "Donations by status",
                     transform=lambda value: str(value).replace("_", " ").title(),
                 ),
-                "coupon_status_chart": self._boolean_chart(coupons, "is_active", "Coupons by status", "Active", "Inactive"),
-                "promotion_status_chart": self._query_chart(
-                    promotions.values("status").annotate(total=Count("id")).order_by("-total", "status"),
-                    "status",
-                    "Promotions by status",
-                    transform=str.title,
-                ),
+                "campaign_status_chart": self._campaign_status_chart(coupons, promotions),
                 "calendar_chart": self._calendar_chart(),
             }
         )
@@ -198,6 +200,16 @@ class OpsReportsView(TemplateView):
         ]
         return self._with_widths("Calendar setup coverage", rows)
 
+    def _campaign_status_chart(self, coupons, promotions):
+        rows = [
+            {"label": "Active coupons", "total": coupons.filter(is_active=True).count()},
+            {"label": "Inactive coupons", "total": coupons.filter(is_active=False).count()},
+        ]
+        for row in promotions.values("status").annotate(total=Count("id")).order_by("-total", "status"):
+            label = str(row.get("status") or "unassigned").replace("_", " ").title()
+            rows.append({"label": f"{label} promotions", "total": row.get("total", 0)})
+        return self._with_widths("Coupons and promotions", rows)
+
     @staticmethod
     def _with_widths(title, rows):
         max_total = max([row["total"] for row in rows] or [0])
@@ -206,3 +218,60 @@ class OpsReportsView(TemplateView):
             width = int((row["total"] / max_total) * 100) if max_total else 0
             normalized.append({**row, "width": max(width, 3) if row["total"] else 0})
         return {"title": title, "rows": normalized, "max_total": max_total}
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class ModernOpsReportsView(TemplateView):
+    template_name = "bookings/modern_dashboard.html"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsReportsAPIView(View):
+    def get(self, request):
+        view = OpsReportsView()
+        view.setup(request)
+        context = view.get_context_data()
+        chart_keys = [
+            "reservation_status_chart",
+            "booking_category_chart",
+            "item_chart",
+            "visit_chart",
+            "agent_topic_chart",
+            "client_segment_chart",
+            "feedback_source_chart",
+            "feedback_listing_chart",
+            "booking_timeline",
+            "visit_timeline",
+            "invoice_status_chart",
+            "deposit_status_chart",
+            "donation_status_chart",
+            "campaign_status_chart",
+            "calendar_chart",
+        ]
+        return JsonResponse(
+            {
+                "summary_cards": context["summary_cards"],
+                "charts": [
+                    {**context[key], "id": key, "category": self._category_for(key)}
+                    for key in chart_keys
+                ],
+                "report_since": context["report_since"].isoformat(),
+                "report_until": context["report_until"].isoformat(),
+                "legacy_url": reverse("bookings:ops-reports"),
+                "calendar_url": reverse("bookings:calendar-ops"),
+            }
+        )
+
+    @staticmethod
+    def _category_for(key):
+        if "agent" in key:
+            return "agent"
+        if "deposit" in key or "invoice" in key or "donation" in key or "campaign" in key:
+            return "money"
+        if "client" in key or "feedback" in key:
+            return "customers"
+        if "visit" in key:
+            return "traffic"
+        if "calendar" in key:
+            return "calendar"
+        return "booking"

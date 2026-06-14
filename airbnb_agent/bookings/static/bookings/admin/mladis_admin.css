@@ -39,6 +39,7 @@ body {
   height: 44px;
   place-items: center;
   border-radius: 16px;
+  object-fit: contain;
   background: var(--mladis-gold);
   color: #172033;
   font-size: 1.35rem;

@@ -1,0 +1,65 @@
+# Funding Readiness Todo
+
+Private operating checklist for preparing MLADIS LLC for government and financial-institution funding.
+
+## Phase 1 - Legal Foundation
+
+| Priority | Task | Status | Owner action needed | Notes |
+| --- | --- | --- | --- | --- |
+| High | Save NYBE filing acknowledgement/receipt | Done | None | Filing receipt and Articles packet is archived in `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`. |
+| High | Sign operating agreement | Done | None | Piter-signed execution copy exists in `docs/business/signing/execution-ready-2026-06-03/`. |
+| High | Sign initial member consent | Done | None | Piter-signed execution copy authorizes EIN, banking, payments, records, and contractor/vendor actions. |
+| High | Sign Diana operations acknowledgment if used | In progress | Send to Diana for review/acceptance | Piter/MLADIS signed; Diana signature is pending. |
+| High | Start Queens publication process | In progress | Wait for NY Daily News approval/run proof; wait for The Forum reply/payment/first date | Queens designation letter received 2026-06-08. NY Daily News order #87497 was placed and paid 2026-06-08; first run scheduled 2026-06-10. The Forum still needs cost/payment/first-date confirmation. Deadline target from formation date is 2026-10-01. |
+| Medium | File Certificate of Publication | Todo | Submit after six weeks of newspaper publication | Store affidavits and filed certificate privately. |
+
+## Phase 2 - Money Infrastructure
+
+| Priority | Task | Status | Owner action needed | Notes |
+| --- | --- | --- | --- | --- |
+| High | EIN application / CP 575 saved | Done | None | EIN issued on 2026-06-03; CP 575 letter and private EIN reference are stored outside Git in the private business-record vault. |
+| High | Open business bank account | Todo | Complete bank KYC | Needs EIN, formation proof, operating agreement, owner ID, business address. |
+| High | Configure accounting/bookkeeping tool | In progress | Finish after MLADIS OOP booking-system cleanup | Owner started the system; final accounting integration should wait until the booking system has a strong stable OOP base. |
+| High | Create business document vault outside public app assets | Done | Keep saving sensitive records there | Private Google Drive vault is documented in `docs/business/ein-and-banking/private-records-manifest.md`; keep EIN letter, bank docs, tax returns, IDs, and statements outside Git. |
+| Medium | Establish business credit basics | Todo | Open accounts responsibly | Use business bank, payment processors, business email, and vendor records consistently. |
+
+## Phase 3 - Financial Records
+
+| Priority | Task | Status | Owner action needed | Notes |
+| --- | --- | --- | --- | --- |
+| High | Import Airbnb payout history | Todo | Export from Airbnb/accounting source | Needed for revenue proof and underwriting. |
+| High | Build expense history | Todo | Gather receipts/statements | Cleaning, maintenance, supplies, software, ads, repairs, platform fees, contractor support. |
+| High | Reconcile contractor payments/reimbursements | Todo | Gather records | Keep Diana compensation and reimbursements clear for tax/accounting review. |
+| Medium | Create monthly P&L view | Todo | Review with CPA/bookkeeper | Needed for banks, lenders, and investor diligence. |
+| Medium | Create cash-flow forecast | Todo | Approve assumptions | Include direct-booking platform, deposits, cleaning, repairs, taxes, software, marketing. |
+| Medium | Build occupancy and booking metrics | Todo | Export/apply analytics | Include Airbnb stays, direct bookings, cancellations, reviews, average stay, revenue per listing. |
+
+## Phase 4 - Funding Packet
+
+| Priority | Task | Status | Owner action needed | Notes |
+| --- | --- | --- | --- | --- |
+| High | Write first MLADIS business plan | Template ready | Approve business direction | Template exists in `business-plan-outline.md`; content still needs revenue/strategy details. |
+| High | Prepare use-of-funds plan | Template ready | Choose funding amount and purpose | Worksheet exists in `use-of-funds-worksheet.md`; numbers still need approval. |
+| Medium | Prepare lender one-page summary | Todo | Approve public-safe numbers | For banks, CDFIs, SBA lender conversations. |
+| Medium | Maintain financial-institution resume guide | Done | Resume here when owner has time | Ordered guide exists in `financial-institution-resume-plan.md` for bank account, Airbnb exports, P&L, forecast, lender one-pager, use-of-funds, and lender/CDFI/SBA conversations. |
+| Medium | Prepare pitch deck outline | Todo | Approve investor story | For later private investors; use business plan and metrics files first. |
+| Medium | Prepare capability statement | Todo | Approve service categories | Useful for MWBE/government contracting if MLADIS sells services. |
+
+## Phase 5 - Government / Certification Paths
+
+| Priority | Task | Status | Owner action needed | Notes |
+| --- | --- | --- | --- | --- |
+| Medium | Evaluate NYC M/WBE certification | Todo | Confirm eligibility and documents | Potentially useful for city contracting visibility and financing resources. |
+| Medium | Evaluate NYS MWBE certification | Todo | Confirm eligibility and documents | Requires real ownership, operation, and control documentation. |
+| Medium | Register SAM.gov / UEI if needed | Todo | Owner approval before registration | EIN is ready, but wait for a specific grant/contract target and stable business email/responsible-party data before registering. |
+| Medium | Create Grants.gov account if target grant exists | Todo | Owner approval before registration | Most grants are specific; do not apply randomly. |
+| Low | Explore SBA Lender Match / CDFIs | Todo | After financial packet exists | SBA-backed loans require repayment ability and lender underwriting. |
+
+## Phase 6 - Investor Readiness
+
+| Priority | Task | Status | Owner action needed | Notes |
+| --- | --- | --- | --- | --- |
+| Medium | Clarify what business investors are funding | Todo | Decide hospitality only vs AI booking framework vs both | The story must be precise before taking outside capital. |
+| Medium | Decide investment instrument strategy | Todo | Attorney/CPA review | Equity, SAFE, convertible note, revenue share, or debt all have different consequences. |
+| Medium | Create investor data room | Todo | After sensitive-vault setup | Use `data-room-index.md`; do not expose sensitive files publicly. |
+| Low | Prepare investor FAQ | Todo | After forecast and deck | Include market, moat, operations, technology, traction, risks, use of funds. |
