@@ -1,0 +1,249 @@
+{% extends "bookings/base_ops.html" %}
+{% load static %}
+
+{% block title %}Customers CRM · MLADIS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-customers.css' %}?v=ops-customers-v1">
+{% endblock %}
+
+{% block content %}
+<main class="ops-cx-page" aria-label="Customers CRM">
+  <header class="ops-cx-header">
+    <div>
+      <h1>Customers</h1>
+      <p>Manage guest relationships, profiles, travel details, and communication history.</p>
+    </div>
+    <div class="ops-cx-header-actions">
+      <button class="ops-cx-btn" type="button">Filters</button>
+      <button class="ops-cx-btn" type="button">Export</button>
+      <a class="ops-cx-btn ops-cx-btn--primary" href="/admin/bookings/customerprofile/add/">+ Add Guest</a>
+    </div>
+  </header>
+
+  <nav class="ops-cx-tabs" role="tablist" aria-label="Customer segments">
+    <a class="ops-cx-tab{% if tab == 'all' %} is-active{% endif %}" href="?tab=all{% if search %}&search={{ search|urlencode }}{% endif %}">All <span class="ops-cx-tab-badge">{{ tab_counts.all }}</span></a>
+    <a class="ops-cx-tab{% if tab == 'repeat' %} is-active{% endif %}" href="?tab=repeat{% if search %}&search={{ search|urlencode }}{% endif %}">Repeat Guests <span class="ops-cx-tab-badge">{{ tab_counts.repeat }}</span></a>
+    <a class="ops-cx-tab{% if tab == 'vip' %} is-active{% endif %}" href="?tab=vip{% if search %}&search={{ search|urlencode }}{% endif %}">VIP <span class="ops-cx-tab-badge">{{ tab_counts.vip }}</span></a>
+    <a class="ops-cx-tab{% if tab == 'new' %} is-active{% endif %}" href="?tab=new{% if search %}&search={{ search|urlencode }}{% endif %}">New <span class="ops-cx-tab-badge">{{ tab_counts.new }}</span></a>
+    <a class="ops-cx-tab{% if tab == 'blocked' %} is-active{% endif %}" href="?tab=blocked{% if search %}&search={{ search|urlencode }}{% endif %}">Blocked <span class="ops-cx-tab-badge">{{ tab_counts.blocked }}</span></a>
+  </nav>
+
+  <form class="ops-cx-filters" method="get" action="">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    {% if selected_customer_id %}
+      <input type="hidden" name="customer" value="{{ selected_customer_id }}">
+    {% endif %}
+    <label class="ops-cx-search" aria-label="Search guests">
+      <span>⌕</span>
+      <input type="text" name="search" value="{{ search }}" placeholder="Search guests by name, email, phone, or reservation...">
+    </label>
+    <select class="ops-cx-select" name="channel" aria-label="Source or channel">
+      <option value="">All channels</option>
+      <option>Direct booking</option>
+      <option>Airbnb</option>
+      <option>Social login</option>
+      <option>Manual entry</option>
+    </select>
+    <select class="ops-cx-select" name="country" aria-label="Country">
+      <option value="">All countries</option>
+      <option>Dominican Republic</option>
+      <option>United States</option>
+      <option>Canada</option>
+    </select>
+    <select class="ops-cx-select" name="tags" aria-label="Tags">
+      <option value="">All tags</option>
+      <option>VIP</option>
+      <option>Repeat</option>
+      <option>Needs review</option>
+    </select>
+    <button class="ops-cx-btn" type="submit">More filters</button>
+  </form>
+
+  <section class="ops-cx-grid-top" aria-label="Customer table and AI sidebar">
+    <div class="ops-cx-table-shell">
+      <table class="ops-cx-table">
+        <thead>
+          <tr>
+            <th>Guest</th>
+            <th>Country</th>
+            <th>Channel</th>
+            <th>Past stays</th>
+            <th>Total spend</th>
+            <th>Status</th>
+            <th>Last contact</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr class="ops-cx-row{% if row.id|stringformat:'s' == selected_customer_id %} is-selected{% endif %}" onclick="window.location='?tab={{ tab }}&customer={{ row.id }}{% if search %}&search={{ search|urlencode }}{% endif %}'">
+              <td>
+                <div class="ops-cx-guest">
+                  <span class="ops-cx-avatar">{{ row.avatar }}</span>
+                  <div>
+                    <p class="ops-cx-guest-name">{{ row.name }}</p>
+                    <p class="ops-cx-guest-email">{{ row.email|default:'No email' }}</p>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="ops-cx-country"><span class="ops-cx-country-code">{{ row.country_code }}</span> {{ row.country }}</span>
+              </td>
+              <td>
+                <span class="ops-cx-pill ops-cx-pill--channel-{{ row.channel_cls }}">{{ row.channel }}</span>
+              </td>
+              <td>{{ row.past_stays }}</td>
+              <td>{{ row.total_spend }}</td>
+              <td>
+                <span class="ops-cx-pill ops-cx-pill--status-{{ row.status_cls }}">{{ row.status }}</span>
+              </td>
+              <td>{{ row.last_contact_label }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7">No customers found for this filter.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <footer class="ops-cx-footer">Showing {{ rows|length }} of {{ total_results }} result{{ total_results|pluralize }}.</footer>
+    </div>
+
+    <aside class="ops-cx-agent" aria-label="FairAgent assistant">
+      <h3>FairAgent</h3>
+      <div>
+        <h4>Suggested Reply</h4>
+        <div class="ops-cx-agent-note">
+          Hi {{ detail.display_name|default:'guest' }}. Early check-in is available for your upcoming stay. Let us know arrival time and transport needs.
+        </div>
+      </div>
+      <button class="ops-cx-action-btn" type="button">Use this reply</button>
+
+      <div>
+        <h4>Missing Information</h4>
+        <div class="ops-cx-list">
+          {% for item in detail.missing_information %}
+            <div class="ops-cx-list-row"><span>{{ item }}</span><button class="ops-cx-btn" type="button">Request</button></div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div>
+        <h4>Risk Assessment</h4>
+        <div class="ops-cx-list">
+          {% for label, level in detail.risk_assessment %}
+            <div class="ops-cx-list-row"><span class="ops-cx-risk-{{ level }}">{{ label }}</span></div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div>
+        <h4>Recommended Actions</h4>
+        <div class="ops-cx-list">
+          {% for action in detail.recommended_actions %}
+            <div class="ops-cx-list-row"><span>{{ action }}</span></div>
+          {% endfor %}
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  {% if detail %}
+    <section class="ops-cx-grid-bottom" aria-label="Selected customer details">
+      <article class="ops-cx-card">
+        <div class="ops-cx-profile-head">
+          <span class="ops-cx-avatar">{{ detail.avatar }}</span>
+          <div>
+            <h3>{{ detail.display_name }}</h3>
+            <p>{{ detail.country_code }} · {{ detail.country }} · {{ detail.phone }}</p>
+          </div>
+        </div>
+
+        <div class="ops-cx-tags">
+          {% for tag in detail.tags %}
+            <span class="ops-cx-tag">{{ tag }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="ops-cx-profile-meta">
+          <div class="ops-cx-meta-row"><span>Preferred language</span><strong>{{ detail.preferred_language }}</strong></div>
+          <div class="ops-cx-meta-row"><span>Birthday</span><strong>{{ detail.birthday }}</strong></div>
+          <div class="ops-cx-meta-row"><span>Travel style</span><strong>{{ detail.travel_style }}</strong></div>
+          <div class="ops-cx-meta-row"><span>Guest since</span><strong>{{ detail.guest_since }}</strong></div>
+          <div class="ops-cx-meta-row"><span>Status</span><span class="ops-cx-pill ops-cx-pill--status-{{ detail.status_cls }}">{{ detail.status_label }}</span></div>
+        </div>
+
+        <p class="ops-cx-notes">{{ detail.notes }}</p>
+      </article>
+
+      <article class="ops-cx-card">
+        <div class="ops-cx-msg-tabs">
+          <strong>Messages</strong>
+          <span>Documents</span>
+          <span>Payments</span>
+          <span>Activity</span>
+        </div>
+
+        <div class="ops-cx-thread">
+          {% for message in detail.messages %}
+            <div class="ops-cx-bubble{% if message.is_agent %} is-agent{% endif %}">
+              <div class="ops-cx-bubble-head">
+                <span>{{ message.author }}</span>
+                <span>{{ message.time }}</span>
+              </div>
+              <p>{{ message.body }}</p>
+            </div>
+          {% endfor %}
+        </div>
+
+        <form class="ops-cx-compose" action="" method="post">
+          {% csrf_token %}
+          <input type="text" placeholder="Type your message..." aria-label="Compose message">
+          <button type="button">Send</button>
+        </form>
+      </article>
+
+      <article class="ops-cx-card ops-cx-stay-block">
+        <div>
+          <h4>Last Stay</h4>
+          {% if detail.last_stay %}
+            <div class="ops-cx-stay-card">
+              <h4>{{ detail.last_stay.label }}</h4>
+              <p>{{ detail.last_stay.date_range }}</p>
+              <p>{{ detail.last_stay.amount }} · {{ detail.last_stay.status }}</p>
+            </div>
+          {% else %}
+            <p>No stay history.</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <h4>Upcoming Stay</h4>
+          {% if detail.upcoming_stay %}
+            <div class="ops-cx-stay-card">
+              <h4>{{ detail.upcoming_stay.label }}</h4>
+              <p>{{ detail.upcoming_stay.date_range }}</p>
+              <p>{{ detail.upcoming_stay.amount }} · {{ detail.upcoming_stay.status }}</p>
+            </div>
+          {% else %}
+            <p>No upcoming stay.</p>
+          {% endif %}
+        </div>
+
+        <div class="ops-cx-linked">
+          <h4>Linked Reservations</h4>
+          {% for reservation in detail.linked_reservations %}
+            <div class="ops-cx-linked-row">
+              <strong>{{ reservation.request_key }}</strong>
+              <span>{{ reservation.date_range }}</span>
+              <span>{{ reservation.amount }}</span>
+            </div>
+          {% empty %}
+            <p>No linked reservations.</p>
+          {% endfor %}
+        </div>
+      </article>
+    </section>
+  {% endif %}
+</main>
+{% endblock %}
