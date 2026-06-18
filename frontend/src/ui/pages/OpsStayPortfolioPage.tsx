@@ -157,7 +157,7 @@ const listings = [
 ];
 
 const availability = [
-  new DetailMetricModel('Occupancy', '72%', 'Next 7 days', 'blue'),
+  new DetailMetricModel('Occupancy', '72%', '', 'blue'),
   new DetailMetricModel('ADR', '$146', '+9% vs last 7 days', 'green'),
 ];
 
@@ -322,7 +322,7 @@ function DetailSmallCards() {
             <div className={`stays-v4-availability__metric stays-v4-availability__metric--${metric.tone}`} key={metric.label}>
               <strong>{metric.value}</strong>
               <span>{metric.label}</span>
-              <em>{metric.caption}</em>
+              {metric.caption && <em>{metric.caption}</em>}
             </div>
           ))}
           <AvailabilitySparkline />
@@ -414,10 +414,11 @@ export function OpsStayPortfolioPage() {
         </div>
       </section>
 
-      <ListingTabs />
-
       <section className="stays-v4-workspace">
-        <ListingList selectedId={selectedId} onSelect={setSelectedId} />
+        <div className="stays-v4-left-column">
+          <ListingTabs />
+          <ListingList selectedId={selectedId} onSelect={setSelectedId} />
+        </div>
         <SelectedListingPanel selected={selected} />
       </section>
     </main>

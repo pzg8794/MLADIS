@@ -15,10 +15,14 @@
   --stays-shadow: 0 14px 34px rgba(15, 23, 42, 0.055);
   width: 100%;
   max-width: none;
-  gap: 14px;
-  padding: 24px;
+  gap: 8px;
+  padding: 24px 24px 24px 28px;
   background: var(--stays-bg);
   color: var(--stays-ink);
+}
+
+.dashboard-content.stays-v4-page {
+  gap: 0;
 }
 
 .stays-v4-page button,
@@ -28,7 +32,7 @@
 
 .stays-v4-titlebar {
   display: flex;
-  align-items: end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
   min-height: 58px;
@@ -155,9 +159,15 @@
 
 .stays-v4-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 430px;
+  grid-template-columns: minmax(0, 1fr) 492px;
   gap: 16px;
   align-items: start;
+}
+
+.stays-v4-left-column {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
 }
 
 .stays-v4-list-card,
@@ -174,11 +184,11 @@
 
 .stays-v4-filterbar {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 126px 136px 130px 106px;
+  grid-template-columns: minmax(280px, 1fr) 112px 124px 118px 90px;
   gap: 10px;
   align-items: center;
-  min-height: 72px;
-  padding: 13px 14px;
+  min-height: 58px;
+  padding: 9px 14px;
   border-bottom: 1px solid #e6edf5;
 }
 
@@ -258,16 +268,17 @@
 .stays-v4-list {
   display: grid;
   gap: 14px;
-  padding: 14px;
+  padding: 12px 14px 14px;
 }
 
 .stays-v4-listing {
   position: relative;
   display: grid;
-  grid-template-columns: 22px 146px minmax(0, 1fr) 236px;
-  gap: 16px;
+  grid-template-columns: 16px 146px minmax(0, 1fr) 280px;
+  column-gap: 10px;
+  row-gap: 12px;
   align-items: center;
-  min-height: 166px;
+  min-height: 194px;
   border: 1px solid #e3ebf5;
   border-radius: 8px;
   padding: 13px 14px 13px 13px;
@@ -306,7 +317,7 @@
 .stays-v4-listing > img {
   display: block;
   width: 146px;
-  height: 130px;
+  height: 166px;
   border-radius: 7px;
   object-fit: cover;
 }
@@ -317,16 +328,16 @@
 
 .stays-v4-listing-main h2 {
   max-width: 440px;
-  margin: 0 0 5px;
+  margin: 0 0 4px;
   color: var(--stays-ink);
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   font-weight: 950;
-  line-height: 1.12;
+  line-height: 1.08;
   letter-spacing: 0;
 }
 
 .stays-v4-listing-main p {
-  margin: 0 0 10px;
+  margin: 0 0 7px;
   color: var(--stays-muted);
   font-size: 0.83rem;
   font-weight: 700;
@@ -342,7 +353,7 @@
 
 .stays-v4-rating {
   gap: 5px;
-  margin-bottom: 12px;
+  margin-bottom: 9px;
   color: #f59e0b;
   font-size: 0.84rem;
   font-weight: 950;
@@ -356,7 +367,7 @@
 .stays-v4-amenities {
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 11px;
   color: #243852;
   font-size: 0.8rem;
   font-weight: 780;
@@ -371,13 +382,15 @@
 .stays-v4-tags {
   flex-wrap: wrap;
   gap: 8px;
+  width: 430px;
+  max-width: calc(100vw - 96px);
 }
 
 .stays-v4-tag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 26px;
+  min-height: 24px;
   border: 1px solid var(--tag-line);
   border-radius: 5px;
   padding: 0 10px;
@@ -414,12 +427,12 @@
 
 .stays-v4-listing-stats {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 28px;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 18px;
   align-items: start;
-  min-height: 108px;
+  min-height: 132px;
   border-left: 1px solid #e6edf5;
-  padding-left: 20px;
+  padding-left: 18px;
 }
 
 .stays-v4-listing-stats > strong {
@@ -444,8 +457,8 @@
 
 .stays-v4-listing-stats div {
   display: grid;
-  grid-template-columns: 82px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 8px;
   align-items: center;
 }
 
@@ -468,6 +481,7 @@
   color: var(--stays-green);
   font-size: 0.68rem;
   font-weight: 850;
+  line-height: 1.15;
 }
 
 .stays-v4-listing-stats dd small.is-down {
@@ -557,6 +571,7 @@
 .stays-v4-selected {
   overflow: hidden;
   padding: 14px;
+  margin-top: -8px;
 }
 
 .stays-v4-selected > header {
@@ -629,19 +644,19 @@
 }
 
 .stays-v4-selected-main {
-  padding: 13px 2px 12px;
+  padding: 10px 2px 10px;
 }
 
 .stays-v4-selected-main h2 {
   margin: 0 0 5px;
   color: var(--stays-ink);
-  font-size: 1.2rem;
+  font-size: 1.14rem;
   font-weight: 950;
   line-height: 1.1;
 }
 
 .stays-v4-selected-main p {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   color: var(--stays-muted);
   font-size: 0.88rem;
   font-weight: 740;
@@ -650,7 +665,7 @@
 .stays-v4-selected-row {
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   color: #596b84;
   font-size: 0.78rem;
   font-weight: 820;
@@ -693,15 +708,15 @@
 }
 
 .stays-v4-detail-card {
-  min-height: 137px;
+  min-height: 112px;
   border: 1px solid var(--stays-line);
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px 12px;
   background: #ffffff;
 }
 
 .stays-v4-detail-card h3 {
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   color: #10223d;
   font-size: 0.88rem;
   font-weight: 950;
@@ -711,7 +726,7 @@
 .stays-v4-detail-card small {
   margin: 0;
   color: #52627d;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 740;
   line-height: 1.35;
 }
@@ -720,18 +735,18 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-top: 9px;
+  margin-top: 6px;
   color: #52627d;
 }
 
 .stays-v4-detail-card--availability > small {
-  margin: 0 0 5px;
+  margin: 0 0 3px;
 }
 
 .stays-v4-availability {
   display: grid;
   grid-template-columns: 82px minmax(0, 1fr);
-  gap: 5px 12px;
+  gap: 3px 10px;
   align-items: end;
 }
 
@@ -743,31 +758,32 @@
 
 .stays-v4-availability__metric strong {
   color: var(--stays-ink);
-  font-size: 1.62rem;
+  font-size: 1.42rem;
   font-weight: 950;
   line-height: 1;
 }
 
 .stays-v4-availability__metric span {
-  margin-top: 5px;
+  margin-top: 3px;
   color: #52627d;
   font-size: 0.72rem;
   font-weight: 800;
 }
 
 .stays-v4-availability__metric em {
-  margin-top: 5px;
+  margin-top: 3px;
   color: var(--stays-green);
   font-size: 0.67rem;
   font-style: normal;
   font-weight: 850;
+  line-height: 1.05;
 }
 
 .stays-v4-detail-sparkline {
   grid-column: 2;
   grid-row: 1 / span 2;
   width: 100%;
-  height: 46px;
+  height: 38px;
   align-self: center;
 }
 
@@ -782,8 +798,8 @@
 .stays-v4-minimap {
   position: relative;
   overflow: hidden;
-  height: 44px;
-  margin-top: 10px;
+  height: 32px;
+  margin-top: 7px;
   border-radius: 5px;
   background:
     linear-gradient(20deg, transparent 47%, rgba(148, 163, 184, 0.45) 48%, transparent 50%),
