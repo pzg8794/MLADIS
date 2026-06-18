@@ -62,7 +62,7 @@ from .models import (
     ReservationPaymentHold,
     SiteSettings,
 )
-from .services import AgentAccessContext, BookingCalendarService, MaintenanceService, ReservationPricingService
+from .services import AgentAccessContext, BookingCalendarService, MaintenanceService, ReservationPricingService, StayListingService
 from .social_auth import SOCIAL_LOGIN_PROVIDER_SPECS, get_social_login_providers
 from .social_auth import get_provider_spec, provider_auth_origin, request_origin
 
@@ -1323,7 +1323,65 @@ class ModernOpsCalendarView(TemplateView):
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsStaysView(TemplateView):
-    template_name = "bookings/modern_dashboard.html"
+    """
+    Ops Stays & Listings page (Object 2).
+
+    Renders a server-side two-column layout that matches the Stays & Listings
+    mock: property card list on the left, selected listing detail panel on the
+    right.  All data is provided by StayListingService; mocked values are
+    documented in that service.
+
+    Query params:
+        tab    – "all" | "published" | "draft" | "inactive" | "maintenance" |
+                 "archived"  (default "all")
+        search – free-text filter applied to stay name
+        stay   – slug of the listing whose detail panel should be open
+    """
+
+    template_name = "bookings/modern_ops_stays.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        service = StayListingService()
+
+        tab = self.request.GET.get("tab", "all")
+        search = self.request.GET.get("search", "").strip()
+        selected_slug = self.request.GET.get("stay", "")
+
+        stays = service.get_stays(tab=tab, search=search)
+        tab_counts = service.get_tab_counts()
+        cards = [service.card_payload(s) for s in stays]
+
+        # Resolve the selected stay: explicit slug → first stay → None
+        selected_stay = None
+        if selected_slug:
+            selected_stay = next(
+                (s for s in stays if s.slug == selected_slug), None
+            )
+        if selected_stay is None and stays:
+            selected_stay = stays[0]
+
+        detail = service.detail_payload(selected_stay) if selected_stay else None
+
+        ctx.update(
+            {
+                "tab": tab,
+                "search": search,
+                "cards": cards,
+                "detail": detail,
+                "tab_counts": tab_counts,
+                "selected_slug": selected_stay.slug if selected_stay else "",
+                "site_settings": self._site_settings(),
+            }
+        )
+        return ctx
+
+    @staticmethod
+    def _site_settings():
+        try:
+            return SiteSettings.objects.first()
+        except Exception:
+            return None
 
 
 @method_decorator(ops_staff_required, name="dispatch")
