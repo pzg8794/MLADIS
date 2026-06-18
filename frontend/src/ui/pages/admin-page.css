@@ -3253,3 +3253,583 @@
     grid-template-columns: 48px 30px minmax(0, 1fr);
   }
 }
+
+/* Command center mock fidelity pass. Sidebar/menu styles intentionally remain shared. */
+.admin-page {
+  justify-self: stretch;
+  width: 100%;
+  max-width: none;
+  gap: 14px;
+  padding: 16px 24px 24px;
+  background: #f8fafc;
+}
+
+.admin-page .admin-hero {
+  display: grid;
+  grid-template-columns: minmax(420px, 0.56fr) minmax(640px, 1fr);
+  align-items: center;
+  gap: 28px;
+  min-height: 196px;
+  border: 1px solid #dde5ef;
+  border-radius: 12px;
+  padding: 16px 16px 16px 28px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+}
+
+.admin-page .admin-hero > div {
+  gap: 15px;
+  padding: 4px 0;
+}
+
+.admin-page .admin-hero h1 {
+  gap: 8px;
+  max-width: 540px;
+  color: #081735;
+  font-size: clamp(2.25rem, 2.5vw, 2.6rem);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.admin-page .admin-hero h1 svg {
+  width: 24px;
+  height: 24px;
+  color: #7aa2ff;
+}
+
+.admin-page .admin-hero p {
+  max-width: 430px;
+  color: #52627d;
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.42;
+}
+
+.admin-page .admin-primary-link {
+  gap: 13px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 18px;
+  color: #ffffff;
+  background: #315fe8;
+  font-size: 0.92rem;
+  font-weight: 900;
+  box-shadow: 0 12px 24px rgba(49, 95, 232, 0.2);
+}
+
+.admin-page .admin-primary-link svg {
+  width: 17px;
+  height: 17px;
+}
+
+.admin-hero-media {
+  height: 162px;
+  min-height: 162px;
+  border-radius: 10px;
+  background: #dbeafe;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+}
+
+.admin-hero-media img {
+  object-fit: cover;
+  object-position: center top;
+}
+
+.admin-hero-media::after {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 42%, rgba(15, 23, 42, 0.2));
+}
+
+.admin-hero-media figcaption {
+  right: auto;
+  bottom: 13px;
+  left: 18px;
+  gap: 12px;
+}
+
+.admin-hero-media figcaption span {
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0 14px;
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 12px 20px rgba(15, 23, 42, 0.16);
+  backdrop-filter: blur(12px);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.admin-hero-media figcaption span:first-child {
+  gap: 8px;
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.admin-hero-media i {
+  width: 7px;
+  height: 7px;
+  background: #22c55e;
+}
+
+.admin-body-grid {
+  grid-template-columns: minmax(0, 1fr) 388px;
+  gap: 14px;
+}
+
+.admin-main-stack,
+.admin-side-rail {
+  gap: 14px;
+}
+
+.admin-metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-metric-card,
+.admin-operations,
+.admin-feed-card,
+.admin-health-panel,
+.admin-page .admin-shortcut {
+  border: 1px solid #dde5ef;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.045);
+}
+
+.admin-metric-card {
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 16px;
+  min-height: 102px;
+  padding: 20px 22px;
+}
+
+.admin-metric-card > span {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: var(--admin-tint, rgba(37, 99, 235, 0.12));
+  color: var(--admin-tone, #2563eb);
+}
+
+.admin-metric-card > span svg {
+  width: 28px;
+  height: 28px;
+}
+
+.admin-metric-card div {
+  gap: 4px;
+}
+
+.admin-metric-card small {
+  color: #61728d;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.admin-metric-card strong {
+  color: #081735;
+  font-size: clamp(1.48rem, 1.55vw, 1.72rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.admin-metric-card em {
+  color: #59718e;
+  font-size: 0.75rem;
+  font-weight: 820;
+}
+
+.admin-operations {
+  gap: 16px;
+  padding: 18px;
+}
+
+.admin-page .admin-section-header {
+  gap: 18px;
+}
+
+.admin-page .admin-section-header h2,
+.admin-feed-card header h2,
+.admin-health-panel header h2 {
+  gap: 9px;
+  color: #081735;
+  font-size: 1.06rem;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.admin-page .admin-section-header h2 svg {
+  color: #4772e9;
+}
+
+.admin-page .admin-section-header p {
+  margin-top: 6px;
+  color: #60708a;
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.admin-view-actions {
+  gap: 8px;
+}
+
+.admin-view-actions button {
+  min-height: 38px;
+  border-color: #dce5f1;
+  border-radius: 8px;
+  padding: 0 14px;
+  color: #1e2c46;
+  background: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.admin-view-actions button:first-child {
+  width: 38px;
+  padding: 0;
+}
+
+.admin-view-actions button:first-child svg {
+  color: #3367e8;
+}
+
+.admin-page .admin-shortcut-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-page .admin-shortcut {
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 12px;
+  height: 94px;
+  min-height: 94px;
+  border-left: 1px solid #dde5ef;
+  border-radius: 10px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.admin-page .admin-shortcut:hover {
+  transform: translateY(-1px);
+  border-color: rgba(49, 95, 232, 0.24);
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.075);
+}
+
+.admin-page .admin-shortcut__icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 13px;
+  color: var(--admin-tone, #2563eb);
+  background: var(--admin-tint, rgba(37, 99, 235, 0.12));
+}
+
+.admin-page .admin-shortcut__icon svg {
+  width: 25px;
+  height: 25px;
+}
+
+.admin-shortcut > span:last-child {
+  gap: 4px;
+}
+
+.admin-page .admin-shortcut strong {
+  color: #101c34;
+  font-size: 0.9rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.admin-page .admin-shortcut p {
+  color: #5d6e89;
+  font-size: 0.77rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.admin-page .admin-shortcut small {
+  gap: 5px;
+  color: #2f65e7;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.admin-page .admin-shortcut small svg {
+  width: 14px;
+  height: 14px;
+}
+
+.admin-side-rail {
+  position: sticky;
+  top: 82px;
+}
+
+.admin-feed-card,
+.admin-health-panel {
+  padding: 18px;
+}
+
+.admin-feed-card {
+  min-height: 306px;
+}
+
+.admin-health-panel {
+  min-height: 290px;
+}
+
+.admin-feed-card header,
+.admin-health-panel header {
+  margin-bottom: 14px;
+}
+
+.admin-feed-card header h2,
+.admin-health-panel header h2 {
+  font-size: 0.98rem;
+}
+
+.admin-feed-card header h2 svg {
+  color: #3166e8;
+}
+
+.admin-feed-card header a,
+.admin-health-panel header a {
+  color: #2f65e7;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.admin-feed-card > div {
+  gap: 10px;
+}
+
+.admin-feed-item {
+  grid-template-columns: 52px 30px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 34px;
+}
+
+.admin-feed-item time {
+  color: #8898ae;
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.admin-feed-item > span {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  color: #ffffff;
+  background: var(--admin-tone, #2563eb);
+}
+
+.admin-feed-item > span svg {
+  width: 15px;
+  height: 15px;
+}
+
+.admin-feed-item strong {
+  color: #101c34;
+  font-size: 0.78rem;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.admin-feed-item p {
+  margin-top: 3px;
+  color: #5f6f88;
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.admin-feed-card > p {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0 0;
+  color: #16a34a;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.admin-feed-card > p::before {
+  width: 7px;
+  height: 7px;
+}
+
+.admin-health-panel > div {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-health-tile {
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  align-content: center;
+  gap: 9px;
+  min-height: 70px;
+  border: 1px solid #dfe7f2;
+  border-top: 1px solid #dfe7f2;
+  border-radius: 10px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.admin-health-tile > span {
+  grid-row: 1 / span 2;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: var(--admin-tone, #2563eb);
+  background: var(--admin-tint, rgba(37, 99, 235, 0.12));
+}
+
+.admin-health-tile > span svg {
+  width: 17px;
+  height: 17px;
+}
+
+.admin-health-tile strong {
+  color: #64748b;
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1.15;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.admin-health-tile b {
+  margin-top: 3px;
+  color: #0f172a;
+  font-size: 0.72rem;
+  font-weight: 950;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.admin-health-tile em {
+  grid-column: 2;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: #15803d;
+  background: #dcfce7;
+  font-size: 0.55rem;
+  font-weight: 900;
+}
+
+.admin-uptime-card {
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.admin-uptime-card strong {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.admin-uptime-card b {
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.admin-uptime-card span {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 0.68rem;
+}
+
+.admin-uptime-chart {
+  height: 42px;
+  display: block;
+}
+
+.admin-uptime-chart svg {
+  display: block;
+  width: 100%;
+  height: 42px;
+}
+
+.admin-uptime-chart__area {
+  fill: url("#admin-uptime-fill");
+}
+
+.admin-uptime-chart__line {
+  fill: none;
+  stroke: #22c55e;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (max-width: 1280px) {
+  .admin-body-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-side-rail {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1120px) {
+  .admin-page .admin-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-page .admin-shortcut-grid,
+  .admin-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-page {
+    padding: 12px;
+  }
+
+  .admin-page .admin-hero,
+  .admin-body-grid,
+  .admin-page .admin-shortcut-grid,
+  .admin-metric-grid,
+  .admin-side-rail,
+  .admin-health-panel > div {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-page .admin-hero {
+    gap: 16px;
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .admin-page .admin-hero h1 {
+    font-size: clamp(2rem, 10vw, 2.75rem);
+  }
+
+  .admin-hero-media {
+    height: 190px;
+  }
+
+  .admin-hero-media figcaption {
+    right: 12px;
+    left: 12px;
+  }
+
+  .admin-page .admin-section-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-view-actions button {
+    flex: 1 1 0;
+  }
+}

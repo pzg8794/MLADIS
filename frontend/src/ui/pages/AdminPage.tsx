@@ -1,7 +1,7 @@
-import { Activity, Bell, Bot, Box, Building2, CalendarDays, CheckCircle2, ClipboardList, Clock3, CreditCard, Database, ExternalLink, FileText, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Users, Wifi, Wrench } from 'lucide-react';
+import { ArrowRight, Box, CalendarDays, ChartColumn, CheckCircle2, ClipboardList, Clock3, CreditCard, Database, DollarSign, House, LayoutGrid, MessageCircle, Palette, Plug, Radio, Settings, ShieldCheck, Sparkles, TrendingUp, Users, Wrench } from 'lucide-react';
 import './admin-page.css';
 
-const ADMIN_HERO_IMAGE = '/static/frontend/modern-dashboard/stays/stay-6br.jpg';
+const ADMIN_HERO_IMAGE = `${import.meta.env.BASE_URL}admin-command-hero.png`;
 
 class AdminShortcut {
   constructor(
@@ -44,23 +44,21 @@ class AdminHealthCard {
   ) {}
 }
 
-class AdminUptimeSample {
-  constructor(public readonly level: 'low' | 'base' | 'mid' | 'high' | 'peak') {}
-}
-
 const shortcuts = [
   new AdminShortcut('Records', 'Master data, settings, and system records.', '/admin/', Database, 'Open', 'blue'),
   new AdminShortcut('Reservations', 'Manage bookings, requests, and confirmations.', '/ops/reservations/', CalendarDays, 'Manage', 'teal'),
   new AdminShortcut('Guests / Customers', 'Profiles, communications, and guest history.', '/ops/customers/', Users, 'View', 'violet'),
-  new AdminShortcut('Properties', 'Inventory, details, photos, and configurations.', '/ops/stays/', Building2, 'Manage', 'blue'),
+  new AdminShortcut('Properties', 'Inventory, details, photos, and configurations.', '/ops/stays/', House, 'Manage', 'blue'),
   new AdminShortcut('Calendar', 'Availability, pricing, blocks, and overrides.', '/ops/calendar/', CalendarDays, 'Open', 'teal'),
   new AdminShortcut('Maintenance', 'Issues, inspections, and preventive maintenance.', '/ops/maintenance/', Wrench, 'View', 'amber'),
   new AdminShortcut('Work Orders', 'Task assignments, status, and completion.', '/ops/workboard/', ClipboardList, 'Open', 'violet'),
   new AdminShortcut('Payments', 'Transactions, refunds, and reconciliation.', '/ops/deposits/', CreditCard, 'Open', 'blue'),
   new AdminShortcut('Deposits', 'Holds, releases, and deposit management.', '/ops/deposits/', ShieldCheck, 'Open', 'teal'),
-  new AdminShortcut('Reports', 'Operational charts, KPIs, and exports.', '/ops/reports/', FileText, 'View', 'violet'),
-  new AdminShortcut('Brand Settings', 'Logo, contacts, policies, and brand assets.', '/ops/settings/', Settings, 'Manage', 'amber'),
-  new AdminShortcut('Agent FAQ', 'Guest and AI training, answers, and resources.', '/ops/agent/', Bot, 'Manage', 'rose'),
+  new AdminShortcut('Reports', 'Operational charts, KPIs, and exports.', '/ops/reports/', ChartColumn, 'View', 'violet'),
+  new AdminShortcut('Brand Settings', 'Logo, contacts, policies, and brand assets.', '/ops/settings/', Palette, 'Manage', 'amber'),
+  new AdminShortcut('Agent FAQ', 'Guest and AI training, answers, and resources.', '/ops/agent/', MessageCircle, 'Manage', 'rose'),
+  new AdminShortcut('Users', 'Team members, roles, and permissions.', '/admin/auth/user/', Users, 'Manage', 'violet'),
+  new AdminShortcut('OAuth / Integrations', 'API, webhooks, and connected services.', '/ops/oauth/', Plug, 'Manage', 'teal'),
 ];
 
 const metrics = [
@@ -74,40 +72,15 @@ const feedItems = [
   new AdminFeedItem('2m ago', 'New reservation created', '#R-58291 · Ocean View Villa · Aug 12 - 16', CalendarDays, 'blue'),
   new AdminFeedItem('7m ago', 'Deposit captured', '$2,450.00 · #R-58288 · Beach House', ShieldCheck, 'green'),
   new AdminFeedItem('16m ago', 'Maintenance issue reported', 'AC not cooling · Unit 3B · High priority', Wrench, 'amber'),
-  new AdminFeedItem('28m ago', 'Guest message received', 'Late check-in request · #R-58285', Bell, 'cyan'),
-  new AdminFeedItem('35m ago', 'Payment refunded', '$125.00 · #R-58262 · Cancellation', CreditCard, 'green'),
+  new AdminFeedItem('28m ago', 'Guest message received', 'Late check-in request · #R-58285', MessageCircle, 'cyan'),
+  new AdminFeedItem('35m ago', 'Payment refunded', '$125.00 · #R-58262 · Cancellation', DollarSign, 'green'),
 ];
 
 const healthCards = [
   new AdminHealthCard('Staff access', 'Staff only', 'Protected', Users, 'slate'),
-  new AdminHealthCard('Controlled edits', 'Enabled', 'Audit on', Wifi, 'green'),
-  new AdminHealthCard('Build status', 'Production', 'v2.4.17', Database, 'blue'),
+  new AdminHealthCard('Controlled edits', 'Enabled', 'Audit on', TrendingUp, 'green'),
+  new AdminHealthCard('Build status', 'Production', 'v2.4.17', ClipboardList, 'blue'),
   new AdminHealthCard('Last backup', 'Today, 3:14 AM', 'Automated', Database, 'teal'),
-];
-
-const uptimeSamples = [
-  new AdminUptimeSample('base'),
-  new AdminUptimeSample('mid'),
-  new AdminUptimeSample('base'),
-  new AdminUptimeSample('high'),
-  new AdminUptimeSample('low'),
-  new AdminUptimeSample('mid'),
-  new AdminUptimeSample('base'),
-  new AdminUptimeSample('low'),
-  new AdminUptimeSample('mid'),
-  new AdminUptimeSample('base'),
-  new AdminUptimeSample('high'),
-  new AdminUptimeSample('peak'),
-  new AdminUptimeSample('high'),
-  new AdminUptimeSample('mid'),
-  new AdminUptimeSample('high'),
-  new AdminUptimeSample('mid'),
-  new AdminUptimeSample('peak'),
-  new AdminUptimeSample('base'),
-  new AdminUptimeSample('high'),
-  new AdminUptimeSample('peak'),
-  new AdminUptimeSample('high'),
-  new AdminUptimeSample('peak'),
 ];
 
 export function AdminPage() {
@@ -116,10 +89,10 @@ export function AdminPage() {
       <section className="admin-hero">
         <div>
           <h1>Admin command center <Sparkles size={28} /></h1>
-          <p>Your operational cockpit for reservations, guests, properties, payments, maintenance, and everything in between.</p>
+          <p>Your operational cockpit for reservations, guests, properties, and everything in between.</p>
           <a href="#admin-workspaces" className="admin-primary-link">
             Open all workspaces
-            <ExternalLink size={16} />
+            <ArrowRight size={16} />
           </a>
         </div>
         <figure className="admin-hero-media">
@@ -153,11 +126,11 @@ export function AdminPage() {
           <section className="admin-operations" id="admin-workspaces">
             <header className="admin-section-header">
               <div>
-                <h2><Settings size={22} /> Operations hub</h2>
+                <h2><ClipboardList size={22} /> Operations hub</h2>
                 <p>Access the tools and data you need to run a world-class hospitality operation.</p>
               </div>
               <div className="admin-view-actions" aria-label="Workspace controls">
-                <button type="button" aria-label="Grid view"><SlidersHorizontal size={17} /></button>
+                <button type="button" aria-label="Grid view"><LayoutGrid size={17} /></button>
                 <button type="button"><Settings size={17} /> Customize</button>
               </div>
             </header>
@@ -171,7 +144,7 @@ export function AdminPage() {
                     <span>
                       <strong>{shortcut.label}</strong>
                       <p>{shortcut.description}</p>
-                      <small>{shortcut.action} <ExternalLink size={13} /></small>
+                      <small>{shortcut.action} <ArrowRight size={13} /></small>
                     </span>
                   </a>
                 );
@@ -183,7 +156,7 @@ export function AdminPage() {
         <aside className="admin-side-rail">
           <section className="admin-feed-card" aria-label="Live operations feed">
             <header>
-              <h2><Activity size={16} /> Live operations feed</h2>
+              <h2><Radio size={16} /> Live operations feed</h2>
               <a href="/ops/reports/">View all</a>
             </header>
             <div>
@@ -228,7 +201,16 @@ export function AdminPage() {
                 <span>30-day</span>
               </div>
               <div className="admin-uptime-chart" aria-label="30-day uptime trend">
-                {uptimeSamples.map((sample, index) => <i className={`admin-uptime-chart__bar admin-uptime-chart__bar--${sample.level}`} key={`${sample.level}-${index}`} />)}
+                <svg viewBox="0 0 260 48" preserveAspectRatio="none" role="img" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="admin-uptime-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#bbf7d0" stopOpacity="0.72" />
+                      <stop offset="100%" stopColor="#bbf7d0" stopOpacity="0.08" />
+                    </linearGradient>
+                  </defs>
+                  <path className="admin-uptime-chart__area" d="M0 35 C13 29 25 28 38 31 C52 36 64 27 78 28 C92 30 104 33 118 29 C132 24 145 27 158 25 C172 23 185 30 198 27 C211 24 224 26 236 22 C247 18 254 20 260 17 L260 48 L0 48 Z" />
+                  <path className="admin-uptime-chart__line" d="M0 35 C13 29 25 28 38 31 C52 36 64 27 78 28 C92 30 104 33 118 29 C132 24 145 27 158 25 C172 23 185 30 198 27 C211 24 224 26 236 22 C247 18 254 20 260 17" />
+                </svg>
               </div>
             </article>
           </section>
