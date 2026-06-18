@@ -4245,32 +4245,19 @@ details.dashboard-panel[open] {
   box-shadow: none;
 }
 
-.modern-social-button i {
+.modern-social-icon {
   display: inline-grid;
   place-items: center;
   width: 20px;
   height: 20px;
-  border-radius: 6px;
-  color: #ffffff;
-  background: #2563eb;
-  font-size: 0.72rem;
-  font-style: normal;
-  font-weight: 950;
-  text-transform: uppercase;
+  flex: 0 0 20px;
 }
 
-.modern-social-button--google i { color: #2563eb; background: #ffffff; }
-.modern-social-button--facebook i { background: #1877f2; }
-.modern-social-button--microsoft i {
-  color: transparent;
-  border-radius: 0;
-  background:
-    linear-gradient(#f25022 0 0) 0 0 / 9px 9px no-repeat,
-    linear-gradient(#7fba00 0 0) 11px 0 / 9px 9px no-repeat,
-    linear-gradient(#00a4ef 0 0) 0 11px / 9px 9px no-repeat,
-    linear-gradient(#ffb900 0 0) 11px 11px / 9px 9px no-repeat;
+.modern-social-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
 }
-.modern-social-button--github i { background: #0f172a; }
 
 .modern-auth-page--login .modern-social-button.is-disabled {
   color: #0f172a;
@@ -4279,11 +4266,11 @@ details.dashboard-panel[open] {
   cursor: not-allowed;
 }
 
-.modern-auth-page--login .modern-social-button.is-disabled span {
+.modern-auth-page--login .modern-social-button.is-disabled .modern-social-status {
   display: none;
 }
 
-.modern-auth-page--login .modern-social-button.is-disabled i {
+.modern-auth-page--login .modern-social-button.is-disabled .modern-social-icon {
   opacity: 0.74;
 }
 

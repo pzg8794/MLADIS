@@ -59,17 +59,17 @@
           {% for provider in social_login_providers %}
             {% if provider.is_launchable %}
               {% if provider.needs_origin_bridge %}
-                <a class="modern-social-button modern-social-button--{{ provider.id }}" href="{{ provider.launch_url }}"><i aria-hidden="true">{{ provider.label|slice:":1" }}</i>{{ provider.button_label }}</a>
+                <a class="modern-social-button modern-social-button--{{ provider.id }}" href="{{ provider.launch_url }}">{% include "registration/_social_icon.html" with provider=provider %}{{ provider.button_label }}</a>
               {% else %}
                 <form method="post" action="{{ provider.login_url }}">
                   {% csrf_token %}
-                  <button class="modern-social-button modern-social-button--{{ provider.id }}" type="submit"><i aria-hidden="true">{{ provider.label|slice:":1" }}</i>{{ provider.button_label }}</button>
+                  <button class="modern-social-button modern-social-button--{{ provider.id }}" type="submit">{% include "registration/_social_icon.html" with provider=provider %}{{ provider.button_label }}</button>
                 </form>
               {% endif %}
             {% else %}
               <button class="modern-social-button modern-social-button--{{ provider.id }} is-disabled" type="button" disabled title="{{ provider.help_text }}">
-                <i aria-hidden="true">{{ provider.label|slice:":1" }}</i>{{ provider.button_label }}
-                <span>{% if provider.disabled_reason %}{{ provider.disabled_reason }}{% else %}{% trans "setup needed" %}{% endif %}</span>
+                {% include "registration/_social_icon.html" with provider=provider %}{{ provider.button_label }}
+                <span class="modern-social-status">{% if provider.disabled_reason %}{{ provider.disabled_reason }}{% else %}{% trans "setup needed" %}{% endif %}</span>
               </button>
             {% endif %}
           {% endfor %}
