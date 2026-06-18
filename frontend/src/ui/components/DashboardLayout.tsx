@@ -54,15 +54,28 @@ function isNavActive(pathname: string, href: string) {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = window.location.pathname;
   const logoUrl = getConfiguredLogoUrl();
-  const [sidebarExpanded, setSidebarExpanded] = useState(() => window.innerWidth > 920);
+  const [sidebarPinned, setSidebarPinned] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const [sidebarFocused, setSidebarFocused] = useState(false);
+  const sidebarExpanded = sidebarPinned || sidebarHovered || sidebarFocused;
   let previousGroup = '';
 
   return (
     <div
-      className={`dashboard-shell${sidebarExpanded ? ' is-sidebar-expanded' : ''}`}
+      className={`dashboard-shell${sidebarExpanded ? ' is-sidebar-expanded' : ''}${sidebarPinned ? ' is-sidebar-pinned' : ''}`}
       data-theme-reference={opsTheme.referenceName}
     >
-      <aside className={`modern-admin-sidebar v4-command-sidebar${sidebarExpanded ? ' is-expanded' : ''}`}>
+      <aside
+        className={`modern-admin-sidebar v4-command-sidebar${sidebarExpanded ? ' is-expanded' : ''}`}
+        onMouseEnter={() => setSidebarHovered(true)}
+        onMouseLeave={() => setSidebarHovered(false)}
+        onFocus={() => setSidebarFocused(true)}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setSidebarFocused(false);
+          }
+        }}
+      >
         <a className="modern-admin-brand" href="/">
           <img src={logoUrl} alt="MLADIS" />
           <div>
@@ -102,8 +115,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <button
             className="v4-icon-button"
             type="button"
-            aria-label={sidebarExpanded ? 'Collapse menu' : 'Expand menu'}
-            onClick={() => setSidebarExpanded((current) => !current)}
+            aria-label={sidebarPinned ? 'Unpin menu' : 'Pin menu open'}
+            onClick={() => setSidebarPinned((current) => !current)}
           >
             <Menu size={19} />
           </button>

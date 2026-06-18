@@ -11415,6 +11415,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
   gap: 0;
   padding: 0;
   background: #f8fafc;
+  transition: grid-template-columns 220ms ease;
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"].is-sidebar-expanded {
