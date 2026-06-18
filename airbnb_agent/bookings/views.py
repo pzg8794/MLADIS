@@ -2127,7 +2127,7 @@ class ModernOpsCustomersView(TemplateView):
         selected_id = self.request.GET.get("customer", "").strip()
 
         profiles = service.get_profiles(tab=tab, search=search)
-        rows = [service.table_row_payload(profile) for profile in profiles[:5]]
+        rows = service.table_rows(profiles, limit=4)
         tab_counts = service.get_tab_counts()
 
         selected_profile = None

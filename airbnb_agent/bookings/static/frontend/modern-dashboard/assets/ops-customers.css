@@ -162,6 +162,10 @@
   background: #f8fbff;
 }
 
+.ops-cx-row.is-mock {
+  background: #f8fbff;
+}
+
 .ops-cx-row.is-selected {
   background: #eef6ff;
 }

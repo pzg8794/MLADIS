@@ -76,7 +76,7 @@
         </thead>
         <tbody>
           {% for row in rows %}
-            <tr class="ops-cx-row{% if row.id|stringformat:'s' == selected_customer_id %} is-selected{% endif %}" onclick="window.location='?tab={{ tab }}&customer={{ row.id }}{% if search %}&search={{ search|urlencode }}{% endif %}'">
+            <tr class="ops-cx-row{% if row.id|stringformat:'s' == selected_customer_id %} is-selected{% endif %}{% if row.is_mock %} is-mock{% endif %}"{% if not row.is_mock %} onclick="window.location='?tab={{ tab }}&customer={{ row.id }}{% if search %}&search={{ search|urlencode }}{% endif %}'"{% endif %}>
               <td>
                 <div class="ops-cx-guest">
                   <span class="ops-cx-avatar">{{ row.avatar }}</span>

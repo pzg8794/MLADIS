@@ -3681,6 +3681,11 @@ class CustomersCRMService:
             "blocked": base.filter(segment=ClientSegment.BLACKLISTED).count(),
         }
 
+    def table_rows(self, profiles, limit=4):
+        rows = [self.mock_anchor_row()]
+        rows.extend(self.table_row_payload(profile) for profile in profiles[:limit])
+        return rows
+
     def table_row_payload(self, profile):
         total_res = self._total_reservations(profile)
         status_label, status_cls = self._status_badge(profile)
@@ -3701,6 +3706,29 @@ class CustomersCRMService:
             "last_contact": profile.updated_at,
             "last_contact_label": profile.updated_at.strftime("%b %-d, %Y"),
             "segment": profile.segment,
+            "is_mock": False,
+        }
+
+    @staticmethod
+    def mock_anchor_row():
+        return {
+            "id": "mock-maria-rodriguez",
+            "name": "Maria Rodriguez",
+            "email": "maria.rodriguez@mladis.com",
+            "phone": "+1 (809) 555-0198",
+            "avatar": "MR",
+            "country": "Dominican Republic",
+            "country_code": "DO",
+            "channel": "Direct Website",
+            "channel_cls": "direct",
+            "past_stays": 5,
+            "total_spend": "$4,320",
+            "status": "VIP",
+            "status_cls": "vip",
+            "last_contact": timezone.now(),
+            "last_contact_label": "Jun 5, 2026",
+            "segment": ClientSegment.VIP,
+            "is_mock": True,
         }
 
     def detail_payload(self, profile):
