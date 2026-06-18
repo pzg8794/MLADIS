@@ -62,7 +62,14 @@ from .models import (
     ReservationPaymentHold,
     SiteSettings,
 )
-from .services import AgentAccessContext, BookingCalendarService, MaintenanceService, ReservationPricingService, StayListingService
+from .services import (
+    AgentAccessContext,
+    BookingCalendarService,
+    CustomersCRMService,
+    MaintenanceService,
+    ReservationPricingService,
+    StayListingService,
+)
 from .social_auth import SOCIAL_LOGIN_PROVIDER_SPECS, get_social_login_providers
 from .social_auth import get_provider_spec, provider_auth_origin, request_origin
 
@@ -2109,7 +2116,41 @@ class OpsReservationStatusAPIView(View):
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsCustomersView(TemplateView):
-    template_name = "bookings/modern_dashboard.html"
+    template_name = "bookings/modern_ops_customers.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        service = CustomersCRMService()
+
+        tab = self.request.GET.get("tab", "all")
+        search = self.request.GET.get("search", "").strip()
+        selected_id = self.request.GET.get("customer", "").strip()
+
+        profiles = service.get_profiles(tab=tab, search=search)
+        rows = [service.table_row_payload(profile) for profile in profiles[:5]]
+        tab_counts = service.get_tab_counts()
+
+        selected_profile = None
+        if selected_id.isdigit():
+            selected_profile = next((profile for profile in profiles if profile.pk == int(selected_id)), None)
+        if selected_profile is None and profiles:
+            selected_profile = profiles[0]
+
+        detail = service.detail_payload(selected_profile) if selected_profile else None
+
+        ctx.update(
+            {
+                "tab": tab,
+                "search": search,
+                "rows": rows,
+                "tab_counts": tab_counts,
+                "detail": detail,
+                "selected_customer_id": str(selected_profile.pk) if selected_profile else "",
+                "total_results": len(profiles),
+                "site_settings": SiteSettings.current(),
+            }
+        )
+        return ctx
 
 
 @method_decorator(ops_staff_required, name="dispatch")
