@@ -13,7 +13,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import transaction
-from django.db.models import F
+from django.db.models import Count, F, Q, Sum
+from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -3620,3 +3621,271 @@ class StayListingService:
             check_in__gte=today,
             check_in__lte=today + timedelta(days=days),
         )
+
+
+class CustomersCRMService:
+    """Service layer for the server-rendered Customers CRM page."""
+
+    COUNTRY_POOL = [
+        "Dominican Republic",
+        "United States",
+        "Canada",
+        "France",
+        "Spain",
+        "Mexico",
+        "Colombia",
+    ]
+
+    def get_profiles(self, tab="all", search=""):
+        qs = (
+            CustomerProfile.objects.annotate(
+                direct_reservations=Count("booking_inquiries", distinct=True),
+                airbnb_reservations=Count("airbnb_guest_records", distinct=True),
+                feedback_total=Count("feedback_entries", distinct=True),
+                invoice_total=Count("invoices", distinct=True),
+                total_spend_cents=Coalesce(Sum("invoices__total_cents"), 0),
+            )
+            .prefetch_related("booking_inquiries__item", "feedback_entries__item")
+            .order_by("-updated_at", "name", "email")
+        )
+
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search)
+                | Q(email__icontains=search)
+                | Q(phone__icontains=search)
+            )
+
+        if tab == "vip":
+            qs = qs.filter(segment=ClientSegment.VIP)
+        elif tab == "blocked":
+            qs = qs.filter(segment=ClientSegment.BLACKLISTED)
+        elif tab == "repeat":
+            qs = qs.filter(Q(direct_reservations__gte=2) | Q(airbnb_reservations__gte=2))
+        elif tab == "new":
+            qs = qs.filter(direct_reservations=0, airbnb_reservations=0)
+
+        return list(qs)
+
+    def get_tab_counts(self):
+        base = CustomerProfile.objects.annotate(
+            direct_reservations=Count("booking_inquiries", distinct=True),
+            airbnb_reservations=Count("airbnb_guest_records", distinct=True),
+        )
+        repeat_q = Q(direct_reservations__gte=2) | Q(airbnb_reservations__gte=2)
+        return {
+            "all": base.count(),
+            "repeat": base.filter(repeat_q).count(),
+            "vip": base.filter(segment=ClientSegment.VIP).count(),
+            "new": base.filter(direct_reservations=0, airbnb_reservations=0).count(),
+            "blocked": base.filter(segment=ClientSegment.BLACKLISTED).count(),
+        }
+
+    def table_row_payload(self, profile):
+        total_res = self._total_reservations(profile)
+        status_label, status_cls = self._status_badge(profile)
+        return {
+            "id": profile.pk,
+            "name": profile.name or profile.email or f"Customer {profile.pk}",
+            "email": profile.email,
+            "phone": profile.phone,
+            "avatar": self._avatar(profile),
+            "country": self._country(profile),
+            "country_code": self._country_code(profile),
+            "channel": profile.get_source_display(),
+            "channel_cls": self._channel_cls(profile),
+            "past_stays": total_res,
+            "total_spend": self._money(profile.total_spend_cents),
+            "status": status_label,
+            "status_cls": status_cls,
+            "last_contact": profile.updated_at,
+            "last_contact_label": profile.updated_at.strftime("%b %-d, %Y"),
+            "segment": profile.segment,
+        }
+
+    def detail_payload(self, profile):
+        bookings = list(
+            profile.booking_inquiries.select_related("item").order_by("-check_in", "-updated_at")[:12]
+        )
+        upcoming = [b for b in bookings if b.check_in and b.check_in >= date.today()]
+        latest = bookings[0] if bookings else None
+        next_stay = upcoming[0] if upcoming else None
+        feedback = list(profile.feedback_entries.select_related("item").order_by("-created_at")[:2])
+
+        linked = [
+            {
+                "request_key": booking.request_key,
+                "date_range": f"{booking.check_in:%b %-d} - {booking.check_out:%b %-d, %Y}",
+                "amount": booking.display_total,
+                "status": booking.get_status_display(),
+                "status_cls": "ok" if booking.status == BookingStatus.CONFIRMED else "warn",
+            }
+            for booking in bookings[:3]
+        ]
+
+        return {
+            "profile": profile,
+            "display_name": profile.name or profile.email or f"Customer {profile.pk}",
+            "avatar": self._avatar(profile),
+            "status_label": self._status_badge(profile)[0],
+            "status_cls": self._status_badge(profile)[1],
+            "country": self._country(profile),
+            "country_code": self._country_code(profile),
+            "phone": profile.phone or "-",
+            "preferred_language": (profile.preferred_language or "en").upper(),
+            "birthday": self._mock_birthday(profile),
+            "travel_style": self._mock_travel_style(profile),
+            "guest_since": profile.created_at.strftime("%b %-d, %Y"),
+            "tags": self._tags(profile),
+            "notes": profile.notes or "Loves curated stays and fast communication.",
+            "messages": self._messages(profile, feedback),
+            "last_stay": self._stay_card(latest),
+            "upcoming_stay": self._stay_card(next_stay),
+            "linked_reservations": linked,
+            "missing_information": self._missing_information(profile),
+            "risk_assessment": self._risk_assessment(profile),
+            "recommended_actions": self._recommended_actions(profile),
+        }
+
+    @staticmethod
+    def _total_reservations(profile):
+        return (profile.direct_reservations or 0) + (profile.airbnb_reservations or 0)
+
+    @staticmethod
+    def _money(cents):
+        return f"${(cents or 0) / 100:,.0f}"
+
+    @staticmethod
+    def _avatar(profile):
+        text = (profile.name or profile.email or "CU").strip()
+        parts = [chunk for chunk in text.split() if chunk]
+        if len(parts) >= 2:
+            return f"{parts[0][0]}{parts[1][0]}".upper()
+        return text[:2].upper()
+
+    def _country(self, profile):
+        return self.COUNTRY_POOL[profile.pk % len(self.COUNTRY_POOL)]
+
+    def _country_code(self, profile):
+        mapping = {
+            "Dominican Republic": "DO",
+            "United States": "US",
+            "Canada": "CA",
+            "France": "FR",
+            "Spain": "ES",
+            "Mexico": "MX",
+            "Colombia": "CO",
+        }
+        return mapping.get(self._country(profile), "UN")
+
+    @staticmethod
+    def _channel_cls(profile):
+        mapping = {
+            "direct": "direct",
+            "airbnb": "airbnb",
+            "social": "social",
+            "manual": "manual",
+        }
+        return mapping.get(profile.source, "manual")
+
+    def _status_badge(self, profile):
+        if profile.segment == ClientSegment.BLACKLISTED:
+            return ("Blocked", "blocked")
+        if profile.segment == ClientSegment.VIP:
+            return ("VIP", "vip")
+        if self._total_reservations(profile) >= 2:
+            return ("Repeat", "repeat")
+        if self._total_reservations(profile) == 0:
+            return ("New", "new")
+        return ("Active", "active")
+
+    @staticmethod
+    def _mock_birthday(profile):
+        day = (profile.pk % 27) + 1
+        month = (profile.pk % 11) + 1
+        year = 1980 + (profile.pk % 18)
+        return date(year, month, day).strftime("%b %-d, %Y")
+
+    @staticmethod
+    def _mock_travel_style(profile):
+        styles = ["Leisure", "Business", "Family", "Remote work"]
+        return styles[profile.pk % len(styles)]
+
+    def _tags(self, profile):
+        tags = [profile.get_segment_display()]
+        tags.append(profile.get_source_display())
+        if self._total_reservations(profile) >= 2:
+            tags.append("Repeat")
+        return tags
+
+    def _messages(self, profile, feedback):
+        if feedback:
+            primary = feedback[0]
+            return [
+                {
+                    "author": profile.name or "Guest",
+                    "time": primary.created_at.strftime("%b %-d, %Y %I:%M %p"),
+                    "body": primary.feedback_text[:160],
+                    "is_agent": False,
+                },
+                {
+                    "author": "You",
+                    "time": timezone.now().strftime("%b %-d, %Y %I:%M %p"),
+                    "body": "Thanks for the update. We have your preferences noted and your next stay is prepared.",
+                    "is_agent": True,
+                },
+            ]
+        return [
+            {
+                "author": "You",
+                "time": timezone.now().strftime("%b %-d, %Y %I:%M %p"),
+                "body": "Welcome to MLADIS. Let us know your check-in preferences and arrival details.",
+                "is_agent": True,
+            }
+        ]
+
+    @staticmethod
+    def _stay_card(booking):
+        if not booking:
+            return None
+        stay_name = booking.item.business_display_name if booking.item else "Unassigned stay"
+        return {
+            "label": stay_name,
+            "date_range": f"{booking.check_in:%b %-d} - {booking.check_out:%b %-d, %Y}",
+            "amount": booking.display_total,
+            "status": booking.get_status_display(),
+        }
+
+    @staticmethod
+    def _missing_information(profile):
+        rows = []
+        if not profile.phone:
+            rows.append("Phone number missing")
+        if not profile.email:
+            rows.append("Email not available")
+        if profile.marketing_consent_status != MarketingConsentStatus.OPTED_IN:
+            rows.append("Promotion consent not confirmed")
+        if not rows:
+            rows.append("No blockers")
+        return rows
+
+    def _risk_assessment(self, profile):
+        risks = []
+        if profile.segment == ClientSegment.BLACKLISTED:
+            risks.append(("Profile marked as blacklisted", "high"))
+        if self._total_reservations(profile) >= 2:
+            risks.append(("Payment history available", "low"))
+        if profile.feedback_total:
+            risks.append(("Guest feedback history available", "low"))
+        if not risks:
+            risks.append(("Limited history, request extra verification", "medium"))
+        return risks
+
+    @staticmethod
+    def _recommended_actions(profile):
+        actions = ["Send check-in instructions", "Share local guide"]
+        if profile.can_receive_promotions:
+            actions.append("Send loyalty offer")
+        if profile.segment == ClientSegment.BLACKLISTED:
+            actions = ["Require manual approval", "Request ID verification"]
+        return actions
