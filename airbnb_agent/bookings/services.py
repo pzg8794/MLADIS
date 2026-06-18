@@ -83,6 +83,29 @@ def _stripe_object_status(value):
     return getattr(value, "status", "")
 
 
+def _stripe_object_value(value, key, default=""):
+    if not value:
+        return default
+    if isinstance(value, dict):
+        return value.get(key, default)
+    return getattr(value, key, default)
+
+
+def _stripe_object_metadata(value):
+    if not value:
+        return {}
+    metadata = value.get("metadata", {}) if isinstance(value, dict) else getattr(value, "metadata", {})
+    if not metadata:
+        return {}
+    if isinstance(metadata, dict):
+        return dict(metadata)
+    if hasattr(metadata, "to_dict"):
+        return metadata.to_dict()
+    if hasattr(metadata, "items"):
+        return dict(metadata.items())
+    return {}
+
+
 def _stripe_payment_intent_status(payment_intent):
     if not payment_intent:
         return ""
@@ -106,6 +129,125 @@ def _stripe_checkout_successful(session):
         "requires_capture",
         "succeeded",
     }
+
+
+LOCAL_STRIPE_ENVIRONMENTS = {"local", "dev", "development", "test", "testing"}
+
+
+@dataclass(frozen=True)
+class StripeRuntimeConfig:
+    """Resolved Stripe runtime state for the current request."""
+
+    mode: str
+    secret_key: str = ""
+    error: str = ""
+
+    @property
+    def is_configured(self):
+        return bool(self.secret_key) and not self.error
+
+    def configure_api(self):
+        if not self.is_configured:
+            return False
+        stripe.api_key = self.secret_key
+        stripe.api_version = settings.STRIPE_API_VERSION
+        return True
+
+
+class StripeRuntimePolicy:
+    """Chooses Stripe mode from environment/request without hardcoding a forever choice."""
+
+    VALID_MODES = {"auto", "test", "live"}
+
+    @classmethod
+    def resolve(cls, api_key=None, request=None):
+        configured_mode = (getattr(settings, "STRIPE_MODE", "auto") or "auto").strip().lower()
+        if configured_mode not in cls.VALID_MODES:
+            return StripeRuntimeConfig(
+                mode=configured_mode,
+                error="STRIPE_MODE must be auto, test, or live.",
+            )
+
+        mode = cls._mode(configured_mode, request=request)
+        secret_key = cls._secret_key_for_mode(mode, api_key=api_key)
+        if mode == "test" and secret_key.startswith("sk_live_"):
+            return StripeRuntimeConfig(
+                mode=mode,
+                error=(
+                    "Local Stripe checkout resolved to test mode, but a live Stripe key is configured. "
+                    "Set STRIPE_TEST_SECRET_KEY=sk_test_... or STRIPE_SECRET_KEY=sk_test_... for local testing. "
+                    "Set STRIPE_MODE=live only for an intentional live runtime."
+                ),
+            )
+        if mode == "live" and secret_key.startswith("sk_test_"):
+            return StripeRuntimeConfig(
+                mode=mode,
+                error=(
+                    "Stripe live mode is selected, but the configured key is a test key. "
+                    "Set STRIPE_LIVE_SECRET_KEY=sk_live_... or STRIPE_SECRET_KEY=sk_live_... for production."
+                ),
+            )
+        return StripeRuntimeConfig(mode=mode, secret_key=secret_key)
+
+    @classmethod
+    def _mode(cls, configured_mode, request=None):
+        if configured_mode in {"test", "live"}:
+            return configured_mode
+        return "test" if cls._is_local_runtime(request=request) else "live"
+
+    @staticmethod
+    def _is_local_runtime(request=None):
+        environment = (getattr(settings, "MLADIS_ENVIRONMENT", "") or "").strip().lower()
+        if getattr(settings, "DEBUG", False) or environment in LOCAL_STRIPE_ENVIRONMENTS:
+            return True
+        if not request:
+            return False
+        raw_host = request.get_host().strip().lower()
+        if raw_host.startswith("["):
+            host = raw_host.split("]", 1)[0] + "]"
+        else:
+            host = raw_host.split(":", 1)[0]
+        local_hosts = {item.strip().lower() for item in getattr(settings, "STRIPE_LOCAL_HOSTS", [])}
+        return host in local_hosts
+
+    @staticmethod
+    def _secret_key_for_mode(mode, api_key=None):
+        if api_key is not None:
+            return (api_key or "").strip()
+        if mode == "test":
+            return (
+                (getattr(settings, "STRIPE_TEST_SECRET_KEY", "") or "").strip()
+                or (getattr(settings, "STRIPE_SECRET_KEY", "") or "").strip()
+            )
+        return (
+            (getattr(settings, "STRIPE_LIVE_SECRET_KEY", "") or "").strip()
+            or (getattr(settings, "STRIPE_SECRET_KEY", "") or "").strip()
+        )
+
+
+class StripeServiceMixin:
+    """Shared Stripe configuration for checkout/domain services."""
+
+    def _init_stripe(self, api_key=None):
+        self._explicit_api_key = api_key
+        self._configure_for_request()
+
+    @property
+    def is_configured(self):
+        return self.stripe_config.is_configured
+
+    def _configure_for_request(self, request=None):
+        self.stripe_config = StripeRuntimePolicy.resolve(
+            api_key=self._explicit_api_key,
+            request=request,
+        )
+        self.api_key = self.stripe_config.secret_key
+        self.stripe_mode = self.stripe_config.mode
+        self.configuration_error = self.stripe_config.error
+        return self.stripe_config.configure_api()
+
+    def _stripe_unavailable_message(self, default_message):
+        return self.configuration_error or default_message
 
 
 class PaymentAuthorization:
@@ -1706,6 +1848,7 @@ class BookingEmailService:
             status=deposit.status,
             request_key=self._request_key(deposit),
             admin_url=self._admin_url(request, "damagedeposit", deposit.id),
+            confirmation_url=self._payment_confirmation_url(request, deposit),
             extra_lines=[
                 "transaction_type=security_deposit_hold",
                 f"damage_deposit_id={deposit.id}",
@@ -1744,6 +1887,7 @@ class BookingEmailService:
             status=hold.status,
             request_key=self._request_key(hold),
             admin_url=self._admin_url(request, "reservationpaymenthold", hold.id),
+            confirmation_url=self._payment_confirmation_url(request, hold),
             extra_lines=[
                 "transaction_type=reservation_payment_hold",
                 f"reservation_payment_hold_id={hold.id}",
@@ -1779,6 +1923,7 @@ class BookingEmailService:
         status,
         request_key,
         admin_url,
+        confirmation_url,
         extra_lines,
         customer_note,
         provider,
@@ -1804,8 +1949,15 @@ class BookingEmailService:
                 "",
                 "[links]",
                 f"admin_url={admin_url}",
+                f"payment_confirmation_url={confirmation_url}",
             ]
         )
+        confirmation_lines = []
+        if confirmation_url:
+            confirmation_lines = [
+                f"Confirmation: {confirmation_url}",
+                "",
+            ]
         customer_body = "\n".join(
             [
                 f"Hi {guest_name},",
@@ -1817,6 +1969,7 @@ class BookingEmailService:
                 "This is an authorization hold, not a final capture at this step.",
                 customer_note,
                 "",
+                *confirmation_lines,
                 "MLADIS",
             ]
         )
@@ -1943,6 +2096,17 @@ class BookingEmailService:
         if not request or not object_id:
             return ""
         return request.build_absolute_uri(f"/admin/bookings/{model_name}/{object_id}/change/")
+
+    def _payment_confirmation_url(self, request, transaction):
+        inquiry = getattr(transaction, "inquiry", None)
+        if not request or not inquiry:
+            return ""
+        return request.build_absolute_uri(
+            reverse(
+                "bookings:payment-confirmation",
+                kwargs={"token": inquiry.payment_confirmation_token},
+            )
+        )
 
     def _append_note(self, notes, note):
         return f"{notes}\n{note}".strip() if notes else note
@@ -2106,15 +2270,9 @@ class MarketingConsentEmailService:
         return True
 
 
-class DamageDepositService:
+class DamageDepositService(StripeServiceMixin):
     def __init__(self, api_key=None):
-        self.api_key = api_key if api_key is not None else settings.STRIPE_SECRET_KEY
-        stripe.api_key = self.api_key
-        stripe.api_version = settings.STRIPE_API_VERSION
-
-    @property
-    def is_configured(self):
-        return bool(self.api_key)
+        self._init_stripe(api_key)
 
     def create_checkout_for_inquiry(self, inquiry, request) -> DepositCheckoutResult:
         deposit = DamageDeposit.objects.filter(inquiry=inquiry).order_by("-created_at").first()
@@ -2133,14 +2291,19 @@ class DamageDepositService:
 
     def create_checkout_session(self, deposit: DamageDeposit, request) -> DepositCheckoutResult:
         deposit.payment_provider = DepositProvider.STRIPE
+        self._configure_for_request(request)
         if not self.is_configured:
             deposit.status = DepositStatus.REQUIRES_CONFIGURATION
-            deposit.notes = "Stripe is not configured. Set STRIPE_SECRET_KEY before collecting deposits."
+            deposit.notes = self._stripe_unavailable_message(
+                "Stripe is not configured. Set STRIPE_TEST_SECRET_KEY before collecting deposits locally."
+            )
             deposit.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
             self._log_deposit_event(deposit, "damage_deposit.requires_configuration", request)
             return DepositCheckoutResult(
                 success=False,
-                message="Stripe is not configured yet, so no deposit hold was created.",
+                message=self._stripe_unavailable_message(
+                    "Stripe is not configured yet, so no deposit hold was created."
+                ),
             )
 
         try:
@@ -2224,6 +2387,7 @@ class DamageDepositService:
             return
 
     def sync_checkout_session(self, session_id, request=None):
+        self._configure_for_request(request)
         if not self.is_configured:
             return None
         session = stripe.checkout.Session.retrieve(session_id)
@@ -2236,6 +2400,7 @@ class DamageDepositService:
         return payment.record
 
     def capture_deposit(self, deposit: DamageDeposit):
+        self._configure_for_request()
         deposit = self._require_capturable_deposit(deposit)
         payment_intent = stripe.PaymentIntent.capture(deposit.stripe_payment_intent_id)
         charge_id = payment_intent.get("latest_charge", "")
@@ -2250,6 +2415,7 @@ class DamageDepositService:
         return deposit
 
     def release_deposit(self, deposit: DamageDeposit):
+        self._configure_for_request()
         deposit = self._require_capturable_deposit(deposit)
         stripe.PaymentIntent.cancel(deposit.stripe_payment_intent_id)
 
@@ -2308,7 +2474,9 @@ class DamageDepositService:
 
     def _require_capturable_deposit(self, deposit):
         if not self.is_configured:
-            raise ValueError("Stripe is not configured. Set STRIPE_SECRET_KEY first.")
+            raise ValueError(
+                self._stripe_unavailable_message("Stripe is not configured. Set STRIPE_TEST_SECRET_KEY first.")
+            )
         if not deposit or deposit.payment_provider != DepositProvider.STRIPE:
             raise ValueError("This deposit is not managed by Stripe.")
         if not deposit.stripe_payment_intent_id:
@@ -2318,15 +2486,9 @@ class DamageDepositService:
         return deposit
 
 
-class ReservationPaymentHoldService:
+class ReservationPaymentHoldService(StripeServiceMixin):
     def __init__(self, api_key=None):
-        self.api_key = api_key if api_key is not None else settings.STRIPE_SECRET_KEY
-        stripe.api_key = self.api_key
-        stripe.api_version = settings.STRIPE_API_VERSION
-
-    @property
-    def is_configured(self):
-        return bool(self.api_key)
+        self._init_stripe(api_key)
 
     def create_checkout_for_inquiry(self, inquiry: BookingInquiry, request) -> DepositCheckoutResult:
         ReservationRequestService().prepare(inquiry, coupon=inquiry.coupon, redeem_coupon=False)
@@ -2355,8 +2517,314 @@ class ReservationPaymentHoldService:
 
         return self.create_checkout_session(hold, request)
 
+    def create_combined_checkout_for_inquiry(self, inquiry: BookingInquiry, request) -> DepositCheckoutResult:
+        ReservationRequestService().prepare(inquiry, coupon=inquiry.coupon, redeem_coupon=False)
+        inquiry.save(
+            update_fields=[
+                "subtotal_cents",
+                "discount_cents",
+                "deposit_cents",
+                "total_cents",
+                "currency",
+                "updated_at",
+            ]
+        )
+
+        deposit = (
+            DamageDeposit.objects.filter(
+                inquiry=inquiry,
+                payment_provider=DepositProvider.STRIPE,
+                status__in=[
+                    DepositStatus.NEW,
+                    DepositStatus.REQUIRES_CONFIGURATION,
+                    DepositStatus.CHECKOUT_CREATED,
+                    DepositStatus.FAILED,
+                ],
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if not deposit:
+            deposit = DamageDeposit(inquiry=inquiry)
+        deposit.item = inquiry.item
+        deposit.guest_name = inquiry.guest_name
+        deposit.email = inquiry.email
+        deposit.amount_cents = settings.DEPOSIT_AMOUNT_CENTS
+        deposit.currency = settings.DEPOSIT_CURRENCY
+        deposit.payment_provider = DepositProvider.STRIPE
+        deposit.notes = self._append_note(
+            deposit.notes,
+            "Combined one-screen checkout: refundable damage deposit authorization.",
+        )
+        deposit.save()
+
+        hold = (
+            ReservationPaymentHold.objects.filter(
+                inquiry=inquiry,
+                payment_provider=DepositProvider.STRIPE,
+                status__in=[
+                    DepositStatus.NEW,
+                    DepositStatus.REQUIRES_CONFIGURATION,
+                    DepositStatus.CHECKOUT_CREATED,
+                    DepositStatus.FAILED,
+                ],
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if not hold:
+            hold = ReservationPaymentHold(inquiry=inquiry)
+        hold.item = inquiry.item
+        hold.guest_name = inquiry.guest_name
+        hold.email = inquiry.email
+        hold.amount_cents = inquiry.reservation_payment_cents
+        hold.currency = inquiry.currency
+        hold.payment_provider = DepositProvider.STRIPE
+        hold.capture_after = self._capture_after(inquiry)
+        hold.notes = self._append_note(
+            hold.notes,
+            "Combined one-screen checkout: stay payment authorization recorded separately.",
+        )
+        hold.save()
+
+        existing_checkout_session_id = deposit.stripe_checkout_session_id
+        if (
+            existing_checkout_session_id
+            and existing_checkout_session_id.startswith("cs_")
+            and existing_checkout_session_id == hold.stripe_checkout_session_id
+            and deposit.checkout_url
+            and hold.checkout_url
+            and not deposit.stripe_payment_intent_id
+            and not hold.stripe_payment_intent_id
+        ):
+            return DepositCheckoutResult(
+                success=True,
+                message="Combined payment checkout already exists.",
+                checkout_url=deposit.checkout_url,
+            )
+
+        self._configure_for_request(request)
+        if not self.is_configured:
+            message = self._stripe_unavailable_message(
+                "Stripe is not configured. Set STRIPE_TEST_SECRET_KEY before collecting combined payments locally."
+            )
+            deposit.status = DepositStatus.REQUIRES_CONFIGURATION
+            deposit.notes = self._append_note(deposit.notes, message)
+            deposit.save(update_fields=["status", "notes", "updated_at"])
+            hold.status = DepositStatus.REQUIRES_CONFIGURATION
+            hold.notes = self._append_note(hold.notes, message)
+            hold.save(update_fields=["status", "notes", "updated_at"])
+            return DepositCheckoutResult(success=False, message=message)
+
+        try:
+            metadata = {
+                "booking_inquiry_id": str(inquiry.id),
+                "damage_deposit_id": str(deposit.id),
+                "reservation_payment_hold_id": str(hold.id),
+                "request_key": inquiry.request_key,
+            }
+            customer_payload = {
+                "email": inquiry.email,
+                "name": inquiry.guest_name,
+                "metadata": metadata,
+            }
+            if inquiry.phone:
+                customer_payload["phone"] = inquiry.phone
+            customer = stripe.Customer.create(**customer_payload)
+            customer_id = _stripe_object_id(customer)
+            metadata["customer_id"] = customer_id
+            session = stripe.checkout.Session.create(
+                mode="setup",
+                customer=customer_id,
+                payment_method_types=["card"],
+                metadata=metadata,
+                setup_intent_data={
+                    "metadata": metadata,
+                },
+                success_url=(
+                    request.build_absolute_uri(reverse("bookings:combined-payment-success"))
+                    + "?session_id={CHECKOUT_SESSION_ID}"
+                ),
+                cancel_url=request.build_absolute_uri(reverse("bookings:home")) + "#booking",
+            )
+        except stripe.StripeError as error:
+            deposit.status = DepositStatus.FAILED
+            deposit.notes = self._append_note(deposit.notes, str(error))
+            deposit.save(update_fields=["status", "notes", "updated_at"])
+            hold.status = DepositStatus.FAILED
+            hold.notes = self._append_note(hold.notes, str(error))
+            hold.save(update_fields=["status", "notes", "updated_at"])
+            self._log_payment_event(hold, "reservation_payment_hold.combined_setup_failed", request)
+            return DepositCheckoutResult(success=False, message=str(error))
+
+        checkout_session_id = _stripe_object_id(session)
+        checkout_url = _stripe_object_value(session, "url", "")
+        for record in (deposit, hold):
+            record.status = DepositStatus.CHECKOUT_CREATED
+            record.stripe_checkout_session_id = checkout_session_id
+            record.checkout_url = checkout_url
+            record.save(update_fields=["status", "stripe_checkout_session_id", "checkout_url", "updated_at"])
+
+        self._log_payment_event(hold, "reservation_payment_hold.combined_setup_created", request)
+        return DepositCheckoutResult(
+            success=True,
+            message="Combined payment checkout created.",
+            checkout_url=checkout_url,
+        )
+
+    def finalize_combined_checkout_session(self, checkout_session_id: str, request=None):
+        self._configure_for_request(request)
+        if not self.is_configured or not checkout_session_id:
+            return None, None
+
+        session = stripe.checkout.Session.retrieve(checkout_session_id)
+        setup_intent_id = _stripe_object_id(_stripe_object_value(session, "setup_intent", ""))
+        if not setup_intent_id:
+            return None, None
+        return self.finalize_combined_setup_intent(
+            setup_intent_id,
+            request=request,
+            checkout_session_id=checkout_session_id,
+            session_metadata=_stripe_object_metadata(session),
+        )
+
+    def finalize_combined_setup_intent(
+        self,
+        setup_intent_id: str,
+        request=None,
+        *,
+        checkout_session_id="",
+        session_metadata=None,
+    ):
+        self._configure_for_request(request)
+        if not self.is_configured or not setup_intent_id:
+            return None, None
+
+        setup_intent = stripe.SetupIntent.retrieve(setup_intent_id)
+        metadata = {**(session_metadata or {}), **_stripe_object_metadata(setup_intent)}
+        inquiry_id = metadata.get("booking_inquiry_id")
+        if not inquiry_id and checkout_session_id:
+            existing_record = (
+                DamageDeposit.objects.filter(stripe_checkout_session_id=checkout_session_id).first()
+                or ReservationPaymentHold.objects.filter(stripe_checkout_session_id=checkout_session_id).first()
+            )
+            inquiry_id = getattr(existing_record, "inquiry_id", None)
+        if _stripe_object_status(setup_intent) != "succeeded" or not inquiry_id:
+            return None, None
+
+        inquiry = BookingInquiry.objects.select_related("item").filter(pk=inquiry_id).first()
+        if not inquiry:
+            return None, None
+
+        payment_method_id = _stripe_object_id(_stripe_object_value(setup_intent, "payment_method", ""))
+        customer_id = _stripe_object_id(_stripe_object_value(setup_intent, "customer", "")) or metadata.get(
+            "customer_id", ""
+        )
+        if not payment_method_id:
+            return None, None
+
+        checkout_lookup_ids = [value for value in {setup_intent_id, checkout_session_id} if value]
+        deposit = (
+            DamageDeposit.objects.filter(inquiry=inquiry, stripe_checkout_session_id__in=checkout_lookup_ids)
+            .order_by("-created_at")
+            .first()
+        )
+        hold = (
+            ReservationPaymentHold.objects.filter(inquiry=inquiry, stripe_checkout_session_id__in=checkout_lookup_ids)
+            .order_by("-created_at")
+            .first()
+        )
+        if not deposit or not hold:
+            return None, None
+        idempotency_basis = checkout_session_id or setup_intent_id
+
+        if not deposit.stripe_payment_intent_id:
+            deposit_intent = self._create_combined_payment_intent(
+                amount_cents=deposit.amount_cents,
+                currency=deposit.currency,
+                customer_id=customer_id,
+                payment_method_id=payment_method_id,
+                description="MLADIS refundable damage deposit hold",
+                metadata={
+                    "booking_inquiry_id": str(inquiry.id),
+                    "damage_deposit_id": str(deposit.id),
+                    "transaction_type": "security_deposit_hold",
+                    "setup_intent_id": setup_intent_id,
+                    "stripe_checkout_session_id": checkout_session_id,
+                },
+                idempotency_key=f"mladis-combined-deposit-{deposit.id}-{idempotency_basis}",
+            )
+            deposit.stripe_payment_intent_id = _stripe_object_id(deposit_intent)
+            deposit.status = self._status_from_payment_intent(deposit_intent)
+            deposit.notes = self._append_note(deposit.notes, "Combined checkout confirmed: deposit hold created.")
+            deposit.save(update_fields=["stripe_payment_intent_id", "status", "notes", "updated_at"])
+
+        if not hold.stripe_payment_intent_id:
+            hold_intent = self._create_combined_payment_intent(
+                amount_cents=hold.amount_cents,
+                currency=hold.currency,
+                customer_id=customer_id,
+                payment_method_id=payment_method_id,
+                description="MLADIS reservation payment authorization hold",
+                metadata={
+                    "booking_inquiry_id": str(inquiry.id),
+                    "reservation_payment_hold_id": str(hold.id),
+                    "transaction_type": "reservation_payment_hold",
+                    "setup_intent_id": setup_intent_id,
+                    "stripe_checkout_session_id": checkout_session_id,
+                    "capture_after": hold.capture_after.isoformat() if hold.capture_after else "",
+                },
+                idempotency_key=f"mladis-combined-stay-{hold.id}-{idempotency_basis}",
+            )
+            hold.stripe_payment_intent_id = _stripe_object_id(hold_intent)
+            hold.status = self._status_from_payment_intent(hold_intent)
+            hold.notes = self._append_note(hold.notes, "Combined checkout confirmed: stay payment hold created.")
+            hold.save(update_fields=["stripe_payment_intent_id", "status", "notes", "updated_at"])
+
+        email_service = BookingEmailService()
+        email_service.send_damage_deposit_confirmation(deposit, request=request)
+        email_service.send_reservation_payment_confirmation(hold, request=request)
+        self._log_payment_event(hold, "reservation_payment_hold.combined_setup_confirmed", request)
+        return deposit, hold
+
+    def _create_combined_payment_intent(
+        self,
+        *,
+        amount_cents,
+        currency,
+        customer_id,
+        payment_method_id,
+        description,
+        metadata,
+        idempotency_key,
+    ):
+        return stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency=currency,
+            customer=customer_id or None,
+            payment_method=payment_method_id,
+            confirm=True,
+            off_session=True,
+            capture_method="manual",
+            description=description,
+            metadata=metadata,
+            idempotency_key=idempotency_key,
+        )
+
+    @staticmethod
+    def _status_from_payment_intent(payment_intent):
+        status = _stripe_object_status(payment_intent)
+        if status == "succeeded":
+            return DepositStatus.CAPTURED
+        if status == "canceled":
+            return DepositStatus.CANCELED
+        if status in {"requires_capture", "processing", "requires_confirmation"}:
+            return DepositStatus.REQUIRES_CAPTURE
+        return DepositStatus.CHECKOUT_CREATED
+
     def create_checkout_session(self, hold: ReservationPaymentHold, request) -> DepositCheckoutResult:
         hold.payment_provider = DepositProvider.STRIPE
+        self._configure_for_request(request)
         if hold.amount_cents <= 0:
             hold.status = DepositStatus.CANCELED
             hold.notes = self._append_note(hold.notes, "No reservation payment amount is due for this request.")
@@ -2366,12 +2834,16 @@ class ReservationPaymentHoldService:
 
         if not self.is_configured:
             hold.status = DepositStatus.REQUIRES_CONFIGURATION
-            hold.notes = "Stripe is not configured. Set STRIPE_SECRET_KEY before collecting reservation payment holds."
+            hold.notes = self._stripe_unavailable_message(
+                "Stripe is not configured. Set STRIPE_TEST_SECRET_KEY before collecting reservation payment holds locally."
+            )
             hold.save(update_fields=["payment_provider", "status", "notes", "updated_at"])
             self._log_payment_event(hold, "reservation_payment_hold.requires_configuration", request)
             return DepositCheckoutResult(
                 success=False,
-                message="Stripe is not configured yet, so no reservation payment hold was created.",
+                message=self._stripe_unavailable_message(
+                    "Stripe is not configured yet, so no reservation payment hold was created."
+                ),
             )
 
         try:
@@ -2400,8 +2872,7 @@ class ReservationPaymentHoldService:
                 metadata=self._metadata(hold),
                 success_url=request.build_absolute_uri(reverse("bookings:reservation-payment-success"))
                 + "?session_id={CHECKOUT_SESSION_ID}",
-                cancel_url=request.build_absolute_uri(reverse("bookings:home"))
-                + f"?payment_for={hold.inquiry_id or ''}#booking",
+                cancel_url=request.build_absolute_uri(reverse("bookings:home")) + "#booking",
             )
         except stripe.StripeError as error:
             hold.status = DepositStatus.FAILED
@@ -2434,6 +2905,7 @@ class ReservationPaymentHoldService:
         )
 
     def sync_checkout_session(self, session_id, request=None):
+        self._configure_for_request(request)
         if not self.is_configured:
             return None
         session = stripe.checkout.Session.retrieve(session_id)

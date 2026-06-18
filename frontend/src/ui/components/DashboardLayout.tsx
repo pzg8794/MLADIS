@@ -54,7 +54,7 @@ function isNavActive(pathname: string, href: string) {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = window.location.pathname;
   const logoUrl = getConfiguredLogoUrl();
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   let previousGroup = '';
 
   return (
@@ -103,7 +103,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             className="v4-icon-button"
             type="button"
             aria-label={sidebarExpanded ? 'Collapse menu' : 'Expand menu'}
-            aria-expanded={sidebarExpanded}
             onClick={() => setSidebarExpanded((current) => !current)}
           >
             <Menu size={19} />

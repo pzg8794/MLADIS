@@ -726,6 +726,11 @@ class BookingInquiry(models.Model):
     currency = models.CharField(max_length=3, default="usd")
     is_admin_test = models.BooleanField(default=False)
     is_blacklist_flagged = models.BooleanField(default=False)
+    payment_confirmation_token = models.UUIDField(default=uuid4, unique=True, editable=False)
+    accepted_damage_terms_version = models.CharField(max_length=32, blank=True)
+    accepted_property_rules_version = models.CharField(max_length=32, blank=True)
+    property_rules_accepted_at = models.DateTimeField(null=True, blank=True)
+    damage_terms_accepted_at = models.DateTimeField(null=True, blank=True)
     canceled_at = models.DateTimeField(null=True, blank=True)
     cancellation_reason = models.TextField(blank=True)
     email_sent_at = models.DateTimeField(null=True, blank=True)
@@ -789,6 +794,10 @@ class BookingInquiry(models.Model):
             return False
         policy = self.cancellation_policy or CancellationPolicy.default()
         return bool(policy and policy.can_cancel(self.check_in))
+
+    @property
+    def required_documents_accepted(self):
+        return bool(self.property_rules_accepted_at and self.damage_terms_accepted_at)
 
     def cancel(self, reason="", by_user=None):
         self.status = BookingStatus.CANCELED
@@ -1573,6 +1582,31 @@ class SiteSettings(models.Model):
     public_address_label = models.CharField(
         max_length=220,
         default="Santo Domingo Norte, Dominican Republic",
+    )
+    property_rules_title = models.CharField(max_length=160, default="Property Rules")
+    property_rules_version = models.CharField(max_length=32, default="2026-06-15")
+    property_rules_body = models.TextField(
+        blank=True,
+        default=(
+            "Registered guests only. The reservation guest count must be accurate before arrival.\n\n"
+            "Check-in is 3:00 PM and check-out is 12:00 PM unless MLADIS confirms another time in writing.\n\n"
+            "No parties, events, disruptive noise, or behavior that disturbs neighbors, staff, guards, or other residents.\n\n"
+            "No smoking inside the apartment or indoor shared areas.\n\n"
+            "Keep doors, windows, balcony doors, and access points secured when leaving the apartment.\n\n"
+            "Guests are responsible for ordinary care of furniture, keys, access devices, appliances, linens, towels, kitchen items, electronics, and shared amenities.\n\n"
+            "Any violation that causes fines, damage, cleaning costs, missing items, access replacement costs, vendor charges, or other loss may be charged according to the Damage Deposit Hold Terms."
+        ),
+    )
+    damage_terms_title = models.CharField(max_length=160, default="Damage Deposit Hold Terms")
+    damage_terms_version = models.CharField(max_length=32, default="2026-06-15")
+    damage_terms_body = models.TextField(
+        blank=True,
+        default=(
+            "The refundable damage deposit is an authorization hold used to protect MLADIS, the property owner, and future guests from property damage, missing items, excessive cleaning, rule violations, residential fines, access-device replacement, and other costs caused during a reservation.\n\n"
+            "The hold is not automatically captured. MLADIS may capture all or part of the hold only when there is a documented reason connected to the stay, including property damage, missing items, broken appliances or furniture, smoke or odor remediation, excessive cleaning, lost keys or access devices, unauthorized guests, unauthorized parties, amenity misuse, parking or building fines, or other violations of the property rules.\n\n"
+            "If damage or a rule violation exceeds the deposit amount, MLADIS may seek the remaining balance through invoice, payment request, platform claim, legal claim, or another lawful recovery method.\n\n"
+            "If no issue is documented, the hold should be released according to the payment processor and card issuer timeline."
+        ),
     )
     agent_question_limit = models.PositiveSmallIntegerField(
         default=5,

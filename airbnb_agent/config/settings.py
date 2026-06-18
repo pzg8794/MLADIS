@@ -274,9 +274,16 @@ OPENAI_CHATKIT_API_URL = os.getenv("OPENAI_CHATKIT_API_URL", "").strip()
 OPENAI_CHATKIT_DOMAIN_KEY = os.getenv("OPENAI_CHATKIT_DOMAIN_KEY", "").strip()
 OPENAI_CHATKIT_WORKFLOW_ID = os.getenv("OPENAI_CHATKIT_WORKFLOW_ID", "").strip()
 OPENAI_CHATKIT_WORKFLOW_VERSION = os.getenv("OPENAI_CHATKIT_WORKFLOW_VERSION", "").strip()
+STRIPE_MODE = os.getenv("STRIPE_MODE", "auto").strip().lower() or "auto"
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_TEST_SECRET_KEY = os.getenv("STRIPE_TEST_SECRET_KEY", "")
+STRIPE_LIVE_SECRET_KEY = os.getenv("STRIPE_LIVE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_API_VERSION = "2026-02-25.clover"
+STRIPE_LOCAL_HOSTS = env_list(
+    "STRIPE_LOCAL_HOSTS",
+    ["localhost", "127.0.0.1", "::1", "[::1]", "local.mladis.com"],
+)
 PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_ENVIRONMENT = os.getenv("PAYPAL_ENVIRONMENT", "sandbox").strip().lower() or "sandbox"

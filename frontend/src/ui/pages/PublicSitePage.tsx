@@ -11,6 +11,7 @@ import {
   Globe2,
   HeartHandshake,
   Home,
+  Info,
   LogIn,
   MapPin,
   Menu,
@@ -25,6 +26,7 @@ import {
   Users,
   Waves,
   Clock,
+  X,
   XCircle,
   DollarSign,
   Music2,
@@ -125,6 +127,16 @@ type CreatedReservationRequest = {
   reservation_payment_cents: number;
   deposit_checkout_url: string;
   reservation_payment_checkout_url: string;
+  payment_confirmation_url: string;
+  property_rules_url: string;
+  damage_terms_url: string;
+  property_rules_title: string;
+  property_rules_version: string;
+  property_rules_body?: string;
+  damage_terms_title: string;
+  damage_terms_version: string;
+  damage_terms_body?: string;
+  documents_accepted: boolean;
   admin_test: boolean;
 };
 
@@ -138,10 +150,19 @@ type DepositCheckoutResponse = {
   errors?: Record<string, string[]>;
 };
 
-type PaymentContextResponse = {
-  ok?: boolean;
-  message?: string;
-  inquiry?: CreatedReservationRequest;
+type AgentRuleIcon = 'agent' | 'area' | 'calendar' | 'document' | 'guest' | 'payment' | 'star' | 'shield';
+
+type AgentRuleCard = {
+  title: string;
+  description: string;
+  icon: AgentRuleIcon;
+  tone: 'blue' | 'green' | 'orange' | 'teal' | 'violet';
+};
+
+type AgentRuleTab = {
+  id: string;
+  label: string;
+  cards: AgentRuleCard[];
 };
 
 function agentAccessFromApi(data?: ApiAgentAccess, fallback?: AgentAccessStatus): AgentAccessStatus {
@@ -720,7 +741,6 @@ function AgentBookingSection({
   const submitted = new URLSearchParams(window.location.search).get('submitted') === '1';
   const [draft, setDraft] = useState(() => ReservationRequestDraft.forStay(stay?.id));
   const [requestResult, setRequestResult] = useState<CreatedReservationRequest | null>(null);
-  const [paymentRequest, setPaymentRequest] = useState<CreatedReservationRequest | null>(null);
   const [requestMessage, setRequestMessage] = useState('');
   const [requestErrors, setRequestErrors] = useState<string[]>([]);
   const [requestBusy, setRequestBusy] = useState(false);
@@ -742,42 +762,6 @@ function AgentBookingSection({
       return currentDraft.withField('item', itemValue).withStayPricing(nextStay?.pricing ?? null);
     });
   }, [snapshot.stays, stay?.id]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const paymentFor = params.get('payment_for');
-    const paymentSuccess = params.get('payment_success') === '1';
-    if (paymentSuccess) {
-      setRequestMessage('Reservation payment hold recorded. MLADIS will review and confirm by email.');
-      return;
-    }
-    if (!paymentFor || params.get('deposit_success') !== '1') return;
-    let isMounted = true;
-    fetch(`/payments/context/?inquiry_id=${encodeURIComponent(paymentFor)}`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-    })
-      .then((response) => response.json() as Promise<PaymentContextResponse>)
-      .then((data) => {
-        if (!isMounted) return;
-        if (data.ok && data.inquiry) {
-          setPaymentRequest(data.inquiry);
-          setRequestMessage('Damage deposit hold recorded. Finish the reservation payment hold next.');
-        } else {
-          setRequestErrors([data.message || 'Could not reopen the reservation payment window.']);
-        }
-      })
-      .catch(() => {
-        if (isMounted) setRequestErrors(['Could not reopen the reservation payment window.']);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   function updateDraft(field: ReservationRequestField, value: string) {
     setDraft((currentDraft) => {
@@ -844,7 +828,7 @@ function AgentBookingSection({
           <LegacyAgentPrompt stay={stay} token={token} agent={userContext.agent} language={language} />
           {stay && (
             <div className="public-agent-card__rules">
-              <RulesBook stay={stay} language={language} />
+              <AgentRulesTabs stay={stay} language={language} />
             </div>
           )}
         </article>
@@ -929,14 +913,6 @@ function AgentBookingSection({
           language={language}
         />
       )}
-      {paymentRequest && (
-        <ReservationPaymentHoldModal
-          request={paymentRequest}
-          token={token}
-          onClose={() => setPaymentRequest(null)}
-          language={language}
-        />
-      )}
     </section>
   );
 }
@@ -945,17 +921,79 @@ function DepositHoldModal({
   request,
   token,
   onClose,
-  language,
 }: {
   request: CreatedReservationRequest;
   token: string;
   onClose: () => void;
   language: Language;
 }) {
-  const t = copy[language];
   const [provider, setProvider] = useState('stripe');
+  const [paymentChoice, setPaymentChoice] = useState<'deposit' | 'combined'>('deposit');
+  const [acceptedDocuments, setAcceptedDocuments] = useState({
+    rules: request.documents_accepted,
+    terms: request.documents_accepted,
+  });
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
+  const processingToday = paymentChoice === 'combined' ? request.display_total : request.display_deposit;
+  const laterCharge = paymentChoice === 'combined' ? '$0.00 USD' : request.display_reservation_payment;
+  const allDocumentsAccepted = acceptedDocuments.rules && acceptedDocuments.terms;
+  const checkoutUrl = paymentChoice === 'combined'
+    ? request.reservation_payment_checkout_url || '/payments/checkout/'
+    : request.deposit_checkout_url || '/deposits/checkout/';
+
+  function recordAcceptedDocument(kind: 'rules' | 'terms') {
+    setAcceptedDocuments((current) => ({ ...current, [kind]: true }));
+  }
+
+  function normalizeAcceptedDocumentKind(kind?: string): 'rules' | 'terms' | null {
+    if (kind === 'property_rules' || kind === 'rules') return 'rules';
+    if (kind === 'damage_terms' || kind === 'terms') return 'terms';
+    return null;
+  }
+
+  useEffect(() => {
+    function applyStoredAcceptance() {
+      try {
+        const raw = window.sessionStorage.getItem('mladis-policy-accepted');
+        if (!raw) return;
+        window.sessionStorage.removeItem('mladis-policy-accepted');
+        const payload = JSON.parse(raw) as { kind?: string };
+        const kind = normalizeAcceptedDocumentKind(payload.kind);
+        if (kind) recordAcceptedDocument(kind);
+      } catch {
+        window.sessionStorage.removeItem('mladis-policy-accepted');
+      }
+    }
+
+    function handleAcceptedMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      const payload = event.data as { type?: string; kind?: string };
+      if (!payload || payload.type !== 'mladis-policy-accepted') return;
+      const kind = normalizeAcceptedDocumentKind(payload.kind);
+      if (kind) recordAcceptedDocument(kind);
+    }
+
+    applyStoredAcceptance();
+    window.addEventListener('message', handleAcceptedMessage);
+    window.addEventListener('focus', applyStoredAcceptance);
+    return () => {
+      window.removeEventListener('message', handleAcceptedMessage);
+      window.removeEventListener('focus', applyStoredAcceptance);
+    };
+  }, []);
+
+  function openPolicyDocument(kind: 'rules' | 'terms') {
+    const url = kind === 'rules' ? request.property_rules_url : request.damage_terms_url;
+    const opened = window.open(
+      url,
+      `mladis-${kind}-document`,
+      'popup=yes,width=1280,height=860',
+    );
+    if (!opened) {
+      window.location.href = url;
+    }
+  }
 
   async function startDepositCheckout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -963,9 +1001,12 @@ function DepositHoldModal({
     setCheckoutError('');
     const formData = new FormData(event.currentTarget);
     formData.set('payment_provider', provider);
+    formData.set('payment_choice', paymentChoice);
+    formData.set('property_rules_accepted', acceptedDocuments.rules ? '1' : '');
+    formData.set('damage_terms_accepted', acceptedDocuments.terms ? '1' : '');
 
     try {
-      const response = await fetch(request.deposit_checkout_url || '/deposits/checkout/', {
+      const response = await fetch(checkoutUrl, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -992,157 +1033,294 @@ function DepositHoldModal({
 
   return (
     <div className="public-modal-backdrop" role="presentation">
-      <article className="public-deposit-modal" role="dialog" aria-modal="true" aria-labelledby="deposit-modal-title">
+      <article className="public-deposit-modal public-payment-modal" role="dialog" aria-modal="true" aria-labelledby="deposit-modal-title">
         <header className="public-deposit-modal__header">
-          <div>
-            <span>{request.request_key}</span>
-            <h2 id="deposit-modal-title">{t.depositTitle}</h2>
-            <p>{t.depositText}</p>
+          <div className="public-deposit-modal__title-row">
+            <div>
+              <span className="public-deposit-modal__request"><FileText size={17} /> {request.request_key}</span>
+              <div className="public-deposit-modal__headline">
+                <span className="public-deposit-modal__lock"><ShieldCheck size={26} /></span>
+                <div>
+                  <h2 id="deposit-modal-title">Complete secure payment</h2>
+                  <p>Your request is saved. Choose how you&apos;d like to pay and review the property rules before continuing.</p>
+                </div>
+              </div>
+            </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Close deposit form">
-            <XCircle size={24} />
+            <X size={24} />
           </button>
         </header>
         <div className="public-deposit-modal__summary">
-          <div>
+          <div className="public-deposit-modal__summary-card public-deposit-modal__summary-card--stay">
+            <Home size={22} />
             <span>Stay</span>
             <strong>{formatStayName(request.stay_name)}</strong>
           </div>
-          <div>
+          <div className="public-deposit-modal__summary-card public-deposit-modal__summary-card--dates">
+            <CalendarDays size={22} />
             <span>Dates</span>
             <strong>{request.check_in} to {request.check_out}</strong>
           </div>
-          <div>
+          <div className="public-deposit-modal__summary-card public-deposit-modal__summary-card--guests">
+            <Users size={22} />
             <span>Guests</span>
             <strong>{request.guests}</strong>
           </div>
-          <div>
-            <span>Deposit</span>
+          <div className="public-deposit-modal__summary-card public-deposit-modal__summary-card--deposit">
+            <ShieldCheck size={22} />
+            <span>Damage deposit</span>
             <strong>{request.display_deposit}</strong>
           </div>
-          <div>
-            <span>Next stay hold</span>
+          <div className="public-deposit-modal__summary-card public-deposit-modal__summary-card--charge">
+            <ReceiptText size={22} />
+            <span>Stay charge</span>
             <strong>{request.display_reservation_payment}</strong>
           </div>
         </div>
-        <form className="public-deposit-modal__form" method="post" action={request.deposit_checkout_url || '/deposits/checkout/'} onSubmit={startDepositCheckout}>
+        <form className="public-deposit-modal__form" method="post" action={checkoutUrl} onSubmit={startDepositCheckout}>
           <input type="hidden" name="csrfmiddlewaretoken" value={token} />
           <input type="hidden" name="inquiry_id" value={request.id} />
           <input type="hidden" name="item" value={request.item_id ?? ''} />
           <input type="hidden" name="guest_name" value={request.guest_name} />
           <input type="hidden" name="email" value={request.email} />
-          <fieldset>
-            <legend>Payment method</legend>
-            <label><input type="radio" name="payment_provider" value="stripe" checked={provider === 'stripe'} onChange={(event) => setProvider(event.target.value)} /> Card / wallet through Stripe</label>
-            <label><input type="radio" name="payment_provider" value="paypal" checked={provider === 'paypal'} onChange={(event) => setProvider(event.target.value)} /> PayPal</label>
-          </fieldset>
+          <input type="hidden" name="payment_choice" value={paymentChoice} />
+          <input type="hidden" name="property_rules_accepted" value={acceptedDocuments.rules ? '1' : ''} />
+          <input type="hidden" name="damage_terms_accepted" value={acceptedDocuments.terms ? '1' : ''} />
+          <div className="public-deposit-modal__grid">
+            <div className="public-deposit-modal__column">
+              <section className="public-deposit-modal__section">
+                <h3><span>1</span>Choose how you want to pay</h3>
+                <button
+                  type="button"
+                  className={`public-deposit-modal__option${paymentChoice === 'deposit' ? ' public-deposit-modal__option--selected' : ''}`}
+                  onClick={() => setPaymentChoice('deposit')}
+                >
+                  <input type="radio" checked={paymentChoice === 'deposit'} readOnly />
+                  <span className="public-deposit-modal__option-icon"><ShieldCheck size={30} /></span>
+                  <span className="public-deposit-modal__option-copy"><strong>Pay deposit only now</strong><small>Hold the refundable damage deposit now. The stay charge will be collected later.</small></span>
+                  <b className="public-deposit-modal__price-pill">{request.display_deposit}<small>today</small></b>
+                </button>
+                <button
+                  type="button"
+                  className={`public-deposit-modal__option${paymentChoice === 'combined' ? ' public-deposit-modal__option--selected' : ''}`}
+                  onClick={() => setPaymentChoice('combined')}
+                >
+                  <input type="radio" checked={paymentChoice === 'combined'} readOnly />
+                  <span className="public-deposit-modal__option-icon public-deposit-modal__option-icon--purple"><CreditCard size={30} /></span>
+                  <span className="public-deposit-modal__option-copy"><strong>Pay stay + deposit together</strong><small>Make one payment now to avoid paying twice.</small></span>
+                  <b className="public-deposit-modal__price-pill public-deposit-modal__price-pill--purple">{request.display_total}<small>today</small></b>
+                </button>
+              </section>
+              <section className="public-deposit-modal__section">
+                <h3><span>2</span>Read and accept required documents</h3>
+                <p className="public-deposit-modal__notice">You must open each document and accept it before continuing.</p>
+                <p className="public-deposit-modal__info"><Info size={16} /> This form updates automatically after you click Accept inside each document.</p>
+                <button
+                  type="button"
+                  className="public-deposit-modal__doc-row"
+                  onClick={() => openPolicyDocument('rules')}
+                >
+                  <FileText size={23} />
+                  <span><strong>View {request.property_rules_title || 'Property Rules'} <ArrowUpRight size={15} /></strong><small>(opens in a new window)</small></span>
+                  <b className={`public-deposit-modal__status${acceptedDocuments.rules ? ' public-deposit-modal__status--accepted' : ' public-deposit-modal__status--pending'}`}>
+                    {acceptedDocuments.rules ? <CheckCircle2 size={14} /> : <XCircle size={14} />} {acceptedDocuments.rules ? 'Accepted' : 'Pending acceptance'}
+                  </b>
+                </button>
+                <button
+                  type="button"
+                  className="public-deposit-modal__doc-row"
+                  onClick={() => openPolicyDocument('terms')}
+                >
+                  <FileText size={23} />
+                  <span><strong>View {request.damage_terms_title || 'Damage Deposit Hold Terms'} <ArrowUpRight size={15} /></strong><small>(opens in a new window)</small></span>
+                  <b className={`public-deposit-modal__status${acceptedDocuments.terms ? ' public-deposit-modal__status--accepted' : ' public-deposit-modal__status--pending'}`}>
+                    {acceptedDocuments.terms ? <CheckCircle2 size={14} /> : <XCircle size={14} />} {acceptedDocuments.terms ? 'Accepted' : 'Pending acceptance'}
+                  </b>
+                </button>
+                <p className="public-deposit-modal__locked"><ShieldCheck size={15} /> Both documents must show Accepted to continue.</p>
+              </section>
+            </div>
+            <div className="public-deposit-modal__column">
+              <section className="public-deposit-modal__section public-deposit-modal__breakdown">
+                <h3><CalendarDays size={20} />Payment breakdown</h3>
+                <div>
+                  <strong>You pay today</strong>
+                  <p><span>Stay charge</span><b>{request.display_reservation_payment}</b></p>
+                  <p><span>Damage deposit (refundable)</span><b>{request.display_deposit}</b></p>
+                  <p className="public-deposit-modal__total"><span>{paymentChoice === 'combined' ? 'Authorized today in two holds' : 'Processing today'}</span><b>{processingToday}</b></p>
+                </div>
+                <div>
+                  <strong>What gets charged later</strong>
+                  <p><span>Stay charge</span><b>{laterCharge}</b></p>
+                  <small>{paymentChoice === 'combined' ? 'After checkout, MLADIS records the stay hold and refundable deposit separately.' : 'Charged closer to check-in.'}</small>
+                </div>
+                <div className="public-deposit-modal__grand-total">
+                  <span>Total if paid together</span><b>{request.display_total}</b>
+                </div>
+              </section>
+              <section className="public-deposit-modal__section">
+                <h3><span>3</span>Select payment method</h3>
+                <label className="public-deposit-modal__method">
+                  <input type="radio" name="payment_provider" value="stripe" checked={provider === 'stripe'} onChange={(event) => setProvider(event.target.value)} />
+                  <span className="public-deposit-modal__brand-stack"><i>VISA</i><i className="public-deposit-modal__mc">**</i></span>
+                  <strong>Card / wallet through Stripe</strong>
+                  <small><CheckCircle2 size={12} /> Secure <em>Fast</em></small>
+                </label>
+                <label className="public-deposit-modal__method public-deposit-modal__method--disabled">
+                  <input type="radio" name="payment_provider_disabled" value="paypal" disabled />
+                  <span className="public-deposit-modal__paypal">P</span>
+                  <strong>PayPal</strong>
+                  <small><CheckCircle2 size={12} /> Secure</small>
+                </label>
+                <p className="public-deposit-modal__secure-note"><ShieldCheck size={15} /> Your payment is encrypted and securely processed.</p>
+              </section>
+            </div>
+          </div>
           {checkoutError && <p className="public-deposit-modal__error" role="alert">{checkoutError}</p>}
           <footer className="public-deposit-modal__actions">
-            <button type="button" onClick={onClose}>Close</button>
-            <button type="submit" disabled={isStartingCheckout}>
-              <ShieldCheck size={17} /> {isStartingCheckout ? 'Opening checkout...' : t.depositAction}
+            <button type="button" onClick={onClose}>Back</button>
+            <button type="submit" disabled={isStartingCheckout || provider !== 'stripe' || !allDocumentsAccepted}>
+              <ShieldCheck size={17} /> {isStartingCheckout ? 'Opening checkout...' : 'Continue to secure payment'}
             </button>
           </footer>
         </form>
+        <p className="public-deposit-modal__powered">Secure - Trusted - Powered by MLADIS & Stripe</p>
       </article>
     </div>
   );
 }
 
-function ReservationPaymentHoldModal({
-  request,
-  token,
-  onClose,
-  language,
-}: {
-  request: CreatedReservationRequest;
-  token: string;
-  onClose: () => void;
-  language: Language;
-}) {
+function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Language }) {
   const t = copy[language];
-  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
-  const [checkoutError, setCheckoutError] = useState('');
+  const rules = useMemo(() => (stay.rules.length ? stay.rules : [
+    { title: 'No parties or events', description: 'Keep the stay peaceful for the residential community and nearby neighbors.' },
+    { title: 'No smoking indoors', description: 'Smoking is not allowed inside the apartment or shared indoor areas.' },
+    { title: 'Registered guests only', description: 'Guest count must match the reservation unless MLADIS approves a change.' },
+    { title: 'Respect quiet hours', description: 'Keep noise reasonable, especially late at night and in common areas.' },
+  ]).slice(0, 4), [stay.rules]);
+  const tabs = useMemo<AgentRuleTab[]>(() => [
+    {
+      id: 'house-rules',
+      label: language === 'es' ? t.rules : 'House rules',
+      cards: rules.map((rule, index) => ({
+        title: rule.title,
+        description: rule.description,
+        icon: index === 0 ? 'shield' : index === 1 ? 'payment' : index === 2 ? 'guest' : 'calendar',
+        tone: index === 0 ? 'teal' : index === 1 ? 'blue' : index === 2 ? 'violet' : 'green',
+      })),
+    },
+    {
+      id: 'arrival-prep',
+      label: 'Arrival prep',
+      cards: [
+        { title: 'Ask before booking', description: 'Use the agent for rules, transport, deposit, and fit questions.', icon: 'agent', tone: 'teal' },
+        { title: 'Correct guest count', description: 'Guest count controls pricing and must match the reservation.', icon: 'guest', tone: 'orange' },
+        { title: 'Host review', description: 'MLADIS reviews requests before confirming details.', icon: 'document', tone: 'blue' },
+        { title: 'Check-in timing', description: 'Plan arrival around confirmed instructions and account updates.', icon: 'calendar', tone: 'violet' },
+      ],
+    },
+    {
+      id: 'local-guidance',
+      label: 'Local guidance',
+      cards: [
+        { title: 'Area context', description: 'Residential Sol Oriens V sits in Santo Domingo Norte near key errands.', icon: 'area', tone: 'orange' },
+        { title: 'Transport planning', description: 'Ask about arrival routes, rides, and nearby stops before booking.', icon: 'agent', tone: 'teal' },
+        { title: 'Beach-day options', description: 'Juan Dolio and nearby beach trips can be planned around the stay.', icon: 'star', tone: 'blue' },
+        { title: 'Practical local tips', description: 'Get help with groceries, restaurants, and timing for your group.', icon: 'document', tone: 'green' },
+      ],
+    },
+    {
+      id: 'faqs',
+      label: 'FAQs',
+      cards: [
+        { title: 'Stay-payment hold', description: 'The stay payment is held now and captured 24 hours before check-in.', icon: 'payment', tone: 'blue' },
+        { title: 'Refundable deposit', description: 'The damage deposit remains a secure refundable hold unless an issue is documented.', icon: 'shield', tone: 'teal' },
+        { title: 'Account records', description: 'Requests, invoices, and updates stay attached to the guest account.', icon: 'document', tone: 'violet' },
+        { title: 'Human support', description: 'Ask for practical help before the reservation is finalized.', icon: 'agent', tone: 'green' },
+      ],
+    },
+  ], [language, rules, t.rules]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeTab = tabs[activeIndex] ?? tabs[0];
 
-  async function startPaymentCheckout(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsStartingCheckout(true);
-    setCheckoutError('');
-    const formData = new FormData(event.currentTarget);
+  useEffect(() => {
+    if (tabs.length <= 1) return undefined;
+    const intervalId = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % tabs.length);
+    }, 5000);
+    return () => window.clearInterval(intervalId);
+  }, [tabs.length]);
 
-    try {
-      const response = await fetch(request.reservation_payment_checkout_url || '/payments/checkout/', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          Accept: 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRFToken': token,
-        },
-        body: formData,
-      });
-      const data = await response.json() as DepositCheckoutResponse;
-      if (response.ok && data.ok && data.checkout_url) {
-        window.location.assign(data.checkout_url);
-        return;
-      }
-      const validationErrors = Object.entries(data.errors || {})
-        .flatMap(([field, values]) => values.map((value) => `${field}: ${value}`));
-      setCheckoutError(validationErrors[0] || data.message || 'The reservation payment hold could not be started.');
-    } catch {
-      setCheckoutError('Could not reach the reservation payment service from this browser session.');
-    } finally {
-      setIsStartingCheckout(false);
-    }
-  }
+  const moveTab = (direction: -1 | 1) => {
+    setActiveIndex((current) => (current + direction + tabs.length) % tabs.length);
+  };
+
+  const iconFor = (icon: AgentRuleIcon) => {
+    if (icon === 'agent') return <Bot size={18} />;
+    if (icon === 'area') return <MapPin size={18} />;
+    if (icon === 'calendar') return <CalendarDays size={18} />;
+    if (icon === 'document') return <ReceiptText size={18} />;
+    if (icon === 'guest') return <Users size={18} />;
+    if (icon === 'payment') return <CreditCard size={18} />;
+    if (icon === 'star') return <Star size={18} />;
+    return <ShieldCheck size={18} />;
+  };
 
   return (
-    <div className="public-modal-backdrop" role="presentation">
-      <article className="public-deposit-modal" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title">
-        <header className="public-deposit-modal__header">
-          <div>
-            <span>{request.request_key}</span>
-            <h2 id="payment-modal-title">{t.paymentTitle}</h2>
-            <p>{t.paymentText}</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Close payment form">
-            <XCircle size={24} />
+    <article className="agent-rules-tabs" aria-label="Booking agent guidance">
+      <div className="agent-rules-tabs__tablist" role="tablist" aria-label="Booking guidance tabs">
+        {tabs.map((tab, index) => (
+          <button
+            type="button"
+            className={`agent-rules-tabs__tab${index === activeIndex ? ' is-active' : ''}`}
+            onClick={() => setActiveIndex(index)}
+            role="tab"
+            aria-selected={index === activeIndex}
+            aria-controls={`agent-rules-panel-${tab.id}`}
+            id={`agent-rules-tab-${tab.id}`}
+            key={tab.id}
+          >
+            {tab.label}
           </button>
-        </header>
-        <div className="public-deposit-modal__summary">
-          <div>
-            <span>Stay</span>
-            <strong>{formatStayName(request.stay_name)}</strong>
-          </div>
-          <div>
-            <span>Dates</span>
-            <strong>{request.check_in} to {request.check_out}</strong>
-          </div>
-          <div>
-            <span>Stay hold</span>
-            <strong>{request.display_reservation_payment}</strong>
-          </div>
-          <div>
-            <span>Total incl. deposit</span>
-            <strong>{request.display_total}</strong>
-          </div>
+        ))}
+      </div>
+      <div
+        className="agent-rules-tabs__panel"
+        id={`agent-rules-panel-${activeTab.id}`}
+        role="tabpanel"
+        aria-labelledby={`agent-rules-tab-${activeTab.id}`}
+      >
+        <div className="agent-rules-tabs__cards">
+          {activeTab.cards.map((card) => (
+            <article className={`agent-rules-tabs__card agent-rules-tabs__card--${card.tone}`} key={`${activeTab.id}-${card.title}`}>
+              <span>{iconFor(card.icon)}</span>
+              <strong>{card.title}</strong>
+              <p>{card.description}</p>
+            </article>
+          ))}
         </div>
-        <form className="public-deposit-modal__form" method="post" action={request.reservation_payment_checkout_url || '/payments/checkout/'} onSubmit={startPaymentCheckout}>
-          <input type="hidden" name="csrfmiddlewaretoken" value={token} />
-          <input type="hidden" name="inquiry_id" value={request.id} />
-          <p className="public-price-note">
-            This is an authorization hold for the stay payment. MLADIS captures it 24 hours before check-in after admin review.
-          </p>
-          {checkoutError && <p className="public-deposit-modal__error" role="alert">{checkoutError}</p>}
-          <footer className="public-deposit-modal__actions">
-            <button type="button" onClick={onClose}>Close</button>
-            <button type="submit" disabled={isStartingCheckout}>
-              <ShieldCheck size={17} /> {isStartingCheckout ? 'Opening checkout...' : t.paymentAction}
-            </button>
-          </footer>
-        </form>
-      </article>
-    </div>
+      </div>
+      <footer className="agent-rules-tabs__pager" aria-label="Booking guidance rotation">
+        <button type="button" onClick={() => moveTab(-1)} aria-label="Previous booking guidance tab">
+          <ChevronLeft size={17} />
+        </button>
+        <div>
+          {tabs.map((tab, index) => (
+            <button
+              type="button"
+              className={index === activeIndex ? 'is-active' : ''}
+              onClick={() => setActiveIndex(index)}
+              aria-label={`Show ${tab.label}`}
+              key={`${tab.id}-dot`}
+            />
+          ))}
+        </div>
+        <button type="button" onClick={() => moveTab(1)} aria-label="Next booking guidance tab">
+          <ChevronRight size={17} />
+        </button>
+      </footer>
+    </article>
   );
 }
 
@@ -1162,11 +1340,11 @@ function RulesBook({ stay, language, compact = false }: { stay: PublicStay; lang
   ]).slice(0, 6);
   const spreads = useMemo(() => [
     {
-      leftTitle: t.rules,
+      leftTitle: language === 'es' ? t.rules : 'House rules',
       leftTone: 'green',
       leftItems: rules.slice(0, 3).map((rule) => ({ ...rule, icon: 'rule' })),
-      rightTitle: 'Stay rhythm',
-      rightTone: 'gold',
+      rightTitle: 'Quiet stay rhythm',
+      rightTone: 'teal',
       rightItems: rules.slice(3, 6).map((rule) => ({ ...rule, icon: 'shield' })),
     },
     {
@@ -1197,7 +1375,23 @@ function RulesBook({ stay, language, compact = false }: { stay: PublicStay; lang
         { title: 'Human support', description: 'Ask for practical help before the reservation is finalized.', icon: 'agent' },
       ],
     },
-  ], [highlights, rules, t.rules]);
+    {
+      leftTitle: 'FAQs',
+      leftTone: 'gold',
+      leftItems: [
+        { title: 'When is the stay charged?', description: 'The stay-payment hold is captured 24 hours before check-in.', icon: 'payment' },
+        { title: 'Is the deposit a charge?', description: 'It is a refundable authorization hold unless a documented issue is found.', icon: 'shield' },
+        { title: 'Can guests ask first?', description: 'Yes. Use the booking agent before sending a request.', icon: 'agent' },
+      ],
+      rightTitle: 'Booking fit',
+      rightTone: 'indigo',
+      rightItems: [
+        { title: 'Guest count matters', description: 'Pricing and approval depend on the correct guest count.', icon: 'guest' },
+        { title: 'Direct request record', description: 'Requests, invoices, and updates stay attached to your account.', icon: 'document' },
+        { title: 'Host confirmation', description: 'MLADIS reviews each request before final confirmation.', icon: 'document' },
+      ],
+    },
+  ], [highlights, language, rules, t.rules]);
   const [spreadIndex, setSpreadIndex] = useState(0);
   const spread = spreads[spreadIndex] ?? spreads[0];
 
@@ -1321,21 +1515,27 @@ function HomeAreaExperience({ snapshot, language }: { snapshot: PublicSiteSnapsh
 function HomeRulesMapSection({ snapshot, stay, language }: { snapshot: PublicSiteSnapshot; stay: PublicStay; language: Language }) {
   const mapStays = snapshot.stays.slice(0, 3);
   return (
-    <section className="public-section public-home-v5-rules-map">
+    <section id="rules" className="public-section public-home-v5-rules-map">
       <div className="public-home-v5-rules-copy">
-        <h2>Know Where You Are Staying</h2>
-        <p className="public-home-v5-rules-alert"><ShieldCheck size={18} /> Must Read Rules of Your Stay</p>
+        <p className="public-home-v5-rules-alert"><ShieldCheck size={18} /> MLADIS trust promise</p>
+        <h2>Know where you’re staying</h2>
+        <p>Transparent locations, clear rules, and verified stays so you can book with total confidence.</p>
+        <div className="public-home-v5-rules-promise" aria-label="Booking promise">
+          <span><ShieldCheck size={17} /> Verified homes</span>
+          <span><FileText size={17} /> Clear rules</span>
+          <span><Bot size={17} /> Guest-first support</span>
+        </div>
         <RulesBook stay={stay} language={language} />
       </div>
       <article className="public-home-v5-map-card public-home-v5-map-card--large">
         <div className="public-home-v5-map-card__header">
-          <span><Home size={15} /> Apartment location</span>
-          <strong>Sol Oriens V stay area</strong>
+          <span><MapPin size={15} /> Sol Oriens V stay area</span>
+          <strong>Residential Sol Oriens V, Santo Domingo, Dominican Republic</strong>
           <a className="public-home-v5-map-card__button" href={SOL_ORIENS_DIRECTIONS_URL} target="_blank" rel="noreferrer">View full map <ArrowUpRight size={14} /></a>
         </div>
         <iframe
           title="Sol Oriens V apartment location map"
-          loading="lazy"
+          loading="eager"
           allowFullScreen
           referrerPolicy="no-referrer-when-downgrade"
           src={SOL_ORIENS_STAY_MAP_EMBED_URL}
@@ -1672,6 +1872,100 @@ function LegalExperience({ snapshot, kind }: { snapshot: PublicSiteSnapshot; kin
   );
 }
 
+type AccountIconKey = 'guest' | 'calendar' | 'invoice' | 'home' | 'dashboard' | 'reservations' | 'reports' | 'customers' | 'deposits' | 'agent' | 'tools';
+
+class AccountStatCardModel {
+  constructor(
+    public readonly label: string,
+    public readonly value: string,
+    public readonly caption: string,
+    public readonly icon: AccountIconKey,
+    public readonly tone: 'teal' | 'blue' | 'violet' | 'green',
+  ) {}
+}
+
+class AccountAdminToolModel {
+  constructor(
+    public readonly label: string,
+    public readonly href: string,
+    public readonly detail: string,
+    public readonly icon: AccountIconKey,
+    public readonly tone: 'cyan' | 'blue' | 'violet' | 'green' | 'amber' | 'teal' | 'indigo' | 'rose',
+  ) {}
+}
+
+class AccountTimelineStepModel {
+  constructor(
+    public readonly label: string,
+    public readonly value: string,
+    public readonly status: 'done' | 'current' | 'future',
+  ) {}
+}
+
+function accountIcon(icon: AccountIconKey, size = 20) {
+  if (icon === 'guest' || icon === 'customers') return <Users size={size} />;
+  if (icon === 'calendar') return <CalendarDays size={size} />;
+  if (icon === 'invoice' || icon === 'reports') return <FileText size={size} />;
+  if (icon === 'home' || icon === 'dashboard') return <Home size={size} />;
+  if (icon === 'reservations') return <ReceiptText size={size} />;
+  if (icon === 'deposits') return <CreditCard size={size} />;
+  if (icon === 'agent') return <Bot size={size} />;
+  return <ShieldCheck size={size} />;
+}
+
+function compactStatusTone(status: string) {
+  const normalized = status.toLowerCase();
+  if (normalized.includes('cancel')) return 'cancelled';
+  if (normalized.includes('pending') || normalized.includes('review')) return 'pending';
+  if (normalized.includes('complete')) return 'completed';
+  return 'confirmed';
+}
+
+function accountReservationNumber(reservation: AccountReservation) {
+  return `ML-2026-${String(reservation.id).padStart(6, '0')}`;
+}
+
+function normalizeAccountName(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function stayForReservation(snapshot: PublicSiteSnapshot, reservation: AccountReservation | null) {
+  if (!reservation) return snapshot.stays[0] ?? null;
+  const reservationName = normalizeAccountName(formatStayName(reservation.stayName));
+  return snapshot.stays.find((stay) => {
+    const stayName = normalizeAccountName(formatStayName(stay.name));
+    return reservationName.includes(stayName) || stayName.includes(reservationName);
+  }) ?? snapshot.stays[0] ?? null;
+}
+
+function accountDateRange(reservation: AccountReservation) {
+  if (!reservation.checkIn || !reservation.checkOut) return 'Dates pending';
+  return `${formatDate(reservation.checkIn)} – ${formatDate(reservation.checkOut)}`;
+}
+
+function activeStayCount(reservations: AccountReservation[]) {
+  const now = new Date();
+  return reservations.filter((reservation) => {
+    const status = reservation.status.toLowerCase();
+    const starts = reservation.checkIn ? new Date(`${reservation.checkIn}T00:00:00`) : null;
+    const ends = reservation.checkOut ? new Date(`${reservation.checkOut}T23:59:59`) : null;
+    return !status.includes('cancel') && starts && ends && starts <= now && ends >= now;
+  }).length;
+}
+
+function AccountStatCard({ stat }: { stat: AccountStatCardModel }) {
+  return (
+    <article className={`account-v2-stat account-v2-stat--${stat.tone}`}>
+      <span>{accountIcon(stat.icon, 23)}</span>
+      <div>
+        <small>{stat.label}</small>
+        <strong>{stat.value}</strong>
+        <em>{stat.caption}</em>
+      </div>
+    </article>
+  );
+}
+
 function AccountExperience({ snapshot, userContext, language }: { snapshot: PublicSiteSnapshot; userContext: PublicUserContext; language: Language }) {
   const t = copy[language];
   const service = useMemo(() => AccountFactory.create(), []);
@@ -1700,91 +1994,111 @@ function AccountExperience({ snapshot, userContext, language }: { snapshot: Publ
   const match = currentPath().match(/^\/accounts\/reservations\/(\d+)\/?(edit|cancel)?\/?$/);
   const activeReservation = match ? account.reservations.find((reservation) => reservation.id === Number(match[1])) : null;
   const mode = match?.[2] ?? 'detail';
+  const selectedReservation = activeReservation ?? account.reservations[0] ?? null;
+  const selectedStay = stayForReservation(snapshot, selectedReservation);
+  const heroStay = selectedStay ?? snapshot.stays[0] ?? null;
+  const invoiceTotal = account.invoices.length;
+  const stats = [
+    new AccountStatCardModel('Guest', account.name || userContext.displayName || 'Guest account', account.email || userContext.email || 'Signed-in account', 'guest', 'teal'),
+    new AccountStatCardModel('Total reservations', String(account.reservations.length), 'Upcoming & past', 'calendar', 'blue'),
+    new AccountStatCardModel('Invoices', String(invoiceTotal), invoiceTotal === 1 ? '1 total outstanding' : 'Total outstanding', 'invoice', 'violet'),
+    new AccountStatCardModel('Active stays', String(activeStayCount(account.reservations)), 'Currently active', 'home', 'green'),
+  ];
 
   return (
-    <>
-      <section className="public-subhero account-hero">
+    <div className="account-v2-page">
+      <section className="account-v2-hero">
         <div>
           <h1>{t.accountTitle}</h1>
           <p>{t.accountText}</p>
-          <div className="public-proof-strip">
-            <span><Users size={16} /> {account.name}</span>
-            <span><ReceiptText size={16} /> {account.reservations.length} reservations</span>
-            <span><FileText size={16} /> {account.invoices.length} invoices</span>
-            {account.isStaff && <span><ShieldCheck size={16} /> Admin access</span>}
-          </div>
         </div>
+        {heroStay && (
+          <figure>
+            <img src={heroStay.imageUrl} alt={formatStayName(heroStay.name)} />
+          </figure>
+        )}
+      </section>
+
+      <section className="account-v2-stats" aria-label="Account summary">
+        {stats.map((stat) => <AccountStatCard stat={stat} key={stat.label} />)}
       </section>
 
       {account.isStaff && <AccountAdminTools />}
 
-      <section className="public-section account-modern">
-        <div className="account-grid">
-          <article className="account-list">
+      <section className="public-section account-v2-workspace">
+        <article className="account-v2-list">
+          <header>
             <h2>Reservations</h2>
-            {account.reservations.length === 0 && <p>No reservations yet. Start a stay request when you are ready.</p>}
-            {account.reservations.map((reservation) => (
-              <a className="account-reservation-row" href={reservation.detailUrl} key={reservation.id}>
-                <span>{reservation.stayName}</span>
-                <strong>{formatDate(reservation.checkIn)} to {formatDate(reservation.checkOut)}</strong>
-                <small>{reservation.guests} guests · {reservation.status}</small>
-              </a>
+            <a href="#booking" onClick={handleBookingLinkClick}>+ New request</a>
+          </header>
+          {account.reservations.length === 0 && <p>No reservations yet. Start a stay request when you are ready.</p>}
+          <div className="account-v2-reservation-stack">
+            {account.reservations.slice(0, 4).map((reservation) => (
+              <AccountReservationRow
+                reservation={reservation}
+                stay={stayForReservation(snapshot, reservation)}
+                selected={selectedReservation?.id === reservation.id}
+                key={reservation.id}
+              />
             ))}
-          </article>
+          </div>
+          {account.reservations.length > 0 && (
+            <a className="account-v2-past-link" href="/accounts/">
+              <CalendarDays size={16} /> View past reservations <ChevronRight size={16} />
+            </a>
+          )}
+        </article>
 
-          <article className="account-detail">
-            {!activeReservation && (
-              <>
-                <h2>Reservation center</h2>
-                <p>Select a reservation to see details, edit eligible requests, or cancel when the current policy allows it.</p>
-                <div className="account-invoice-grid">
-                  {account.invoices.slice(0, 4).map((invoice) => (
-                    <a href={invoice.printUrl} key={invoice.id}>
-                      <ReceiptText size={18} />
-                      <span>{invoice.title}</span>
-                      <strong>{invoice.displayTotal}</strong>
-                      <small>{invoice.status}</small>
-                    </a>
-                  ))}
-                </div>
-              </>
-            )}
-            {activeReservation && mode === 'detail' && <ReservationDetail reservation={activeReservation} />}
-            {activeReservation && mode === 'edit' && <ReservationEditForm reservation={activeReservation} token={token} />}
-            {activeReservation && mode === 'cancel' && <ReservationCancelForm reservation={activeReservation} token={token} />}
-          </article>
-        </div>
+        <article className="account-v2-center">
+          {selectedReservation && mode === 'edit' && activeReservation ? (
+            <ReservationEditForm reservation={activeReservation} token={token} />
+          ) : selectedReservation && mode === 'cancel' && activeReservation ? (
+            <ReservationCancelForm reservation={activeReservation} token={token} />
+          ) : selectedReservation ? (
+            <AccountReservationCenter reservation={selectedReservation} stay={selectedStay} invoices={account.invoices} />
+          ) : (
+            <div className="account-v2-empty">
+              <h2>Reservation center</h2>
+              <p>Select a reservation to see details, edit eligible requests, or cancel when the current policy allows it.</p>
+            </div>
+          )}
+        </article>
       </section>
 
-      <AgentBookingSection snapshot={snapshot} userContext={userContext} stay={snapshot.stays[0]} language={language} />
-    </>
+      <div className="account-v2-booking-anchor">
+        <AgentBookingSection snapshot={snapshot} userContext={userContext} stay={heroStay} language={language} />
+      </div>
+    </div>
   );
 }
 
 function AccountAdminTools() {
   const tools = [
-    { label: 'Modern dashboard', href: '/ops/dashboard/', detail: 'Metrics, deposits, agent questions, and stay performance.' },
-    { label: 'Reservations CRM', href: '/ops/reservations/', detail: 'Combined direct requests and imported Airbnb guest records.' },
-    { label: 'Reports', href: '/ops/reports/', detail: 'Modern charts for visits, bookings, deposits, feedback, and agent questions.' },
-    { label: 'Customers', href: '/ops/customers/', detail: 'Guest profiles, segments, consent, feedback, and promotion readiness.' },
-    { label: 'Deposits', href: '/ops/deposits/', detail: 'Stripe and PayPal security deposit records in a modern ledger.' },
-    { label: 'Agent workspace', href: '/ops/agent/', detail: 'Question analytics and FAQ training controls.' },
-    { label: 'Business calendar', href: '/ops/calendar/', detail: 'Block dates, pricing overrides, and availability review.' },
-    { label: 'Admin tools', href: '/admin/', detail: 'Full protected admin tools.' },
+    new AccountAdminToolModel('Modern dashboard', '/ops/dashboard/', 'Metrics, deposits, agent questions, and stay performance.', 'dashboard', 'cyan'),
+    new AccountAdminToolModel('Reservations CRM', '/ops/reservations/', 'Combined direct requests and imported Airbnb guest records.', 'reservations', 'blue'),
+    new AccountAdminToolModel('Reports', '/ops/reports/', 'Modern charts for visits, bookings, deposits, feedback, and agent questions.', 'reports', 'violet'),
+    new AccountAdminToolModel('Customers', '/ops/customers/', 'Guest profiles, segments, consent, feedback, and promotion readiness.', 'customers', 'green'),
+    new AccountAdminToolModel('Deposits', '/ops/deposits/', 'Stripe and PayPal security deposit records in a modern ledger.', 'deposits', 'amber'),
+    new AccountAdminToolModel('Agent workspace', '/ops/agent/', 'Question analytics and FAQ training controls.', 'agent', 'teal'),
+    new AccountAdminToolModel('Business calendar', '/ops/calendar/', 'Block dates, pricing overrides, and availability review.', 'calendar', 'indigo'),
+    new AccountAdminToolModel('Admin tools', '/admin/', 'Full protected admin tools.', 'tools', 'rose'),
   ];
   return (
-    <section className="public-section account-admin-tools">
-      <div className="public-section__heading">
-        <h2>Admin command center</h2>
-        <p>You are signed in with staff access, so the operational tools are available from the modern account area.</p>
+    <section className="account-v2-admin-tools">
+      <div className="account-v2-admin-tools__header">
+        <span><ShieldCheck size={22} /> Admin command center</span>
+        <strong>Staff access enabled <CheckCircle2 size={15} /></strong>
+        <p>You are signed in with staff access, so the operational tools are available in this account.</p>
       </div>
-      <div>
+      <div className="account-v2-admin-grid">
         {tools.map((tool) => (
-          <a href={tool.href} key={tool.label}>
-            <ShieldCheck size={18} />
-            <strong>{tool.label}</strong>
-            <span>{tool.detail}</span>
-            <ArrowUpRight size={15} />
+          <a className={`account-v2-admin-card account-v2-admin-card--${tool.tone}`} href={tool.href} key={tool.label}>
+            {accountIcon(tool.icon, 27)}
+            <span>
+              <strong>{tool.label}</strong>
+              <small>{tool.detail}</small>
+            </span>
+            <ArrowUpRight size={20} />
           </a>
         ))}
       </div>
@@ -1792,22 +2106,95 @@ function AccountAdminTools() {
   );
 }
 
-function ReservationDetail({ reservation }: { reservation: AccountReservation }) {
+function AccountReservationRow({
+  reservation,
+  stay,
+  selected,
+}: {
+  reservation: AccountReservation;
+  stay: PublicStay | null;
+  selected: boolean;
+}) {
+  return (
+    <a className={`account-v2-row${selected ? ' is-selected' : ''}`} href={reservation.detailUrl}>
+      {stay && <img src={stay.imageUrl} alt={formatStayName(stay.name)} />}
+      <span>
+        <strong>{formatStayName(reservation.stayName)}</strong>
+        <small>{accountDateRange(reservation)}</small>
+        <small>{reservation.guests} guests</small>
+      </span>
+      <em className={`account-v2-status account-v2-status--${compactStatusTone(reservation.status)}`}>{reservation.status}</em>
+      <ChevronRight size={17} />
+    </a>
+  );
+}
+
+function AccountReservationCenter({
+  reservation,
+  stay,
+  invoices,
+}: {
+  reservation: AccountReservation;
+  stay: PublicStay | null;
+  invoices: AccountSnapshot['invoices'];
+}) {
+  const nights = nightsBetween(reservation.checkIn, reservation.checkOut);
+  const depositDisplay = reservation.displayDeposit || '$200.00 USD';
+  const stayPaymentDisplay = reservation.displayReservationPayment || reservation.displaySubtotal || reservation.displayTotal;
+  const timeline = [
+    new AccountTimelineStepModel('Request confirmed', reservation.createdAt ? formatDate(reservation.createdAt.slice(0, 10)) : 'Saved', 'done'),
+    new AccountTimelineStepModel('Deposit hold placed', depositDisplay || 'On file', 'done'),
+    new AccountTimelineStepModel('Check-in', formatDate(reservation.checkIn), 'future'),
+    new AccountTimelineStepModel('Check-out', formatDate(reservation.checkOut), 'future'),
+  ];
+  const latestInvoice = invoices[0] ?? null;
+
   return (
     <>
-      <h2>{reservation.stayName}</h2>
-      <div className="account-detail-grid">
-        <span><CalendarDays size={16} /> {formatDate(reservation.checkIn)} to {formatDate(reservation.checkOut)}</span>
-        <span><Users size={16} /> {reservation.guests} guests</span>
-        <span><ShieldCheck size={16} /> {reservation.displayDeposit || '$0.00 USD'} deposit</span>
-        <span><CreditCard size={16} /> {reservation.displayTotal}</span>
+      <header className="account-v2-center__header">
+        {stay && <img src={stay.imageUrl} alt={formatStayName(stay.name)} />}
+        <div>
+          <h2>{formatStayName(reservation.stayName)}</h2>
+          <span>Reservation #{accountReservationNumber(reservation)}</span>
+          <p>{accountDateRange(reservation)} <b>•</b> {nights} night{nights === 1 ? '' : 's'} <b>•</b> {reservation.guests} guests</p>
+        </div>
+        <em className={`account-v2-status account-v2-status--${compactStatusTone(reservation.status)}`}>{reservation.status}</em>
+      </header>
+
+      <div className="account-v2-center__badges">
+        <span><ShieldCheck size={20} /><strong>Deposit hold</strong><small>{depositDisplay}</small></span>
+        <span><FileText size={20} /><strong>Invoice status</strong><small>{latestInvoice ? latestInvoice.status : 'No invoices'}</small></span>
+        <span><Clock size={20} /><strong>Cancellation window</strong><small>{reservation.canCancel ? 'Host review' : 'Contact host'}</small></span>
       </div>
-      <p>{reservation.message || 'No extra notes were added yet.'}</p>
-      <div className="public-stay-card__actions">
-        <a href={reservation.editUrl}><PencilLine size={15} /> Edit request</a>
-        {reservation.canCancel && <a href={reservation.cancelUrl}>Cancel reservation</a>}
-        {reservation.airbnbUrl && <a href={reservation.airbnbUrl} target="_blank" rel="noreferrer">Airbnb</a>}
+
+      <div className="account-v2-center__split">
+        <section className="account-v2-payment-card">
+          <h3>Payment summary</h3>
+          <p><span>{reservation.pricing.displayBasePrice} × {nights} night{nights === 1 ? '' : 's'}</span><strong>{reservation.displaySubtotal}</strong></p>
+          {reservation.displayDiscount && <p><span>Discount</span><strong>{reservation.displayDiscount}</strong></p>}
+          <p><span>Stay payment hold</span><strong>{stayPaymentDisplay}</strong></p>
+          <p><span>Security deposit hold</span><strong>{depositDisplay}</strong></p>
+          <p className="account-v2-payment-card__total"><span>Total</span><strong>{reservation.displayTotal}</strong></p>
+          <small>Deposit hold will be released after checkout unless a documented issue is found.</small>
+        </section>
+
+        <section className="account-v2-next-card">
+          <h3>What happens next?</h3>
+          {timeline.map((step) => (
+            <p className={`account-v2-step account-v2-step--${step.status}`} key={step.label}>
+              <i />
+              <span>{step.label}</span>
+              <strong>{step.value}</strong>
+            </p>
+          ))}
+        </section>
       </div>
+
+      <footer className="account-v2-center__actions">
+        <a href={reservation.detailUrl}><ReceiptText size={16} /> View details</a>
+        <a href={`mailto:?subject=MLADIS reservation ${accountReservationNumber(reservation)}`}><MessageSquareText size={16} /> Message host</a>
+        {reservation.airbnbUrl && <a href={reservation.airbnbUrl} target="_blank" rel="noreferrer"><ArrowUpRight size={16} /> Airbnb</a>}
+      </footer>
     </>
   );
 }

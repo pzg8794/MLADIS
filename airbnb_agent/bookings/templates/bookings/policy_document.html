@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} | {{ site_settings.site_name }}</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #0b1530;
+      --muted: #596784;
+      --soft: #eefafa;
+      --line: #d9e2ef;
+      --teal: #008b83;
+      --teal-dark: #00736f;
+      --green: #2dd27c;
+      --blue: #2563eb;
+      --orange: #f97316;
+      --danger: #dc2626;
+      --shadow: 0 28px 80px rgba(8, 19, 42, 0.22);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(rgba(13, 24, 45, 0.64), rgba(13, 24, 45, 0.64)),
+        radial-gradient(circle at 12% 86%, rgba(0, 139, 131, 0.35), transparent 30%),
+        radial-gradient(circle at 80% 12%, rgba(37, 99, 235, 0.28), transparent 28%),
+        #48566a;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    button,
+    a {
+      font: inherit;
+    }
+
+    .policy-shell {
+      width: min(1210px, calc(100vw - 52px));
+      height: min(91vh, 1040px);
+      min-height: 720px;
+      margin: 28px auto;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: hidden;
+      border: 1px solid rgba(217, 226, 239, 0.9);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.985);
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+
+    .policy-header {
+      position: relative;
+      padding: 30px 32px 16px;
+    }
+
+    .policy-version {
+      margin: 0 0 4px;
+      color: var(--teal);
+      font-size: 0.82rem;
+      font-weight: 950;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--ink);
+      font-size: clamp(2.6rem, 5vw, 4.25rem);
+      line-height: 0.94;
+      letter-spacing: -0.01em;
+    }
+
+    .policy-lead {
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 1.08rem;
+      font-weight: 650;
+    }
+
+    .policy-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      align-items: center;
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: 0.98rem;
+      font-weight: 650;
+    }
+
+    .policy-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .policy-pill {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #fff;
+      color: var(--ink);
+      padding: 5px 10px;
+      font-weight: 900;
+    }
+
+    .close-button {
+      position: absolute;
+      top: 30px;
+      right: 30px;
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      background: #fff;
+      color: var(--ink);
+      text-decoration: none;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+    }
+
+    .policy-main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 292px minmax(0, 1fr);
+      gap: 36px;
+      overflow-y: auto;
+      padding: 0 32px 22px;
+      scrollbar-color: rgba(15, 23, 42, 0.28) transparent;
+    }
+
+    .policy-sidebar {
+      display: grid;
+      align-content: start;
+      gap: 22px;
+    }
+
+    .side-card {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #fff;
+      padding: 20px 18px;
+    }
+
+    .side-card h2,
+    .side-card h3 {
+      margin: 0 0 16px;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+
+    .side-row {
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .side-row:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .side-row:last-child {
+      padding-bottom: 0;
+    }
+
+    .side-row strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+      font-size: 0.95rem;
+      line-height: 1.24;
+    }
+
+    .side-row p,
+    .side-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .side-icon,
+    .term-card-icon,
+    .rule-heading-icon {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: rgba(0, 139, 131, 0.1);
+      color: var(--teal-dark);
+    }
+
+    .side-card--intro {
+      min-height: 128px;
+    }
+
+    .policy-content {
+      min-width: 0;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .rule-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .rule-group h2 {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 4px;
+      color: var(--ink);
+      font-size: 1.12rem;
+      line-height: 1.1;
+    }
+
+    .rule-heading-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--teal-dark);
+    }
+
+    .rule-row {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      align-items: center;
+      gap: 16px;
+      min-height: 52px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #fff;
+      padding: 8px 12px;
+      color: var(--ink);
+      font-size: 0.88rem;
+      font-weight: 650;
+    }
+
+    .rule-row b {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      font-size: 0.9rem;
+      font-weight: 950;
+    }
+
+    .terms-content {
+      gap: 10px;
+      padding-right: 4px;
+    }
+
+    .term-card {
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #fff;
+      padding: 20px 22px;
+    }
+
+    .term-card h2 {
+      margin: 0 0 4px;
+      font-size: 1.18rem;
+      line-height: 1.15;
+    }
+
+    .term-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.03rem;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+      line-height: 1.33;
+    }
+
+    .acceptance-note {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+      border: 1px solid #b8dcff;
+      border-radius: 10px;
+      background: #eff8ff;
+      color: var(--ink);
+      padding: 14px 18px;
+      font-weight: 900;
+    }
+
+    .policy-footer {
+      display: grid;
+      grid-template-columns: minmax(180px, 228px) minmax(280px, 360px);
+      justify-content: space-between;
+      gap: 20px;
+      border-top: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.96);
+      padding: 20px 32px;
+    }
+
+    .back-button,
+    .accept-button {
+      min-height: 54px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      border-radius: 9px;
+      padding: 0 22px;
+      text-decoration: none;
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .back-button {
+      border: 1px solid #cad6e7;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .accept-button {
+      border: 0;
+      background: linear-gradient(135deg, var(--teal), var(--green));
+      color: #fff;
+      font-size: 1.02rem;
+      box-shadow: 0 10px 24px rgba(0, 139, 131, 0.2);
+    }
+
+    svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .close-button svg { width: 24px; height: 24px; }
+
+    @media (max-width: 880px) {
+      .policy-shell {
+        width: min(100vw - 18px, 720px);
+        height: auto;
+        min-height: calc(100vh - 18px);
+        margin: 9px auto;
+      }
+
+      .policy-main {
+        grid-template-columns: 1fr;
+        padding: 0 18px 18px;
+      }
+
+      .policy-header {
+        padding: 22px 18px 14px;
+      }
+
+      .close-button {
+        top: 18px;
+        right: 18px;
+      }
+
+      .policy-footer {
+        grid-template-columns: 1fr;
+        padding: 16px 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="policy-shell">
+    <header class="policy-header">
+      <p class="policy-version">Version {{ version }}</p>
+      <h1>{{ title }}</h1>
+      {% if document_kind == "property_rules" %}
+        <div class="policy-meta">
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>Property Rules for Sol Oriens V Stays</span>
+          <span class="policy-pill">12 rules</span>
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>~5 min read</span>
+        </div>
+      {% else %}
+        <p class="policy-lead">Please review these terms carefully. You must accept them to continue with your payment.</p>
+      {% endif %}
+      <a class="close-button" href="/#booking" aria-label="Close document">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+      </a>
+    </header>
+
+    {% if document_kind == "property_rules" %}
+      <section class="policy-main">
+        <aside class="policy-sidebar">
+          <section class="side-card">
+            <h2>At a glance</h2>
+            <div class="side-row">
+              <span class="side-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-8 0v2"></path><circle cx="12" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
+              <div><strong>Registered guests only</strong><p>Guest count must be accurate before arrival.</p></div>
+            </div>
+            <div class="side-row">
+              <span class="side-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="m5.8 5.8 12.4 12.4"></path><path d="M9 9h6v6"></path></svg></span>
+              <div><strong>No smoking indoors</strong><p>Smoking is not allowed in the apartment or indoor areas.</p></div>
+            </div>
+            <div class="side-row">
+              <span class="side-icon"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"></path><path d="m19 9-6 6"></path><path d="m13 9 6 6"></path></svg></span>
+              <div><strong>Respect quiet hours</strong><p>No parties, events, or disruptive noise. Be respectful to others.</p></div>
+            </div>
+            <div class="side-row">
+              <span class="side-icon"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Z"></path><path d="m9 12 2 2 4-5"></path></svg></span>
+              <div><strong>Secure the apartment</strong><p>Lock all doors and windows when leaving.</p></div>
+            </div>
+            <div class="side-row">
+              <span class="side-icon"><svg viewBox="0 0 24 24"><path d="m12 3 10 18H2L12 3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+              <div><strong>Report issues immediately</strong><p>Help us resolve problems quickly.</p></div>
+            </div>
+          </section>
+          <section class="side-card side-card--intro">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><path d="M12 8h.01"></path></svg> Why we have rules</h3>
+            <p>These rules help us maintain a safe, comfortable, and enjoyable environment for all our guests and neighbors.</p>
+          </section>
+        </aside>
+
+        <section class="policy-content">
+          <div class="rule-group">
+            <h2><span class="rule-heading-icon"><svg viewBox="0 0 24 24"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect></svg></span>Before arrival</h2>
+            <div class="rule-row"><b>1</b><span>Registered guests only. The reservation guest count must be accurate before arrival. Extra guests require MLADIS approval and may change pricing.</span></div>
+            <div class="rule-row"><b>2</b><span>Check-in is 3:00 PM and check-out is 12:00 PM unless MLADIS confirms another time in writing.</span></div>
+            <div class="rule-row"><b>3</b><span>No parties, events, disruptive noise, or behavior that disturbs neighbors, staff, guards, or other residents.</span></div>
+          </div>
+          <div class="rule-group">
+            <h2><span class="rule-heading-icon"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"></rect><path d="M11 18h2"></path></svg></span>During your stay</h2>
+            <div class="rule-row"><b>4</b><span>No smoking inside the apartment or indoor shared areas.</span></div>
+            <div class="rule-row"><b>5</b><span>Keep doors, windows, balcony doors, and access points secured when leaving the apartment.</span></div>
+            <div class="rule-row"><b>6</b><span>Parking is limited to the assigned space for the reserved apartment when available. Guests must park carefully and follow residential instructions.</span></div>
+          </div>
+          <div class="rule-group">
+            <h2><span class="rule-heading-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-8 0v2"></path><circle cx="12" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>Amenities &amp; shared spaces</h2>
+            <div class="rule-row"><b>7</b><span>Pool and BBQ areas are shared amenities. Use must be coordinated with MLADIS each time, and private use requires advance approval.</span></div>
+            <div class="rule-row"><b>8</b><span>Guests are responsible for ordinary care of furniture, keys, access devices, appliances, linens, towels, kitchen items, electronics, and shared amenities.</span></div>
+          </div>
+          <div class="rule-group">
+            <h2><span class="rule-heading-icon"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></span>Security &amp; access</h2>
+            <div class="rule-row"><b>9</b><span>Report damage, maintenance issues, access issues, missing items, or accidents immediately so MLADIS can document and resolve them.</span></div>
+            <div class="rule-row"><b>10</b><span>Wi-Fi, lock codes, building access details, and arrival instructions are for registered guests only and must not be shared publicly.</span></div>
+            <div class="rule-row"><b>11</b><span>Surveillance cameras may operate in residential entrances, recreation entrances, parking areas, building hallways, patios, and other shared/public areas. Cameras are not placed inside private apartment living spaces.</span></div>
+          </div>
+          <div class="rule-group">
+            <h2><span class="rule-heading-icon" style="color: var(--orange)"><svg viewBox="0 0 24 24"><path d="m12 3 10 18H2L12 3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>Damage / violations</h2>
+            <div class="rule-row"><b>12</b><span>Any violation that causes fines, damage, cleaning costs, missing items, access replacement costs, vendor charges, or other loss may be charged according to the Damage Deposit Hold Terms.</span></div>
+          </div>
+        </section>
+      </section>
+    {% else %}
+      <section class="policy-main">
+        <aside class="policy-sidebar">
+          <section class="side-card">
+            <h2 style="color: var(--teal-dark); text-transform: uppercase; letter-spacing: 0.08em;"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Z"></path></svg> Key points</h2>
+            <div class="side-row"><span class="side-icon"><svg viewBox="0 0 24 24"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path></svg></span><div><strong>Refundable</strong><p>This is an authorization hold, not a charge.</p></div></div>
+            <div class="side-row"><span class="side-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h5"></path></svg></span><div><strong>Captured only for documented issues</strong><p>The hold is used only when there is a valid, documented reason.</p></div></div>
+            <div class="side-row"><span class="side-icon"><svg viewBox="0 0 24 24"><path d="M14.5 4h-5L8 7H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-1.5-3Z"></path><circle cx="12" cy="13" r="3"></circle></svg></span><div><strong>Evidence may be used</strong><p>Photos, invoices, staff notes, and other records may support a claim.</p></div></div>
+            <div class="side-row"><span class="side-icon"><svg viewBox="0 0 24 24"><path d="M16 16 19 4"></path><path d="M8 16 5 4"></path><path d="M3 4h18"></path><path d="M12 4v16"></path><path d="M5 20h14"></path></svg></span><div><strong>Extra costs may be invoiced</strong><p>If costs exceed the hold, additional recovery may be pursued.</p></div></div>
+            <div class="side-row"><span class="side-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span><div><strong>Released per processor timeline</strong><p>If no issue is documented, the hold is released according to your processor timeline.</p></div></div>
+          </section>
+        </aside>
+
+        <section class="policy-content terms-content">
+          <article class="term-card"><span class="term-card-icon"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Z"></path><path d="m9 12 2 2 4-5"></path></svg></span><div><h2>1. What this hold is</h2><p>The refundable damage deposit is an authorization hold used to protect MLADIS, the property owner, and future guests from property damage, missing items, excessive cleaning, rule violations, residential fines, access-device replacement, and other costs caused during a reservation.</p></div></article>
+          <article class="term-card"><span class="term-card-icon"><svg viewBox="0 0 24 24"><path d="m12 3 10 18H2L12 3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span><div><h2>2. When it may be captured</h2><p>The hold is not automatically captured. MLADIS may capture all or part of the hold only when there is a documented reason connected to the stay, including property damage, missing items, broken appliances or furniture, smoke or odor remediation, excessive cleaning, lost keys or access devices, unauthorized guests, unauthorized parties, amenity misuse, parking or building fines, or other violations of the property rules.</p></div></article>
+          <article class="term-card"><span class="term-card-icon"><svg viewBox="0 0 24 24"><path d="M14.5 4h-5L8 7H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-1.5-3Z"></path><circle cx="12" cy="13" r="3"></circle></svg></span><div><h2>3. How MLADIS documents issues</h2><p>When possible, MLADIS will use photos, messages, staff notes, invoices, vendor quotes, receipts, building notices, cleaning reports, or maintenance records to document the issue. The amount captured should be reasonably connected to the cost of remediation, replacement, fines, vendor work, or administrative recovery required because of the incident.</p></div></article>
+          <article class="term-card"><span class="term-card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v10"></path><path d="M8 11h8"></path></svg></span><div><h2>4. If costs exceed the hold</h2><p>If damage or a rule violation exceeds the deposit amount, MLADIS may seek the remaining balance through invoice, payment request, platform claim, legal claim, or another lawful recovery method.</p></div></article>
+          <article class="term-card"><span class="term-card-icon"><svg viewBox="0 0 24 24"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect></svg></span><div><h2>5. Release of the hold</h2><p>If no issue is documented, the hold should be released according to the payment processor and card issuer timeline.</p></div></article>
+          <div class="acceptance-note"><span class="rule-heading-icon"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Z"></path><path d="m9 12 2 2 4-5"></path></svg></span><span>By accepting these terms, the guest confirms that they reviewed the property rules, understands that violations may result in charges, and agrees to this Damage Deposit Hold policy.</span></div>
+        </section>
+      </section>
+    {% endif %}
+
+    <footer class="policy-footer">
+      <a class="back-button" href="/#booking"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>Back to payment</a>
+      <button class="accept-button" type="button" data-document-kind="{{ document_kind }}" data-version="{{ version }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Z"></path><path d="m9 12 2 2 4-5"></path></svg>
+        Accept {{ title }}
+      </button>
+    </footer>
+  </main>
+
+  <script>
+    const acceptButton = document.querySelector('[data-document-kind]');
+    acceptButton?.addEventListener('click', () => {
+      const payload = {
+        type: 'mladis-policy-accepted',
+        kind: acceptButton.dataset.documentKind,
+        version: acceptButton.dataset.version,
+      };
+      try {
+        window.opener?.postMessage(payload, window.location.origin);
+      } catch (error) {}
+      try {
+        window.sessionStorage.setItem('mladis-policy-accepted', JSON.stringify(payload));
+        window.sessionStorage.setItem(`mladis-policy-accepted-${payload.kind}`, payload.version || 'accepted');
+      } catch (error) {}
+      if (window.opener && !window.opener.closed) {
+        window.close();
+      } else {
+        window.location.href = '/#booking';
+      }
+    });
+  </script>
+</body>
+</html>

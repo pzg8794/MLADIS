@@ -25,6 +25,7 @@ from django.core.management import call_command
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+import stripe
 
 from .adapters import MLADISAccountAdapter, MLADISSocialAccountAdapter
 from .admin import DamageDepositAdmin
@@ -75,6 +76,7 @@ from .services import (
     DamageDepositService,
     PaymentAuthorization,
     PromotionEmailService,
+    ReservationRequestService,
     ReservationPricingService,
     ReservationPaymentHoldService,
 )
@@ -983,7 +985,11 @@ class ReservationPricingAndPaymentHoldTests(TestCase):
 
         response = self.client.post(
             reverse("bookings:reservation-payment-checkout"),
-            data={"inquiry_id": inquiry_id},
+            data={
+                "inquiry_id": inquiry_id,
+                "property_rules_accepted": "1",
+                "damage_terms_accepted": "1",
+            },
             HTTP_ACCEPT="application/json",
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
@@ -996,6 +1002,200 @@ class ReservationPricingAndPaymentHoldTests(TestCase):
         kwargs = stripe_session_create.call_args.kwargs
         self.assertEqual(kwargs["payment_intent_data"]["capture_method"], "manual")
         self.assertEqual(kwargs["line_items"][0]["price_data"]["unit_amount"], 12000)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
+        DEPOSIT_AMOUNT_CENTS=20000,
+        DEPOSIT_CURRENCY="usd",
+        STRIPE_SECRET_KEY="sk_test_contract",
+    )
+    @patch("bookings.services.stripe.checkout.Session.create")
+    @patch("bookings.services.stripe.Customer.create")
+    def test_combined_payment_checkout_opens_one_stripe_setup_checkout(
+        self,
+        stripe_customer_create,
+        stripe_session_create,
+    ):
+        stripe_customer_create.return_value = SimpleNamespace(id="cus_test_combined")
+        stripe_session_create.return_value = SimpleNamespace(
+            id="cs_test_combined",
+            url="https://checkout.stripe.com/c/setup/cs_test_combined",
+        )
+        item = BookableItem.objects.create(
+            name="3 Bedrooms Vacation Home & Pool G-101",
+            slug="g-101-combined",
+            category=BookingCategory.STAY,
+            short_description="A test stay.",
+            bedrooms=3,
+            beds=3,
+            max_guests=7,
+            is_active=True,
+        )
+        today = timezone.localdate()
+        inquiry_response = self.client.post(
+            reverse("bookings:inquiry-create"),
+            data={
+                "item": item.id,
+                "guest_name": "Combined Guest",
+                "email": "combined@example.com",
+                "check_in": today + timedelta(days=3),
+                "check_out": today + timedelta(days=5),
+                "guests": 2,
+            },
+            HTTP_ACCEPT="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        inquiry_id = inquiry_response.json()["inquiry"]["id"]
+
+        response = self.client.post(
+            reverse("bookings:reservation-payment-checkout"),
+            data={
+                "inquiry_id": inquiry_id,
+                "payment_choice": "combined",
+                "property_rules_accepted": "1",
+                "damage_terms_accepted": "1",
+            },
+            HTTP_ACCEPT="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(stripe_session_create.call_count, 1)
+        payload = response.json()
+        self.assertEqual(payload["checkout_url"], "https://checkout.stripe.com/c/setup/cs_test_combined")
+        deposit = DamageDeposit.objects.get()
+        hold = ReservationPaymentHold.objects.get()
+        self.assertEqual(deposit.amount_cents, 20000)
+        self.assertEqual(deposit.status, DepositStatus.CHECKOUT_CREATED)
+        self.assertEqual(deposit.stripe_checkout_session_id, "cs_test_combined")
+        self.assertEqual(deposit.stripe_payment_intent_id, "")
+        self.assertEqual(hold.amount_cents, 12000)
+        self.assertEqual(hold.status, DepositStatus.CHECKOUT_CREATED)
+        self.assertEqual(hold.stripe_checkout_session_id, "cs_test_combined")
+        self.assertEqual(hold.stripe_payment_intent_id, "")
+        kwargs = stripe_session_create.call_args.kwargs
+        self.assertEqual(kwargs["mode"], "setup")
+        self.assertEqual(kwargs["customer"], "cus_test_combined")
+        self.assertEqual(kwargs["payment_method_types"], ["card"])
+        self.assertNotIn("phone_number_collection", kwargs)
+        self.assertIn("session_id={CHECKOUT_SESSION_ID}", kwargs["success_url"])
+        self.assertEqual(kwargs["metadata"]["booking_inquiry_id"], str(inquiry_id))
+        self.assertEqual(kwargs["setup_intent_data"]["metadata"]["booking_inquiry_id"], str(inquiry_id))
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
+        DEPOSIT_AMOUNT_CENTS=20000,
+        DEPOSIT_CURRENCY="usd",
+        STRIPE_SECRET_KEY="sk_test_contract",
+    )
+    @patch("bookings.services.stripe.PaymentIntent.create")
+    @patch("bookings.services.stripe.SetupIntent.retrieve")
+    @patch("bookings.services.stripe.checkout.Session.retrieve")
+    def test_combined_setup_success_creates_two_holds_and_redirects_confirmation(
+        self,
+        stripe_session_retrieve,
+        stripe_setup_intent_retrieve,
+        stripe_payment_intent_create,
+    ):
+        item = BookableItem.objects.create(
+            name="3 Bedrooms Vacation Home & Pool G-101",
+            slug="g-101-combined-success",
+            category=BookingCategory.STAY,
+            short_description="A test stay.",
+            bedrooms=3,
+            beds=3,
+            max_guests=7,
+            is_active=True,
+        )
+        inquiry = BookingInquiry.objects.create(
+            item=item,
+            guest_name="Combined Guest",
+            email="combined@example.com",
+            check_in=timezone.localdate() + timedelta(days=5),
+            check_out=timezone.localdate() + timedelta(days=7),
+            guests=2,
+        )
+        ReservationRequestService().prepare(inquiry)
+        inquiry.save()
+        stripe_session_retrieve.return_value = SimpleNamespace(
+            id="cs_test_combined",
+            status="complete",
+            setup_intent="seti_test_combined",
+            metadata=stripe.StripeObject.construct_from({"booking_inquiry_id": str(inquiry.id)}, None),
+        )
+        stripe_setup_intent_retrieve.return_value = SimpleNamespace(
+            id="seti_test_combined",
+            status="succeeded",
+            payment_method="pm_test_combined",
+            customer="cus_test_combined",
+            metadata=stripe.StripeObject.construct_from({"booking_inquiry_id": str(inquiry.id)}, None),
+        )
+        stripe_payment_intent_create.side_effect = [
+            SimpleNamespace(id="pi_test_deposit_hold", status="requires_capture"),
+            SimpleNamespace(id="pi_test_stay_hold", status="requires_capture"),
+        ]
+        DamageDeposit.objects.create(
+            inquiry=inquiry,
+            item=item,
+            guest_name="Combined Guest",
+            email="combined@example.com",
+            amount_cents=20000,
+            currency="usd",
+            payment_provider=DepositProvider.STRIPE,
+            stripe_checkout_session_id="cs_test_combined",
+            status=DepositStatus.CHECKOUT_CREATED,
+        )
+        ReservationPaymentHold.objects.create(
+            inquiry=inquiry,
+            item=item,
+            guest_name="Combined Guest",
+            email="combined@example.com",
+            amount_cents=inquiry.reservation_payment_cents,
+            currency="usd",
+            payment_provider=DepositProvider.STRIPE,
+            stripe_checkout_session_id="cs_test_combined",
+            status=DepositStatus.CHECKOUT_CREATED,
+        )
+
+        response = self.client.get(
+            reverse("bookings:combined-payment-success") + "?session_id=cs_test_combined"
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(
+            reverse("bookings:payment-confirmation", kwargs={"token": inquiry.payment_confirmation_token}),
+            response["Location"],
+        )
+        deposit = DamageDeposit.objects.get()
+        hold = ReservationPaymentHold.objects.get()
+        self.assertEqual(deposit.status, DepositStatus.REQUIRES_CAPTURE)
+        self.assertEqual(deposit.stripe_payment_intent_id, "pi_test_deposit_hold")
+        self.assertEqual(deposit.stripe_checkout_session_id, "cs_test_combined")
+        self.assertEqual(hold.status, DepositStatus.REQUIRES_CAPTURE)
+        self.assertEqual(hold.stripe_checkout_session_id, "cs_test_combined")
+        self.assertEqual(hold.stripe_payment_intent_id, "pi_test_stay_hold")
+        self.assertEqual(stripe_payment_intent_create.call_count, 2)
+        deposit_kwargs = stripe_payment_intent_create.call_args_list[0].kwargs
+        hold_kwargs = stripe_payment_intent_create.call_args_list[1].kwargs
+        self.assertEqual(deposit_kwargs["amount"], 20000)
+        self.assertEqual(hold_kwargs["amount"], 12000)
+        self.assertTrue(deposit_kwargs["off_session"])
+        self.assertTrue(hold_kwargs["off_session"])
+        self.assertEqual(deposit_kwargs["capture_method"], "manual")
+        self.assertEqual(hold_kwargs["capture_method"], "manual")
+        self.assertEqual(deposit_kwargs["metadata"]["transaction_type"], "security_deposit_hold")
+        self.assertEqual(hold_kwargs["metadata"]["transaction_type"], "reservation_payment_hold")
+        self.assertEqual(deposit_kwargs["idempotency_key"], f"mladis-combined-deposit-{deposit.id}-cs_test_combined")
+        self.assertEqual(hold_kwargs["idempotency_key"], f"mladis-combined-stay-{hold.id}-cs_test_combined")
+
+        response = self.client.get(
+            reverse("bookings:combined-payment-success") + "?session_id=cs_test_combined"
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(stripe_payment_intent_create.call_count, 2)
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
@@ -2325,7 +2525,7 @@ class OpsDashboardTests(TestCase):
 
 
 class DamageDepositTests(TestCase):
-    @override_settings(STRIPE_SECRET_KEY="")
+    @override_settings(STRIPE_SECRET_KEY="", STRIPE_TEST_SECRET_KEY="", STRIPE_LIVE_SECRET_KEY="")
     def test_deposit_checkout_without_stripe_key_records_configuration_status(self):
         item = BookableItem.objects.create(
             name="Test Stay",
@@ -2350,7 +2550,7 @@ class DamageDepositTests(TestCase):
         self.assertEqual(deposit.payment_provider, DepositProvider.STRIPE)
         self.assertEqual(deposit.status, DepositStatus.REQUIRES_CONFIGURATION)
 
-    @override_settings(STRIPE_SECRET_KEY="")
+    @override_settings(STRIPE_SECRET_KEY="", STRIPE_TEST_SECRET_KEY="", STRIPE_LIVE_SECRET_KEY="")
     def test_deposit_checkout_json_without_stripe_key_returns_modal_error(self):
         item = BookableItem.objects.create(
             name="Test Stay JSON",

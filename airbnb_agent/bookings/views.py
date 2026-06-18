@@ -17,7 +17,7 @@ from django.utils.decorators import method_decorator
 from django.utils import timezone
 from django.templatetags.static import static
 from django.views.decorators.cache import never_cache
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views import View
@@ -77,6 +77,41 @@ def _build_openai_client(api_key):
     from openai import OpenAI
 
     return OpenAI(api_key=api_key)
+
+
+def _accept_payment_documents(request, inquiry):
+    if not inquiry:
+        return None
+    wants_json = (
+        request.headers.get("x-requested-with") == "XMLHttpRequest"
+        or "application/json" in request.headers.get("accept", "")
+    )
+    if request.POST.get("property_rules_accepted") != "1" or request.POST.get("damage_terms_accepted") != "1":
+        if wants_json:
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "message": "Please accept the property rules and damage deposit terms before continuing.",
+                },
+                status=400,
+            )
+        messages.error(request, "Please accept the property rules and damage deposit terms before continuing.")
+        return redirect(reverse("bookings:home") + "#booking")
+
+    site_settings = SiteSettings.current()
+    now = timezone.now()
+    update_fields = ["updated_at"]
+    if not inquiry.property_rules_accepted_at:
+        inquiry.property_rules_accepted_at = now
+        update_fields.append("property_rules_accepted_at")
+    if not inquiry.damage_terms_accepted_at:
+        inquiry.damage_terms_accepted_at = now
+        update_fields.append("damage_terms_accepted_at")
+    inquiry.accepted_property_rules_version = site_settings.property_rules_version
+    inquiry.accepted_damage_terms_version = site_settings.damage_terms_version
+    update_fields.extend(["accepted_property_rules_version", "accepted_damage_terms_version"])
+    inquiry.save(update_fields=update_fields)
+    return None
 
 
 class HomePageView(TemplateView):
@@ -164,10 +199,12 @@ class HomePageView(TemplateView):
         return context
 
 
+@method_decorator(ensure_csrf_cookie, name="dispatch")
 class ModernSiteView(TemplateView):
     template_name = "bookings/modern_site.html"
 
 
+@method_decorator(ensure_csrf_cookie, name="dispatch")
 class ModernAccountView(LoginRequiredMixin, TemplateView):
     template_name = "bookings/modern_site.html"
 
@@ -585,6 +622,7 @@ class BookingInquiryCreateView(View):
 
     @staticmethod
     def _inquiry_payload(request, inquiry):
+        site_settings = SiteSettings.current()
         item = inquiry.item
         return {
             "id": inquiry.id,
@@ -609,8 +647,47 @@ class BookingInquiryCreateView(View):
             "reservation_payment_checkout_url": request.build_absolute_uri(
                 reverse("bookings:reservation-payment-checkout")
             ),
+            "payment_confirmation_url": request.build_absolute_uri(
+                reverse("bookings:payment-confirmation", kwargs={"token": inquiry.payment_confirmation_token})
+            ),
+            "property_rules_url": request.build_absolute_uri(reverse("bookings:property-rules")),
+            "damage_terms_url": request.build_absolute_uri(reverse("bookings:damage-deposit-terms")),
+            "documents_accepted": inquiry.required_documents_accepted,
+            "property_rules_title": site_settings.property_rules_title,
+            "property_rules_version": site_settings.property_rules_version,
+            "property_rules_body": site_settings.property_rules_body,
+            "damage_terms_title": site_settings.damage_terms_title,
+            "damage_terms_version": site_settings.damage_terms_version,
+            "damage_terms_body": site_settings.damage_terms_body,
             "admin_test": inquiry.is_admin_test,
         }
+
+
+class PolicyDocumentView(View):
+    document_kind = "property_rules"
+    template_name = "bookings/policy_document.html"
+
+    def get(self, request):
+        site_settings = SiteSettings.current()
+        if self.document_kind == "damage_terms":
+            title = site_settings.damage_terms_title
+            body = site_settings.damage_terms_body
+            version = site_settings.damage_terms_version
+        else:
+            title = site_settings.property_rules_title
+            body = site_settings.property_rules_body
+            version = site_settings.property_rules_version
+        return render(
+            request,
+            self.template_name,
+            {
+                "title": title,
+                "body": body,
+                "version": version,
+                "document_kind": self.document_kind,
+                "site_settings": site_settings,
+            },
+        )
 
 
 class SignUpView(CreateView):
@@ -768,7 +845,11 @@ class DamageDepositCheckoutView(View):
             context["show_deposit"] = True
             return render(request, "bookings/home.html", context, status=400)
 
-        deposit = form.save()
+        deposit = form.save(commit=False)
+        document_error = _accept_payment_documents(request, deposit.inquiry)
+        if document_error:
+            return document_error
+        deposit.save()
         from .services import get_damage_deposit_service
 
         service = get_damage_deposit_service(form.cleaned_data.get("payment_provider"))
@@ -871,7 +952,12 @@ class DamageDepositSuccessView(View):
             )
             if deposit.inquiry_id:
                 request.session["payment_inquiry_id"] = deposit.inquiry_id
-                return redirect(reverse("bookings:home") + f"?deposit_success=1&payment_for={deposit.inquiry_id}#booking")
+                return redirect(
+                    reverse(
+                        "bookings:payment-confirmation",
+                        kwargs={"token": deposit.inquiry.payment_confirmation_token},
+                    )
+                )
         else:
             messages.success(request, "Thanks. Your deposit checkout was completed.")
         return redirect(reverse("bookings:home") + "#deposit")
@@ -935,7 +1021,14 @@ class ReservationPaymentCheckoutView(View):
 
         from .services import ReservationPaymentHoldService
 
-        result = ReservationPaymentHoldService().create_checkout_for_inquiry(inquiry, request)
+        document_error = _accept_payment_documents(request, inquiry)
+        if document_error:
+            return document_error
+        service = ReservationPaymentHoldService()
+        if request.POST.get("payment_choice") == "combined":
+            result = service.create_combined_checkout_for_inquiry(inquiry, request)
+        else:
+            result = service.create_checkout_for_inquiry(inquiry, request)
         request.session["payment_inquiry_id"] = inquiry.id
         hold = inquiry.payment_holds.order_by("-created_at").first()
         if result.success:
@@ -990,9 +1083,150 @@ class ReservationPaymentSuccessView(View):
             )
             if hold.inquiry_id:
                 request.session["payment_inquiry_id"] = hold.inquiry_id
-                return redirect(reverse("bookings:home") + f"?payment_success=1&reservation_for={hold.inquiry_id}#booking")
+                return redirect(
+                    reverse(
+                        "bookings:payment-confirmation",
+                        kwargs={"token": hold.inquiry.payment_confirmation_token},
+                    )
+                )
         messages.success(request, "Thanks. Your reservation payment checkout was completed.")
         return redirect(reverse("bookings:home") + "#booking")
+
+
+class CombinedPaymentCheckoutView(View):
+    def get(self, request, token):
+        from .services import ReservationPaymentHoldService
+
+        inquiry = get_object_or_404(
+            BookingInquiry.objects.select_related("item"),
+            payment_confirmation_token=token,
+        )
+        checkout_url = (
+            inquiry.payment_holds.exclude(checkout_url="")
+            .order_by("-created_at")
+            .values_list("checkout_url", flat=True)
+            .first()
+            or ""
+        )
+        if checkout_url.startswith("http") and "/payments/combined-checkout/" not in checkout_url:
+            return redirect(checkout_url)
+        service = ReservationPaymentHoldService()
+        result = service.create_combined_checkout_for_inquiry(inquiry, request)
+        if result.success and result.checkout_url:
+            return redirect(result.checkout_url)
+        messages.error(request, result.message or "The combined checkout could not be restarted.")
+        return redirect(reverse("bookings:home") + "#booking")
+
+
+class CombinedPaymentSuccessView(View):
+    def get(self, request):
+        from .services import ReservationPaymentHoldService
+
+        session_id = request.GET.get("session_id", "")
+        setup_intent_id = request.GET.get("setup_intent", "")
+        deposit = None
+        hold = None
+        service = ReservationPaymentHoldService()
+        if session_id:
+            try:
+                deposit, hold = service.finalize_combined_checkout_session(session_id, request=request)
+            except stripe.StripeError as error:
+                messages.error(request, f"Stripe could not finish the combined authorization: {error}")
+        elif setup_intent_id:
+            try:
+                deposit, hold = service.finalize_combined_setup_intent(setup_intent_id, request=request)
+            except stripe.StripeError as error:
+                messages.error(request, f"Stripe could not finish the combined authorization: {error}")
+
+        record = hold or deposit
+        if record and record.inquiry_id:
+            request.session["payment_inquiry_id"] = record.inquiry_id
+            messages.success(request, "Payment confirmed. Your MLADIS reservation authorization is recorded.")
+            return redirect(
+                reverse(
+                    "bookings:payment-confirmation",
+                    kwargs={"token": record.inquiry.payment_confirmation_token},
+                )
+            )
+        messages.error(request, "We could not confirm the combined payment authorization. Please contact MLADIS.")
+        return redirect(reverse("bookings:home") + "#booking")
+
+
+class PaymentConfirmationView(View):
+    template_name = "bookings/payment_confirmation.html"
+
+    def get(self, request, token):
+        inquiry = get_object_or_404(
+            BookingInquiry.objects.select_related("item").prefetch_related("damage_deposits", "payment_holds"),
+            payment_confirmation_token=token,
+        )
+        context = self._context(request, inquiry)
+        if request.GET.get("download") == "1":
+            response = HttpResponse(self._download_body(context), content_type="text/plain; charset=utf-8")
+            response["Content-Disposition"] = (
+                f'attachment; filename="{inquiry.request_key.lower()}-payment-confirmation.txt"'
+            )
+            return response
+        return render(request, self.template_name, context)
+
+    def _context(self, request, inquiry):
+        deposit = self._preferred_record(inquiry.damage_deposits.all())
+        hold = self._preferred_record(inquiry.payment_holds.all())
+        confirmation_url = request.build_absolute_uri(
+            reverse("bookings:payment-confirmation", kwargs={"token": inquiry.payment_confirmation_token})
+        )
+        share_text = (
+            f"{inquiry.request_key} payment confirmation for "
+            f"{inquiry.item.business_display_name if inquiry.item else 'MLADIS reservation'}: {confirmation_url}"
+        )
+        return {
+            "inquiry": inquiry,
+            "deposit": deposit,
+            "hold": hold,
+            "confirmation_url": confirmation_url,
+            "download_url": f"{confirmation_url}?download=1",
+            "mailto_url": "mailto:?" + urlencode(
+                {
+                    "subject": f"{inquiry.request_key} MLADIS payment confirmation",
+                    "body": share_text,
+                }
+            ),
+            "whatsapp_url": "https://wa.me/?" + urlencode({"text": share_text}),
+            "sms_url": "sms:?" + urlencode({"body": share_text}),
+            "site_settings": SiteSettings.current(),
+        }
+
+    @staticmethod
+    def _preferred_record(records):
+        ordered = sorted(records, key=lambda record: record.created_at, reverse=True)
+        for status in (DepositStatus.REQUIRES_CAPTURE, DepositStatus.CAPTURED, DepositStatus.CHECKOUT_CREATED):
+            for record in ordered:
+                if record.status == status:
+                    return record
+        return ordered[0] if ordered else None
+
+    @staticmethod
+    def _download_body(context):
+        inquiry = context["inquiry"]
+        deposit = context["deposit"]
+        hold = context["hold"]
+        lines = [
+            "MLADIS payment confirmation",
+            "",
+            f"Reference: {inquiry.request_key}",
+            f"Guest: {inquiry.guest_name}",
+            f"Email: {inquiry.email}",
+            f"Stay: {inquiry.item.business_display_name if inquiry.item else 'Flexible / help me choose'}",
+            f"Dates: {inquiry.check_in} to {inquiry.check_out}",
+            f"Guests: {inquiry.guests}",
+            f"Reservation payment hold: {hold.display_amount if hold else inquiry.display_reservation_payment}",
+            f"Reservation payment status: {hold.get_status_display() if hold else 'Pending'}",
+            f"Damage deposit hold: {deposit.display_amount if deposit else inquiry.display_deposit}",
+            f"Damage deposit status: {deposit.get_status_display() if deposit else 'Pending'}",
+            "",
+            f"Confirmation URL: {context['confirmation_url']}",
+        ]
+        return "\n".join(lines)
 
 
 class PayPalDamageDepositSuccessView(View):
@@ -1014,7 +1248,12 @@ class PayPalDamageDepositSuccessView(View):
             )
             if deposit.inquiry_id:
                 request.session["payment_inquiry_id"] = deposit.inquiry_id
-                return redirect(reverse("bookings:home") + f"?deposit_success=1&payment_for={deposit.inquiry_id}#booking")
+                return redirect(
+                    reverse(
+                        "bookings:payment-confirmation",
+                        kwargs={"token": deposit.inquiry.payment_confirmation_token},
+                    )
+                )
         else:
             messages.warning(
                 request,
