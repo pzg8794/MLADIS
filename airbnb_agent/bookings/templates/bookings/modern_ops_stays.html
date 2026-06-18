@@ -1,0 +1,566 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#eef3f4">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    {% if site_settings.logo_display_url %}
+      <meta name="mladis-logo-url" content="{{ site_settings.logo_display_url }}">
+    {% endif %}
+    <link rel="icon" href="{% static 'frontend/modern-dashboard/favicon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}?v=gentelella-v4-preview-3">
+    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-stays.css' %}?v=ops-stays-v1">
+    <title>Stays &amp; Listings · MLADIS</title>
+  </head>
+  <body>
+    {# Server-rendered Stays & Listings page — no React, no JS override. #}
+    <div class="dashboard-shell" data-theme-reference="gentelella-v4">
+
+      {# ── Sidebar ── #}
+      <aside class="modern-admin-sidebar v4-command-sidebar" id="main-sidebar">
+        <a class="modern-admin-brand" href="/">
+          {% if site_settings.logo_display_url %}
+            <img src="{{ site_settings.logo_display_url }}" alt="MLADIS">
+          {% else %}
+            <img src="{% static 'frontend/modern-dashboard/favicon.svg' %}" alt="MLADIS">
+          {% endif %}
+          <div>
+            <strong>MLADIS</strong>
+            <small>Ops Panel</small>
+          </div>
+        </a>
+
+        <nav aria-label="Dashboard sections">
+          <div class="v4-nav-cluster">
+            <a href="/ops/dashboard/">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="14" rx="1"/></svg>
+              <span class="modern-admin-nav-label">Dashboard</span>
+            </a>
+          </div>
+
+          <span class="v4-nav-group">Operations</span>
+
+          <div class="v4-nav-cluster">
+            <a href="/ops/reservations/">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
+              <span class="modern-admin-nav-label">Reservations</span>
+            </a>
+          </div>
+          <div class="v4-nav-cluster">
+            <a href="/ops/calendar/">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
+              <span class="modern-admin-nav-label">Calendar</span>
+            </a>
+          </div>
+          <div class="v4-nav-cluster">
+            <a href="/ops/customers/">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span class="modern-admin-nav-label">Guests</span>
+            </a>
+          </div>
+          <div class="v4-nav-cluster">
+            <a class="is-active" href="/ops/stays/" aria-current="page">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+              <span class="modern-admin-nav-label">Properties</span>
+            </a>
+          </div>
+          <div class="v4-nav-cluster">
+            <a href="/ops/maintenance/">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              <span class="modern-admin-nav-label">Maintenance</span>
+            </a>
+          </div>
+          <div class="v4-nav-cluster">
+            <a href="/ops/deposits/">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+              <span class="modern-admin-nav-label">Payments</span>
+            </a>
+          </div>
+          <div class="v4-nav-cluster">
+            <a href="/ops/reports/">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+              <span class="modern-admin-nav-label">Reports</span>
+            </a>
+          </div>
+          <div class="v4-nav-cluster">
+            <a href="/ops/agent/">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+              <span class="modern-admin-nav-label">FairAgent</span>
+            </a>
+          </div>
+
+          <span class="v4-nav-group">Admin</span>
+
+          <div class="v4-nav-cluster">
+            <a href="/ops/workboard/">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
+              <span class="modern-admin-nav-label">Workboard</span>
+            </a>
+          </div>
+          <div class="v4-nav-cluster">
+            <a href="/ops/settings/">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span class="modern-admin-nav-label">Settings</span>
+            </a>
+          </div>
+          <div class="v4-nav-cluster">
+            <a href="/ops/admin/">
+              <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="15" r="3"/><circle cx="9" cy="7" r="4"/><path d="M10 15H6a4 4 0 0 0-4 4v2"/><path d="m21.7 16.4-.9-.3"/><path d="m15.2 13.9-.9-.3"/><path d="m16.6 18.7.3-.9"/><path d="m19.1 12.2.3-.9"/></svg>
+              <span class="modern-admin-nav-label">Users</span>
+            </a>
+          </div>
+        </nav>
+
+        <div class="v4-sidebar-user">
+          <span>{{ request.user.username|slice:":2"|upper }}</span>
+          <div>
+            <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+            <small>Operator</small>
+          </div>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </aside>
+
+      {# ── Main content area ── #}
+      <div class="dashboard-main">
+
+        {# Topbar #}
+        <header class="dashboard-topbar v4-commandbar">
+          <button
+            class="v4-icon-button"
+            type="button"
+            aria-label="Toggle menu"
+            onclick="this.closest('.dashboard-shell').classList.toggle('is-sidebar-expanded'); document.getElementById('main-sidebar').classList.toggle('is-expanded');"
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+          </button>
+          <label class="dashboard-search v4-command-search">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input aria-label="Search dashboard" placeholder="Search reservations, guests, properties...">
+            <kbd>⌘ K</kbd>
+          </label>
+          <div class="v4-commandbar__actions">
+            <a class="v4-new-button" href="/ops/reservations/">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              New
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </a>
+            <button class="v4-icon-button has-badge" type="button" aria-label="Notifications">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              <span>8</span>
+            </button>
+            <a class="v4-icon-button" href="/ops/calendar/" aria-label="Calendar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+            </a>
+            <a class="v4-user-menu" href="/accounts/">
+              <span>{{ request.user.username|slice:":2"|upper }}</span>
+              <div>
+                <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                <small>Operator</small>
+              </div>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </a>
+          </div>
+        </header>
+
+        {# ═══════════════════════════════════════════════════════════════════
+           Stays & Listings page content
+           ═══════════════════════════════════════════════════════════════════ #}
+        <main class="ops-sl-page" aria-label="Stays and Listings">
+
+          {# ── Page header ── #}
+          <div class="ops-sl-header">
+            <div>
+              <h1 class="ops-sl-h1">Stays &amp; Listings</h1>
+              <p class="ops-sl-subtitle">Manage live listings, public content, amenities, pricing, and operational readiness.</p>
+            </div>
+            <div class="ops-sl-header__actions">
+              <button class="btn-sl btn-sl--outline" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="6" y2="6"/><line x1="8" x2="16" y1="12" y2="12"/><line x1="11" x2="13" y1="18" y2="18"/></svg>
+                Filters
+              </button>
+              <button class="btn-sl btn-sl--outline" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                Export
+              </button>
+              <a href="#" class="btn-sl btn-sl--teal">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                Add New Listing
+              </a>
+            </div>
+          </div>
+
+          {# ── Tab bar ── #}
+          <div class="ops-sl-tabs" role="tablist">
+            <a href="?tab=all{% if search %}&search={{ search|urlencode }}{% endif %}"
+               class="ops-sl-tab{% if tab == 'all' %} ops-sl-tab--active{% endif %}"
+               role="tab" {% if tab == 'all' %}aria-selected="true"{% endif %}>
+              All
+              <span class="ops-sl-tab__badge">{{ tab_counts.all }}</span>
+            </a>
+            <a href="?tab=published{% if search %}&search={{ search|urlencode }}{% endif %}"
+               class="ops-sl-tab{% if tab == 'published' %} ops-sl-tab--active{% endif %}"
+               role="tab" {% if tab == 'published' %}aria-selected="true"{% endif %}>
+              Published
+              <span class="ops-sl-tab__badge">{{ tab_counts.published }}</span>
+            </a>
+            <a href="?tab=draft{% if search %}&search={{ search|urlencode }}{% endif %}"
+               class="ops-sl-tab{% if tab == 'draft' %} ops-sl-tab--active{% endif %}"
+               role="tab" {% if tab == 'draft' %}aria-selected="true"{% endif %}>
+              Draft
+              <span class="ops-sl-tab__badge">{{ tab_counts.draft }}</span>
+            </a>
+            <a href="?tab=inactive{% if search %}&search={{ search|urlencode }}{% endif %}"
+               class="ops-sl-tab{% if tab == 'inactive' %} ops-sl-tab--active{% endif %}"
+               role="tab" {% if tab == 'inactive' %}aria-selected="true"{% endif %}>
+              Inactive
+              <span class="ops-sl-tab__badge">{{ tab_counts.inactive }}</span>
+            </a>
+            <a href="?tab=maintenance{% if search %}&search={{ search|urlencode }}{% endif %}"
+               class="ops-sl-tab{% if tab == 'maintenance' %} ops-sl-tab--active{% endif %}"
+               role="tab" {% if tab == 'maintenance' %}aria-selected="true"{% endif %}>
+              Maintenance
+              <span class="ops-sl-tab__badge">{{ tab_counts.maintenance }}</span>
+            </a>
+            <a href="?tab=archived{% if search %}&search={{ search|urlencode }}{% endif %}"
+               class="ops-sl-tab{% if tab == 'archived' %} ops-sl-tab--active{% endif %}"
+               role="tab" {% if tab == 'archived' %}aria-selected="true"{% endif %}>
+              Archived
+              <span class="ops-sl-tab__badge">{{ tab_counts.archived }}</span>
+            </a>
+          </div>
+
+          {# ── Filter bar ── #}
+          <form class="ops-sl-filters" method="get" action="">
+            <input type="hidden" name="tab" value="{{ tab }}">
+            {% if selected_slug %}
+              <input type="hidden" name="stay" value="{{ selected_slug }}">
+            {% endif %}
+            <div class="ops-sl-search">
+              <svg class="ops-sl-search__icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input
+                class="ops-sl-search__input"
+                type="text"
+                name="search"
+                value="{{ search }}"
+                placeholder="Search by stay name, property, area..."
+                aria-label="Search listings"
+              >
+            </div>
+            <select class="ops-sl-filter-select" name="area" aria-label="Filter by area">
+              <option value="">All areas</option>
+            </select>
+            <select class="ops-sl-filter-select" name="property" aria-label="Filter by property">
+              <option value="">All properties</option>
+            </select>
+            <select class="ops-sl-filter-select" name="status" aria-label="Filter by status">
+              <option value="">All statuses</option>
+              <option value="published" {% if tab == 'published' %}selected{% endif %}>Published</option>
+              <option value="draft" {% if tab == 'draft' %}selected{% endif %}>Draft</option>
+            </select>
+            <button type="submit" class="btn-sl btn-sl--outline">More filters</button>
+          </form>
+
+          {# ── Two-column workspace ── #}
+          <div class="ops-sl-workspace{% if not detail %} ops-sl-workspace--full{% endif %}">
+
+            {# ═══ Left column: listing cards ═══ #}
+            <section class="ops-sl-list" aria-label="Listing cards">
+
+              {% for card in cards %}
+                <a
+                  href="?tab={{ tab }}&stay={{ card.stay.slug }}{% if search %}&search={{ search|urlencode }}{% endif %}"
+                  class="ops-sl-card{% if card.stay.slug == selected_slug %} ops-sl-card--selected{% endif %}"
+                  aria-label="{{ card.stay.business_display_name }}"
+                >
+                  {# Checkbox #}
+                  <input
+                    type="checkbox"
+                    class="ops-sl-card__check"
+                    aria-label="Select {{ card.stay.business_display_name }}"
+                    onclick="event.stopPropagation(); event.preventDefault();"
+                  >
+
+                  {# Thumbnail #}
+                  <div class="ops-sl-card__thumb">
+                    {% if card.cover_image %}
+                      <img src="{{ card.cover_image }}" alt="{{ card.stay.name }}" loading="lazy">
+                    {% else %}
+                      <div class="ops-sl-card__thumb-placeholder">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                      </div>
+                    {% endif %}
+                  </div>
+
+                  {# Card body #}
+                  <div class="ops-sl-card__body">
+                    <span class="ops-sl-card__name">{{ card.stay.business_display_name }}</span>
+                    {% if card.stay.location_label %}
+                      <div class="ops-sl-card__location">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                        {{ card.stay.location_label }}
+                      </div>
+                    {% endif %}
+                    <div class="ops-sl-card__stats">
+                      {% if card.stay.bedrooms is not None %}
+                        <span>{{ card.stay.bedrooms }} bed</span>
+                      {% endif %}
+                      {% if card.stay.beds is not None %}
+                        <span>{{ card.stay.beds }} beds</span>
+                      {% endif %}
+                      {% if card.stay.bathrooms is not None %}
+                        <span>{{ card.stay.bathrooms }} bath</span>
+                      {% endif %}
+                      {% if card.stay.max_guests is not None %}
+                        <span>{{ card.stay.max_guests }} guests</span>
+                      {% endif %}
+                    </div>
+                    {% if card.stay.airbnb_rating %}
+                      <div class="ops-sl-card__rating">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        {{ card.stay.airbnb_rating }}
+                        <span>({{ card.stay.review_count|default:0 }} reviews)</span>
+                      </div>
+                    {% endif %}
+                    {% if card.tags %}
+                      <div class="ops-sl-card__tags">
+                        {% for tag_label, tag_cls in card.tags %}
+                          <span class="ops-sl-tag {{ tag_cls }}">{{ tag_label }}</span>
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+                  </div>
+
+                  {# Right meta: price + status + readiness #}
+                  <div class="ops-sl-card__meta">
+                    {% if card.stay.starting_price %}
+                      <div class="ops-sl-card__price">
+                        ${{ card.stay.starting_price|floatformat:0 }}<span class="ops-sl-card__price-unit">/{{ card.stay.price_unit }}</span>
+                      </div>
+                    {% endif %}
+                    <span class="ops-sl-status ops-sl-status--{{ card.tab_status|lower }}">{{ card.tab_status }}</span>
+                    <span class="ops-sl-readiness ops-sl-readiness--{{ card.readiness|slugify }}">{{ card.readiness }}</span>
+                  </div>
+                </a>
+              {% empty %}
+                <p class="ops-sl-empty">
+                  {% if search %}No listings found for &ldquo;{{ search }}&rdquo;.{% else %}No listings in this category.{% endif %}
+                </p>
+              {% endfor %}
+
+              {% if cards %}
+                <div class="ops-sl-list__footer">
+                  Showing 1&ndash;{{ cards|length }} of {{ tab_counts.all }} result{{ tab_counts.all|pluralize }}
+                </div>
+              {% endif %}
+            </section>
+
+            {# ═══ Right column: selected listing detail panel ═══ #}
+            {% if detail %}
+              <aside class="ops-sl-detail" aria-label="Listing detail: {{ detail.stay.business_display_name }}">
+
+                {# Photo area with close button #}
+                <div class="ops-sl-detail__photo-wrap">
+                  {% if detail.cover_image %}
+                    <img src="{{ detail.cover_image }}" alt="{{ detail.stay.name }}" loading="eager">
+                    {% if detail.gallery_total > 1 %}
+                      <span class="ops-sl-detail__photo-count">1 / {{ detail.gallery_total }}</span>
+                    {% endif %}
+                  {% else %}
+                    <div class="ops-sl-detail__photo-placeholder">
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                    </div>
+                  {% endif %}
+                  <a
+                    href="?tab={{ tab }}{% if search %}&search={{ search|urlencode }}{% endif %}"
+                    class="ops-sl-detail__close"
+                    aria-label="Close detail panel"
+                  >&times;</a>
+                </div>
+
+                {# Detail content #}
+                <div class="ops-sl-detail__content">
+                  <h2 class="ops-sl-detail__name">{{ detail.stay.business_display_name }}</h2>
+                  {% if detail.stay.location_label %}
+                    <p class="ops-sl-detail__location">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                      {{ detail.stay.location_label }}
+                    </p>
+                  {% endif %}
+
+                  <div class="ops-sl-detail__badges">
+                    {% if detail.stay.airbnb_rating %}
+                      <span class="ops-sl-badge ops-sl-badge--star">
+                        &#9733; {{ detail.stay.airbnb_rating }} &middot; {{ detail.stay.review_count|default:0 }} Airbnb reviews
+                      </span>
+                    {% endif %}
+                    {% if detail.stay.airbnb_url %}
+                      <span class="ops-sl-badge ops-sl-badge--direct">&#10003; Direct booking enabled</span>
+                    {% endif %}
+                  </div>
+
+                  <div class="ops-sl-detail__actions">
+                    {% if detail.stay.airbnb_url %}
+                      <a href="{{ detail.stay.airbnb_url }}" target="_blank" rel="noopener" class="btn-sl btn-sl--sm">
+                        Preview public page &#8599;
+                      </a>
+                    {% endif %}
+                    <a href="/ops/stays/{{ detail.stay.slug }}/edit/" class="btn-sl btn-sl--sm">
+                      &#9998; Edit listing
+                    </a>
+                    <a href="/ops/calendar/?stay={{ detail.stay.slug }}" class="btn-sl btn-sl--sm">
+                      &#128197; Open calendar
+                    </a>
+                  </div>
+
+                  {# ── Availability Snapshot ── #}
+                  <section class="ops-sl-section">
+                    <h3>Availability Snapshot</h3>
+                    <div class="ops-sl-avail">
+                      <div class="ops-sl-avail__metric">
+                        <span class="ops-sl-avail__pct">{{ detail.occupancy_pct }}%</span>
+                        <span class="ops-sl-avail__label">Occupancy</span>
+                        <span class="ops-sl-avail__sub">Next 7 days</span>
+                      </div>
+                      {# Mocked sparkline #}
+                      <svg class="ops-sl-sparkline" viewBox="0 0 80 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <polyline
+                          points="0,28 10,22 20,24 30,14 40,16 50,10 60,12 70,6 80,8"
+                          stroke="#0d9488" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+                        />
+                        <polyline
+                          points="0,28 10,22 20,24 30,14 40,16 50,10 60,12 70,6 80,8 80,34 0,34"
+                          fill="url(#sl-spark-fill)" opacity="0.18"
+                        />
+                        <defs>
+                          <linearGradient id="sl-spark-fill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#0d9488"/>
+                            <stop offset="100%" stop-color="#0d9488" stop-opacity="0"/>
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div class="ops-sl-avail__metric" style="text-align:right">
+                        <span class="ops-sl-avail__pct">${{ detail.adr }}</span>
+                        <span class="ops-sl-avail__label">ADR</span>
+                        <span class="ops-sl-avail__delta ops-sl-avail__delta--up">{{ detail.adr_delta }}</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  {# ── Location & Area ── #}
+                  <section class="ops-sl-section">
+                    <h3>Location &amp; Area</h3>
+                    <div class="ops-sl-loc">
+                      <div class="ops-sl-loc__text">
+                        <p>{{ detail.area_label }}</p>
+                        <p class="ops-sl-loc__hint">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          8 min to Embassy
+                        </p>
+                      </div>
+                      <div class="ops-sl-map-placeholder" aria-label="Map placeholder">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
+                      </div>
+                    </div>
+                  </section>
+
+                  {# ── Housekeeping Readiness ── #}
+                  <section class="ops-sl-section">
+                    <h3>Housekeeping Readiness</h3>
+                    <div class="ops-sl-hk">
+                      <div class="ops-sl-hk__row">
+                        <span>Status</span>
+                        <span class="ops-sl-readiness ops-sl-readiness--{{ detail.readiness|slugify }}">{{ detail.readiness }}</span>
+                      </div>
+                      <div class="ops-sl-hk__row">
+                        <span>Next clean</span>
+                        <span>
+                          {% if detail.next_clean %}
+                            {{ detail.next_clean }}
+                          {% else %}
+                            &mdash;
+                          {% endif %}
+                        </span>
+                      </div>
+                      <div class="ops-sl-hk__row">
+                        <span>Cleaner</span>
+                        <span>
+                          {% if detail.cleaner_name %}
+                            {{ detail.cleaner_name }}
+                          {% else %}
+                            &mdash;
+                          {% endif %}
+                        </span>
+                      </div>
+                    </div>
+                  </section>
+
+                  {# ── Maintenance Status ── #}
+                  <section class="ops-sl-section">
+                    <h3>Maintenance Status</h3>
+                    <div class="ops-sl-maint">
+                      <div class="ops-sl-maint__row">
+                        <span>Open work orders</span>
+                        <strong>{{ detail.open_work_orders }}</strong>
+                      </div>
+                      <div class="ops-sl-maint__row">
+                        <span>Overdue</span>
+                        <strong>{{ detail.overdue }}</strong>
+                      </div>
+                      <div class="ops-sl-maint__row">
+                        <span>Last inspection</span>
+                        <strong>
+                          {% if detail.last_inspection %}
+                            {{ detail.last_inspection }}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                          {% else %}
+                            &mdash;
+                          {% endif %}
+                        </strong>
+                      </div>
+                    </div>
+                    <a href="/ops/maintenance/?stay={{ detail.stay.slug }}" class="ops-sl-detail__link" style="display:inline-block;margin-top:8px;">
+                      View maintenance &rarr;
+                    </a>
+                  </section>
+
+                  {# ── Linked Reservations ── #}
+                  <section class="ops-sl-section">
+                    <h3>Linked Reservations</h3>
+                    <div class="ops-sl-res__stats">
+                      <div>
+                        <strong>{{ detail.upcoming_count }}</strong>
+                        <span>Upcoming (next 7 days)</span>
+                      </div>
+                      <div>
+                        <strong>{{ detail.upcoming_guests }}</strong>
+                        <span>Total guests</span>
+                      </div>
+                    </div>
+                    <a href="/ops/reservations/?stay={{ detail.stay.slug }}" class="ops-sl-detail__link">
+                      View reservations &rarr;
+                    </a>
+                  </section>
+
+                  {# ── Public page tagline ── #}
+                  {% if detail.stay.short_description %}
+                    <section class="ops-sl-section">
+                      <h3>Public page tagline</h3>
+                      <p class="ops-sl-tagline">{{ detail.stay.short_description }}</p>
+                      <a href="/ops/stays/{{ detail.stay.slug }}/edit/" class="ops-sl-detail__link">Edit &rarr;</a>
+                    </section>
+                  {% endif %}
+
+                </div>{# /ops-sl-detail__content #}
+              </aside>
+            {% endif %}{# /detail #}
+
+          </div>{# /ops-sl-workspace #}
+        </main>
+
+      </div>{# /dashboard-main #}
+    </div>{# /dashboard-shell #}
+  </body>
+</html>
