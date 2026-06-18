@@ -1114,7 +1114,7 @@ function DepositHoldModal({
               </section>
               <section className="public-deposit-modal__section">
                 <h3><span>2</span>Read and accept required documents</h3>
-                <p className="public-deposit-modal__notice">You must open each document and accept it before continuing.</p>
+                <p className="public-deposit-modal__notice">You must open each document and accept it inside the document window before continuing.</p>
                 <p className="public-deposit-modal__info"><Info size={16} /> This form updates automatically after you click Accept inside each document.</p>
                 <button
                   type="button"
@@ -1185,7 +1185,7 @@ function DepositHoldModal({
             </button>
           </footer>
         </form>
-        <p className="public-deposit-modal__powered">Secure - Trusted - Powered by MLADIS & Stripe</p>
+        <p className="public-deposit-modal__powered">Secure • Trusted • Powered by MLADIS & Stripe</p>
       </article>
     </div>
   );
