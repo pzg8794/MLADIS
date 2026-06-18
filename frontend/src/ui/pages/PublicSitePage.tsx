@@ -927,7 +927,8 @@ function DepositHoldModal({
   onClose: () => void;
   language: Language;
 }) {
-  const [provider, setProvider] = useState('stripe');
+  type PaymentProvider = 'stripe' | 'paypal';
+  const [provider, setProvider] = useState<PaymentProvider>('stripe');
   const [paymentChoice, setPaymentChoice] = useState<'deposit' | 'combined'>('deposit');
   const [acceptedDocuments, setAcceptedDocuments] = useState({
     rules: request.documents_accepted,
@@ -941,6 +942,20 @@ function DepositHoldModal({
   const checkoutUrl = paymentChoice === 'combined'
     ? request.reservation_payment_checkout_url || '/payments/checkout/'
     : request.deposit_checkout_url || '/deposits/checkout/';
+
+  function selectPaymentChoice(nextChoice: 'deposit' | 'combined') {
+    setPaymentChoice(nextChoice);
+    if (nextChoice === 'combined' && provider === 'paypal') {
+      setProvider('stripe');
+    }
+  }
+
+  function selectProvider(nextProvider: PaymentProvider) {
+    setProvider(nextProvider);
+    if (nextProvider === 'paypal') {
+      setPaymentChoice('deposit');
+    }
+  }
 
   function recordAcceptedDocument(kind: 'rules' | 'terms') {
     setAcceptedDocuments((current) => ({ ...current, [kind]: true }));
@@ -1094,7 +1109,7 @@ function DepositHoldModal({
                 <button
                   type="button"
                   className={`public-deposit-modal__option${paymentChoice === 'deposit' ? ' public-deposit-modal__option--selected' : ''}`}
-                  onClick={() => setPaymentChoice('deposit')}
+                  onClick={() => selectPaymentChoice('deposit')}
                 >
                   <input type="radio" checked={paymentChoice === 'deposit'} readOnly />
                   <span className="public-deposit-modal__option-icon"><ShieldCheck size={30} /></span>
@@ -1104,7 +1119,7 @@ function DepositHoldModal({
                 <button
                   type="button"
                   className={`public-deposit-modal__option${paymentChoice === 'combined' ? ' public-deposit-modal__option--selected' : ''}`}
-                  onClick={() => setPaymentChoice('combined')}
+                  onClick={() => selectPaymentChoice('combined')}
                 >
                   <input type="radio" checked={paymentChoice === 'combined'} readOnly />
                   <span className="public-deposit-modal__option-icon public-deposit-modal__option-icon--purple"><CreditCard size={30} /></span>
@@ -1161,14 +1176,14 @@ function DepositHoldModal({
               </section>
               <section className="public-deposit-modal__section">
                 <h3><span>3</span>Select payment method</h3>
-                <label className="public-deposit-modal__method">
-                  <input type="radio" name="payment_provider" value="stripe" checked={provider === 'stripe'} onChange={(event) => setProvider(event.target.value)} />
+                <label className={`public-deposit-modal__method${provider === 'stripe' ? ' public-deposit-modal__method--selected' : ''}`}>
+                  <input type="radio" name="payment_provider" value="stripe" checked={provider === 'stripe'} onChange={() => selectProvider('stripe')} />
                   <span className="public-deposit-modal__brand-stack"><i>VISA</i><i className="public-deposit-modal__mc">**</i></span>
                   <strong>Card / wallet through Stripe</strong>
                   <small><CheckCircle2 size={12} /> Secure <em>Fast</em></small>
                 </label>
-                <label className="public-deposit-modal__method public-deposit-modal__method--disabled">
-                  <input type="radio" name="payment_provider_disabled" value="paypal" disabled />
+                <label className={`public-deposit-modal__method${provider === 'paypal' ? ' public-deposit-modal__method--selected' : ''}`}>
+                  <input type="radio" name="payment_provider" value="paypal" checked={provider === 'paypal'} onChange={() => selectProvider('paypal')} />
                   <span className="public-deposit-modal__paypal">P</span>
                   <strong>PayPal</strong>
                   <small><CheckCircle2 size={12} /> Secure</small>
@@ -1180,7 +1195,7 @@ function DepositHoldModal({
           {checkoutError && <p className="public-deposit-modal__error" role="alert">{checkoutError}</p>}
           <footer className="public-deposit-modal__actions">
             <button type="button" onClick={onClose}>Back</button>
-            <button type="submit" disabled={isStartingCheckout || provider !== 'stripe' || !allDocumentsAccepted}>
+            <button type="submit" disabled={isStartingCheckout || !allDocumentsAccepted}>
               <ShieldCheck size={17} /> {isStartingCheckout ? 'Opening checkout...' : 'Continue to secure payment'}
             </button>
           </footer>
