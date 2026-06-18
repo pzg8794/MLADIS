@@ -31,7 +31,7 @@ const navItems = [
   { group: '', label: 'Reservations', icon: ClipboardList, href: '/ops/reservations/' },
   { group: '', label: 'Calendar', icon: CalendarDays, href: '/ops/calendar/' },
   { group: '', label: 'Guests', icon: Users, href: '/ops/customers/' },
-  { group: '', label: 'Properties', icon: Building2, href: '/ops/stays/' },
+  { group: '', label: 'Stays & Listings', icon: Building2, href: '/ops/stays/' },
   { group: '', label: 'Maintenance', icon: Wrench, href: '/ops/maintenance/' },
   { group: '', label: 'Work Orders', icon: Wrench, href: '/ops/workboard/' },
   { group: '', label: 'Payments', icon: CreditCard, href: '/ops/deposits/' },
@@ -51,6 +51,12 @@ function isNavActive(pathname: string, href: string) {
   return pathname === normalized || pathname.startsWith(`${normalized}/`);
 }
 
+function searchPlaceholder(pathname: string) {
+  if (pathname.startsWith('/ops/stays')) return 'Search stays, locations, amenities...';
+  if (pathname.startsWith('/ops/customers')) return 'Search guests, emails, phones, or reservations...';
+  return 'Search reservations, guests, properties...';
+}
+
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = window.location.pathname;
   const logoUrl = getConfiguredLogoUrl();
@@ -58,7 +64,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [sidebarFocused, setSidebarFocused] = useState(false);
   const sidebarExpanded = sidebarPinned || sidebarHovered || sidebarFocused;
-  let previousGroup = '';
 
   return (
     <div
@@ -84,11 +89,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </a>
         <nav aria-label="Dashboard sections">
-          {navItems.map((item) => {
+          {navItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = isNavActive(pathname, item.href);
-            const showGroup = previousGroup !== item.group;
-            previousGroup = item.group;
+            const showGroup = index === 0 || navItems[index - 1].group !== item.group;
             return (
               <div className="v4-nav-cluster" key={`${item.group}-${item.label}`}>
                 {showGroup && item.group && <span className="v4-nav-group">{item.group}</span>}
@@ -122,7 +126,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </button>
           <label className="dashboard-search v4-command-search">
             <Search size={17} />
-            <input aria-label="Search dashboard" placeholder="Search reservations, guests, properties..." />
+            <input aria-label="Search dashboard" placeholder={searchPlaceholder(pathname)} />
             <kbd>⌘ K</kbd>
           </label>
           <div className="v4-commandbar__actions">
