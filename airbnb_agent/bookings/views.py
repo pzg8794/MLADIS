@@ -2126,17 +2126,27 @@ class ModernOpsCustomersView(TemplateView):
         search = self.request.GET.get("search", "").strip()
         selected_id = self.request.GET.get("customer", "").strip()
 
-        profiles = service.get_profiles(tab=tab, search=search)
-        rows = service.table_rows(profiles, limit=4)
-        tab_counts = service.get_tab_counts()
+        use_mock_dataset = tab == "all" and not search
+        if use_mock_dataset:
+            rows = service.mock_table_rows()
+            tab_counts = service.mock_tab_counts()
+            detail = service.mock_detail_payload()
+            selected_customer_id = "mock-maria-rodriguez"
+            total_results = tab_counts["all"]
+        else:
+            profiles = service.get_profiles(tab=tab, search=search)
+            rows = [service.table_row_payload(profile) for profile in profiles[:5]]
+            tab_counts = service.get_tab_counts()
 
-        selected_profile = None
-        if selected_id.isdigit():
-            selected_profile = next((profile for profile in profiles if profile.pk == int(selected_id)), None)
-        if selected_profile is None and profiles:
-            selected_profile = profiles[0]
+            selected_profile = None
+            if selected_id.isdigit():
+                selected_profile = next((profile for profile in profiles if profile.pk == int(selected_id)), None)
+            if selected_profile is None and profiles:
+                selected_profile = profiles[0]
 
-        detail = service.detail_payload(selected_profile) if selected_profile else None
+            detail = service.detail_payload(selected_profile) if selected_profile else None
+            selected_customer_id = str(selected_profile.pk) if selected_profile else ""
+            total_results = len(profiles)
 
         ctx.update(
             {
@@ -2145,8 +2155,8 @@ class ModernOpsCustomersView(TemplateView):
                 "rows": rows,
                 "tab_counts": tab_counts,
                 "detail": detail,
-                "selected_customer_id": str(selected_profile.pk) if selected_profile else "",
-                "total_results": len(profiles),
+                "selected_customer_id": selected_customer_id,
+                "total_results": total_results,
                 "site_settings": SiteSettings.current(),
             }
         )

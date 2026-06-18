@@ -3681,6 +3681,175 @@ class CustomersCRMService:
             "blocked": base.filter(segment=ClientSegment.BLACKLISTED).count(),
         }
 
+    @staticmethod
+    def mock_tab_counts():
+        return {
+            "all": 1283,
+            "repeat": 412,
+            "vip": 128,
+            "new": 743,
+            "blocked": 8,
+        }
+
+    def mock_table_rows(self):
+        return [
+            self._mock_row(
+                row_id="mock-maria-rodriguez",
+                name="Maria Rodriguez",
+                email="maria.rodriguez@gmail.com",
+                country="Dominican Republic",
+                country_code="DO",
+                channel="Direct Website",
+                channel_cls="direct",
+                past_stays=5,
+                total_spend="$4,320",
+                status="VIP",
+                status_cls="vip",
+                last_contact_label="Jun 5, 2026",
+            ),
+            self._mock_row(
+                row_id="mock-john-smith",
+                name="John Smith",
+                email="john.smith@gmail.com",
+                country="United States",
+                country_code="US",
+                channel="Airbnb",
+                channel_cls="airbnb",
+                past_stays=2,
+                total_spend="$1,250",
+                status="Repeat",
+                status_cls="repeat",
+                last_contact_label="Jun 4, 2026",
+            ),
+            self._mock_row(
+                row_id="mock-ana-lopez",
+                name="Ana Lopez",
+                email="ana.lopez@yahoo.com",
+                country="Dominican Republic",
+                country_code="DO",
+                channel="Booking.com",
+                channel_cls="manual",
+                past_stays=1,
+                total_spend="$650",
+                status="New",
+                status_cls="new",
+                last_contact_label="Jun 3, 2026",
+            ),
+            self._mock_row(
+                row_id="mock-david-brown",
+                name="David Brown",
+                email="david.brown@outlook.com",
+                country="Canada",
+                country_code="CA",
+                channel="Vrbo",
+                channel_cls="manual",
+                past_stays=3,
+                total_spend="$2,100",
+                status="Repeat",
+                status_cls="repeat",
+                last_contact_label="Jun 2, 2026",
+            ),
+            self._mock_row(
+                row_id="mock-sophie-martin",
+                name="Sophie Martin",
+                email="sophie.martin@gmail.com",
+                country="France",
+                country_code="FR",
+                channel="Direct Website",
+                channel_cls="direct",
+                past_stays=4,
+                total_spend="$3,780",
+                status="VIP",
+                status_cls="vip",
+                last_contact_label="Jun 1, 2026",
+            ),
+        ]
+
+    def mock_detail_payload(self):
+        return {
+            "profile": None,
+            "display_name": "Maria Rodriguez",
+            "avatar": "MR",
+            "status_label": "VIP Guest",
+            "status_cls": "vip",
+            "country": "Dominican Republic",
+            "country_code": "DO",
+            "phone": "+1 (809) 555-0198",
+            "preferred_language": "EN",
+            "birthday": "May 18, 1987",
+            "travel_style": "Leisure",
+            "guest_since": "Jan 12, 2024",
+            "tags": ["Family", "Pool Lover", "Repeat"],
+            "notes": "Loves the top-floor units. Prefers late check-out when available. Traveling with kids.",
+            "messages": [
+                {
+                    "author": "Maria Rodriguez",
+                    "time": "Jun 5, 2026 9:14 AM",
+                    "body": "Hi! We'll be arriving around 3pm. Is early check-in possible?",
+                    "is_agent": False,
+                },
+                {
+                    "author": "You",
+                    "time": "Jun 5, 2026 9:32 AM",
+                    "body": "Hi Maria! Yes, early check-in is available. Your apartment will be ready by 1pm. Let us know if you need transport or local recommendations!",
+                    "is_agent": True,
+                },
+                {
+                    "author": "Maria Rodriguez",
+                    "time": "Jun 5, 2026 9:45 AM",
+                    "body": "Perfect, thank you!",
+                    "is_agent": False,
+                },
+            ],
+            "last_stay": {
+                "label": "3 Beds Apt, Vacation Home & Pool, G-101",
+                "date_range": "Jun 8 - Jun 12, 2026",
+                "amount": "$1,250.00 USD",
+                "status": "Completed",
+            },
+            "upcoming_stay": {
+                "label": "2 Beds Apt, Vacation Home & Pool",
+                "date_range": "Jun 20 - Jun 24, 2026",
+                "amount": "$950.00 USD",
+                "status": "Confirmed",
+            },
+            "linked_reservations": [
+                {"request_key": "RR-1042", "date_range": "Jun 8 - Jun 12, 2026", "amount": "$1,250.00", "status": "Completed", "status_cls": "ok"},
+                {"request_key": "RR-1125", "date_range": "Apr 2 - Apr 6, 2026", "amount": "$980.00", "status": "Completed", "status_cls": "ok"},
+                {"request_key": "RR-1268", "date_range": "Jun 20 - Jun 24, 2026", "amount": "$950.00", "status": "Confirmed", "status_cls": "ok"},
+            ],
+            "missing_information": ["Government ID not on file", "Purpose of travel", "Emergency contact"],
+            "risk_assessment": [
+                ("Verified email and phone", "low"),
+                ("Payment history (5 stays)", "low"),
+                ("No chargebacks", "low"),
+                ("Profile 100% complete", "low"),
+            ],
+            "recommended_actions": ["Send check-in instructions", "Share local guide", "Offer airport pickup"],
+        }
+
+    @staticmethod
+    def _mock_row(row_id, name, email, country, country_code, channel, channel_cls, past_stays, total_spend, status, status_cls, last_contact_label):
+        return {
+            "id": row_id,
+            "name": name,
+            "email": email,
+            "phone": "",
+            "avatar": "".join([part[0] for part in name.split()[:2]]).upper(),
+            "country": country,
+            "country_code": country_code,
+            "channel": channel,
+            "channel_cls": channel_cls,
+            "past_stays": past_stays,
+            "total_spend": total_spend,
+            "status": status,
+            "status_cls": status_cls,
+            "last_contact": timezone.now(),
+            "last_contact_label": last_contact_label,
+            "segment": ClientSegment.VIP if status == "VIP" else ClientSegment.AVERAGE,
+            "is_mock": True,
+        }
+
     def table_rows(self, profiles, limit=4):
         rows = [self.mock_anchor_row()]
         rows.extend(self.table_row_payload(profile) for profile in profiles[:limit])
