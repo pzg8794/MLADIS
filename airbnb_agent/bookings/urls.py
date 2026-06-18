@@ -2,6 +2,7 @@ from django.urls import path
 from django.contrib.auth.views import LoginView, LogoutView
 from django.views.generic import RedirectView
 
+from .forms import MLADISAuthenticationForm
 from .reports import ModernOpsReportsView, OpsReportsAPIView
 from .views import (
     AgentAPIView,
@@ -84,7 +85,7 @@ urlpatterns = [
         name="damage-deposit-terms",
     ),
     path("accounts/signup/", SignUpView.as_view(), name="signup"),
-    path("accounts/login/", LoginView.as_view(template_name="registration/login.html"), name="login"),
+    path("accounts/login/", LoginView.as_view(authentication_form=MLADISAuthenticationForm, template_name="registration/login.html"), name="login"),
     path("accounts/social/<slug:provider_id>/", SocialProviderLaunchView.as_view(), name="social-provider-launch"),
     path("accounts/logout/", LogoutView.as_view(), name="logout"),
     path("accounts/", ModernAccountView.as_view(), name="dashboard"),

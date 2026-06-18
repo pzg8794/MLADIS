@@ -3936,6 +3936,502 @@ details.dashboard-panel[open] {
   text-decoration: none;
 }
 
+.modern-auth-page--login {
+  grid-template-columns: minmax(640px, 1.06fr) minmax(500px, 0.94fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  width: min(1328px, calc(100% - 32px));
+  min-height: 100vh;
+  padding: 12px 0;
+  align-items: stretch;
+}
+
+.modern-auth-login-header {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(200px, 0.7fr) minmax(0, 1.4fr) minmax(150px, 0.42fr);
+  align-items: center;
+  gap: 16px;
+  min-height: 52px;
+}
+
+.modern-auth-login-brand,
+.modern-auth-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.modern-auth-login-brand {
+  justify-self: start;
+}
+
+.modern-auth-login-brand img {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.modern-auth-login-brand span,
+.modern-auth-help span {
+  display: grid;
+  gap: 1px;
+}
+
+.modern-auth-login-brand strong,
+.modern-auth-help strong,
+.modern-auth-login-trust strong {
+  color: #0f172a;
+  font-size: 0.8rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.modern-auth-login-brand small,
+.modern-auth-help small,
+.modern-auth-login-trust small {
+  color: #0f766e;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.modern-auth-login-brand strong {
+  letter-spacing: 0.08em;
+}
+
+.modern-auth-login-brand small {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.modern-auth-login-trust {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 12px;
+}
+
+.modern-auth-login-trust span {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 4px 9px;
+  align-items: center;
+}
+
+.modern-auth-login-trust i,
+.modern-auth-help i,
+.modern-auth-field b,
+.modern-auth-security i,
+.modern-auth-security b,
+.modern-auth-login-stats i {
+  display: inline-grid;
+  place-items: center;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.modern-auth-login-trust i,
+.modern-auth-help i {
+  grid-row: span 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  font-size: 0.7rem;
+}
+
+.modern-auth-login-trust small {
+  color: #64748b;
+}
+
+.modern-auth-help {
+  justify-self: end;
+  border: 1px solid #dbe3ee;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.055);
+}
+
+.modern-auth-login-hero,
+.modern-auth-login-panel {
+  border-radius: 8px;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.12);
+}
+
+.modern-auth-login-hero {
+  position: relative;
+  min-height: 584px;
+  overflow: hidden;
+  align-content: start;
+  gap: 20px;
+  padding: 42px 48px 34px;
+  background:
+    linear-gradient(180deg, rgba(3, 36, 46, 0.42), rgba(2, 68, 76, 0.72)),
+    radial-gradient(circle at 78% 20%, rgba(117, 240, 200, 0.32), transparent 28%),
+    url("/static/frontend/modern-dashboard/stays/stay-6br.jpg") center bottom / cover;
+}
+
+.modern-auth-login-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 8px 15px;
+  color: #f8d27a;
+  background: rgba(14, 85, 70, 0.78);
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.modern-auth-login-hero h1 {
+  max-width: 620px;
+  margin: 10px 0 0;
+  color: #ffffff;
+  font-size: clamp(3rem, 3.72vw, 4.35rem);
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.modern-auth-login-hero h1 em {
+  color: #75f0c8;
+  font-style: normal;
+  background: linear-gradient(135deg, #f8d27a, #75f0c8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.modern-auth-login-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-top: 0;
+}
+
+.modern-auth-login-tools span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 18px;
+  border-right: 1px solid rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.modern-auth-login-tools span:first-child {
+  padding-left: 0;
+}
+
+.modern-auth-login-tools span:last-child {
+  border-right: 0;
+}
+
+.modern-auth-login-stats {
+  position: absolute;
+  left: 48px;
+  bottom: 42px;
+  display: grid;
+  grid-template-columns: 150px 104px 86px;
+  align-items: center;
+  gap: 12px;
+  min-height: 98px;
+  border-radius: 8px;
+  padding: 16px 22px;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.24);
+}
+
+.modern-auth-login-stats span {
+  display: grid;
+  gap: 4px;
+}
+
+.modern-auth-login-stats span:first-child {
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+}
+
+.modern-auth-login-stats span:first-child strong,
+.modern-auth-login-stats span:first-child small {
+  grid-column: 2;
+}
+
+.modern-auth-login-stats i {
+  grid-row: span 2;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #0f766e;
+}
+
+.modern-auth-login-stats strong {
+  color: #0f172a;
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.modern-auth-login-stats small {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
+.modern-auth-login-stats b {
+  color: #f59e0b;
+}
+
+.modern-auth-login-panel {
+  align-content: start;
+  gap: 14px;
+  min-height: 584px;
+  padding: 30px 38px;
+  border: 1px solid #dbe3ee;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: none;
+}
+
+.modern-auth-eyebrow {
+  color: #10b981;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.modern-auth-login-panel h2 {
+  color: #0f172a;
+  font-size: clamp(2.05rem, 2.6vw, 2.72rem);
+  line-height: 1;
+}
+
+.modern-auth-login-panel > p {
+  max-width: 430px;
+  color: #64748b;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.modern-auth-page--login .modern-social-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.modern-auth-page--login .modern-social-grid form {
+  min-width: 0;
+}
+
+.modern-auth-page--login .modern-social-button {
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  border-radius: 7px;
+  padding: 10px 14px;
+  color: #0f172a;
+  background: #ffffff;
+  font-size: 0.82rem;
+  box-shadow: none;
+}
+
+.modern-social-button i {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  color: #ffffff;
+  background: #2563eb;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.modern-social-button--google i { color: #2563eb; background: #ffffff; }
+.modern-social-button--facebook i { background: #1877f2; }
+.modern-social-button--microsoft i {
+  color: transparent;
+  border-radius: 0;
+  background:
+    linear-gradient(#f25022 0 0) 0 0 / 9px 9px no-repeat,
+    linear-gradient(#7fba00 0 0) 11px 0 / 9px 9px no-repeat,
+    linear-gradient(#00a4ef 0 0) 0 11px / 9px 9px no-repeat,
+    linear-gradient(#ffb900 0 0) 11px 11px / 9px 9px no-repeat;
+}
+.modern-social-button--github i { background: #0f172a; }
+
+.modern-auth-page--login .modern-social-button.is-disabled {
+  color: #0f172a;
+  background: #ffffff;
+  opacity: 0.54;
+  cursor: not-allowed;
+}
+
+.modern-auth-page--login .modern-social-button.is-disabled span {
+  display: none;
+}
+
+.modern-auth-page--login .modern-social-button.is-disabled i {
+  opacity: 0.74;
+}
+
+.modern-auth-page--login .modern-auth-note {
+  border-color: #cceadf;
+  border-radius: 7px;
+  padding: 10px 14px;
+  color: #64748b;
+  background: #f0fdf8;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.modern-auth-page--login .modern-auth-divider {
+  margin: 2px 0;
+}
+
+.modern-auth-page--login .modern-auth-form {
+  gap: 12px;
+}
+
+.modern-auth-field {
+  position: relative;
+  gap: 8px;
+}
+
+.modern-auth-field > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 950;
+}
+
+.modern-auth-field > span a {
+  color: #10b981;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.modern-auth-field b {
+  position: absolute;
+  left: 12px;
+  bottom: 15px;
+  width: 18px;
+  height: 18px;
+  color: #64748b;
+  font-size: 0.68rem;
+}
+
+.modern-auth-page--login .modern-auth-form input {
+  min-height: 44px;
+  border-color: #dbe3ee;
+  border-radius: 7px;
+  padding: 11px 42px;
+  font-size: 0.86rem;
+  font-weight: 760;
+}
+
+.modern-auth-page--login .modern-auth-form input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+}
+
+.modern-auth-field em {
+  color: #be123c;
+  font-size: 0.78rem;
+  font-style: normal;
+}
+
+.modern-auth-page--login .modern-auth-form button {
+  justify-content: center;
+  min-height: 50px;
+  margin-top: 2px;
+  border-radius: 7px;
+  color: #0f172a;
+  background: linear-gradient(135deg, #68d178, #f8d27a 58%, #fbbf24);
+  font-size: 0.92rem;
+  box-shadow: 0 16px 30px rgba(251, 191, 36, 0.18);
+}
+
+.modern-auth-page--login .modern-auth-form button span {
+  color: currentColor;
+  font-size: 1.08rem;
+}
+
+.modern-auth-page--login .modern-auth-link {
+  min-height: 42px;
+  border-color: #a7cfc5;
+  border-radius: 7px;
+  color: #0f513d;
+  background: #ffffff;
+  font-size: 0.82rem;
+  box-shadow: none;
+}
+
+.modern-auth-page--login .modern-auth-link span {
+  color: currentColor;
+}
+
+.modern-auth-security {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.modern-auth-security i {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #dbe3ee;
+  border-radius: 999px;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.modern-auth-security strong,
+.modern-auth-security small {
+  display: block;
+}
+
+.modern-auth-security strong {
+  color: #0f172a;
+  font-size: 0.78rem;
+}
+
+.modern-auth-security small {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 0.7rem;
+}
+
+.modern-auth-security b {
+  justify-self: end;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #10b981;
+  font-size: 0.68rem;
+}
+
 .public-skeleton {
   grid-template-columns: 1fr;
 }

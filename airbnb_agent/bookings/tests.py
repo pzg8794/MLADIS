@@ -2115,12 +2115,12 @@ class AccountReservationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Continue with Microsoft")
-        self.assertContains(response, "setup needed")
+        self.assertContains(response, "disabled")
         self.assertNotContains(response, f'action="{reverse("microsoft_login")}"')
         self.assertEqual(launch_response.status_code, 302)
         self.assertEqual(launch_response["Location"], reverse("bookings:login"))
 
-    def test_stale_microsoft_social_app_stays_hidden_by_default(self):
+    def test_stale_microsoft_social_app_stays_disabled_by_default(self):
         stale_app = SocialApp.objects.create(
             provider="microsoft",
             name="Microsoft OAuth",
@@ -2135,17 +2135,19 @@ class AccountReservationTests(TestCase):
                 "MICROSOFT_OAUTH_CLIENT_ID": "",
                 "MICROSOFT_OAUTH_CLIENT_SECRET": "",
                 "SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK": "",
-                "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS": "microsoft",
+                "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS": "",
             },
             clear=False,
         ):
             response = self.client.get(reverse("bookings:login"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Continue with Microsoft")
+        self.assertContains(response, "Continue with Microsoft")
+        self.assertContains(response, "disabled")
+        self.assertNotContains(response, f'action="{reverse("microsoft_login")}"')
 
-    @override_settings(SOCIAL_AUTH_HIDDEN_PROVIDERS=[])
-    def test_login_page_auto_configures_microsoft_from_environment(self):
+    @override_settings(SOCIAL_AUTH_DISABLED_PROVIDERS=[])
+    def test_login_page_can_enable_microsoft_from_environment(self):
         with patch.dict(
             os.environ,
             {

@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -18,6 +18,23 @@ from .models import (
     Donation,
     MissionCause,
 )
+
+
+class MLADISAuthenticationForm(AuthenticationForm):
+    def __init__(self, request=None, *args, **kwargs):
+        super().__init__(request, *args, **kwargs)
+        self.fields["username"].widget.attrs.update(
+            {
+                "placeholder": _("Enter your email or username"),
+                "autocomplete": "username",
+            }
+        )
+        self.fields["password"].widget.attrs.update(
+            {
+                "placeholder": _("Enter your password"),
+                "autocomplete": "current-password",
+            }
+        )
 
 
 class BookingInquiryForm(forms.ModelForm):

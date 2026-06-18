@@ -198,6 +198,7 @@ def get_social_login_providers(request=None):
     admin_configured = set()
     hidden_providers = set(getattr(settings, "SOCIAL_AUTH_HIDDEN_PROVIDERS", []))
     hidden_unconfigured = set(getattr(settings, "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS", []))
+    disabled_providers = set(getattr(settings, "SOCIAL_AUTH_DISABLED_PROVIDERS", []))
     try:
         env_configured |= sync_social_apps_from_env()
         if _env_bool("SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK", getattr(settings, "SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK", False)):
@@ -224,7 +225,13 @@ def get_social_login_providers(request=None):
         is_configured = provider["id"] in env_configured or provider["id"] in admin_configured
         if provider["id"] in hidden_unconfigured and not is_configured:
             continue
-        block = provider_launch_block(provider["id"], request) if is_configured and login_url else None
+        if provider["id"] in disabled_providers:
+            block = {
+                "reason": "disabled",
+                "help_text": "This provider is visible in the login experience but disabled for this runtime.",
+            }
+        else:
+            block = provider_launch_block(provider["id"], request) if is_configured and login_url else None
         is_launchable = is_configured and bool(login_url) and block is None
         providers.append(
             {
