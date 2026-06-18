@@ -10880,7 +10880,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"].is-sidebar-expanded {
-  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-columns: 192px minmax(0, 1fr);
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"] .dashboard-main {
@@ -10927,7 +10927,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover,
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within,
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded {
-  width: 250px;
+  width: 192px;
   box-shadow: 18px 0 46px rgba(15, 23, 42, 0.22);
 }
 
@@ -11873,7 +11873,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
 @media (min-width: 1181px) {
   .dashboard-shell[data-theme-reference="gentelella-v4"].is-sidebar-expanded {
-    grid-template-columns: 250px minmax(0, 1fr);
+    grid-template-columns: 192px minmax(0, 1fr);
   }
 }
 

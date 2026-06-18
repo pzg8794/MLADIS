@@ -7,8 +7,8 @@ import {
   ClipboardList,
   CreditCard,
   LayoutDashboard,
-  ListChecks,
   Menu,
+  Plug,
   Plus,
   ReceiptText,
   Search,
@@ -27,22 +27,22 @@ interface DashboardLayoutProps {
 }
 
 const navItems = [
-  { group: '', label: 'Command Center', icon: LayoutDashboard, href: '/ops/dashboard/' },
-  { group: 'Operations', label: 'Reservations', icon: ClipboardList, href: '/ops/reservations/' },
-  { group: 'Operations', label: 'Calendar', icon: CalendarDays, href: '/ops/calendar/' },
-  { group: 'Operations', label: 'Guests', icon: Users, href: '/ops/customers/' },
-  { group: 'Operations', label: 'Properties', icon: Building2, href: '/ops/stays/' },
-  { group: 'Operations', label: 'Maintenance', icon: Wrench, href: '/ops/maintenance/' },
-  { group: 'Operations', label: 'Work Orders', icon: Wrench, href: '/ops/maintenance/' },
-  { group: 'Operations', label: 'Payments', icon: CreditCard, href: '/ops/deposits/' },
-  { group: 'Operations', label: 'Deposits', icon: ReceiptText, href: '/ops/deposits/' },
-  { group: 'Operations', label: 'Reports', icon: BarChart3, href: '/ops/reports/' },
-  { group: 'Operations', label: 'FairAgent', icon: Sparkles, href: '/ops/agent/' },
-  { group: 'Business', label: 'Listings', icon: Building2, href: '/ops/stays/' },
-  { group: 'Business', label: 'Customers', icon: Users, href: '/ops/customers/' },
-  { group: 'Business', label: 'Tasks', icon: ListChecks, href: '/ops/workboard/' },
-  { group: 'Admin', label: 'Settings', icon: Settings, href: '/ops/settings/' },
-  { group: 'Admin', label: 'Users', icon: UserCog, href: '/ops/admin/' },
+  { group: '', label: 'Command Center', icon: LayoutDashboard, href: '/ops/admin/' },
+  { group: '', label: 'Reservations', icon: ClipboardList, href: '/ops/reservations/' },
+  { group: '', label: 'Calendar', icon: CalendarDays, href: '/ops/calendar/' },
+  { group: '', label: 'Guests', icon: Users, href: '/ops/customers/' },
+  { group: '', label: 'Properties', icon: Building2, href: '/ops/stays/' },
+  { group: '', label: 'Maintenance', icon: Wrench, href: '/ops/maintenance/' },
+  { group: '', label: 'Work Orders', icon: Wrench, href: '/ops/workboard/' },
+  { group: '', label: 'Payments', icon: CreditCard, href: '/ops/deposits/' },
+  { group: '', label: 'Deposits', icon: ReceiptText, href: '/ops/deposits/' },
+  { group: '', label: 'Reports', icon: BarChart3, href: '/ops/reports/' },
+  { group: '', label: 'FairAgent', icon: Sparkles, href: '/ops/agent/' },
+  { group: '', label: 'Brand Settings', icon: Settings, href: '/ops/settings/' },
+  { group: '', label: 'Agent FAQ', icon: Sparkles, href: '/ops/agent/' },
+  { group: '', label: 'Users', icon: UserCog, href: '/ops/admin/users/' },
+  { group: '', label: 'OAuth & Integrations', icon: Plug, href: '/ops/oauth/' },
+  { group: '', label: 'System', icon: Settings, href: '/ops/settings/' },
 ];
 
 function isNavActive(pathname: string, href: string) {
@@ -54,7 +54,7 @@ function isNavActive(pathname: string, href: string) {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = window.location.pathname;
   const logoUrl = getConfiguredLogoUrl();
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => window.innerWidth > 920);
   let previousGroup = '';
 
   return (
