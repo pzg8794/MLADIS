@@ -48,13 +48,6 @@
         <small class="modern-auth-eyebrow">Welcome back</small>
         <h2>{% trans "Log in to your account" %}</h2>
         <p>{% trans "Access your MLADIS dashboard to manage reservations, invoices, deposits, and more." %}</p>
-        {% if messages %}
-          <div class="public-success" role="status">
-            {% for message in messages %}
-              <p>{{ message }}</p>
-            {% endfor %}
-          </div>
-        {% endif %}
         <div class="modern-social-grid" aria-label="{% trans 'Social login options' %}">
           {% for provider in social_login_providers %}
             {% if provider.is_launchable %}
