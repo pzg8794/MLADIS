@@ -1,4 +1,4 @@
-import { Activity, Bot, CalendarDays, CreditCard, Database, ExternalLink, FileText, KeyRound, Settings, ShieldCheck, Users } from 'lucide-react';
+import { Activity, Bell, Bot, Building2, CalendarDays, ClipboardList, CreditCard, Database, ExternalLink, FileText, Grid3X3, Home, Settings, ShieldCheck, SlidersHorizontal, Users, Wrench } from 'lucide-react';
 import './admin-page.css';
 
 class AdminShortcut {
@@ -7,36 +7,41 @@ class AdminShortcut {
     public readonly description: string,
     public readonly href: string,
     public readonly icon: typeof ShieldCheck,
+    public readonly action: string,
     public readonly tone: 'blue' | 'violet' | 'teal' | 'amber' | 'rose' = 'blue',
   ) {}
 }
 
-class AdminHealthItem {
+class AdminMetric {
   constructor(
     public readonly label: string,
     public readonly value: string,
     public readonly caption: string,
-    public readonly status: 'healthy' | 'review' | 'attention' = 'healthy',
+    public readonly icon: typeof ShieldCheck,
+    public readonly tone: 'blue' | 'violet' | 'teal' | 'amber' | 'rose' = 'blue',
   ) {}
 }
 
 const shortcuts = [
-  new AdminShortcut('Records', 'Protected database edits and advanced configuration.', '/admin/', ShieldCheck, 'blue'),
-  new AdminShortcut('Brand settings', 'Logo, public name, contacts, and booking copy.', '/admin/bookings/sitesettings/1/change/', Settings, 'violet'),
-  new AdminShortcut('Reservations', 'Requests, guest notes, coupons, and confirmations.', '/ops/reservations/', CalendarDays, 'teal'),
-  new AdminShortcut('Customers', 'Profiles, Airbnb imports, feedback, and consent.', '/ops/customers/', Users, 'violet'),
-  new AdminShortcut('Deposits', 'Stripe and PayPal authorization holds.', '/ops/deposits/', CreditCard, 'amber'),
-  new AdminShortcut('Agent', 'FAQ answers and customer-question training.', '/ops/agent/', Bot, 'rose'),
-  new AdminShortcut('Calendar', 'Blocks, pricing overrides, and availability audit.', '/ops/calendar/', Database, 'teal'),
-  new AdminShortcut('Reports', 'Operational charts and daily business signals.', '/ops/reports/', FileText, 'blue'),
-  new AdminShortcut('OAuth setup', 'Provider callbacks and sign-in diagnostics.', '/ops/oauth/', KeyRound, 'violet'),
+  new AdminShortcut('Records', 'Master data, settings, and system records.', '/admin/', Database, 'Open', 'blue'),
+  new AdminShortcut('Reservations', 'Manage bookings, requests, and confirmations.', '/ops/reservations/', CalendarDays, 'Manage', 'teal'),
+  new AdminShortcut('Guests / Customers', 'Profiles, communications, and guest history.', '/ops/customers/', Users, 'View', 'violet'),
+  new AdminShortcut('Properties', 'Inventory, details, photos, and configurations.', '/ops/stays/', Building2, 'Manage', 'blue'),
+  new AdminShortcut('Calendar', 'Availability, pricing, blocks, and overrides.', '/ops/calendar/', CalendarDays, 'Open', 'teal'),
+  new AdminShortcut('Maintenance', 'Issues, inspections, and preventive maintenance.', '/ops/maintenance/', Wrench, 'View', 'amber'),
+  new AdminShortcut('Work Orders', 'Task assignments, status, and completion.', '/ops/workboard/', ClipboardList, 'Open', 'violet'),
+  new AdminShortcut('Payments', 'Transactions, refunds, and reconciliation.', '/ops/deposits/', CreditCard, 'Open', 'blue'),
+  new AdminShortcut('Deposits', 'Holds, releases, and deposit management.', '/ops/deposits/', ShieldCheck, 'Open', 'teal'),
+  new AdminShortcut('Reports', 'Operational charts, KPIs, and exports.', '/ops/reports/', FileText, 'View', 'violet'),
+  new AdminShortcut('FairAgent', 'Question analytics and FAQ training controls.', '/ops/agent/', Bot, 'Open', 'rose'),
+  new AdminShortcut('Settings', 'Brand settings, access, and system controls.', '/ops/settings/', Settings, 'Open', 'amber'),
 ];
 
-const healthItems = [
-  new AdminHealthItem('Access', 'Staff only', 'Protected tools stay behind authenticated staff sessions.'),
-  new AdminHealthItem('Payments', 'Controlled', 'Payment and deposit changes stay server-side.'),
-  new AdminHealthItem('Agent FAQ', 'Review', 'FAQ training records should remain editable by staff.', 'review'),
-  new AdminHealthItem('Frontend', 'Build gated', 'Preview assets require a clean Vite build before release.', 'attention'),
+const metrics = [
+  new AdminMetric('Active stays', '128', '↑ 12% vs yesterday', Home, 'teal'),
+  new AdminMetric('Pending requests', '23', '↑ 5 new', Bell, 'blue'),
+  new AdminMetric('Deposit holds', '$74,560', 'Protected ledger', CreditCard, 'violet'),
+  new AdminMetric('Open tasks', '18', '↓ 3 completed', ClipboardList, 'amber'),
 ];
 
 export function AdminPage() {
@@ -44,46 +49,81 @@ export function AdminPage() {
     <main className="dashboard-content admin-page">
       <section className="admin-hero">
         <div>
-          <span><ShieldCheck size={16} /> Staff workspace</span>
-          <h2>Admin command center</h2>
-          <p>Control records, reservations, brand settings, reports, agent training, and booking operations from one clean surface.</p>
+          <h1>Admin command center <ShieldCheck size={30} /></h1>
+          <p>Your operational cockpit for reservations, guests, properties, payments, maintenance, and everything in between.</p>
+          <a href="#admin-workspaces" className="admin-primary-link">
+            Open all workspaces
+            <ExternalLink size={16} />
+          </a>
         </div>
-        <a href="/admin/" className="admin-primary-link">
-          Open records
-          <ExternalLink size={16} />
-        </a>
+        <aside className="admin-sync-card" aria-label="System status">
+          <span>System healthy</span>
+          <strong>Last sync: 2m ago</strong>
+          <p>All systems operational</p>
+        </aside>
       </section>
 
-      <section className="admin-health-grid" aria-label="Admin readiness">
-        {healthItems.map((item) => (
-          <article className={`admin-health-card admin-health-card--${item.status}`} key={item.label}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <p>{item.caption}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="admin-section-header">
-        <div>
-          <h3>Control groups</h3>
-          <p>Jump directly into the workspace that owns the task.</p>
-        </div>
-        <span><Activity size={15} /> Controlled edits</span>
-      </section>
-
-      <section className="admin-shortcut-grid">
-        {shortcuts.map((shortcut) => {
-          const Icon = shortcut.icon;
+      <section className="admin-metric-grid" aria-label="Admin metrics">
+        {metrics.map((metric) => {
+          const Icon = metric.icon;
           return (
-            <a className={`admin-shortcut admin-shortcut--${shortcut.tone}`} href={shortcut.href} key={shortcut.label}>
-              <span className="admin-shortcut__icon"><Icon size={20} /></span>
-              <strong>{shortcut.label}</strong>
-              <p>{shortcut.description}</p>
-              <small>Open <ExternalLink size={13} /></small>
-            </a>
+            <article className={`admin-metric-card admin-metric-card--${metric.tone}`} key={metric.label}>
+              <span><Icon size={24} /></span>
+              <div>
+                <small>{metric.label}</small>
+                <strong>{metric.value}</strong>
+                <em>{metric.caption}</em>
+              </div>
+            </article>
           );
         })}
+      </section>
+
+      <section className="admin-operations" id="admin-workspaces">
+        <header className="admin-section-header">
+          <div>
+            <h2><Activity size={22} /> Operations hub</h2>
+            <p>Access the tools and data you need to run a world-class hospitality operation.</p>
+          </div>
+          <div className="admin-view-actions" aria-label="Workspace controls">
+            <button type="button" aria-label="Grid view"><Grid3X3 size={17} /></button>
+            <button type="button"><SlidersHorizontal size={17} /> Customize</button>
+          </div>
+        </header>
+
+        <section className="admin-shortcut-grid">
+          {shortcuts.map((shortcut) => {
+            const Icon = shortcut.icon;
+            return (
+              <a className={`admin-shortcut admin-shortcut--${shortcut.tone}`} href={shortcut.href} key={shortcut.label}>
+                <span className="admin-shortcut__icon"><Icon size={22} /></span>
+                <span>
+                  <strong>{shortcut.label}</strong>
+                  <p>{shortcut.description}</p>
+                  <small>{shortcut.action} <ExternalLink size={13} /></small>
+                </span>
+              </a>
+            );
+          })}
+        </section>
+      </section>
+
+      <section className="admin-footer-strip" aria-label="Admin safeguards">
+        <article>
+          <ShieldCheck size={18} />
+          <span>Staff only</span>
+          <p>Protected tools stay behind authenticated staff sessions.</p>
+        </article>
+        <article>
+          <CreditCard size={18} />
+          <span>Payment controlled</span>
+          <p>Payment and deposit changes stay server-side.</p>
+        </article>
+        <article>
+          <Bot size={18} />
+          <span>Agent review</span>
+          <p>FAQ training records remain editable by staff.</p>
+        </article>
       </section>
     </main>
   );

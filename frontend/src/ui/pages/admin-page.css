@@ -2632,3 +2632,304 @@
     padding-inline: 14px;
   }
 }
+
+/* Restored Admin command center mock. */
+.admin-page {
+  gap: 18px;
+  padding: 22px 24px 28px;
+}
+
+.admin-page .admin-hero {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 330px);
+  align-items: stretch;
+  gap: 20px;
+  min-height: 208px;
+  padding: 28px;
+  background:
+    radial-gradient(circle at 86% 4%, rgba(20, 184, 166, 0.22), transparent 34%),
+    linear-gradient(135deg, #05243a 0%, #061c2f 58%, #0b6170 100%);
+}
+
+.admin-page .admin-hero > div {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+}
+
+.admin-page .admin-hero h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  max-width: 860px;
+  color: #fff;
+  font-size: clamp(2.4rem, 4vw, 4.25rem);
+  line-height: 0.94;
+  letter-spacing: 0;
+}
+
+.admin-page .admin-hero p {
+  max-width: 760px;
+  font-size: 1.02rem;
+}
+
+.admin-page .admin-primary-link {
+  width: fit-content;
+  min-height: 44px;
+  padding: 10px 15px;
+  text-decoration: none;
+}
+
+.admin-sync-card {
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.admin-sync-card span {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: rgba(34, 197, 94, 0.88);
+  color: #f0fdf4;
+  font-size: 0.8rem;
+  font-weight: 950;
+}
+
+.admin-sync-card strong {
+  color: #ffffff;
+  font-size: 1.18rem;
+}
+
+.admin-sync-card p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.9rem;
+}
+
+.admin-metric-grid,
+.admin-shortcut-grid,
+.admin-footer-strip {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-metric-card,
+.admin-operations,
+.admin-footer-strip,
+.admin-page .admin-shortcut {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.055);
+}
+
+.admin-metric-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  min-height: 104px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.admin-metric-card > span {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--admin-tint, rgba(37, 99, 235, 0.12));
+  color: var(--admin-tone, #2563eb);
+}
+
+.admin-metric-card div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.admin-metric-card small {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 950;
+}
+
+.admin-metric-card strong {
+  color: #0f172a;
+  font-size: clamp(1.48rem, 2vw, 2rem);
+  line-height: 1;
+}
+
+.admin-metric-card em {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 820;
+}
+
+.admin-metric-card--blue,
+.admin-shortcut--blue { --admin-tone: #0b78b6; --admin-tint: rgba(11, 120, 182, 0.13); }
+.admin-metric-card--teal,
+.admin-shortcut--teal { --admin-tone: #0f766e; --admin-tint: rgba(15, 118, 110, 0.13); }
+.admin-metric-card--violet,
+.admin-shortcut--violet { --admin-tone: #6f55b5; --admin-tint: rgba(111, 85, 181, 0.14); }
+.admin-metric-card--amber,
+.admin-shortcut--amber { --admin-tone: #c95705; --admin-tint: rgba(201, 87, 5, 0.13); }
+.admin-metric-card--rose,
+.admin-shortcut--rose { --admin-tone: #b4235c; --admin-tint: rgba(180, 35, 92, 0.12); }
+
+.admin-operations {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.admin-page .admin-section-header {
+  align-items: center;
+  gap: 16px;
+}
+
+.admin-page .admin-section-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.46rem;
+}
+
+.admin-view-actions {
+  display: flex;
+  gap: 9px;
+}
+
+.admin-view-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  border: 1px solid #dbe3ee;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 8px 11px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.admin-page .admin-shortcut-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-page .admin-shortcut {
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 132px;
+  border-left: 5px solid var(--admin-tone, #2563eb);
+  padding: 15px;
+  background:
+    linear-gradient(135deg, var(--admin-tint, rgba(37, 99, 235, 0.12)), rgba(255, 255, 255, 0.9)),
+    #ffffff;
+}
+
+.admin-page .admin-shortcut__icon {
+  width: 46px;
+  height: 46px;
+}
+
+.admin-shortcut > span:last-child {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.admin-page .admin-shortcut p {
+  font-size: 0.82rem;
+}
+
+.admin-footer-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 14px;
+}
+
+.admin-footer-strip article {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 4px 11px;
+  align-items: center;
+  min-height: 68px;
+}
+
+.admin-footer-strip svg {
+  grid-row: span 2;
+  width: 38px;
+  height: 38px;
+  padding: 9px;
+  border-radius: 999px;
+  color: #0f766e;
+  background: #ccfbf1;
+}
+
+.admin-footer-strip span {
+  color: #0f172a;
+  font-size: 0.88rem;
+  font-weight: 950;
+}
+
+.admin-footer-strip p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.8rem;
+  line-height: 1.34;
+}
+
+@media (max-width: 1180px) {
+  .admin-page .admin-hero,
+  .admin-metric-grid,
+  .admin-page .admin-shortcut-grid,
+  .admin-footer-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-page {
+    padding: 16px;
+  }
+
+  .admin-page .admin-hero,
+  .admin-metric-grid,
+  .admin-page .admin-shortcut-grid,
+  .admin-footer-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-page .admin-hero {
+    padding: 20px;
+  }
+
+  .admin-page .admin-hero h1 {
+    font-size: clamp(2rem, 12vw, 2.9rem);
+  }
+
+  .admin-page .admin-section-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-view-actions button {
+    flex: 1 1 0;
+  }
+}
