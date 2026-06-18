@@ -404,7 +404,7 @@ export function OpsStayPortfolioPage() {
     <main className="dashboard-content stays-v4-page">
       <section className="stays-v4-titlebar">
         <div>
-          <h1>Stays &amp; Listings</h1>
+          <h1>Properties</h1>
           <p>Manage live listings, public content, amenities, pricing, and operational readiness.</p>
         </div>
         <div className="stays-v4-title-actions">
