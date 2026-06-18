@@ -1434,7 +1434,7 @@ details.dashboard-panel[open] {
 
 .public-booking__grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.78fr) minmax(360px, 1fr);
+  grid-template-columns: minmax(500px, 0.96fr) minmax(500px, 1fr);
   gap: 14px;
 }
 
@@ -2775,6 +2775,7 @@ details.dashboard-panel[open] {
 }
 
 .account-v2-booking-anchor .public-booking__grid {
+  grid-template-columns: minmax(500px, 0.96fr) minmax(500px, 1fr);
   align-items: stretch;
   gap: 14px;
 }
@@ -5310,6 +5311,11 @@ details.dashboard-panel[open] {
   .account-grid,
   .account-admin-tools > div:last-child {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .public-booking__grid,
+  .account-v2-booking-anchor .public-booking__grid {
+    grid-template-columns: 1fr;
   }
 
   .ops-res-metrics {
@@ -13808,7 +13814,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .public-site--v4-preview .public-booking__grid {
-  grid-template-columns: minmax(320px, 0.55fr) minmax(0, 1fr);
+  grid-template-columns: minmax(520px, 0.98fr) minmax(520px, 1fr);
 }
 
 .public-site--v4-preview .public-booking__intro {
@@ -13845,7 +13851,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
   display: grid;
   gap: 0;
   overflow: hidden;
-  min-height: 284px;
+  min-height: 392px;
   border: 1px solid rgba(226, 232, 240, 0.96);
   border-radius: 8px;
   color: #0f172a;
@@ -13887,7 +13893,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
 .agent-rules-tabs__cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -13895,8 +13901,8 @@ svg.modern-admin-rail-icon:not([stroke]) {
   display: grid;
   grid-template-rows: auto auto 1fr;
   gap: 7px;
-  min-height: 148px;
-  padding: 10px 9px;
+  min-height: 142px;
+  padding: 11px 10px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #ffffff;

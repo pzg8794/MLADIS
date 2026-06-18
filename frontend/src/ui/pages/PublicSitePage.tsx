@@ -1208,21 +1208,38 @@ function DepositHoldModal({
 
 function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Language }) {
   const t = copy[language];
-  const rules = useMemo(() => (stay.rules.length ? stay.rules : [
+  const ruleFallbacks = useMemo(() => [
     { title: 'No parties or events', description: 'Keep the stay peaceful for the residential community and nearby neighbors.' },
     { title: 'No smoking indoors', description: 'Smoking is not allowed inside the apartment or shared indoor areas.' },
     { title: 'Registered guests only', description: 'Guest count must match the reservation unless MLADIS approves a change.' },
     { title: 'Respect quiet hours', description: 'Keep noise reasonable, especially late at night and in common areas.' },
-  ]).slice(0, 4), [stay.rules]);
-  const tabs = useMemo<AgentRuleTab[]>(() => [
+    { title: 'Protect keys and locks', description: 'Report lost keys, codes, or access issues immediately so MLADIS can help.' },
+    { title: 'Keep shared areas clean', description: 'Leave the pool, halls, parking, and common spaces ready for the next guest.' },
+  ], []);
+  const ruleSupplements = useMemo(() => [
+    { title: 'Keep shared areas clean', description: 'Leave the pool, halls, parking, and common spaces ready for the next guest.' },
+    { title: 'Ask before exceptions', description: 'Message MLADIS before bringing visitors, changing plans, or using amenities differently.' },
+    { title: 'Report issues early', description: 'Send photos or details quickly if something breaks, leaks, or needs host attention.' },
+  ], []);
+  const rules = useMemo(() => {
+    const sourceRules = stay.rules.length ? [...stay.rules, ...ruleSupplements] : ruleFallbacks;
+    const seenTitles = new Set<string>();
+    return sourceRules.filter((rule) => {
+      const titleKey = rule.title.toLowerCase();
+      if (seenTitles.has(titleKey)) return false;
+      seenTitles.add(titleKey);
+      return true;
+    }).slice(0, 6);
+  }, [ruleFallbacks, ruleSupplements, stay.rules]);
+  const cardPages = useMemo<AgentRuleTab[]>(() => [
     {
       id: 'house-rules',
       label: language === 'es' ? t.rules : 'House rules',
       cards: rules.map((rule, index) => ({
         title: rule.title,
         description: rule.description,
-        icon: index === 0 ? 'shield' : index === 1 ? 'payment' : index === 2 ? 'guest' : 'calendar',
-        tone: index === 0 ? 'teal' : index === 1 ? 'blue' : index === 2 ? 'violet' : 'green',
+        icon: index === 0 ? 'shield' : index === 1 ? 'payment' : index === 2 ? 'guest' : index === 3 ? 'calendar' : index === 4 ? 'document' : 'area',
+        tone: index === 0 ? 'teal' : index === 1 ? 'blue' : index === 2 ? 'violet' : index === 3 ? 'green' : index === 4 ? 'orange' : 'teal',
       })),
     },
     {
@@ -1233,6 +1250,8 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
         { title: 'Correct guest count', description: 'Guest count controls pricing and must match the reservation.', icon: 'guest', tone: 'orange' },
         { title: 'Host review', description: 'MLADIS reviews requests before confirming details.', icon: 'document', tone: 'blue' },
         { title: 'Check-in timing', description: 'Plan arrival around confirmed instructions and account updates.', icon: 'calendar', tone: 'violet' },
+        { title: 'ID and account ready', description: 'Keep your account details current before the reservation is finalized.', icon: 'document', tone: 'green' },
+        { title: 'Arrival questions', description: 'Ask for practical arrival support before travel day.', icon: 'agent', tone: 'teal' },
       ],
     },
     {
@@ -1243,6 +1262,8 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
         { title: 'Transport planning', description: 'Ask about arrival routes, rides, and nearby stops before booking.', icon: 'agent', tone: 'teal' },
         { title: 'Beach-day options', description: 'Juan Dolio and nearby beach trips can be planned around the stay.', icon: 'star', tone: 'blue' },
         { title: 'Practical local tips', description: 'Get help with groceries, restaurants, and timing for your group.', icon: 'document', tone: 'green' },
+        { title: 'Errand planning', description: 'Coordinate malls, pharmacies, and food stops around check-in timing.', icon: 'area', tone: 'violet' },
+        { title: 'Neighborhood rhythm', description: 'Keep arrival and late-night movement considerate for residents.', icon: 'shield', tone: 'teal' },
       ],
     },
     {
@@ -1253,22 +1274,24 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
         { title: 'Refundable deposit', description: 'The damage deposit remains a secure refundable hold unless an issue is documented.', icon: 'shield', tone: 'teal' },
         { title: 'Account records', description: 'Requests, invoices, and updates stay attached to the guest account.', icon: 'document', tone: 'violet' },
         { title: 'Human support', description: 'Ask for practical help before the reservation is finalized.', icon: 'agent', tone: 'green' },
+        { title: 'Cancellation windows', description: 'Review reservation dates and policy details before submitting.', icon: 'calendar', tone: 'orange' },
+        { title: 'Messages stay saved', description: 'Important answers remain connected to the booking account.', icon: 'document', tone: 'blue' },
       ],
     },
   ], [language, rules, t.rules]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const activeTab = tabs[activeIndex] ?? tabs[0];
+  const [cardPageIndex, setCardPageIndex] = useState(0);
+  const activePage = cardPages[cardPageIndex] ?? cardPages[0];
 
   useEffect(() => {
-    if (tabs.length <= 1) return undefined;
+    if (cardPages.length <= 1) return undefined;
     const intervalId = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % tabs.length);
-    }, 5000);
+      setCardPageIndex((current) => (current + 1) % cardPages.length);
+    }, 6000);
     return () => window.clearInterval(intervalId);
-  }, [tabs.length]);
+  }, [cardPages.length]);
 
-  const moveTab = (direction: -1 | 1) => {
-    setActiveIndex((current) => (current + direction + tabs.length) % tabs.length);
+  const moveCards = (direction: -1 | 1) => {
+    setCardPageIndex((current) => (current + direction + cardPages.length) % cardPages.length);
   };
 
   const iconFor = (icon: AgentRuleIcon) => {
@@ -1284,15 +1307,13 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
 
   return (
     <article className="agent-rules-tabs" aria-label="Booking agent guidance">
-      <div className="agent-rules-tabs__tablist" role="tablist" aria-label="Booking guidance tabs">
-        {tabs.map((tab, index) => (
+      <div className="agent-rules-tabs__tablist" aria-label="Booking guidance card groups">
+        {cardPages.map((tab, index) => (
           <button
             type="button"
-            className={`agent-rules-tabs__tab${index === activeIndex ? ' is-active' : ''}`}
-            onClick={() => setActiveIndex(index)}
-            role="tab"
-            aria-selected={index === activeIndex}
-            aria-controls={`agent-rules-panel-${tab.id}`}
+            className={`agent-rules-tabs__tab${index === 0 ? ' is-active' : ''}`}
+            onClick={() => setCardPageIndex(index)}
+            aria-controls="agent-rules-panel-house-rules"
             id={`agent-rules-tab-${tab.id}`}
             key={tab.id}
           >
@@ -1302,13 +1323,12 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
       </div>
       <div
         className="agent-rules-tabs__panel"
-        id={`agent-rules-panel-${activeTab.id}`}
-        role="tabpanel"
-        aria-labelledby={`agent-rules-tab-${activeTab.id}`}
+        id="agent-rules-panel-house-rules"
+        aria-labelledby="agent-rules-tab-house-rules"
       >
         <div className="agent-rules-tabs__cards">
-          {activeTab.cards.map((card) => (
-            <article className={`agent-rules-tabs__card agent-rules-tabs__card--${card.tone}`} key={`${activeTab.id}-${card.title}`}>
+          {activePage.cards.map((card) => (
+            <article className={`agent-rules-tabs__card agent-rules-tabs__card--${card.tone}`} key={`${activePage.id}-${card.title}`}>
               <span>{iconFor(card.icon)}</span>
               <strong>{card.title}</strong>
               <p>{card.description}</p>
@@ -1316,22 +1336,22 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
           ))}
         </div>
       </div>
-      <footer className="agent-rules-tabs__pager" aria-label="Booking guidance rotation">
-        <button type="button" onClick={() => moveTab(-1)} aria-label="Previous booking guidance tab">
+      <footer className="agent-rules-tabs__pager" aria-label="Booking guidance card pages">
+        <button type="button" onClick={() => moveCards(-1)} aria-label="Previous booking guidance cards">
           <ChevronLeft size={17} />
         </button>
         <div>
-          {tabs.map((tab, index) => (
+          {cardPages.map((tab, index) => (
             <button
               type="button"
-              className={index === activeIndex ? 'is-active' : ''}
-              onClick={() => setActiveIndex(index)}
-              aria-label={`Show ${tab.label}`}
+              className={index === cardPageIndex ? 'is-active' : ''}
+              onClick={() => setCardPageIndex(index)}
+              aria-label={`Show ${tab.label} cards`}
               key={`${tab.id}-dot`}
             />
           ))}
         </div>
-        <button type="button" onClick={() => moveTab(1)} aria-label="Next booking guidance tab">
+        <button type="button" onClick={() => moveCards(1)} aria-label="Next booking guidance cards">
           <ChevronRight size={17} />
         </button>
       </footer>
