@@ -26,6 +26,7 @@ from .models import (
     AgentConversation,
     AvailabilityBlock,
     BookableItem,
+    BookingCategory,
     BookingInquiry,
     BookingStatus,
     CancellationPolicy,
@@ -50,6 +51,7 @@ from .models import (
     PromotionStatus,
     ReservationPaymentHold,
     SiteSettings,
+    StayGalleryImage,
 )
 
 
@@ -3412,3 +3414,209 @@ class DonationService:
             "donation_id": str(donation.id),
             "mission_cause_id": str(donation.cause_id or ""),
         }
+
+
+# ---------------------------------------------------------------------------
+# Ops Stays & Listings page — Object 1
+# ---------------------------------------------------------------------------
+
+class StayListingService:
+    """
+    Service layer for the Stays & Listings ops page.
+
+    Real data is used wherever the model carries it; values not yet in the
+    schema (occupancy %, ADR, housekeeping schedule, tags) are mocked with
+    sensible defaults until the schema is extended.
+
+    All public methods return plain dicts or querysets safe for template use.
+    """
+
+    # Statuses that mean "this event is still open / in flight"
+    OPEN_STATUSES = {
+        MaintenanceStatus.DRAFT,
+        MaintenanceStatus.LOGGED,
+        MaintenanceStatus.SCHEDULED,
+        MaintenanceStatus.IN_PROGRESS,
+    }
+    # Statuses that count as "overdue" (unresolved for >7 days since reported)
+    OVERDUE_STATUSES = {
+        MaintenanceStatus.LOGGED,
+        MaintenanceStatus.SCHEDULED,
+    }
+
+    # -----------------------------------------------------------------------
+    # Public API
+    # -----------------------------------------------------------------------
+
+    def get_stays(self, tab="all", search=""):
+        """Return a list of BookableItem instances for the given tab / search."""
+        qs = BookableItem.objects.filter(category=BookingCategory.STAY)
+        if search:
+            qs = qs.filter(name__icontains=search)
+
+        if tab == "published":
+            qs = qs.filter(is_active=True)
+        elif tab == "draft":
+            qs = qs.filter(is_active=False)
+        elif tab == "maintenance":
+            open_ids = (
+                MaintenanceEvent.objects.filter(status__in=self.OPEN_STATUSES)
+                .values_list("item_id", flat=True)
+                .distinct()
+            )
+            qs = qs.filter(pk__in=open_ids)
+        elif tab in ("inactive", "archived"):
+            qs = qs.none()
+
+        return list(
+            qs.prefetch_related("gallery_images").order_by("name")
+        )
+
+    def get_tab_counts(self):
+        """Return {tab_name: count} dict for the tab bar badges."""
+        all_qs = BookableItem.objects.filter(category=BookingCategory.STAY)
+        open_stay_ids = set(
+            MaintenanceEvent.objects.filter(
+                status__in=self.OPEN_STATUSES,
+                item__category=BookingCategory.STAY,
+            )
+            .values_list("item_id", flat=True)
+            .distinct()
+        )
+        return {
+            "all": all_qs.count(),
+            "published": all_qs.filter(is_active=True).count(),
+            "draft": all_qs.filter(is_active=False).count(),
+            "inactive": 0,
+            "maintenance": all_qs.filter(pk__in=open_stay_ids).count(),
+            "archived": 0,
+        }
+
+    def card_payload(self, stay):
+        """Dict with all data needed to render a property card."""
+        return {
+            "stay": stay,
+            "cover_image": self._cover_image(stay),
+            "tab_status": "Published" if stay.is_active else "Draft",
+            "readiness": self._readiness(stay),
+            "tags": self._tags(stay),
+            # Occupancy / delta: mocked until calendar integration is added
+            "occupancy_pct": None,
+            "occupancy_delta": None,
+        }
+
+    def detail_payload(self, stay):
+        """Dict with all data needed to render the selected listing detail panel."""
+        maint = self._maintenance_summary(stay)
+        reservations = self._upcoming_reservations(stay)
+        res_count = reservations.count()
+        total_guests = sum(r.guests for r in reservations) if res_count else 0
+        gallery = list(stay.gallery_images.all()[:18])
+        next_clean_event = (
+            MaintenanceEvent.objects.filter(
+                item=stay,
+                work_type=MaintenanceWorkType.CLEANING,
+                status__in={MaintenanceStatus.LOGGED, MaintenanceStatus.SCHEDULED},
+            )
+            .order_by("reported_at")
+            .first()
+        )
+        return {
+            "stay": stay,
+            "gallery": gallery,
+            "gallery_total": len(gallery),
+            "cover_image": self._cover_image(stay),
+            # Mocked until occupancy/ADR models are added
+            "occupancy_pct": 72,
+            "adr": int(stay.starting_price) if stay.starting_price else 146,
+            "adr_delta": "+9% vs last 7 days",
+            # Location
+            "area_label": stay.location_label or "—",
+            # Housekeeping — next_clean and cleaner from real maintenance data when available
+            "readiness": self._readiness(stay),
+            "next_clean": next_clean_event.reported_at.date() if next_clean_event else None,
+            "cleaner_name": next_clean_event.vendor_name if (next_clean_event and next_clean_event.vendor_name) else None,
+            # Maintenance — real data
+            "open_work_orders": maint["open"],
+            "overdue": maint["overdue"],
+            "last_inspection": maint["last_inspection"],
+            # Reservations — real data
+            "upcoming_count": res_count,
+            "upcoming_guests": total_guests,
+        }
+
+    # -----------------------------------------------------------------------
+    # Private helpers
+    # -----------------------------------------------------------------------
+
+    @staticmethod
+    def _cover_image(stay):
+        """Return the URL of the first gallery image, falling back to stay.image."""
+        first = stay.gallery_images.first() if hasattr(stay, "gallery_images") else None
+        if first:
+            return first.image_url
+        return stay.image or ""
+
+    def _readiness(self, stay):
+        """
+        'Needs attention' if any open/unresolved maintenance event exists.
+        'Ready' otherwise.
+        """
+        has_open = MaintenanceEvent.objects.filter(
+            item=stay,
+            status__in=self.OPEN_STATUSES,
+        ).exists()
+        return "Needs attention" if has_open else "Ready"
+
+    @staticmethod
+    def _tags(stay):
+        """
+        Mock property feature tags.  A future amenities model would replace this.
+        Returns list of (label, css_modifier) tuples.
+        """
+        tags = []
+        if stay.airbnb_listing_id or stay.airbnb_url:
+            tags.append(("Pool", "tag--pool"))
+            tags.append(("Self check-in", "tag--checkin"))
+        tags.append(("$200 Secure hold", "tag--deposit"))
+        if stay.airbnb_url:
+            tags.append(("Direct booking", "tag--direct"))
+        return tags
+
+    def _maintenance_summary(self, stay):
+        """Return {open, overdue, last_inspection} for a stay."""
+        events = MaintenanceEvent.objects.filter(item=stay)
+        open_count = events.filter(status__in=self.OPEN_STATUSES).count()
+        overdue_cutoff = timezone.now() - timedelta(days=7)
+        overdue_count = events.filter(
+            status__in=self.OVERDUE_STATUSES,
+            reported_at__lt=overdue_cutoff,
+        ).count()
+        last_insp = (
+            events.filter(
+                work_type=MaintenanceWorkType.INSPECTION,
+                status__in={
+                    MaintenanceStatus.COMPLETED,
+                    MaintenanceStatus.DOCUMENTED,
+                    MaintenanceStatus.BILLED,
+                },
+            )
+            .order_by("-completed_at")
+            .first()
+        )
+        return {
+            "open": open_count,
+            "overdue": overdue_count,
+            "last_inspection": last_insp.completed_at.date() if (last_insp and last_insp.completed_at) else None,
+        }
+
+    @staticmethod
+    def _upcoming_reservations(stay, days=7):
+        """Return confirmed BookingInquiry objects with check-in in the next `days` days."""
+        today = date.today()
+        return BookingInquiry.objects.filter(
+            item=stay,
+            status=BookingStatus.CONFIRMED,
+            check_in__gte=today,
+            check_in__lte=today + timedelta(days=days),
+        )
