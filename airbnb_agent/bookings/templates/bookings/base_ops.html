@@ -19,11 +19,7 @@
 
       <aside class="modern-admin-sidebar v4-command-sidebar" id="main-sidebar">
         <a class="modern-admin-brand" href="/">
-          {% if site_settings.logo_display_url %}
-            <img src="{{ site_settings.logo_display_url }}" alt="MLADIS">
-          {% else %}
-            <img src="{% static 'frontend/modern-dashboard/favicon.svg' %}" alt="MLADIS">
-          {% endif %}
+          <img src="{{ site_settings.logo_display_url }}" alt="MLADIS" class="modern-admin-brand-logo">
           <div>
             <strong>MLADIS</strong>
             <small>Ops Panel</small>

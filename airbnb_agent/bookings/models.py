@@ -7,6 +7,7 @@ from uuid import uuid4
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
@@ -1648,7 +1649,7 @@ class SiteSettings(models.Model):
     def logo_display_url(self):
         if self.uploaded_logo_is_displayable():
             return self.logo.url
-        return self.logo_url
+        return self.logo_url or static("bookings/brand/mladis-connected-intelligence.png")
 
     @classmethod
     def current(cls):
