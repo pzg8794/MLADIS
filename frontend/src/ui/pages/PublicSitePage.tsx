@@ -10,6 +10,7 @@ import {
   FileText,
   Globe2,
   HeartHandshake,
+  Headphones,
   Home,
   Info,
   LogIn,
@@ -30,6 +31,7 @@ import {
   XCircle,
   DollarSign,
   Music2,
+  Send,
 } from 'lucide-react';
 import { AccountFactory } from '../../application/AccountFactory';
 import { PublicSiteFactory } from '../../application/PublicSiteFactory';
@@ -52,6 +54,8 @@ type LegalKind = 'business' | 'privacy' | 'terms' | 'data-deletion';
 const SOL_ORIENS_MAP_EMBED_URL = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3782.782382437169!2d-69.9484538248079!3d18.538733682558327!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8eaf897e8fbf9ce9%3A0x2e510419521c5941!2sResidential%20Sol%20Oriens%20V!5e0!3m2!1sen!2sus!4v1781349935983!5m2!1sen!2sus';
 const SOL_ORIENS_STAY_MAP_EMBED_URL = mapEmbedWithDistance(SOL_ORIENS_MAP_EMBED_URL, '7600');
 const SOL_ORIENS_DIRECTIONS_URL = 'https://maps.app.goo.gl/EhA3JTQ685awyX9T9';
+const AGENT_MESSAGE_LIMIT = 500;
+const AGENT_MESSAGE_PLACEHOLDER = 'Type your message here...';
 
 function mapEmbedWithDistance(url: string, distance: string) {
   return url.replace('!1d3782.782382437169!', `!1d${distance}!`);
@@ -216,7 +220,7 @@ const copy = {
     bookingText: '',
     agentTitle: 'Booking agent',
     agentText: 'Ask about availability, guest count, deposit holds, house rules, transportation, or which apartment fits your group.',
-    formTitle: 'Start a reservation',
+    formTitle: 'Start a reservation request',
     formText: 'Send the request first. The $200 secure deposit hold opens next in a secure step.',
     pricePreview: 'Price preview',
     stayPayment: 'Stay payment hold',
@@ -224,6 +228,7 @@ const copy = {
     rules: 'Apartment rules',
     mission: 'Travel with mission',
     signInToAskAgent: 'Sign in to ask agent',
+    agentAction: 'Ask agent',
     agentLimitReached: 'Question limit reached',
     agentLimitText: 'You have reached the current question limit for this account.',
     submit: 'Send request',
@@ -268,7 +273,7 @@ const copy = {
     bookingText: '',
     agentTitle: 'Agente de reservas',
     agentText: 'Pregunta por disponibilidad, cantidad de huéspedes, depósito, reglas, transporte o cuál apartamento te conviene.',
-    formTitle: 'Iniciar reserva',
+    formTitle: 'Iniciar solicitud de reserva',
     formText: 'Envía la solicitud primero. El depósito seguro de $200 se abre después en un paso seguro.',
     pricePreview: 'Vista previa del precio',
     stayPayment: 'Retención de estadía',
@@ -276,6 +281,7 @@ const copy = {
     rules: 'Reglas del apartamento',
     mission: 'Viaja con misión',
     signInToAskAgent: 'Entra para preguntar al agente',
+    agentAction: 'Preguntar',
     agentLimitReached: 'Límite de preguntas alcanzado',
     agentLimitText: 'Has alcanzado el límite actual de preguntas para esta cuenta.',
     submit: 'Enviar solicitud',
@@ -680,10 +686,12 @@ function LegacyAgentPrompt({
             name="message"
             value={agentMessage}
             onChange={(event) => setAgentMessage(event.target.value)}
-            placeholder="Can I bring family visitors? What are the pool hours?"
+            maxLength={AGENT_MESSAGE_LIMIT}
+            placeholder={AGENT_MESSAGE_PLACEHOLDER}
           />
         </label>
-        <a className="public-agent-action" href={agentAccess.loginUrl}>{t.signInToAskAgent}</a>
+        <small className="public-agent-prompt__count">{agentMessage.length} / {AGENT_MESSAGE_LIMIT}</small>
+        <a className="public-agent-action" href={agentAccess.loginUrl}><Send size={15} /> {t.agentAction}</a>
       </div>
     );
   }
@@ -697,10 +705,12 @@ function LegacyAgentPrompt({
             name="message"
             value={agentMessage}
             onChange={(event) => setAgentMessage(event.target.value)}
-            placeholder="Can I bring family visitors? What are the pool hours?"
+            maxLength={AGENT_MESSAGE_LIMIT}
+            placeholder={AGENT_MESSAGE_PLACEHOLDER}
           />
         </label>
-        <button type="button" disabled>{t.agentLimitReached}</button>
+        <small className="public-agent-prompt__count">{agentMessage.length} / {AGENT_MESSAGE_LIMIT}</small>
+        <button type="button" disabled><Send size={15} /> {t.agentLimitReached}</button>
         <p className="public-agent-reply">{t.agentLimitText}</p>
       </div>
     );
@@ -715,10 +725,12 @@ function LegacyAgentPrompt({
             name="message"
             value={agentMessage}
             onChange={(event) => setAgentMessage(event.target.value)}
-            placeholder="Can I bring family visitors? What are the pool hours?"
+            maxLength={AGENT_MESSAGE_LIMIT}
+            placeholder={AGENT_MESSAGE_PLACEHOLDER}
           />
         </label>
-        <button type="submit" disabled={agentBusy}>{agentBusy ? 'Asking...' : 'Ask agent'}</button>
+        <small className="public-agent-prompt__count">{agentMessage.length} / {AGENT_MESSAGE_LIMIT}</small>
+        <button type="submit" disabled={agentBusy}><Send size={15} /> {agentBusy ? 'Asking...' : t.agentAction}</button>
       </form>
       {agentReply && <p className="public-agent-reply">{agentReply}</p>}
     </>
@@ -814,15 +826,15 @@ function AgentBookingSection({
 
   return (
     <section id="booking" className="public-section public-booking">
-      <div className="public-section__heading public-booking__intro">
-        <div>
-          <h2>{t.bookingTitle}</h2>
-          {t.bookingText && <p>{t.bookingText}</p>}
-        </div>
-        <GuestRatingSpotlight snapshot={snapshot} />
-      </div>
       <div className="public-booking__grid">
         <article className="public-agent-card">
+          <header className="public-agent-card__header">
+            <div>
+              <h2>{t.bookingTitle}</h2>
+              <p>Our local experts are here to help you plan the perfect stay.</p>
+            </div>
+            <Headphones size={19} />
+          </header>
           <span><Bot size={19} /> {t.agentTitle}</span>
           <p>{t.agentText}</p>
           <LegacyAgentPrompt stay={stay} token={token} agent={userContext.agent} language={language} />
@@ -833,6 +845,8 @@ function AgentBookingSection({
           )}
         </article>
 
+        <div className="public-booking__form-stack">
+          <GuestRatingSpotlight snapshot={snapshot} />
         <form className="public-booking-form" method="post" action="/inquiries/" onSubmit={submitReservationRequest}>
           <input type="hidden" name="csrfmiddlewaretoken" value={token} />
           <div className="public-booking-form__header">
@@ -902,8 +916,9 @@ function AgentBookingSection({
             <p className="public-deposit-modal__error" role="alert">This stay allows up to {guestLimit} guests.</p>
           )}
           <label>Notes<textarea name="message" rows={3} value={draft.message} onChange={(event) => updateDraft('message', event.target.value)} /></label>
-          <button type="submit" disabled={requestBusy || overGuestLimit}><CreditCard size={17} /> {requestBusy ? 'Sending...' : t.submit}</button>
+          <button type="submit" disabled={requestBusy || overGuestLimit}><Send size={16} /> {requestBusy ? 'Sending...' : t.submit}</button>
         </form>
+        </div>
       </div>
       {requestResult && (
         <DepositHoldModal
@@ -1233,16 +1248,6 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
   }, [ruleFallbacks, ruleSupplements, stay.rules]);
   const cardPages = useMemo<AgentRuleTab[]>(() => [
     {
-      id: 'house-rules',
-      label: language === 'es' ? t.rules : 'House rules',
-      cards: rules.map((rule, index) => ({
-        title: rule.title,
-        description: rule.description,
-        icon: index === 0 ? 'shield' : index === 1 ? 'payment' : index === 2 ? 'guest' : index === 3 ? 'calendar' : index === 4 ? 'document' : 'area',
-        tone: index === 0 ? 'teal' : index === 1 ? 'blue' : index === 2 ? 'violet' : index === 3 ? 'green' : index === 4 ? 'orange' : 'teal',
-      })),
-    },
-    {
       id: 'arrival-prep',
       label: 'Arrival prep',
       cards: [
@@ -1267,6 +1272,16 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
       ],
     },
     {
+      id: 'house-rules',
+      label: language === 'es' ? t.rules : 'House rules',
+      cards: rules.map((rule, index) => ({
+        title: rule.title,
+        description: rule.description,
+        icon: index === 0 ? 'shield' : index === 1 ? 'payment' : index === 2 ? 'guest' : index === 3 ? 'calendar' : index === 4 ? 'document' : 'area',
+        tone: index === 0 ? 'teal' : index === 1 ? 'blue' : index === 2 ? 'violet' : index === 3 ? 'green' : index === 4 ? 'orange' : 'teal',
+      })),
+    },
+    {
       id: 'faqs',
       label: 'FAQs',
       cards: [
@@ -1281,14 +1296,6 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
   ], [language, rules, t.rules]);
   const [cardPageIndex, setCardPageIndex] = useState(0);
   const activePage = cardPages[cardPageIndex] ?? cardPages[0];
-
-  useEffect(() => {
-    if (cardPages.length <= 1) return undefined;
-    const intervalId = window.setInterval(() => {
-      setCardPageIndex((current) => (current + 1) % cardPages.length);
-    }, 6000);
-    return () => window.clearInterval(intervalId);
-  }, [cardPages.length]);
 
   const moveCards = (direction: -1 | 1) => {
     setCardPageIndex((current) => (current + direction + cardPages.length) % cardPages.length);
@@ -1311,9 +1318,9 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
         {cardPages.map((tab, index) => (
           <button
             type="button"
-            className={`agent-rules-tabs__tab${index === 0 ? ' is-active' : ''}`}
+            className={`agent-rules-tabs__tab${index === cardPageIndex ? ' is-active' : ''}`}
             onClick={() => setCardPageIndex(index)}
-            aria-controls="agent-rules-panel-house-rules"
+            aria-controls="agent-rules-panel"
             id={`agent-rules-tab-${tab.id}`}
             key={tab.id}
           >
@@ -1323,11 +1330,11 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
       </div>
       <div
         className="agent-rules-tabs__panel"
-        id="agent-rules-panel-house-rules"
-        aria-labelledby="agent-rules-tab-house-rules"
+        id="agent-rules-panel"
+        aria-labelledby={`agent-rules-tab-${activePage.id}`}
       >
         <div className="agent-rules-tabs__cards">
-          {activePage.cards.map((card) => (
+          {activePage.cards.slice(0, 4).map((card) => (
             <article className={`agent-rules-tabs__card agent-rules-tabs__card--${card.tone}`} key={`${activePage.id}-${card.title}`}>
               <span>{iconFor(card.icon)}</span>
               <strong>{card.title}</strong>

@@ -1434,8 +1434,14 @@ details.dashboard-panel[open] {
 
 .public-booking__grid {
   display: grid;
-  grid-template-columns: minmax(500px, 0.96fr) minmax(500px, 1fr);
+  grid-template-columns: minmax(360px, 0.72fr) minmax(560px, 1.28fr);
   gap: 14px;
+}
+
+.public-booking__form-stack {
+  display: grid;
+  gap: 10px;
+  align-content: start;
 }
 
 .public-agent-card {
@@ -1444,6 +1450,41 @@ details.dashboard-panel[open] {
   background:
     linear-gradient(145deg, rgba(9, 45, 49, 0.96), rgba(27, 37, 89, 0.94)),
     #092d31;
+}
+
+.public-agent-card__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  gap: 12px;
+  align-items: start;
+}
+
+.public-agent-card__header h2,
+.public-agent-card__header p {
+  margin: 0;
+}
+
+.public-agent-card__header h2 {
+  color: #ffffff;
+  font-size: clamp(1.35rem, 2.2vw, 1.95rem);
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.public-agent-card__header p {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.public-agent-card__header > svg {
+  width: 30px;
+  height: 30px;
+  padding: 6px;
+  border-radius: 999px;
+  color: #baf7f0;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .public-agent-card > span {
@@ -1562,6 +1603,14 @@ details.dashboard-panel[open] {
 
 .public-agent-prompt textarea {
   min-height: 150px;
+}
+
+.public-agent-prompt__count {
+  justify-self: end;
+  margin-top: -6px;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 0.66rem;
+  font-weight: 850;
 }
 
 .public-agent-prompt .public-agent-action {
@@ -2775,7 +2824,7 @@ details.dashboard-panel[open] {
 }
 
 .account-v2-booking-anchor .public-booking__grid {
-  grid-template-columns: minmax(500px, 0.96fr) minmax(500px, 1fr);
+  grid-template-columns: minmax(360px, 0.72fr) minmax(560px, 1.28fr);
   align-items: stretch;
   gap: 14px;
 }
@@ -13958,7 +14007,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .public-site--v4-preview .public-booking__grid {
-  grid-template-columns: minmax(520px, 0.98fr) minmax(520px, 1fr);
+  grid-template-columns: minmax(360px, 0.72fr) minmax(560px, 1.28fr);
 }
 
 .public-site--v4-preview .public-booking__intro {
@@ -13978,6 +14027,8 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .public-site--v4-preview .public-agent-card {
+  gap: 10px;
+  padding: 14px;
   background:
     radial-gradient(circle at 12% 8%, rgba(14, 165, 233, 0.22), transparent 28%),
     linear-gradient(145deg, #052f3b, #041c36 68%, #02162b);
@@ -13988,14 +14039,14 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .public-agent-card__rules {
-  margin-top: 10px;
+  margin-top: 2px;
 }
 
 .agent-rules-tabs {
   display: grid;
   gap: 0;
   overflow: hidden;
-  min-height: 392px;
+  min-height: 166px;
   border: 1px solid rgba(226, 232, 240, 0.96);
   border-radius: 8px;
   color: #0f172a;
@@ -14011,14 +14062,14 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .agent-rules-tabs__tab {
-  min-height: 40px;
+  min-height: 34px;
   border: 0;
   border-radius: 0;
-  padding: 9px 8px;
+  padding: 7px 8px;
   color: #334155;
   background: transparent;
   box-shadow: inset 0 -2px transparent;
-  font-size: 0.76rem;
+  font-size: 0.68rem;
   font-weight: 930;
   line-height: 1.15;
   white-space: normal;
@@ -14032,21 +14083,21 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .agent-rules-tabs__panel {
-  padding: 10px;
+  padding: 8px;
 }
 
 .agent-rules-tabs__cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
 }
 
 .agent-rules-tabs__card {
   display: grid;
   grid-template-rows: auto auto 1fr;
-  gap: 7px;
-  min-height: 142px;
-  padding: 11px 10px;
+  gap: 5px;
+  min-height: 86px;
+  padding: 8px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #ffffff;
@@ -14055,8 +14106,8 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
 .agent-rules-tabs__card span {
   display: inline-flex;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -14068,7 +14119,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
 .agent-rules-tabs__card strong {
   color: #0f172a;
-  font-size: 0.75rem;
+  font-size: 0.62rem;
   font-weight: 950;
   line-height: 1.15;
 }
@@ -14076,9 +14127,9 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .agent-rules-tabs__card p {
   margin: 0;
   color: #475569;
-  font-size: 0.67rem;
+  font-size: 0.54rem;
   font-weight: 760;
-  line-height: 1.35;
+  line-height: 1.28;
 }
 
 .agent-rules-tabs__card--blue span {
@@ -14111,16 +14162,16 @@ svg.modern-admin-rail-icon:not([stroke]) {
   grid-template-columns: 36px minmax(0, 1fr) 36px;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
-  padding: 7px 10px;
+  min-height: 34px;
+  padding: 4px 8px;
   border-top: 1px solid #e2e8f0;
   background: #f8fafc;
 }
 
 .agent-rules-tabs__pager > button {
   display: inline-flex;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border: 0;
@@ -14300,7 +14351,88 @@ svg.modern-admin-rail-icon:not([stroke]) {
   background: #ffffff;
 }
 
+.public-site--v4-preview .public-agent-prompt {
+  gap: 8px;
+}
+
+.public-site--v4-preview .public-agent-prompt label,
+.public-site--v4-preview .public-booking-form label {
+  gap: 4px;
+  font-size: 0.68rem;
+}
+
+.public-site--v4-preview .public-agent-prompt label > svg {
+  display: none;
+}
+
+.public-site--v4-preview .public-agent-prompt textarea {
+  min-height: 88px;
+  padding: 9px 10px;
+  font-size: 0.66rem;
+}
+
+.public-site--v4-preview .public-agent-prompt__count {
+  margin-top: -4px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.6rem;
+}
+
+.public-site--v4-preview .public-agent-prompt .public-agent-action,
+.public-site--v4-preview .public-agent-prompt button,
+.public-site--v4-preview .public-booking-form button {
+  min-height: 34px;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 0.7rem;
+}
+
+.public-site--v4-preview .public-booking__form-stack {
+  gap: 8px;
+}
+
+.public-site--v4-preview .public-booking__form-stack .public-guest-spotlight {
+  min-height: 62px;
+  padding: 8px 10px;
+}
+
+.public-site--v4-preview .public-booking-form {
+  gap: 8px;
+  padding: 12px;
+}
+
+.public-site--v4-preview .public-booking-form__header {
+  align-items: center;
+}
+
+.public-site--v4-preview .public-booking-form h3 {
+  margin-bottom: 2px;
+  font-size: 0.92rem;
+}
+
+.public-site--v4-preview .public-booking-form__header p {
+  font-size: 0.66rem;
+  line-height: 1.25;
+}
+
+.public-site--v4-preview .public-booking-form input,
+.public-site--v4-preview .public-booking-form select,
+.public-site--v4-preview .public-booking-form textarea {
+  min-height: 32px;
+  padding: 7px 9px;
+  font-size: 0.66rem;
+}
+
+.public-site--v4-preview .public-booking-form textarea {
+  min-height: 48px;
+}
+
+.public-site--v4-preview .public-form-row {
+  gap: 8px;
+}
+
 .public-site--v4-preview .public-price-preview {
+  gap: 7px;
+  padding: 7px;
   border-color: #dbe3ee;
   border-radius: 8px;
   background: #f8fafc;
@@ -14309,6 +14441,28 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .public-site--v4-preview .public-price-preview > div,
 .public-site--v4-preview .public-price-note {
   border-radius: 7px;
+}
+
+.public-site--v4-preview .public-price-preview > div {
+  min-height: 58px;
+  padding: 8px;
+}
+
+.public-site--v4-preview .public-price-preview span {
+  font-size: 0.58rem;
+}
+
+.public-site--v4-preview .public-price-preview strong {
+  font-size: 0.82rem;
+}
+
+.public-site--v4-preview .public-price-preview small,
+.public-site--v4-preview .public-price-note {
+  font-size: 0.62rem;
+}
+
+.public-site--v4-preview .public-price-note {
+  padding: 7px 9px;
 }
 
 .public-site--v4-preview .public-mission article {
