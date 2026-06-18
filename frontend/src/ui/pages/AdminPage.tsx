@@ -61,8 +61,6 @@ const shortcuts = [
   new AdminShortcut('Reports', 'Operational charts, KPIs, and exports.', '/ops/reports/', FileText, 'View', 'violet'),
   new AdminShortcut('Brand Settings', 'Logo, contacts, policies, and brand assets.', '/ops/settings/', Settings, 'Manage', 'amber'),
   new AdminShortcut('Agent FAQ', 'Guest and AI training, answers, and resources.', '/ops/agent/', Bot, 'Manage', 'rose'),
-  new AdminShortcut('Users', 'Staff access, roles, and user controls.', '/ops/admin/', Users, 'Open', 'teal'),
-  new AdminShortcut('OAuth / Integrations', 'Provider callbacks and connection diagnostics.', '/ops/oauth/', Wifi, 'Open', 'blue'),
 ];
 
 const metrics = [
