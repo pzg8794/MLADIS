@@ -13096,12 +13096,12 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .public-home-v5-map-card__header {
   position: relative;
   z-index: 3;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 4px 14px;
   border-bottom: 1px solid #dbe3ee;
-  padding: 12px 14px;
+  padding: 14px 18px;
   color: #334155;
   background: rgba(255, 255, 255, 0.97);
 }
@@ -13115,20 +13115,33 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .public-home-v5-map-card__header span {
-  color: #64748b;
-  font-size: 0.82rem;
+  color: #0f172a;
+  font-size: 1rem;
   font-weight: 900;
 }
 
-.public-home-v5-map-card__header strong {
-  min-width: 0;
+.public-home-v5-map-card__header span svg {
+  width: 30px;
+  height: 30px;
+  padding: 7px;
+  border-radius: 999px;
   color: #0f172a;
-  font-size: 0.95rem;
-  font-weight: 950;
-  text-align: center;
+  background: #f1f5f9;
+}
+
+.public-home-v5-map-card__header strong {
+  grid-column: 1;
+  min-width: 0;
+  margin-left: 37px;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 760;
+  text-align: left;
 }
 
 .public-home-v5-map-card__header a {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   min-height: 34px;
   border: 1px solid #bae6fd;
   border-radius: 7px;
@@ -13237,7 +13250,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
   align-items: stretch;
   border: 1px solid #dbe3ee;
   border-radius: 8px;
-  padding: 18px;
+  padding: 14px;
   background:
     radial-gradient(circle at 8% 14%, rgba(14, 165, 233, 0.08), transparent 30%),
     linear-gradient(135deg, #f8fcff, #ffffff 58%, #f4fbff);
@@ -13250,10 +13263,8 @@ svg.modern-admin-rail-icon:not([stroke]) {
   border: 0;
   background: transparent;
   box-shadow: none;
-}
-
-.public-home-v5-rules-copy .rules-book {
-  width: 100%;
+  gap: 10px;
+  padding: 10px;
 }
 
 .public-home-v5-rules-copy > .public-home-v5-rules-alert {
@@ -13269,6 +13280,14 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
 .public-home-v5-rules-copy > .public-home-v5-rules-alert svg {
   color: #0e7490;
+}
+
+.public-home-v5-rules-copy h2 {
+  max-width: 620px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.8rem, 4.25vw, 4.55rem);
+  font-weight: 950;
+  letter-spacing: 0;
 }
 
 .public-home-v5-rules-copy > p:not(.public-home-v5-rules-alert) {
@@ -13292,7 +13311,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
 .public-home-v5-rules-promise span {
   display: inline-flex;
-  min-height: 48px;
+  min-height: 42px;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -13306,8 +13325,146 @@ svg.modern-admin-rail-icon:not([stroke]) {
   border-left: 1px solid #e2e8f0;
 }
 
+.public-home-v5-trust-card {
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+}
+
+.public-home-v5-trust-card__tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fbff;
+}
+
+.public-home-v5-trust-card__tab {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #0e7490;
+  font-size: 0.86rem;
+  font-weight: 950;
+  box-shadow: inset 0 -3px transparent;
+}
+
+.public-home-v5-trust-card__tab--blue.is-active {
+  color: #2563eb;
+  background: #ffffff;
+  box-shadow: inset 0 -3px #2563eb;
+}
+
+.public-home-v5-trust-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  padding: 12px;
+}
+
+.public-home-v5-trust-card__column {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.public-home-v5-trust-card__column + .public-home-v5-trust-card__column {
+  border-left: 1px solid #e2e8f0;
+  padding-left: 12px;
+}
+
+.public-home-v5-trust-card__column:first-child {
+  padding-right: 12px;
+}
+
+.public-home-v5-trust-card__item {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 10px;
+  text-align: left;
+}
+
+.public-home-v5-trust-card__item > span {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 999px;
+  color: #2563eb;
+  background: #eaf2ff;
+}
+
+.public-home-v5-trust-card__item--teal > span {
+  color: #0e7490;
+  background: #e6fbfb;
+}
+
+.public-home-v5-trust-card__item strong,
+.public-home-v5-trust-card__item p {
+  margin: 0;
+}
+
+.public-home-v5-trust-card__item strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.82rem;
+  line-height: 1.18;
+}
+
+.public-home-v5-trust-card__item p {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 760;
+  line-height: 1.24;
+}
+
+.public-home-v5-trust-card__pager {
+  display: grid;
+  grid-template-columns: 24px 34px 34px 34px 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border-top: 1px solid #e2e8f0;
+  padding: 6px 14px;
+  color: #64748b;
+}
+
+.public-home-v5-trust-card__pager span {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.public-home-v5-trust-card__pager span.is-active {
+  color: #ffffff;
+  border-color: #16a34a;
+  background: #16a34a;
+}
+
+.public-home-v5-trust-card__pager small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: end;
+  gap: 7px;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
 .public-home-v5-map-card--large {
-  min-height: 500px;
+  min-height: 560px;
   isolation: isolate;
   background:
     radial-gradient(circle at 22% 84%, rgba(34, 197, 94, 0.16), transparent 20%),
@@ -13328,15 +13485,15 @@ svg.modern-admin-rail-icon:not([stroke]) {
     radial-gradient(circle at 56% 54%, rgba(239, 68, 68, 0.2) 0 13px, transparent 14px),
     linear-gradient(15deg, transparent 0 24%, rgba(203, 213, 225, 0.62) 24.5% 25%, transparent 25.5%),
     linear-gradient(88deg, transparent 0 50%, rgba(203, 213, 225, 0.72) 50.4% 50.9%, transparent 51.4%);
-  opacity: 0.9;
+  opacity: 0.18;
 }
 
 .public-home-v5-map-card--large iframe {
-  min-height: 454px;
+  min-height: 512px;
   position: relative;
   z-index: 0;
-  opacity: 0.46;
-  mix-blend-mode: multiply;
+  opacity: 0.68;
+  mix-blend-mode: normal;
 }
 
 .public-home-v5-map-card__button {

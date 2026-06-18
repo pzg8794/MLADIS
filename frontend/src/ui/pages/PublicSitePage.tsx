@@ -1549,6 +1549,50 @@ function HomeAreaExperience({ snapshot, language }: { snapshot: PublicSiteSnapsh
 
 function HomeRulesMapSection({ snapshot, stay, language }: { snapshot: PublicSiteSnapshot; stay: PublicStay; language: Language }) {
   const mapStays = snapshot.stays.slice(0, 3);
+  const trustGroups = [
+    {
+      label: language === 'es' ? 'Cuidado del huésped' : 'Guest care',
+      tone: 'blue',
+      items: [
+        {
+          icon: <Sparkles size={21} />,
+          title: 'Top cleanliness signal',
+          body: 'This stay carries one of the strongest cleanliness scores in the MLADIS set.',
+        },
+        {
+          icon: <MessageSquareText size={21} />,
+          title: 'Trusted communication',
+          body: 'Public review scoring shows communication as a consistent strength.',
+        },
+        {
+          icon: <Users size={21} />,
+          title: 'High guest proof',
+          body: 'The review count and rating make this a strong confidence pick.',
+        },
+      ],
+    },
+    {
+      label: language === 'es' ? 'Reserva segura' : 'Secure booking',
+      tone: 'teal',
+      items: [
+        {
+          icon: <ShieldCheck size={21} />,
+          title: 'Refundable deposit hold',
+          body: 'The damage deposit is handled as a secure refundable hold.',
+        },
+        {
+          icon: <CreditCard size={21} />,
+          title: 'Stay-payment hold',
+          body: 'The stay-payment hold is captured 24 hours before check-in.',
+        },
+        {
+          icon: <ReceiptText size={21} />,
+          title: 'Account records',
+          body: 'Requests, invoices, and updates stay tied to the guest account.',
+        },
+      ],
+    },
+  ];
   return (
     <section id="rules" className="public-section public-home-v5-rules-map">
       <div className="public-home-v5-rules-copy">
@@ -1560,7 +1604,39 @@ function HomeRulesMapSection({ snapshot, stay, language }: { snapshot: PublicSit
           <span><FileText size={17} /> Clear rules</span>
           <span><Bot size={17} /> Guest-first support</span>
         </div>
-        <RulesBook stay={stay} language={language} />
+        <article className="public-home-v5-trust-card" aria-label="MLADIS trust details">
+          <div className="public-home-v5-trust-card__tabs" aria-label="Trust detail groups">
+            {trustGroups.map((group, index) => (
+              <span className={`public-home-v5-trust-card__tab public-home-v5-trust-card__tab--${group.tone}${index === 0 ? ' is-active' : ''}`} key={group.label}>
+                {index === 0 ? <Users size={19} /> : <ShieldCheck size={19} />}
+                {group.label}
+              </span>
+            ))}
+          </div>
+          <div className="public-home-v5-trust-card__grid">
+            {trustGroups.map((group) => (
+              <div className="public-home-v5-trust-card__column" key={`${group.label}-items`}>
+                {group.items.map((item) => (
+                  <article className={`public-home-v5-trust-card__item public-home-v5-trust-card__item--${group.tone}`} key={item.title}>
+                    <span>{item.icon}</span>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <p>{item.body}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ))}
+          </div>
+          <footer className="public-home-v5-trust-card__pager" aria-label="Trust promise rotation">
+            <ChevronLeft size={16} />
+            <span>1</span>
+            <span className="is-active">2</span>
+            <span>3</span>
+            <ChevronRight size={16} />
+            <small><Clock size={15} /> Auto-advances every 15 seconds</small>
+          </footer>
+        </article>
       </div>
       <article className="public-home-v5-map-card public-home-v5-map-card--large">
         <div className="public-home-v5-map-card__header">
