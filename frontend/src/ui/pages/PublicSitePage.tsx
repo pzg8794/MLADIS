@@ -2074,11 +2074,11 @@ function AccountExperience({ snapshot, userContext, language }: { snapshot: Publ
 
 function AccountAdminTools() {
   const tools = [
-    new AccountAdminToolModel('Modern dashboard', '/ops/dashboard/', 'Metrics, deposits, agent questions, and stay performance.', 'dashboard', 'cyan'),
+    new AccountAdminToolModel('Operations dashboard', '/ops/dashboard/', 'Metrics, deposits, agent questions, and stay performance.', 'dashboard', 'cyan'),
     new AccountAdminToolModel('Reservations CRM', '/ops/reservations/', 'Combined direct requests and imported Airbnb guest records.', 'reservations', 'blue'),
-    new AccountAdminToolModel('Reports', '/ops/reports/', 'Modern charts for visits, bookings, deposits, feedback, and agent questions.', 'reports', 'violet'),
+    new AccountAdminToolModel('Reports', '/ops/reports/', 'Operational charts for visits, bookings, deposits, feedback, and agent questions.', 'reports', 'violet'),
     new AccountAdminToolModel('Customers', '/ops/customers/', 'Guest profiles, segments, consent, feedback, and promotion readiness.', 'customers', 'green'),
-    new AccountAdminToolModel('Deposits', '/ops/deposits/', 'Stripe and PayPal security deposit records in a modern ledger.', 'deposits', 'amber'),
+    new AccountAdminToolModel('Deposits', '/ops/deposits/', 'Stripe and PayPal security deposit records in a managed ledger.', 'deposits', 'amber'),
     new AccountAdminToolModel('Agent workspace', '/ops/agent/', 'Question analytics and FAQ training controls.', 'agent', 'teal'),
     new AccountAdminToolModel('Business calendar', '/ops/calendar/', 'Block dates, pricing overrides, and availability review.', 'calendar', 'indigo'),
     new AccountAdminToolModel('Admin tools', '/admin/', 'Full protected admin tools.', 'tools', 'rose'),

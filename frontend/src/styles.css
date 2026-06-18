@@ -2162,7 +2162,7 @@ details.dashboard-panel[open] {
 
 .account-v2-page {
   display: grid;
-  gap: 18px;
+  gap: 16px;
 }
 
 .account-v2-hero,
@@ -2180,8 +2180,8 @@ details.dashboard-panel[open] {
 .account-v2-hero {
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 0.58fr) minmax(360px, 0.42fr);
-  min-height: 228px;
+  grid-template-columns: minmax(0, 0.6fr) minmax(340px, 0.4fr);
+  min-height: 212px;
   padding: 0;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(245, 250, 255, 0.96) 46%, rgba(235, 247, 255, 0.42) 100%);
@@ -2191,7 +2191,7 @@ details.dashboard-panel[open] {
   display: grid;
   align-content: center;
   gap: 12px;
-  padding: 34px 34px 34px 14px;
+  padding: 32px 34px 32px 18px;
 }
 
 .account-v2-hero h1,
@@ -2201,7 +2201,7 @@ details.dashboard-panel[open] {
 
 .account-v2-hero h1 {
   color: #07142f;
-  font-size: clamp(2.2rem, 4vw, 3.85rem);
+  font-size: clamp(2.18rem, 3.7vw, 3.62rem);
   line-height: 0.98;
   letter-spacing: 0;
 }
@@ -2215,7 +2215,7 @@ details.dashboard-panel[open] {
 
 .account-v2-hero figure {
   position: relative;
-  min-height: 228px;
+  min-height: 212px;
   margin: 0;
 }
 
@@ -2230,29 +2230,29 @@ details.dashboard-panel[open] {
 .account-v2-hero img {
   width: 100%;
   height: 100%;
-  min-height: 228px;
+  min-height: 212px;
   object-fit: cover;
 }
 
 .account-v2-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 
 .account-v2-stat {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 13px;
   align-items: center;
-  min-height: 104px;
-  padding: 16px 18px;
+  min-height: 96px;
+  padding: 15px 17px;
 }
 
 .account-v2-stat > span {
   display: grid;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   place-items: center;
   border-radius: 999px;
   color: var(--account-stat-color, #0f766e);
@@ -2414,8 +2414,8 @@ details.dashboard-panel[open] {
 
 .account-v2-workspace {
   display: grid;
-  grid-template-columns: minmax(300px, 0.56fr) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(304px, 0.52fr) minmax(0, 1fr);
+  gap: 16px;
   border: 0;
   background: transparent;
   box-shadow: none;
@@ -2426,7 +2426,7 @@ details.dashboard-panel[open] {
 .account-v2-center {
   align-content: start;
   min-width: 0;
-  padding: 16px;
+  padding: 18px;
 }
 
 .account-v2-list {
@@ -2480,12 +2480,12 @@ details.dashboard-panel[open] {
 
 .account-v2-row {
   display: grid;
-  grid-template-columns: 70px minmax(0, 1fr) auto 17px;
+  grid-template-columns: 72px minmax(0, 1fr) auto 17px;
   gap: 12px;
   align-items: center;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 10px;
+  padding: 11px;
   color: #07142f;
   background: #ffffff;
   text-decoration: none;
@@ -2500,8 +2500,8 @@ details.dashboard-panel[open] {
 }
 
 .account-v2-row img {
-  width: 70px;
-  height: 56px;
+  width: 72px;
+  height: 58px;
   border-radius: 7px;
   object-fit: cover;
 }
@@ -2562,19 +2562,19 @@ details.dashboard-panel[open] {
 
 .account-v2-center {
   display: grid;
-  gap: 14px;
+  gap: 13px;
 }
 
 .account-v2-center__header {
   display: grid;
-  grid-template-columns: 210px minmax(0, 1fr) auto;
-  gap: 18px;
+  grid-template-columns: 196px minmax(0, 1fr) auto;
+  gap: 17px;
   align-items: center;
 }
 
 .account-v2-center__header > img {
-  width: 210px;
-  height: 132px;
+  width: 196px;
+  height: 124px;
   border-radius: 8px;
   object-fit: cover;
 }
@@ -2611,7 +2611,7 @@ details.dashboard-panel[open] {
   grid-template-columns: 42px minmax(0, 1fr);
   gap: 3px 10px;
   align-items: center;
-  min-height: 76px;
+  min-height: 72px;
   padding: 12px;
 }
 
@@ -2652,17 +2652,17 @@ details.dashboard-panel[open] {
 
 .account-v2-center__split {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(282px, 0.72fr);
+  gap: 13px;
 }
 
 .account-v2-payment-card,
 .account-v2-next-card {
   display: grid;
-  gap: 10px;
+  gap: 9px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 14px;
+  padding: 15px;
   background: #ffffff;
 }
 
