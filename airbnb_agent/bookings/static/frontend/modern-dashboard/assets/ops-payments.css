@@ -147,8 +147,8 @@
 }
 
 .ops-pay-detail {
-  flex: 0 0 380px;
-  width: 380px;
+  flex: 0 0 300px;
+  width: 300px;
   position: sticky;
   top: 16px;
 }
