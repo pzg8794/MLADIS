@@ -23,6 +23,7 @@
     <title>{% block title %}MLADIS{% endblock %}</title>
   </head>
   <body>
+    {{ ops_nav_public_items|json_script:"mladis-ops-nav-items" }}
     <div class="dashboard-shell" data-theme-reference="gentelella-v4">
 
       <aside class="modern-admin-sidebar v4-command-sidebar" id="main-sidebar">
@@ -35,6 +36,20 @@
         </a>
 
         <nav aria-label="Dashboard sections">
+          {% if ops_nav_items %}
+            {% for item in ops_nav_items %}
+              {% ifchanged item.group %}
+                <span class="v4-nav-group">{{ item.group }}</span>
+              {% endifchanged %}
+
+              <div class="v4-nav-cluster">
+                <a href="{{ item.href }}"{% if item.is_active %} class="is-active" aria-current="page"{% endif %}>
+                  {{ item.icon_svg|safe }}
+                  <span class="modern-admin-nav-label">{{ item.label }}{% if item.badge %}<span class="v4-nav-badge">{{ item.badge }}</span>{% endif %}</span>
+                </a>
+              </div>
+            {% endfor %}
+          {% else %}
           <span class="v4-nav-group">Overview</span>
 
           <div class="v4-nav-cluster">
@@ -125,11 +140,12 @@
             </a>
           </div>
           <div class="v4-nav-cluster">
-            <a href="/ops/admin/users/"{% if '/ops/admin/users' in request.path %} class="is-active" aria-current="page"{% endif %}>
+            <a href="/ops/admin/"{% if request.path == '/ops/admin/' %} class="is-active" aria-current="page"{% endif %}>
               <svg class="modern-admin-rail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="15" r="3"/><circle cx="9" cy="7" r="4"/><path d="M10 15H6a4 4 0 0 0-4 4v2"/><path d="m21.7 16.4-.9-.3"/><path d="m15.2 13.9-.9-.3"/><path d="m16.6 18.7.3-.9"/><path d="m19.1 12.2.3-.9"/></svg>
               <span class="modern-admin-nav-label">Users</span>
             </a>
           </div>
+          {% endif %}
         </nav>
 
         <a class="v4-sidebar-biz" href="/ops/settings/">

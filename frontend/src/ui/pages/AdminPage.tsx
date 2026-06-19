@@ -1,4 +1,5 @@
-import { ArrowRight, Box, CalendarDays, ChartColumn, CheckCircle2, ClipboardList, Clock3, CreditCard, Database, DollarSign, House, LayoutGrid, MessageCircle, Palette, Plug, Radio, Settings, ShieldCheck, Sparkles, TrendingUp, Users, Wrench } from 'lucide-react';
+import { ArrowRight, Box, CalendarDays, CheckCircle2, ClipboardList, Clock3, Database, DollarSign, LayoutGrid, MessageCircle, Radio, Settings, ShieldCheck, Sparkles, TrendingUp, Users, Wrench, type LucideIcon } from 'lucide-react';
+import { OPS_NAV_ITEMS } from '../opsNavigation';
 import './admin-page.css';
 
 const ADMIN_HERO_IMAGE = `${import.meta.env.BASE_URL}admin-command-hero.png`;
@@ -8,7 +9,7 @@ class AdminShortcut {
     public readonly label: string,
     public readonly description: string,
     public readonly href: string,
-    public readonly icon: typeof ShieldCheck,
+    public readonly icon: LucideIcon,
     public readonly action: string,
     public readonly tone: 'blue' | 'violet' | 'teal' | 'amber' | 'rose' = 'blue',
   ) {}
@@ -44,22 +45,14 @@ class AdminHealthCard {
   ) {}
 }
 
-const shortcuts = [
-  new AdminShortcut('Records', 'Master data, settings, and system records.', '/admin/', Database, 'Open', 'blue'),
-  new AdminShortcut('Reservations', 'Manage bookings, requests, and confirmations.', '/ops/reservations/', CalendarDays, 'Manage', 'teal'),
-  new AdminShortcut('Guests / Customers', 'Profiles, communications, and guest history.', '/ops/customers/', Users, 'View', 'violet'),
-  new AdminShortcut('Properties', 'Inventory, details, photos, and configurations.', '/ops/stays/', House, 'Manage', 'blue'),
-  new AdminShortcut('Calendar', 'Availability, pricing, blocks, and overrides.', '/ops/calendar/', CalendarDays, 'Open', 'teal'),
-  new AdminShortcut('Maintenance', 'Issues, inspections, and preventive maintenance.', '/ops/maintenance/', Wrench, 'View', 'amber'),
-  new AdminShortcut('Work Orders', 'Task assignments, status, and completion.', '/ops/workboard/', ClipboardList, 'Open', 'violet'),
-  new AdminShortcut('Payments', 'Transactions, refunds, and reconciliation.', '/ops/deposits/', CreditCard, 'Open', 'blue'),
-  new AdminShortcut('Deposits', 'Holds, releases, and deposit management.', '/ops/deposits/', ShieldCheck, 'Open', 'teal'),
-  new AdminShortcut('Reports', 'Operational charts, KPIs, and exports.', '/ops/reports/', ChartColumn, 'View', 'violet'),
-  new AdminShortcut('Brand Settings', 'Logo, contacts, policies, and brand assets.', '/ops/settings/', Palette, 'Manage', 'amber'),
-  new AdminShortcut('Agent FAQ', 'Guest and AI training, answers, and resources.', '/ops/agent/', MessageCircle, 'Manage', 'rose'),
-  new AdminShortcut('Users', 'Team members, roles, and permissions.', '/admin/auth/user/', Users, 'Manage', 'violet'),
-  new AdminShortcut('OAuth / Integrations', 'API, webhooks, and connected services.', '/ops/oauth/', Plug, 'Manage', 'teal'),
-];
+const shortcuts = OPS_NAV_ITEMS.map((item) => new AdminShortcut(
+  item.label,
+  item.description,
+  item.href,
+  item.iconComponent,
+  item.shortcutAction,
+  item.shortcutTone,
+));
 
 const metrics = [
   new AdminMetric('Active stays', '128', '↑ 12% vs yesterday', Box, 'violet'),

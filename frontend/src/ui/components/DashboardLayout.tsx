@@ -1,49 +1,19 @@
 import {
-  BarChart3,
   Bell,
-  Building2,
   CalendarDays,
   ChevronDown,
-  ClipboardList,
-  CreditCard,
-  LayoutDashboard,
   Menu,
-  Plug,
   Plus,
-  ReceiptText,
   Search,
-  Settings,
-  Users,
-  Wrench,
-  Sparkles,
-  UserCog,
 } from 'lucide-react';
-import { ReactNode, useState } from 'react';
+import { Fragment, ReactNode, useState } from 'react';
+import { OPS_NAV_ITEMS } from '../opsNavigation';
 import { getConfiguredLogoUrl } from '../helpers/brand';
 import { opsTheme } from '../theme/opsTheme';
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
-
-const navItems = [
-  { group: '', label: 'Command Center', icon: LayoutDashboard, href: '/ops/admin/' },
-  { group: '', label: 'Reservations', icon: ClipboardList, href: '/ops/reservations/' },
-  { group: '', label: 'Calendar', icon: CalendarDays, href: '/ops/calendar/' },
-  { group: '', label: 'Guests', icon: Users, href: '/ops/customers/' },
-  { group: '', label: 'Properties', icon: Building2, href: '/ops/stays/' },
-  { group: '', label: 'Maintenance', icon: Wrench, href: '/ops/maintenance/' },
-  { group: '', label: 'Work Orders', icon: Wrench, href: '/ops/workboard/' },
-  { group: '', label: 'Payments', icon: CreditCard, href: '/ops/deposits/' },
-  { group: '', label: 'Deposits', icon: ReceiptText, href: '/ops/deposits/' },
-  { group: '', label: 'Reports', icon: BarChart3, href: '/ops/reports/' },
-  { group: '', label: 'FairAgent', icon: Sparkles, href: '/ops/agent/' },
-  { group: '', label: 'Brand Settings', icon: Settings, href: '/ops/settings/' },
-  { group: '', label: 'Agent FAQ', icon: Sparkles, href: '/ops/agent/' },
-  { group: '', label: 'Users', icon: UserCog, href: '/ops/admin/users/' },
-  { group: '', label: 'OAuth & Integrations', icon: Plug, href: '/ops/oauth/' },
-  { group: '', label: 'System', icon: Settings, href: '/ops/settings/' },
-];
 
 function isNavActive(pathname: string, href: string) {
   if (href === '/') return pathname === '/';
@@ -83,19 +53,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </a>
         <nav aria-label="Dashboard sections">
-          {navItems.map((item, index) => {
-            const Icon = item.icon;
+          {OPS_NAV_ITEMS.map((item, index) => {
+            const Icon = item.iconComponent;
             const isActive = isNavActive(pathname, item.href);
-            const showGroup = index === 0 || navItems[index - 1].group !== item.group;
+            const showGroup = index === 0 || OPS_NAV_ITEMS[index - 1].group !== item.group;
             return (
-              <div className="v4-nav-cluster" key={`${item.group}-${item.label}`}>
+              <Fragment key={item.href}>
                 {showGroup && item.group && <span className="v4-nav-group">{item.group}</span>}
+                <div className="v4-nav-cluster">
                 <a className={isActive ? 'is-active' : ''} href={item.href}>
                   <Icon className="modern-admin-rail-icon" aria-hidden="true" size={18} />
                   <span className="modern-admin-nav-label">{item.label}</span>
-                  {item.label === 'Tasks' && <b className="v4-nav-count">12</b>}
+                  {item.badge && <b className="v4-nav-count">{item.badge}</b>}
                 </a>
-              </div>
+                </div>
+              </Fragment>
             );
           })}
         </nav>

@@ -15,6 +15,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="{% static 'frontend/modern-dashboard/assets/app.js' %}?v=gentelella-v4-preview-5"></script>
+    {{ ops_nav_public_items|json_script:"mladis-ops-nav-items" }}
+    <script type="module" src="{% static 'frontend/modern-dashboard/assets/app.js' %}?v=gentelella-v4-preview-6"></script>
   </body>
 </html>

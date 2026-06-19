@@ -23,7 +23,7 @@ from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import RequestFactory, TestCase, override_settings
-from django.urls import reverse
+from django.urls import resolve, reverse
 from django.utils import timezone
 import stripe
 
@@ -67,6 +67,7 @@ from .models import (
     ReservationPaymentHold,
     SiteSettings,
 )
+from .ops_navigation import OPS_NAV_ITEMS
 from .services import (
     AgentAccessContext,
     AgentRequest,
@@ -97,6 +98,59 @@ TINY_PNG_BYTES = (
     b"\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05"
     b"\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
 )
+
+
+class OpsNavigationContractTests(TestCase):
+    expected_nav = [
+        ("Overview", "Dashboard", "/ops/dashboard/"),
+        ("Operations", "Reservations", "/ops/reservations/"),
+        ("Operations", "Calendar", "/ops/calendar/"),
+        ("Operations", "Stays", "/ops/stays/"),
+        ("Operations", "Maintenance", "/ops/maintenance/"),
+        ("Operations", "Payments", "/ops/payments/"),
+        ("Operations", "Deposits", "/ops/deposits/"),
+        ("Operations", "Reports", "/ops/reports/"),
+        ("Operations", "Agent Intelligence", "/ops/agent/"),
+        ("Business", "Listings", "/ops/listings/"),
+        ("Business", "Customers", "/ops/customers/"),
+        ("Business", "Tasks", "/ops/workboard/"),
+        ("Admin", "Settings", "/ops/settings/"),
+        ("Admin", "Users", "/ops/admin/"),
+    ]
+
+    def test_canonical_nav_has_expected_groups_labels_and_urls(self):
+        actual_nav = [(item["group"], item["label"], item["href"]) for item in OPS_NAV_ITEMS]
+
+        self.assertEqual(actual_nav, self.expected_nav)
+
+    def test_every_canonical_nav_url_resolves(self):
+        for _group, label, href in self.expected_nav:
+            with self.subTest(label=label, href=href):
+                self.assertIsNotNone(resolve(href))
+
+    def test_react_fallback_has_no_stale_left_nav_labels(self):
+        repo_root = Path(__file__).resolve().parents[2]
+        fallback_source = (repo_root / "frontend/src/ui/opsNavigation.ts").read_text(encoding="utf-8")
+
+        for _group, label, href in self.expected_nav:
+            with self.subTest(label=label, href=href):
+                self.assertIn(f"label: '{label}'", fallback_source)
+                self.assertIn(f"href: '{href}'", fallback_source)
+
+        stale_label_patterns = [
+            "label: 'Command Center'",
+            "label: 'Guests / Customers'",
+            "label: 'Properties'",
+            "label: 'Work Orders'",
+            "label: 'Brand Settings'",
+            "label: 'Agent FAQ'",
+            "label: 'OAuth / Integrations'",
+            "label: 'OAuth & Integrations'",
+            "label: 'System'",
+        ]
+        for pattern in stale_label_patterns:
+            with self.subTest(stale_label_pattern=pattern):
+                self.assertNotIn(pattern, fallback_source)
 
 
 class BookingInquiryFormTests(TestCase):
