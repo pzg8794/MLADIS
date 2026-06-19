@@ -15,21 +15,43 @@
       <p>Track guest payments, direct-booking invoices, refunds, and reconciled transaction flows.</p>
     </div>
     <div class="ops-pay-header-actions">
-      <button class="ops-pay-btn ops-pay-btn--ghost" type="button">{{ date_range_label }}</button>
-      <button class="ops-pay-btn" type="button">Filters</button>
-      <button class="ops-pay-btn" type="button">Export</button>
+      <button class="ops-pay-btn ops-pay-btn--ghost" type="button">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        {{ date_range_label }} <span class="ops-pay-chevron">▾</span>
+      </button>
+      <button class="ops-pay-btn" type="button">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+        Filters
+      </button>
+      <button class="ops-pay-btn" type="button">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
     </div>
   </header>
 
   <section class="ops-pay-summary" aria-label="Payment summary cards">
     {% for card in summary_cards %}
       <article class="ops-pay-kpi ops-pay-kpi--{{ card.tone }}">
-        <span class="ops-pay-kpi-icon" aria-hidden="true"></span>
-        <div>
-          <p class="ops-pay-kpi-label">{{ card.label }}</p>
-          <strong class="ops-pay-kpi-value">{{ card.value }}</strong>
-          <p class="ops-pay-kpi-trend">{{ card.trend }}</p>
+        <div class="ops-pay-kpi-body">
+          <span class="ops-pay-kpi-icon" aria-hidden="true">
+            {% if card.tone == 'green' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            {% elif card.tone == 'blue' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            {% elif card.tone == 'orange' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            {% elif card.tone == 'violet' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2" fill="#fff" stroke="#fff"/></svg>{% endif %}
+          </span>
+          <div>
+            <p class="ops-pay-kpi-label">{{ card.label }}</p>
+            <strong class="ops-pay-kpi-value">{{ card.value }}</strong>
+            <p class="ops-pay-kpi-trend">{{ card.trend }}</p>
+          </div>
         </div>
+        <svg class="ops-pay-sparkline" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
+          {% if card.tone == 'green' %}<path d="M0,18 C12,14 18,20 28,11 C38,2 44,16 54,10 C64,4 70,16 80,8 C88,2 94,14 100,6" fill="none" stroke-width="2"/>
+          {% elif card.tone == 'blue' %}<path d="M0,20 C10,16 20,22 30,13 C40,4 46,18 56,12 C66,6 74,20 84,14 C90,8 95,18 100,12" fill="none" stroke-width="2"/>
+          {% elif card.tone == 'orange' %}<path d="M0,12 C10,8 18,18 28,14 C40,8 48,20 58,16 C68,12 76,6 86,10 C94,14 98,8 100,12" fill="none" stroke-width="2"/>
+          {% elif card.tone == 'violet' %}<path d="M0,16 C12,10 20,22 30,14 C40,6 48,20 60,13 C72,6 80,20 88,15 C94,10 98,18 100,14" fill="none" stroke-width="2"/>{% endif %}
+        </svg>
       </article>
     {% endfor %}
   </section>
@@ -38,10 +60,13 @@
     <div class="ops-pay-main">
       <div class="ops-pay-toolbar">
         <div class="ops-pay-toolbar-left">
-          <button class="ops-pay-select" type="button">All Channels</button>
-          <button class="ops-pay-select" type="button">All Statuses</button>
-          <button class="ops-pay-select" type="button">{{ date_range_label }}</button>
-          <button class="ops-pay-select" type="button">All Methods</button>
+          <button class="ops-pay-select" type="button">All Channels <span class="ops-pay-chevron">▾</span></button>
+          <button class="ops-pay-select" type="button">All Statuses <span class="ops-pay-chevron">▾</span></button>
+          <button class="ops-pay-select" type="button">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            {{ date_range_label }} <span class="ops-pay-chevron">▾</span>
+          </button>
+          <button class="ops-pay-select" type="button">All Methods <span class="ops-pay-chevron">▾</span></button>
           <button class="ops-pay-clear" type="button">Clear filters</button>
         </div>
         <label class="ops-pay-search" aria-label="Search transactions">
@@ -111,6 +136,8 @@
             <button type="button" class="is-active">1</button>
             <button type="button">2</button>
             <button type="button">3</button>
+            <button type="button" class="ops-pay-page-dots" disabled>…</button>
+            <button type="button">13</button>
             <button type="button">›</button>
           </nav>
         </footer>
@@ -120,65 +147,87 @@
     {% if detail %}
       <aside class="ops-pay-detail" aria-label="Transaction details">
         <section class="ops-pay-panel">
-          <div class="ops-pay-detail-head">
-            <div>
-              <h3>Transaction Details</h3>
-              <strong>{{ detail.transaction_id }}</strong>
-              <p>{{ detail.date_label }} at {{ detail.time_label }}</p>
-            </div>
+          <div class="ops-pay-detail-top">
+            <h3>Transaction Details</h3>
+            <button class="ops-pay-close" type="button" aria-label="Close detail">✕</button>
+          </div>
+          <div class="ops-pay-detail-txn">
+            <strong>{{ detail.transaction_id }}</strong>
             <span class="ops-pay-pill ops-pay-pill--{{ detail.status_cls }}">{{ detail.status }}</span>
           </div>
-          <div class="ops-pay-total">{{ detail.amount }}</div>
-          <p class="ops-pay-subtext">Transaction total</p>
+          <p class="ops-pay-subtext">{{ detail.date_label }} at {{ detail.time_label }}</p>
+          <div class="ops-pay-total">{{ detail.amount }} <span class="ops-pay-currency">USD</span></div>
+          <p class="ops-pay-subtext">Total Paid</p>
         </section>
 
         <section class="ops-pay-panel">
           <div class="ops-pay-section-head">
             <h4>Invoice Preview</h4>
-            <a href="{{ detail.invoice_url }}">View full invoice</a>
+            <a href="{{ detail.invoice_url }}" class="ops-pay-link-sm">View full invoice</a>
           </div>
           <div class="ops-pay-invoice-box">
             <div class="ops-pay-invoice-thumb">
-              <span>INVOICE</span>
+              <span class="ops-pay-inv-logo">MLADIS</span>
+              <span class="ops-pay-inv-label">INVOICE</span>
+              <span class="ops-pay-inv-lines"></span>
             </div>
             <div class="ops-pay-invoice-meta">
-              <p><strong>Invoice</strong> {{ detail.invoice_number }}</p>
+              <div class="ops-pay-invoice-meta-head">
+                <span>{{ detail.invoice_number }}</span>
+                <span class="ops-pay-pill ops-pay-pill--paid">Paid</span>
+              </div>
               <p><span>Issue date</span><span>{{ detail.issue_date }}</span></p>
               <p><span>Due date</span><span>{{ detail.due_date }}</span></p>
               <p><span>Amount due</span><span>{{ detail.amount_due }}</span></p>
             </div>
           </div>
+          <a class="ops-pay-dl-btn" href="{{ detail.invoice_url }}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download invoice
+          </a>
         </section>
 
         <section class="ops-pay-panel">
-          <div class="ops-pay-section-head">
-            <h4>Linked Reservation</h4>
-            <a href="{{ detail.linked_reservation.url }}">View reservation</a>
+          <h4>Linked Reservation</h4>
+          <div class="ops-pay-res-head">
+            <a class="ops-pay-linked-key" href="{{ detail.linked_reservation.url }}">{{ detail.linked_reservation.request_key }} ↗</a>
+            <a class="ops-pay-btn ops-pay-btn--sm" href="{{ detail.linked_reservation.url }}">View reservation</a>
           </div>
-          <p class="ops-pay-linked-key">{{ detail.linked_reservation.request_key }}</p>
           <p>{{ detail.linked_reservation.listing }}</p>
-          <p>{{ detail.linked_reservation.date_range }}</p>
+          <p class="ops-pay-subtext">{{ detail.linked_reservation.date_range }}</p>
           <p class="ops-pay-subtext">Guest: {{ detail.linked_reservation.guest }}</p>
         </section>
 
         <section class="ops-pay-panel">
-          <div class="ops-pay-section-head">
-            <h4>Deposit History</h4>
-            <a href="/ops/deposits/">Open deposits</a>
-          </div>
-          <div class="ops-pay-stack">
-            {% for entry in detail.deposit_history %}
-              <div class="ops-pay-history-row">
-                <div>
-                  <strong>{{ entry.label }}</strong>
-                  <small>{{ entry.meta }}</small>
-                </div>
-                <div class="ops-pay-history-side">
-                  <span>{{ entry.amount }}</span>
-                  <span class="ops-pay-pill ops-pay-pill--{{ entry.status_cls }}">{{ entry.status }}</span>
-                </div>
+          <div class="ops-pay-dep-qa-row">
+            <div>
+              <div class="ops-pay-section-head">
+                <h4>Deposit History</h4>
+                <a href="/ops/deposits/" class="ops-pay-link-sm">Edit</a>
               </div>
-            {% endfor %}
+              <div class="ops-pay-stack">
+                {% for entry in detail.deposit_history %}
+                  <div class="ops-pay-history-row">
+                    <div>
+                      <strong>{{ entry.label }}</strong>
+                      <small>{{ entry.meta }}</small>
+                    </div>
+                    <div class="ops-pay-history-side">
+                      <span>{{ entry.amount }}</span>
+                      <span class="ops-pay-pill ops-pay-pill--{{ entry.status_cls }}">{{ entry.status }}</span>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+            <div>
+              <h4>Quick Actions</h4>
+              <div class="ops-pay-actions">
+                {% for action in detail.quick_actions %}
+                  <a class="ops-pay-action" href="{{ action.url }}">{{ action.label }}</a>
+                {% endfor %}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -188,10 +237,11 @@
             {% for item in detail.timeline %}
               <div class="ops-pay-timeline-row">
                 <span class="ops-pay-dot ops-pay-dot--{{ item.tone }}"></span>
-                <div>
+                <div class="ops-pay-tl-body">
                   <strong>{{ item.label }}</strong>
                   <small>{{ item.meta }}</small>
                 </div>
+                {% if item.action_label %}<a class="ops-pay-tl-action" href="{{ item.action_url }}">{{ item.action_label }}</a>{% endif %}
               </div>
             {% endfor %}
           </div>
@@ -200,17 +250,9 @@
         <section class="ops-pay-panel">
           <div class="ops-pay-section-head">
             <h4>Notes</h4>
+            <a href="#" class="ops-pay-link-sm">Add note</a>
           </div>
           <p>{{ detail.notes }}</p>
-        </section>
-
-        <section class="ops-pay-panel">
-          <h4>Quick Actions</h4>
-          <div class="ops-pay-actions">
-            {% for action in detail.quick_actions %}
-              <a class="ops-pay-action" href="{{ action.url }}">{{ action.label }}</a>
-            {% endfor %}
-          </div>
         </section>
       </aside>
     {% endif %}

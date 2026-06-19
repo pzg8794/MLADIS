@@ -71,6 +71,9 @@
   text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ops-pay-btn--primary {
@@ -100,15 +103,25 @@
 .ops-pay-kpi {
   padding: 14px;
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.ops-pay-kpi-body {
+  display: flex;
   gap: 12px;
   align-items: flex-start;
 }
 
 .ops-pay-kpi-icon {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ops-pay-kpi--green .ops-pay-kpi-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
@@ -460,4 +473,193 @@
   .ops-pay-search input {
     width: 100%;
   }
+}
+/* ── sparklines ── */
+.ops-pay-sparkline {
+  display: block;
+  width: 100%;
+  height: 24px;
+  overflow: visible;
+}
+.ops-pay-kpi--green .ops-pay-sparkline path { stroke: #22c55e; }
+.ops-pay-kpi--blue  .ops-pay-sparkline path { stroke: #3b82f6; }
+.ops-pay-kpi--orange .ops-pay-sparkline path { stroke: #fb923c; }
+.ops-pay-kpi--violet .ops-pay-sparkline path { stroke: #a855f7; }
+
+/* ── clear filters: plain text, no border ── */
+.ops-pay-clear {
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
+  padding: 9px 4px;
+  color: #475569;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ops-pay-clear:hover { color: #0f172a; }
+
+/* ── chevron in select/header buttons ── */
+.ops-pay-chevron { font-size: 10px; opacity: .7; }
+
+/* ── detail panel top row ── */
+.ops-pay-detail-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.ops-pay-detail-top h3 { margin: 0; }
+
+.ops-pay-close {
+  border: none;
+  background: none;
+  color: #94a3b8;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.ops-pay-close:hover { color: #334155; background: #f1f5f9; }
+
+/* ── TXN ID + pill inline ── */
+.ops-pay-detail-txn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+/* ── USD suffix on amount ── */
+.ops-pay-currency {
+  font-size: 14px;
+  font-weight: 400;
+  color: #64748b;
+}
+
+/* ── small link (View full invoice, Edit, Add note) ── */
+.ops-pay-link-sm {
+  font-size: 11px;
+  color: #0ea5e9;
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ops-pay-link-sm:hover { text-decoration: underline; }
+
+/* ── invoice meta head (number + Paid badge) ── */
+.ops-pay-invoice-meta-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+/* ── invoice thumbnail improvements ── */
+.ops-pay-invoice-thumb {
+  width: 80px;
+  min-height: 110px;
+  border: 1px solid #e5edf5;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 6px 6px;
+  gap: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.ops-pay-inv-logo {
+  font-size: 7px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 0.08em;
+}
+.ops-pay-inv-label {
+  font-size: 6px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.06em;
+}
+.ops-pay-inv-lines {
+  display: block;
+  width: 100%;
+  height: 48px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #e5edf5 0px, #e5edf5 1px,
+    transparent 1px, transparent 6px
+  );
+  border-radius: 2px;
+  margin-top: 4px;
+}
+
+/* ── download invoice button ── */
+.ops-pay-dl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 7px 12px;
+  border: 1px solid #dbe4ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ops-pay-dl-btn:hover { background: #f8fafc; }
+
+/* ── linked reservation head (R-1042 ↗ + View reservation btn) ── */
+.ops-pay-res-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 4px 0 6px;
+}
+
+/* ── small button (View reservation) ── */
+.ops-pay-btn--sm {
+  padding: 5px 10px !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+}
+
+/* ── deposit history + quick actions two-column grid ── */
+.ops-pay-dep-qa-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+/* ── timeline body flex-1 ── */
+.ops-pay-tl-body { flex: 1; min-width: 0; }
+
+/* ── timeline action link ── */
+.ops-pay-tl-action {
+  font-size: 10px;
+  color: #0ea5e9;
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ops-pay-tl-action:hover { text-decoration: underline; }
+
+/* ── pagination dots ── */
+.ops-pay-page-dots {
+  border: none !important;
+  background: none !important;
+  color: #94a3b8;
+  padding: 9px 4px;
+  cursor: default;
 }

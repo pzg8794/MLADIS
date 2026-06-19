@@ -4436,14 +4436,13 @@ class PaymentsTransactionsService:
                 {"label": "Remaining balance", "amount": "$625.00", "status": "Paid", "status_cls": "paid", "meta": "Due: Jun 12, 2026"},
             ],
             "timeline": [
-                {"label": "Payment received", "meta": "$1,250.00 · Visa •••• 4242 · Jun 12, 2026 9:30 AM", "tone": "complete"},
-                {"label": "Invoice sent", "meta": "INV-2026-3314 · Jun 12, 2026 9:28 AM", "tone": "active"},
-                {"label": "Booking confirmed", "meta": "R-1042 · Jun 6, 2026 9:12 AM", "tone": "pending"},
+                {"label": "Payment received", "meta": "$1,250.00 · Visa •••• 4242 · Jun 12, 2026 9:30 AM", "tone": "complete", "action_label": "Download receipt", "action_url": "#"},
+                {"label": "Invoice sent", "meta": "INV-2026-3314 · Jun 12, 2026 9:28 AM", "tone": "active", "action_label": "", "action_url": ""},
+                {"label": "Booking confirmed", "meta": "R-1042 · Jun 6, 2026 9:12 AM", "tone": "pending", "action_label": "Open reservation", "action_url": "/ops/reservations/"},
             ],
-            "notes": "Direct booking via mladis.com. Deposit and reservation payment records remain accessible in the Deposits ledger.",
+            "notes": "Direct booking via mladis.com.",
             "quick_actions": [
-                {"label": "Open deposits ledger", "url": "/ops/deposits/"},
-                {"label": "View reservation", "url": "/ops/reservations/"},
-                {"label": "Open invoice", "url": "#"},
+                {"label": "Send invoice", "url": "#"},
+                {"label": "Mark as paid", "url": "#"},
             ],
         }
