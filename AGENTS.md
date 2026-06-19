@@ -181,12 +181,37 @@ Follow this pattern when building or extending any ops page (Customers, Properti
 
 The `/ops/admin/` page is **not** a Django-rendered page: it loads `modern_dashboard.html` which is a minimal HTML shell that mounts the pre-compiled React bundle at `bookings/static/frontend/modern-dashboard/assets/app.js`. This bundle embeds its **own independent nav object** — completely separate from `bookings/base_ops.html`.
 
-### Two-nav rule
+### Two-nav rule — PERMANENT HARD RULE, NEVER VIOLATE
+**⛔ THE REACT SIDEBAR (app.js) AND THE DJANGO SIDEBAR (base_ops.html) MUST ALWAYS SHOW IDENTICAL LABELS AND HREFS. ANY DIVERGENCE IS A BUG. FIX IT IN THE SAME COMMIT.**
+
+Users navigate between Django pages (base_ops.html nav) and React pages (app.js nav) constantly. If the labels differ, they see **two completely different left menus** — this is unacceptable.
+
 There are exactly two nav definitions and both must be kept in sync whenever a new ops route is added or renamed:
-1. **`base_ops.html`** — server-rendered left-rail nav used by every page that extends it (e.g. `/ops/payments/`, `/ops/deposits/`, `/ops/customers/`, …).
-2. **`app.js` React bundle** — the command-palette nav list and the workspace-card grid shown on `/ops/admin/`. **This file is gitignored** (it is a build artifact). Fixing nav routes here requires either:
-   - **Preferred**: edit the source in `MLADIS/frontend/src/`, rebuild with `npm run build:django` from `MLADIS/frontend`, then restart the dev server.
-   - **Hotfix only**: do a direct byte-level replacement on the compiled bundle with `python3` string replace (never use `perl` with backtick-containing patterns — they do not escape correctly). After any hotfix patch, bump the `?v=gentelella-v4-preview-N` query string on the `<script>` tag in `modern_dashboard.html` by 1 so browsers drop their cached copy.
+1. **`base_ops.html`** — server-rendered left-rail nav used by every page that extends it.
+2. **`app.js` React bundle** — the sidebar nav embedded in the compiled React bundle served at `/ops/dashboard/` and `/ops/admin/`. **This file IS tracked by git** (not gitignored). It can be patched directly.
+
+#### Canonical nav — both sources must match this exactly:
+| Label | href |
+|---|---|
+| Dashboard | `/ops/dashboard/` |
+| Reservations | `/ops/reservations/` |
+| Calendar | `/ops/calendar/` |
+| Stays | `/ops/stays/` |
+| Maintenance | `/ops/maintenance/` |
+| Payments | `/ops/payments/` |
+| Deposits | `/ops/deposits/` |
+| Reports | `/ops/reports/` |
+| Agent Intelligence | `/ops/agent/` |
+| Listings | `/ops/listings/` |
+| Customers | `/ops/customers/` |
+| Tasks | `/ops/workboard/` |
+| Settings | `/ops/settings/` |
+| Users | `/ops/admin/` |
+
+#### Patching app.js when labels diverge:
+- Use a `python3` string replace on the compiled bundle (never `perl` with backtick patterns — they do not escape correctly).
+- After any patch, bump the `?v=gentelella-v4-preview-N` query string on the `<script>` tag in `modern_dashboard.html` by 1 so browsers drop their cached copy.
+- Verify in the browser by navigating to `/ops/dashboard/` and expanding the sidebar — labels must match the table above exactly.
 
 ### `ops-stays-command.js`
 A third nav-like list lives in `ops-stays-command.js` (the `/ops/stays` command-center IIFE). Keep the `modules` array in this file consistent with the same route set.
