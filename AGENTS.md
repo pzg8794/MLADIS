@@ -198,5 +198,5 @@ A third nav-like list lives in `ops-stays-command.js` (the `/ops/stays` command-
 
 - The Payments table has **11 columns**: checkbox, Transaction ID, Guest, Reservation, Listing, Channel, Method, Date, Amount, Status, Invoice.
 - The Invoice column renders a `↗` chip link (`ops-pay-invoice-link`) that opens the invoice-print URL without interrupting row-click selection (`event.stopPropagation()`). Width is fixed at 4% via `<col class="ops-pay-col-invoice">`.
-- The detail rail is fixed at `380px` wide (`flex: 0 0 380px`).
-- The sidebar must be open on load; a small inline `<script>` adds `is-sidebar-expanded` to `.dashboard-shell` and `is-expanded` to `#main-sidebar` after the page renders.
+- The detail rail is fixed at `300px` wide (`flex: 0 0 300px`).
+- **NEVER add a script to force the sidebar open on any ops page.** The global rule (line "Default state: collapsed…") applies to every page including Payments. Adding `is-sidebar-expanded` / `is-expanded` via an inline script is forbidden.
