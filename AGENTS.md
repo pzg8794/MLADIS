@@ -200,3 +200,22 @@ A third nav-like list lives in `ops-stays-command.js` (the `/ops/stays` command-
 - The Invoice column renders a `↗` chip link (`ops-pay-invoice-link`) that opens the invoice-print URL without interrupting row-click selection (`event.stopPropagation()`). Width is fixed at 4% via `<col class="ops-pay-col-invoice">`.
 - The detail rail is fixed at `300px` wide (`flex: 0 0 300px`).
 - **NEVER add a script to force the sidebar open on any ops page.** The global rule (line "Default state: collapsed…") applies to every page including Payments. Adding `is-sidebar-expanded` / `is-expanded` via an inline script is forbidden.
+
+## Payments page — design reference
+
+The approved mock image is committed at **`docs/design/mocks/payments-page-mock.png`**.
+All future visual work on the Payments page MUST reference this file.
+
+When the user provides a mock image (any page), agents MUST:
+1. Copy the image to `docs/design/mocks/<page-name>-mock.png` in the same commit as the visual work.
+2. Update AGENTS.md with a "design reference" section pointing to the saved file.
+3. Never stop working until the live page matches the mock — do not "clap and stop" early.
+
+### Payments page visual spec (from mock)
+- **Topbar**: hamburger · search · `+ New ▾` · bell · calendar · user avatar+name+role
+- **Header right**: 📅 date-range `▾` · filter-funnel Filters · ↓ Export
+- **KPI cards**: 4 cards, each has a 36px colored rounded-square icon (white SVG inside) + label + value + trend; sparkline wave path at bottom
+- **Filter bar**: `All Channels ▾` `All Statuses ▾` 📅 `Jun 6 – Jun 12, 2026 ▾` `All Methods ▾` `Clear filters` (plain text, no border) · 🔍 search right-aligned
+- **Table**: 11 cols; selected row highlighted; `↗` invoice chip
+- **Pagination**: `‹ 1 2 3 … 13 ›`
+- **Detail panel (300px)**: ✕ close · TXN-ID + status badge inline · amount USD · "Total Paid" · Invoice Preview (thumbnail + #number + Paid badge + issue/due/amount-due rows + Download invoice btn) · Linked Reservation (R-xxx ↗ + "View reservation" btn) · Deposit History | Quick Actions (two-column grid, "Edit" link, "Send invoice"/"Mark as paid" actions) · Payment Timeline (dots + action links) · Notes ("Add note" link)
