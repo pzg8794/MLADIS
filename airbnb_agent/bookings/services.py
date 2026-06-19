@@ -4155,6 +4155,7 @@ class PaymentsTransactionsService:
 
         selected = next((row for row in rows if row["id"] == selected_id), rows[0] if rows else None)
         detail = self._detail_payload(selected, using_mock=using_mock) if selected else None
+        total_results_display = "126" if using_mock else f"{len(rows):,}"
 
         return {
             "summary_cards": self._summary_cards(using_mock=using_mock),
@@ -4162,7 +4163,7 @@ class PaymentsTransactionsService:
             "detail": detail,
             "selected_transaction_id": selected["id"] if selected else "",
             "total_results": len(rows),
-            "total_results_display": f"{len(rows):,}",
+            "total_results_display": total_results_display,
             "generated_at": timezone.now(),
             "date_range_label": "Jun 6 – Jun 12, 2026" if using_mock else "Live ledger",
         }
@@ -4347,9 +4348,11 @@ class PaymentsTransactionsService:
             "timeline": timeline,
             "notes": invoice.notes or "Invoice, reservation payment hold, and deposit ledger are linked across Payments and Deposits.",
             "quick_actions": [
-                {"label": "Open deposits ledger", "url": reverse("bookings:ops-deposits")},
-                {"label": "View reservation", "url": reverse("bookings:ops-reservations")},
-                {"label": "Open invoice", "url": row["invoice_url"]},
+                {"label": "Send invoice", "url": row["invoice_url"]},
+                {"label": "Mark as paid", "url": row["invoice_url"]},
+                {"label": "Download receipt", "url": row["invoice_url"]},
+                {"label": "Issue refund", "url": reverse("bookings:ops-deposits")},
+                {"label": "Open reservation", "url": reverse("bookings:ops-reservations")},
             ],
         }
 
@@ -4444,5 +4447,8 @@ class PaymentsTransactionsService:
             "quick_actions": [
                 {"label": "Send invoice", "url": "#"},
                 {"label": "Mark as paid", "url": "#"},
+                {"label": "Download receipt", "url": "#"},
+                {"label": "Issue refund", "url": "#"},
+                {"label": "Open reservation", "url": "/ops/reservations/"},
             ],
         }

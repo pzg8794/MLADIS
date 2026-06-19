@@ -4,7 +4,7 @@
 {% block title %}Payments & Transactions · MLADIS{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-payments.css' %}?v=ops-payments-v1">
+<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-payments.css' %}?v=ops-payments-v2">
 {% endblock %}
 
 {% block content %}
@@ -30,34 +30,35 @@
     </div>
   </header>
 
-  <section class="ops-pay-summary" aria-label="Payment summary cards">
-    {% for card in summary_cards %}
-      <article class="ops-pay-kpi ops-pay-kpi--{{ card.tone }}">
-        <div class="ops-pay-kpi-body">
-          <span class="ops-pay-kpi-icon" aria-hidden="true">
-            {% if card.tone == 'green' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            {% elif card.tone == 'blue' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-            {% elif card.tone == 'orange' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-            {% elif card.tone == 'violet' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2" fill="#fff" stroke="#fff"/></svg>{% endif %}
-          </span>
-          <div>
-            <p class="ops-pay-kpi-label">{{ card.label }}</p>
-            <strong class="ops-pay-kpi-value">{{ card.value }}</strong>
-            <p class="ops-pay-kpi-trend">{{ card.trend }}</p>
-          </div>
-        </div>
-        <svg class="ops-pay-sparkline" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
-          {% if card.tone == 'green' %}<path d="M0,18 C12,14 18,20 28,11 C38,2 44,16 54,10 C64,4 70,16 80,8 C88,2 94,14 100,6" fill="none" stroke-width="2"/>
-          {% elif card.tone == 'blue' %}<path d="M0,20 C10,16 20,22 30,13 C40,4 46,18 56,12 C66,6 74,20 84,14 C90,8 95,18 100,12" fill="none" stroke-width="2"/>
-          {% elif card.tone == 'orange' %}<path d="M0,12 C10,8 18,18 28,14 C40,8 48,20 58,16 C68,12 76,6 86,10 C94,14 98,8 100,12" fill="none" stroke-width="2"/>
-          {% elif card.tone == 'violet' %}<path d="M0,16 C12,10 20,22 30,14 C40,6 48,20 60,13 C72,6 80,20 88,15 C94,10 98,18 100,14" fill="none" stroke-width="2"/>{% endif %}
-        </svg>
-      </article>
-    {% endfor %}
-  </section>
-
   <section class="ops-pay-layout" aria-label="Payments content">
-    <div class="ops-pay-main">
+    <div class="ops-pay-left">
+      <section class="ops-pay-summary" aria-label="Payment summary cards">
+        {% for card in summary_cards %}
+          <article class="ops-pay-kpi ops-pay-kpi--{{ card.tone }}">
+            <div class="ops-pay-kpi-body">
+              <span class="ops-pay-kpi-icon" aria-hidden="true">
+                {% if card.tone == 'green' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                {% elif card.tone == 'blue' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                {% elif card.tone == 'orange' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                {% elif card.tone == 'violet' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2" fill="#fff" stroke="#fff"/></svg>{% endif %}
+              </span>
+              <div>
+                <p class="ops-pay-kpi-label">{{ card.label }}</p>
+                <strong class="ops-pay-kpi-value">{{ card.value }}</strong>
+                <p class="ops-pay-kpi-trend">{{ card.trend }}</p>
+              </div>
+            </div>
+            <svg class="ops-pay-sparkline" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
+              {% if card.tone == 'green' %}<path d="M0,18 C12,14 18,20 28,11 C38,2 44,16 54,10 C64,4 70,16 80,8 C88,2 94,14 100,6" fill="none" stroke-width="2"/>
+              {% elif card.tone == 'blue' %}<path d="M0,20 C10,16 20,22 30,13 C40,4 46,18 56,12 C66,6 74,20 84,14 C90,8 95,18 100,12" fill="none" stroke-width="2"/>
+              {% elif card.tone == 'orange' %}<path d="M0,12 C10,8 18,18 28,14 C40,8 48,20 58,16 C68,12 76,6 86,10 C94,14 98,8 100,12" fill="none" stroke-width="2"/>
+              {% elif card.tone == 'violet' %}<path d="M0,16 C12,10 20,22 30,14 C40,6 48,20 60,13 C72,6 80,20 88,15 C94,10 98,18 100,14" fill="none" stroke-width="2"/>{% endif %}
+            </svg>
+          </article>
+        {% endfor %}
+      </section>
+
+      <div class="ops-pay-main">
       <div class="ops-pay-toolbar">
         <div class="ops-pay-toolbar-left">
           <button class="ops-pay-select" type="button">All Channels <span class="ops-pay-chevron">▾</span></button>
@@ -108,13 +109,37 @@
           <tbody>
             {% for row in rows %}
               <tr class="ops-pay-row{% if row.id == selected_transaction_id %} is-selected{% endif %}" onclick="window.location='?transaction={{ row.id }}'">
-                <td><input type="checkbox" aria-label="Select {{ row.transaction_id }}"></td>
+                <td><input type="checkbox" aria-label="Select {{ row.transaction_id }}"{% if row.id == selected_transaction_id %} checked{% endif %}></td>
                 <td class="ops-pay-txn">{{ row.transaction_id }}</td>
                 <td>{{ row.guest }}</td>
                 <td>{{ row.reservation }}</td>
                 <td>{{ row.listing }}</td>
-                <td>{{ row.channel }}</td>
-                <td>{{ row.method }}</td>
+                <td>
+                  <span class="ops-pay-channel">
+                    {% if row.channel == 'Airbnb' %}
+                      <i class="ops-pay-channel-mark ops-pay-channel-mark--airbnb" aria-hidden="true"></i>
+                    {% elif row.channel == 'Booking.com' %}
+                      <i class="ops-pay-channel-mark ops-pay-channel-mark--booking" aria-hidden="true">B.</i>
+                    {% elif row.channel == 'Corporate Booking' %}
+                      <i class="ops-pay-channel-mark ops-pay-channel-mark--bank" aria-hidden="true"></i>
+                    {% endif %}
+                    {{ row.channel }}
+                  </span>
+                </td>
+                <td>
+                  <span class="ops-pay-method">
+                    {% if 'VISA' in row.method or 'Visa' in row.method %}
+                      <i class="ops-pay-card-logo ops-pay-card-logo--visa" aria-hidden="true">VISA</i>
+                    {% elif 'MC' in row.method %}
+                      <i class="ops-pay-card-logo ops-pay-card-logo--mc" aria-hidden="true"><span></span><span></span></i>
+                    {% elif 'Amex' in row.method %}
+                      <i class="ops-pay-card-logo ops-pay-card-logo--amex" aria-hidden="true"></i>
+                    {% elif 'ACH' in row.method %}
+                      <i class="ops-pay-card-logo ops-pay-card-logo--ach" aria-hidden="true"></i>
+                    {% endif %}
+                    {{ row.method }}
+                  </span>
+                </td>
                 <td>
                   <div class="ops-pay-date">
                     <span>{{ row.date_label }}</span>
@@ -142,6 +167,7 @@
           </nav>
         </footer>
       </div>
+      </div>
     </div>
 
     {% if detail %}
@@ -167,9 +193,22 @@
           </div>
           <div class="ops-pay-invoice-box">
             <div class="ops-pay-invoice-thumb">
-              <span class="ops-pay-inv-logo">MLADIS</span>
-              <span class="ops-pay-inv-label">INVOICE</span>
-              <span class="ops-pay-inv-lines"></span>
+              <div class="ops-pay-inv-brand">
+                <span class="ops-pay-inv-seal" aria-hidden="true"></span>
+                <span>MLADIS</span>
+              </div>
+              <strong>INVOICE</strong>
+              <span class="ops-pay-inv-number">{{ detail.invoice_number }}</span>
+              <div class="ops-pay-inv-doc-meta">
+                <span></span>
+                <span></span>
+              </div>
+              <div class="ops-pay-inv-table" aria-hidden="true">
+                <span>Stay</span><span>1</span><span>{{ detail.amount_due }}</span>
+                <span>Tax</span><span>0</span><span>$0.00</span>
+                <span>Total</span><span></span><span>{{ detail.amount_due }}</span>
+              </div>
+              <div class="ops-pay-inv-total" aria-hidden="true"></div>
             </div>
             <div class="ops-pay-invoice-meta">
               <div class="ops-pay-invoice-meta-head">
@@ -224,7 +263,10 @@
               <h4>Quick Actions</h4>
               <div class="ops-pay-actions">
                 {% for action in detail.quick_actions %}
-                  <a class="ops-pay-action" href="{{ action.url }}">{{ action.label }}</a>
+                  <a class="ops-pay-action" href="{{ action.url }}">
+                    <span class="ops-pay-action-icon" aria-hidden="true"></span>
+                    {{ action.label }}
+                  </a>
                 {% endfor %}
               </div>
             </div>
