@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from urllib.parse import parse_qs, urlparse
 from io import StringIO
 from pathlib import Path
@@ -151,6 +152,29 @@ class OpsNavigationContractTests(TestCase):
         for pattern in stale_label_patterns:
             with self.subTest(stale_label_pattern=pattern):
                 self.assertNotIn(pattern, fallback_source)
+
+    def test_sidebar_expanded_width_contract_prevents_label_clipping(self):
+        repo_root = Path(__file__).resolve().parents[2]
+        styles_source = (repo_root / "frontend/src/styles.css").read_text(encoding="utf-8")
+
+        grid_match = re.search(
+            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\.is-sidebar-expanded\s*\{\s*grid-template-columns:\s*(\d+)px\s+minmax\(0,\s*1fr\);',
+            styles_source,
+            re.MULTILINE,
+        )
+        self.assertIsNotNone(grid_match, "Missing expanded sidebar grid width rule")
+        self.assertGreaterEqual(int(grid_match.group(1)), 240)
+
+        width_match = re.search(
+            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*>\s*\.modern-admin-sidebar\.v4-command-sidebar:hover,\s*\n'
+            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*>\s*\.modern-admin-sidebar\.v4-command-sidebar:focus-within,\s*\n'
+            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*>\s*\.modern-admin-sidebar\.v4-command-sidebar\.is-expanded\s*\{\s*\n'
+            r'\s*width:\s*(\d+)px;',
+            styles_source,
+            re.MULTILINE,
+        )
+        self.assertIsNotNone(width_match, "Missing expanded sidebar width rule")
+        self.assertGreaterEqual(int(width_match.group(1)), 240)
 
 
 class BookingInquiryFormTests(TestCase):

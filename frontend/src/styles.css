@@ -11419,7 +11419,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"].is-sidebar-expanded {
-  grid-template-columns: 192px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"] .dashboard-main {
@@ -11466,7 +11466,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover,
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within,
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded {
-  width: 192px;
+  width: 248px;
   box-shadow: 18px 0 46px rgba(15, 23, 42, 0.22);
 }
 
@@ -11526,7 +11526,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover .v4-nav-group,
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within .v4-nav-group,
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded .v4-nav-group {
-  max-width: 190px;
+  max-width: 220px;
   opacity: 1;
   transform: translateX(0);
 }
