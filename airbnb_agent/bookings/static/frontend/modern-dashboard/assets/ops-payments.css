@@ -138,6 +138,7 @@
 
 .ops-pay-layout {
   align-items: start;
+  gap: 18px;
 }
 
 .ops-pay-main {
@@ -146,8 +147,8 @@
 }
 
 .ops-pay-detail {
-  flex: 0 0 330px;
-  width: 330px;
+  flex: 0 0 380px;
+  width: 380px;
   position: sticky;
   top: 16px;
 }
@@ -160,13 +161,15 @@
 
 .ops-pay-toolbar {
   align-items: center;
+  justify-content: space-between;
 }
 
 .ops-pay-toolbar-left {
   display: flex;
-  grid-auto-flow: column;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  gap: 10px;
+  min-width: 0;
 }
 
 .ops-pay-search {
@@ -177,7 +180,9 @@
   gap: 8px;
   padding: 0 10px;
   background: #fff;
-  min-width: 260px;
+  min-width: 344px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .ops-pay-search input {
@@ -195,20 +200,21 @@
 }
 
 .ops-pay-col-check { width: 34px; }
-.ops-pay-col-transaction { width: 12%; }
-.ops-pay-col-guest { width: 12%; }
-.ops-pay-col-reservation { width: 10%; }
-.ops-pay-col-listing { width: 15%; }
-.ops-pay-col-channel { width: 12%; }
-.ops-pay-col-method { width: 12%; }
-.ops-pay-col-date { width: 11%; }
-.ops-pay-col-amount { width: 9%; }
-.ops-pay-col-status { width: 7%; }
+.ops-pay-col-transaction { width: 13%; }
+.ops-pay-col-guest { width: 11%; }
+.ops-pay-col-reservation { width: 9%; }
+.ops-pay-col-listing { width: 14%; }
+.ops-pay-col-channel { width: 10%; }
+.ops-pay-col-method { width: 11%; }
+.ops-pay-col-date { width: 10%; }
+.ops-pay-col-amount { width: 8%; }
+.ops-pay-col-status { width: 8%; }
+.ops-pay-col-invoice { width: 4%; }
 
 .ops-pay-table th,
 .ops-pay-table td {
   text-align: left;
-  padding: 11px 8px;
+  padding: 14px 10px;
   border-bottom: 1px solid #eef2f7;
   font-size: 12px;
   color: #334155;
@@ -220,6 +226,11 @@
   font-weight: 700;
   color: #64748b;
   white-space: nowrap;
+}
+
+.ops-pay-table th:last-child,
+.ops-pay-table td:last-child {
+  text-align: center;
 }
 
 .ops-pay-row {
@@ -238,9 +249,35 @@
   color: #0f172a;
 }
 
+.ops-pay-txn {
+  line-height: 1.2;
+}
+
 .ops-pay-date {
   display: grid;
   gap: 2px;
+}
+
+.ops-pay-invoice-cell {
+  text-align: center;
+}
+
+.ops-pay-invoice-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.ops-pay-invoice-link:hover {
+  background: #dbeafe;
 }
 
 .ops-pay-pill {
@@ -381,6 +418,21 @@
     width: 100%;
     flex-basis: auto;
     position: static;
+  }
+
+  .ops-pay-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ops-pay-toolbar-left {
+    flex-wrap: wrap;
+  }
+
+  .ops-pay-search {
+    min-width: 0;
+    width: 100%;
+    margin-left: 0;
   }
 }
 

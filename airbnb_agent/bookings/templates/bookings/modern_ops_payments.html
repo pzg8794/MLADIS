@@ -63,6 +63,7 @@
             <col class="ops-pay-col-date">
             <col class="ops-pay-col-amount">
             <col class="ops-pay-col-status">
+            <col class="ops-pay-col-invoice">
           </colgroup>
           <thead>
             <tr>
@@ -76,6 +77,7 @@
               <th>Date</th>
               <th>Amount</th>
               <th>Status</th>
+              <th>Invoice</th>
             </tr>
           </thead>
           <tbody>
@@ -96,6 +98,7 @@
                 </td>
                 <td class="ops-pay-amount">{{ row.amount }}</td>
                 <td><span class="ops-pay-pill ops-pay-pill--{{ row.status_cls }}">{{ row.status }}</span></td>
+                <td class="ops-pay-invoice-cell"><a class="ops-pay-invoice-link" href="{{ row.invoice_url }}" onclick="event.stopPropagation()" aria-label="Open invoice {{ row.transaction_id }}">↗</a></td>
               </tr>
             {% endfor %}
           </tbody>
@@ -213,4 +216,16 @@
     {% endif %}
   </section>
 </main>
+<script>
+  (function () {
+    var shell = document.querySelector('.dashboard-shell');
+    var sidebar = document.getElementById('main-sidebar');
+    if (shell) {
+      shell.classList.add('is-sidebar-expanded');
+    }
+    if (sidebar) {
+      sidebar.classList.add('is-expanded');
+    }
+  }());
+</script>
 {% endblock %}

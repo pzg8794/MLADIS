@@ -176,3 +176,27 @@ Follow this pattern when building or extending any ops page (Customers, Properti
 - Nightly pricing shown in the calendar uses `BookableItem.starting_price` by default and overlays active `DailyPriceOverride` ranges when present.
 - The calendar page includes a click-to-fill range helper that prefills both the block and price forms from selected days in the grid.
 - The calendar grid also includes direct day-cell actions: `Block day`, `Price day`, and edit links to overlapping reservation, block, and price override records when present.
+
+## Admin Command Center Nav (app.js)
+
+The `/ops/admin/` page is **not** a Django-rendered page: it loads `modern_dashboard.html` which is a minimal HTML shell that mounts the pre-compiled React bundle at `bookings/static/frontend/modern-dashboard/assets/app.js`. This bundle embeds its **own independent nav object** — completely separate from `bookings/base_ops.html`.
+
+### Two-nav rule
+There are exactly two nav definitions and both must be kept in sync whenever a new ops route is added or renamed:
+1. **`base_ops.html`** — server-rendered left-rail nav used by every page that extends it (e.g. `/ops/payments/`, `/ops/deposits/`, `/ops/customers/`, …).
+2. **`app.js` React bundle** — the command-palette nav list and the workspace-card grid shown on `/ops/admin/`. **This file is gitignored** (it is a build artifact). Fixing nav routes here requires either:
+   - **Preferred**: edit the source in `MLADIS/frontend/src/`, rebuild with `npm run build:django` from `MLADIS/frontend`, then restart the dev server.
+   - **Hotfix only**: do a direct byte-level replacement on the compiled bundle with `python3` string replace (never use `perl` with backtick-containing patterns — they do not escape correctly). After any hotfix patch, bump the `?v=gentelella-v4-preview-N` query string on the `<script>` tag in `modern_dashboard.html` by 1 so browsers drop their cached copy.
+
+### `ops-stays-command.js`
+A third nav-like list lives in `ops-stays-command.js` (the `/ops/stays` command-center IIFE). Keep the `modules` array in this file consistent with the same route set.
+
+### Invariant
+**Payments must always route to `/ops/payments/`; Deposits must always route to `/ops/deposits/`. These must agree across all three sources: `base_ops.html`, `app.js`, and `ops-stays-command.js`.** Any agent that changes a payments or deposits route must update all three sources in the same commit.
+
+## Payments page — additional contracts
+
+- The Payments table has **11 columns**: checkbox, Transaction ID, Guest, Reservation, Listing, Channel, Method, Date, Amount, Status, Invoice.
+- The Invoice column renders a `↗` chip link (`ops-pay-invoice-link`) that opens the invoice-print URL without interrupting row-click selection (`event.stopPropagation()`). Width is fixed at 4% via `<col class="ops-pay-col-invoice">`.
+- The detail rail is fixed at `380px` wide (`flex: 0 0 380px`).
+- The sidebar must be open on load; a small inline `<script>` adds `is-sidebar-expanded` to `.dashboard-shell` and `is-expanded` to `#main-sidebar` after the page renders.

@@ -11,7 +11,7 @@
     ['Calendar', 'Availability, blocks, pricing', '/ops/calendar/', '#7c3aed', '#ede9fe'],
     ['Maintenance', 'Issues, photos, repair status', '/ops/maintenance/', '#f97316', '#ffedd5'],
     ['Work Orders', 'Assigned jobs and completion', '/ops/maintenance/', '#d97706', '#fef3c7'],
-    ['Payments', 'Checkout status and providers', '/ops/deposits/', '#0891b2', '#cffafe'],
+    ['Payments', 'Checkout status and providers', '/ops/payments/', '#0891b2', '#cffafe'],
     ['Deposits', 'Holds, captures, releases', '/ops/deposits/', '#e11d48', '#ffe4e6'],
     ['Reports', 'Revenue, occupancy, trends', '/ops/reports/', '#6d28d9', '#f3e8ff'],
     ['Brand Settings', 'Public site copy and identity', '/ops/settings/', '#475569', '#e2e8f0'],
