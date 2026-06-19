@@ -177,47 +177,71 @@ Follow this pattern when building or extending any ops page (Customers, Properti
 - The calendar page includes a click-to-fill range helper that prefills both the block and price forms from selected days in the grid.
 - The calendar grid also includes direct day-cell actions: `Block day`, `Price day`, and edit links to overlapping reservation, block, and price override records when present.
 
-## Admin Command Center Nav (app.js)
+## Left Navigation — Single Source of Truth
 
-The `/ops/admin/` page is **not** a Django-rendered page: it loads `modern_dashboard.html` which is a minimal HTML shell that mounts the pre-compiled React bundle at `bookings/static/frontend/modern-dashboard/assets/app.js`. This bundle embeds its **own independent nav object** — completely separate from `bookings/base_ops.html`.
+**⛔ ABSOLUTE RULE: ALL THREE NAV SOURCES MUST BE IDENTICAL AT ALL TIMES. NO EXCEPTIONS.**
 
-### Two-nav rule — PERMANENT HARD RULE, NEVER VIOLATE
-**⛔ THE REACT SIDEBAR (app.js) AND THE DJANGO SIDEBAR (base_ops.html) MUST ALWAYS SHOW IDENTICAL LABELS AND HREFS. ANY DIVERGENCE IS A BUG. FIX IT IN THE SAME COMMIT.**
+Every ops page — whether Django-rendered or React — must show the same left navigation menu with the same labels in the same order linking to the same URLs. There is one canonical nav. It lives in three places that must always match.
 
-Users navigate between Django pages (base_ops.html nav) and React pages (app.js nav) constantly. If the labels differ, they see **two completely different left menus** — this is unacceptable.
+### The Three Nav Sources
 
-There are exactly two nav definitions and both must be kept in sync whenever a new ops route is added or renamed:
-1. **`base_ops.html`** — server-rendered left-rail nav used by every page that extends it.
-2. **`app.js` React bundle** — the sidebar nav embedded in the compiled React bundle served at `/ops/dashboard/` and `/ops/admin/`. **This file IS tracked by git** (not gitignored). It can be patched directly.
+| Source | File | Used by |
+|---|---|---|
+| **Django sidebar** | `bookings/templates/bookings/base_ops.html` | All pages extending `base_ops.html` (Payments, Customers, Stays, …) |
+| **React sidebar** | `bookings/static/frontend/modern-dashboard/assets/app.js` | React pages: `/ops/dashboard/`, `/ops/admin/`, `/ops/reservations/`, `/ops/calendar/`, `/ops/maintenance/`, `/ops/deposits/`, `/ops/reports/`, `/ops/agent/`, `/ops/settings/` |
+| **Stays command** | `bookings/static/frontend/modern-dashboard/assets/ops-stays-command.js` | The `/ops/stays/` command-center quick-launch grid |
 
-#### Canonical nav — both sources must match this exactly:
-| Label | href |
-|---|---|
-| Dashboard | `/ops/dashboard/` |
-| Reservations | `/ops/reservations/` |
-| Calendar | `/ops/calendar/` |
-| Stays | `/ops/stays/` |
-| Maintenance | `/ops/maintenance/` |
-| Payments | `/ops/payments/` |
-| Deposits | `/ops/deposits/` |
-| Reports | `/ops/reports/` |
-| Agent Intelligence | `/ops/agent/` |
-| Listings | `/ops/listings/` |
-| Customers | `/ops/customers/` |
-| Tasks | `/ops/workboard/` |
-| Settings | `/ops/settings/` |
-| Users | `/ops/admin/` |
+### Canonical Nav — This Is The Only Truth
 
-#### Patching app.js when labels diverge:
-- Use a `python3` string replace on the compiled bundle (never `perl` with backtick patterns — they do not escape correctly).
-- After any patch, bump the `?v=gentelella-v4-preview-N` query string on the `<script>` tag in `modern_dashboard.html` by 1 so browsers drop their cached copy.
-- Verify in the browser by navigating to `/ops/dashboard/` and expanding the sidebar — labels must match the table above exactly.
+| # | Label | URL | Notes |
+|---|---|---|---|
+| 1 | Dashboard | `/ops/dashboard/` | React app |
+| 2 | Reservations | `/ops/reservations/` | React app |
+| 3 | Calendar | `/ops/calendar/` | React app |
+| 4 | Stays | `/ops/stays/` | Django (`modern_ops_stays.html`) |
+| 5 | Maintenance | `/ops/maintenance/` | React app |
+| 6 | Payments | `/ops/payments/` | Django (`modern_ops_payments.html`) |
+| 7 | Deposits | `/ops/deposits/` | React app |
+| 8 | Reports | `/ops/reports/` | React app |
+| 9 | Agent Intelligence | `/ops/agent/` | React app |
+| 10 | Listings | `/ops/listings/` | React app |
+| 11 | Customers | `/ops/customers/` | Django (`modern_ops_customers.html`) |
+| 12 | Tasks | `/ops/workboard/` | React app |
+| 13 | Settings | `/ops/settings/` | React app |
+| 14 | Users | `/ops/admin/` | React app |
+
+**If a label or URL is changed, it must be changed in all three sources in the same commit. No partial updates.**
+
+### Rules (Non-Negotiable)
+
+1. **Never change nav labels without updating ALL THREE sources simultaneously.**
+2. **Never add a nav item to one source without adding it to all three.**
+3. **Never remove a nav item from one source without removing it from all three.**
+4. **Payments always → `/ops/payments/`. Deposits always → `/ops/deposits/`. These are separate pages with separate routes. Never conflate them.**
+5. **Every URL in the canonical nav must have a route in `urls.py`. Missing routes = 404 = bug to fix immediately.**
+6. **`app.js` IS tracked in git — it is NOT gitignored. Patch it directly when labels diverge.**
+
+### How to Patch Each Source
+
+**`base_ops.html`** — Edit the `<nav aria-label="Dashboard sections">` block. Update label text inside `<span class="modern-admin-nav-label">` and `href` on the `<a>` tag.
+
+**`app.js`** — Use `python3` string replace on the compiled bundle. Find the nav array starting at `{group:\`\`,label:\`Dashboard\``. **Never use `perl` with backtick patterns — escaping fails.** After patching, bump the `?v=gentelella-v4-preview-N` query string in `modern_dashboard.html` by 1.
+
+**`ops-stays-command.js`** — Edit the `modules = [...]` array. Each row is `['Label', 'description', '/ops/url/', 'color', 'bg-color']`.
+
+### Verifying Nav Parity
+
+After any nav change:
+1. Load `/ops/dashboard/` → expand the sidebar → confirm labels match canonical table above.
+2. Load `/ops/payments/` → expand the sidebar → confirm same labels.
+3. Load `/ops/stays/` → confirm the quick-launch grid matches.
 
 ### `ops-stays-command.js`
-A third nav-like list lives in `ops-stays-command.js` (the `/ops/stays` command-center IIFE). Keep the `modules` array in this file consistent with the same route set.
+A third nav-like list lives in `ops-stays-command.js` (the `/ops/stays/` command-center IIFE). The `modules` array in this file is kept in sync with the canonical nav above. The descriptions and colors may differ from the sidebar — only the Label and URL must match exactly.
 
 ### Invariant
 **Payments must always route to `/ops/payments/`; Deposits must always route to `/ops/deposits/`. These must agree across all three sources: `base_ops.html`, `app.js`, and `ops-stays-command.js`.** Any agent that changes a payments or deposits route must update all three sources in the same commit.
+
 
 ## Payments page — additional contracts
 
