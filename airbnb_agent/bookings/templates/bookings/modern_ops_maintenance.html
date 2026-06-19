@@ -1,0 +1,270 @@
+{% extends "bookings/base_ops.html" %}
+{% load static %}
+
+{% block title %}Maintenance & Work Orders · MLADIS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-maintenance.css' %}?v=ops-maintenance-v4">
+{% endblock %}
+
+{% block content %}
+<main class="ops-mnt-page" aria-label="Maintenance and work orders">
+  <header class="ops-mnt-header">
+    <div>
+      <h1>Maintenance &amp; Work Orders</h1>
+      <p>Track, manage, and automate property maintenance and vendor work.</p>
+    </div>
+    <div class="ops-mnt-header-actions">
+      <button class="ops-mnt-btn" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+        Filters
+      </button>
+      <button class="ops-mnt-btn" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
+      <button class="ops-mnt-btn ops-mnt-btn--primary" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        New Work Order
+      </button>
+    </div>
+  </header>
+
+  <section class="ops-mnt-summary" aria-label="Maintenance metrics">
+    {% for card in summary_cards %}
+      <article class="ops-mnt-kpi ops-mnt-kpi--{{ card.tone }}">
+        <div class="ops-mnt-kpi-copy">
+          <span class="ops-mnt-kpi-icon" aria-hidden="true">
+            {% if card.tone == "blue" %}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.1-3.1a5 5 0 0 1-6.6 6.6L7 20l-3-3 7.2-7.2a5 5 0 0 1 6.6-6.6Z"/></svg>
+            {% elif card.tone == "orange" %}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M9.5 15.5c.7.5 1.6.7 2.5.7 1.8 0 3-.8 3-2 0-2.6-6-1.4-6-4 0-1.1 1.1-1.9 2.9-1.9.9 0 1.7.2 2.4.6"/></svg>
+            {% elif card.tone == "violet" %}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h10"/></svg>
+            {% else %}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M3 11h18"/><path d="m9 16 2 2 4-4"/></svg>
+            {% endif %}
+          </span>
+          <div>
+            <p>{{ card.label }}</p>
+            <strong>{{ card.value }}</strong>
+            <span>{{ card.trend }}</span>
+          </div>
+        </div>
+        <svg class="ops-mnt-sparkline" viewBox="0 0 140 28" preserveAspectRatio="none" aria-hidden="true">
+          {% if card.tone == "blue" %}
+            <path d="M0 18 L14 15 L30 21 L45 24 L58 16 L72 17 L86 10 L101 16 L116 15 L130 19 L140 21"/>
+          {% elif card.tone == "orange" %}
+            <path d="M0 22 L18 23 L34 21 L50 19 L65 6 L83 21 L100 17 L115 23 L128 24 L140 14"/>
+          {% elif card.tone == "violet" %}
+            <path d="M0 21 L18 22 L36 14 L52 14 L66 11 L82 18 L96 17 L112 21 L128 17 L140 25"/>
+          {% else %}
+            <path d="M0 22 L20 18 L40 21 L56 14 L72 7 L88 8 L104 14 L120 11 L134 16 L140 10"/>
+          {% endif %}
+        </svg>
+      </article>
+    {% endfor %}
+  </section>
+
+  <section class="ops-mnt-workspace" aria-label="Maintenance workspace">
+    <section class="ops-mnt-list-card" aria-label="Work orders">
+      <div class="ops-mnt-list-head">
+        <h2>
+          <span class="ops-mnt-list-icon" aria-hidden="true"></span>
+          Work Orders
+        </h2>
+      </div>
+      <nav class="ops-mnt-tabs" aria-label="Work order filters">
+        {% for tab in tabs %}
+          <button class="{% if tab.active %}is-active{% endif %}" type="button">
+            {{ tab.label }} <span>{{ tab.count }}</span>
+          </button>
+        {% endfor %}
+      </nav>
+      <div class="ops-mnt-table-shell">
+        <table class="ops-mnt-table">
+          <colgroup>
+            <col class="ops-mnt-col-check">
+            <col class="ops-mnt-col-title">
+            <col class="ops-mnt-col-property">
+            <col class="ops-mnt-col-reservation">
+            <col class="ops-mnt-col-assigned">
+            <col class="ops-mnt-col-priority">
+            <col class="ops-mnt-col-cost">
+            <col class="ops-mnt-col-date">
+            <col class="ops-mnt-col-status">
+          </colgroup>
+          <thead>
+            <tr>
+              <th><input type="checkbox" aria-label="Select all work orders"></th>
+              <th>Title</th>
+              <th>Property</th>
+              <th>Reservation</th>
+              <th>Assigned To</th>
+              <th>Priority</th>
+              <th>Cost</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr class="{% if row.id == selected_work_order_id %}is-selected{% endif %}" onclick="window.location='?work_order={{ row.id }}'">
+                <td><input type="checkbox" aria-label="Select {{ row.work_order_id }}"{% if row.id == selected_work_order_id %} checked{% endif %}></td>
+                <td><strong>{{ row.title }}</strong></td>
+                <td>{{ row.property }}</td>
+                <td>{{ row.reservation }}</td>
+                <td>{{ row.assigned_to }}</td>
+                <td><span class="ops-mnt-pill ops-mnt-pill--priority-{{ row.priority_cls }}">{{ row.priority }}</span></td>
+                <td>{{ row.cost }}</td>
+                <td>{{ row.date_label }}</td>
+                <td><span class="ops-mnt-pill ops-mnt-pill--status-{{ row.status_cls }}">{{ row.status }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <footer class="ops-mnt-list-footer">
+        <span>Showing 1 to 8 of {{ total_results_display }}</span>
+        <nav class="ops-mnt-pagination" aria-label="Work order pagination">
+          <button type="button" aria-label="Previous page">‹</button>
+          <button class="is-active" type="button">1</button>
+          <button type="button">2</button>
+          <button type="button">3</button>
+          <button type="button" aria-label="Next page">›</button>
+        </nav>
+        <a href="/ops/maintenance/">View all work orders</a>
+      </footer>
+    </section>
+
+    {% if detail %}
+      <aside class="ops-mnt-detail" aria-label="Selected work order">
+        <section class="ops-mnt-detail-card">
+          <header class="ops-mnt-detail-top">
+            <div>
+              <strong>{{ detail.work_order_id }}</strong>
+              <span class="ops-mnt-pill ops-mnt-pill--status-{{ detail.status_cls }}">{{ detail.status }}</span>
+            </div>
+            <div class="ops-mnt-detail-icons" aria-hidden="true">
+              <span>↗</span>
+              <span>×</span>
+            </div>
+          </header>
+
+          <div class="ops-mnt-detail-title">
+            <div>
+              <h2>{{ detail.title }}</h2>
+              <p>{{ detail.property }}</p>
+              <span>Reservation: {{ detail.reservation }} ({{ detail.reservation_range }})</span>
+            </div>
+            <div class="ops-mnt-detail-actions">
+              <button type="button">Edit</button>
+              <button type="button">More ▾</button>
+              <button class="is-primary" type="button">✣ Auto-generate</button>
+            </div>
+          </div>
+
+          <div class="ops-mnt-stat-grid">
+            {% for metric in detail.metrics %}
+              <article>
+                <span>{{ metric.label }}</span>
+                {% if metric.cls %}
+                  <strong class="ops-mnt-stat-pill ops-mnt-stat-pill--{{ metric.cls }}">{{ metric.value }}</strong>
+                {% elif metric.label == "Assigned To" %}
+                  <div class="ops-mnt-assignee">
+                    <span aria-hidden="true">CM</span>
+                    <strong>{{ metric.value }}</strong>
+                    <small>{{ metric.meta }}</small>
+                  </div>
+                {% else %}
+                  <strong>{{ metric.value|linebreaksbr }}</strong>
+                {% endif %}
+              </article>
+            {% endfor %}
+          </div>
+
+          <div class="ops-mnt-detail-grid">
+            <section class="ops-mnt-photo-panel">
+              <h3>Pictures</h3>
+              <div class="ops-mnt-photos">
+                {% for photo in detail.photos %}
+                  {% if photo.url %}
+                    <img src="{{ photo.url }}" alt="{{ photo.label }}">
+                  {% else %}
+                    <div class="ops-mnt-photo ops-mnt-photo--{{ photo.css_class }}" role="img" aria-label="{{ photo.label }}"></div>
+                  {% endif %}
+                {% endfor %}
+                <button type="button">
+                  <span>+</span>
+                  Add
+                </button>
+              </div>
+            </section>
+            <section class="ops-mnt-notes-panel">
+              <h3>Notes</h3>
+              {% for note in detail.notes %}
+                <p>{{ note }}</p>
+              {% endfor %}
+            </section>
+            <section class="ops-mnt-timeline">
+              <h3>Activity Timeline</h3>
+              {% for item in detail.timeline %}
+                <article>
+                  <span aria-hidden="true"></span>
+                  <strong>{{ item.label }}</strong>
+                  <small>{{ item.meta|linebreaksbr }}</small>
+                </article>
+              {% endfor %}
+            </section>
+          </div>
+
+          <div class="ops-mnt-links">
+            <label>Linked Listing</label>
+            <a href="/ops/properties/">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7"/><path d="M9 22V12h6v10"/><path d="M5 10v12h14V10"/></svg>
+              {{ detail.linked_listing }} ↗
+            </a>
+            <label>Linked Reservation</label>
+            <a href="/ops/reservations/">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M3 10h18"/></svg>
+              {{ detail.linked_reservation }} ↗
+            </a>
+          </div>
+
+          <section class="ops-mnt-report">
+            <div class="ops-mnt-report-head">
+              <h3>AI-Generated Bill / Report Preview</h3>
+              <span>{{ detail.report.status }}</span>
+            </div>
+            <div class="ops-mnt-report-body">
+              <article class="ops-mnt-doc-preview">
+                <header>
+                  <img src="{% static 'frontend/modern-dashboard/assets/mladis-connected-intelligence.png' %}" alt="">
+                  <div>
+                    <strong>{{ detail.report.title }}</strong>
+                    <span>{{ detail.report.subtitle }}</span>
+                  </div>
+                  <i aria-hidden="true">↗</i>
+                </header>
+                <div class="ops-mnt-doc-brand">MLADIS</div>
+                <small>Property Management</small>
+                <dl>
+                  <div><dt>Property</dt><dd>{{ detail.report.property }}</dd></div>
+                  <div><dt>Date</dt><dd>{{ detail.report.date }}</dd></div>
+                </dl>
+              </article>
+              <div class="ops-mnt-report-checks">
+                <p>Auto-generate will include:</p>
+                {% for check in detail.report.checks %}
+                  <span>✓ {{ check }}</span>
+                {% endfor %}
+                <button type="button">Generate Report</button>
+              </div>
+            </div>
+          </section>
+        </section>
+      </aside>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

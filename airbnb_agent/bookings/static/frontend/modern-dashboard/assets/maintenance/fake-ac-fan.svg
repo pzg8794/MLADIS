@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 130" role="img" aria-label="AC fan photo">
+  <defs>
+    <radialGradient id="glow" cx=".44" cy=".36" r=".82">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".45" stop-color="#d7e2ea"/>
+      <stop offset="1" stop-color="#8d9baa"/>
+    </radialGradient>
+    <filter id="grain">
+      <feTurbulence baseFrequency=".72" numOctaves="2" seed="9" type="fractalNoise"/>
+      <feColorMatrix type="saturate" values=".2"/>
+      <feBlend in="SourceGraphic" mode="multiply"/>
+    </filter>
+  </defs>
+  <rect width="180" height="130" fill="url(#glow)"/>
+  <path d="M0 92h180v38H0z" fill="#a7b1bb"/>
+  <rect x="35" y="18" width="109" height="90" rx="8" fill="#e6edf3" stroke="#7c8a99" stroke-width="3"/>
+  <circle cx="90" cy="63" r="38" fill="#526274"/>
+  <circle cx="90" cy="63" r="31" fill="#1f2d3d"/>
+  <circle cx="90" cy="63" r="9" fill="#aab7c3"/>
+  <path d="M91 32c17 5 25 14 26 29-16-5-23-14-26-29Z" fill="#dae3eb"/>
+  <path d="M120 67c-8 15-20 22-35 18 9-13 20-18 35-18Z" fill="#dae3eb"/>
+  <path d="M78 86c-12-11-15-25-8-39 9 13 11 25 8 39Z" fill="#dae3eb"/>
+  <g stroke="#90a0af" stroke-width="2" opacity=".85">
+    <path d="M54 32h72M47 44h86M45 83h89M54 95h72"/>
+    <path d="M51 30v67M129 30v67"/>
+  </g>
+  <rect x="25" y="107" width="125" height="8" rx="4" fill="#667483" opacity=".72"/>
+  <rect width="180" height="130" fill="#000" opacity=".035" filter="url(#grain)"/>
+</svg>

@@ -66,6 +66,7 @@ from .services import (
     AgentAccessContext,
     BookingCalendarService,
     CustomersCRMService,
+    MaintenanceOperationsService,
     MaintenanceService,
     PaymentsTransactionsService,
     ReservationPricingService,
@@ -2281,7 +2282,16 @@ class ModernOpsAgentView(TemplateView):
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsMaintenanceView(TemplateView):
-    template_name = "bookings/modern_dashboard.html"
+    template_name = "bookings/modern_ops_maintenance.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        payload = MaintenanceOperationsService().page_payload(
+            selected_id=self.request.GET.get("work_order", "").strip()
+        )
+        ctx.update(payload)
+        ctx["site_settings"] = SiteSettings.current()
+        return ctx
 
 
 @method_decorator(ops_staff_required, name="dispatch")

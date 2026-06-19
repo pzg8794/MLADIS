@@ -3623,6 +3623,272 @@ class StayListingService:
         )
 
 
+class MaintenanceOperationsService:
+    """Presentation service for the server-rendered Maintenance & Work Orders page."""
+
+    OPEN_STATUSES = {
+        MaintenanceStatus.DRAFT,
+        MaintenanceStatus.LOGGED,
+        MaintenanceStatus.SCHEDULED,
+        MaintenanceStatus.IN_PROGRESS,
+    }
+
+    def page_payload(self, selected_id=""):
+        rows = self._live_rows()
+        using_mock = len(rows) < 8
+        if using_mock:
+            rows = self.mock_rows()
+
+        selected = next((row for row in rows if row["id"] == selected_id), rows[0] if rows else None)
+        return {
+            "summary_cards": self._summary_cards(using_mock=using_mock),
+            "tabs": self._tabs(using_mock=using_mock, rows=rows),
+            "rows": rows,
+            "detail": self._detail_payload(selected, using_mock=using_mock) if selected else None,
+            "selected_work_order_id": selected["id"] if selected else "",
+            "total_results_display": "19" if using_mock else f"{len(rows):,}",
+            "generated_at": timezone.now(),
+        }
+
+    def _summary_cards(self, using_mock=False):
+        if using_mock:
+            return [
+                {"label": "Open Work Orders", "value": "19", "trend": "-8% vs last 7 days", "tone": "blue"},
+                {"label": "Overdue Items", "value": "3", "trend": "+200% vs last 7 days", "tone": "orange"},
+                {"label": "This Month Cost", "value": "$5,240", "trend": "+14% vs last month", "tone": "violet"},
+                {"label": "Completed Jobs", "value": "27", "trend": "+35% vs last 7 days", "tone": "green"},
+            ]
+
+        month_start = timezone.localdate().replace(day=1)
+        events = MaintenanceEvent.objects.all()
+        open_count = events.filter(status__in=self.OPEN_STATUSES).count()
+        overdue_cutoff = timezone.now() - timedelta(days=7)
+        overdue_count = events.filter(status__in=self.OPEN_STATUSES, reported_at__lt=overdue_cutoff).count()
+        month_cost = events.filter(reported_at__date__gte=month_start).aggregate(total=Sum("cost_amount"))["total"] or Decimal("0")
+        completed_count = events.filter(
+            status__in={MaintenanceStatus.COMPLETED, MaintenanceStatus.DOCUMENTED, MaintenanceStatus.BILLED}
+        ).count()
+        return [
+            {"label": "Open Work Orders", "value": f"{open_count:,}", "trend": "Needs action", "tone": "blue"},
+            {"label": "Overdue Items", "value": f"{overdue_count:,}", "trend": "Older than 7 days", "tone": "orange"},
+            {"label": "This Month Cost", "value": f"${month_cost:,.0f}", "trend": "Live maintenance ledger", "tone": "violet"},
+            {"label": "Completed Jobs", "value": f"{completed_count:,}", "trend": "Closed records", "tone": "green"},
+        ]
+
+    @staticmethod
+    def _tabs(using_mock=False, rows=None):
+        if using_mock:
+            return [
+                {"label": "All", "count": "19", "active": True},
+                {"label": "Open", "count": "12", "active": False},
+                {"label": "In Progress", "count": "3", "active": False},
+                {"label": "Pending", "count": "1", "active": False},
+                {"label": "Completed", "count": "27", "active": False},
+                {"label": "Overdue", "count": "3", "active": False},
+            ]
+
+        rows = rows or []
+        counts = {
+            "Open": sum(1 for row in rows if row["status"] == "Open"),
+            "In Progress": sum(1 for row in rows if row["status"] == "In Progress"),
+            "Pending": sum(1 for row in rows if row["status"] == "Pending"),
+            "Completed": sum(1 for row in rows if row["status"] == "Completed"),
+            "Overdue": 0,
+        }
+        return [
+            {"label": "All", "count": f"{len(rows):,}", "active": True},
+            *[
+                {"label": label, "count": f"{count:,}", "active": False}
+                for label, count in counts.items()
+            ],
+        ]
+
+    def _live_rows(self):
+        events = list(
+            MaintenanceEvent.objects.select_related("item", "booking", "created_by")
+            .prefetch_related("photos")
+            .order_by("-reported_at", "-created_at")[:8]
+        )
+        rows = []
+        for index, event in enumerate(events, start=1):
+            status = self._status_label(event.status)
+            priority = self._priority_for_event(event)
+            rows.append(
+                {
+                    "id": str(event.pk),
+                    "work_order_id": f"WO-{event.reported_at:%Y}-{1000 + index:04d}" if event.reported_at else f"WO-LIVE-{index:04d}",
+                    "title": event.title,
+                    "property": event.item.business_display_name if event.item else "Unassigned property",
+                    "reservation": event.booking.request_key if event.booking else "—",
+                    "assigned_to": event.vendor_name or "Maintenance Team",
+                    "priority": priority,
+                    "priority_cls": priority.lower(),
+                    "cost": f"${event.cost_amount:,.0f}",
+                    "date_label": event.reported_at.strftime("%b %-d, %-I:%M %p") if event.reported_at else "—",
+                    "status": status,
+                    "status_cls": self._status_class(status),
+                    "is_mock": False,
+                    "_event": event,
+                }
+            )
+        return rows
+
+    def mock_rows(self):
+        return [
+            self._mock_row("wo-2026-0104", "WO-2026-0104", "AC not cooling", "3 Beds Apt, Pool, G-101", "R-1042", "Carlos M.", "High", "$180", "Jun 10, 9:30 AM", "In Progress"),
+            self._mock_row("wo-2026-0103", "WO-2026-0103", "Leak in bathroom sink", "2 Beds Apt, Pool", "R-1035", "Plumbing Pro", "Medium", "$95", "Jun 9, 2:15 PM", "Open"),
+            self._mock_row("wo-2026-0102", "WO-2026-0102", "Replace ceiling light", "Meeting Room 1", "—", "Maintenance Team", "Low", "$40", "Jun 9, 11:00 AM", "Open"),
+            self._mock_row("wo-2026-0101", "WO-2026-0101", "Pool pump not working", "6 Beds Apt, Pool", "R-1040", "Carlos M.", "High", "$225", "Jun 8, 10:45 AM", "Pending"),
+            self._mock_row("wo-2026-0100", "WO-2026-0100", "Door lock issue", "2 Beds Apt, Pool", "—", "Lock & Key Co.", "Medium", "$120", "Jun 7, 4:30 PM", "Completed"),
+            self._mock_row("wo-2026-0099", "WO-2026-0099", "Refrigerator not cooling", "3 Beds Apt, G-101", "R-1028", "Appliance Fixers", "High", "$160", "Jun 7, 1:20 PM", "Completed"),
+            self._mock_row("wo-2026-0098", "WO-2026-0098", "TV not turning on", "6 Beds Apt, Pool", "—", "Tech Support", "Low", "$60", "Jun 6, 9:10 AM", "Completed"),
+            self._mock_row("wo-2026-0097", "WO-2026-0097", "Paint touch-up", "Conference Room A", "—", "Maintenance Team", "Low", "$75", "Jun 6, 8:30 AM", "Completed"),
+        ]
+
+    def _mock_row(self, row_id, work_order_id, title, property_name, reservation, assigned_to, priority, cost, date_label, status):
+        return {
+            "id": row_id,
+            "work_order_id": work_order_id,
+            "title": title,
+            "property": property_name,
+            "reservation": reservation,
+            "assigned_to": assigned_to,
+            "priority": priority,
+            "priority_cls": priority.lower(),
+            "cost": cost,
+            "date_label": date_label,
+            "status": status,
+            "status_cls": self._status_class(status),
+            "is_mock": True,
+        }
+
+    def _detail_payload(self, row, using_mock=False):
+        if not row:
+            return None
+        if using_mock or row.get("is_mock"):
+            return self._mock_detail_payload(row)
+
+        event = row["_event"]
+        booking = event.booking
+        photos = list(event.photos.all()[:3])
+        return {
+            "work_order_id": row["work_order_id"],
+            "status": row["status"],
+            "status_cls": row["status_cls"],
+            "title": event.title,
+            "property": event.item.business_display_name if event.item else "Unassigned property",
+            "reservation": booking.request_key if booking else "—",
+            "reservation_range": f"{booking.check_in:%b %-d} – {booking.check_out:%b %-d, %Y}" if booking else "Not linked",
+            "metrics": [
+                {"label": "Cost", "value": event.display_cost.replace(" USD", "")},
+                {"label": "Time", "value": event.reported_at.strftime("%b %-d, %Y\n%-I:%M %p") if event.reported_at else "—"},
+                {"label": "Assigned To", "value": event.vendor_name or "Maintenance Team", "meta": "Vendor"},
+                {"label": "Priority", "value": row["priority"], "cls": row["priority_cls"]},
+                {"label": "Status", "value": row["status"], "cls": row["status_cls"]},
+            ],
+            "photos": [
+                {"url": photo.image_url, "label": photo.caption or "Evidence photo", "css_class": ""}
+                for photo in photos
+            ]
+            or self._mock_photos(),
+            "notes": [
+                event.effective_description or "Guest reported an issue. Maintenance notes will appear here after review.",
+                event.admin_notes or "Recommend follow-up after completion.",
+            ],
+            "linked_listing": event.item.business_display_name if event.item else "Unassigned property",
+            "linked_reservation": booking.request_key if booking else "—",
+            "timeline": self._mock_timeline(),
+            "report": self._mock_report_payload(),
+        }
+
+    def _mock_detail_payload(self, row):
+        return {
+            "work_order_id": "WO-2026-0104",
+            "status": "In Progress",
+            "status_cls": "in-progress",
+            "title": "AC not cooling",
+            "property": "3 Beds Apt, Vacation Home & Pool, G-101",
+            "reservation": "R-1042",
+            "reservation_range": "Jun 8 – Jun 14, 2026",
+            "metrics": [
+                {"label": "Cost", "value": "$180.00"},
+                {"label": "Time", "value": "Jun 10, 2026\n9:30 AM"},
+                {"label": "Assigned To", "value": "Carlos M.", "meta": "Technician"},
+                {"label": "Priority", "value": "High", "cls": "high"},
+                {"label": "Status", "value": "In Progress", "cls": "in-progress"},
+            ],
+            "photos": self._mock_photos(),
+            "notes": [
+                "Guest reported AC not cooling properly. Checked thermostat and filter. Refrigerant was low. Recharged unit and tested - now cooling well.",
+                "Recommend full AC service in next 30 days.",
+            ],
+            "linked_listing": "3 Beds Apt, Vacation Home & Pool, G-101",
+            "linked_reservation": "R-1042 | Jun 8 – Jun 14, 2026",
+            "timeline": self._mock_timeline(),
+            "report": self._mock_report_payload(),
+        }
+
+    @staticmethod
+    def _mock_photos():
+        return [
+            {"url": "", "label": "Outdoor unit", "css_class": "unit"},
+            {"url": "", "label": "Compressor fan", "css_class": "fan"},
+            {"url": "", "label": "Interior vent", "css_class": "vent"},
+        ]
+
+    @staticmethod
+    def _mock_timeline():
+        return [
+            {"label": "Work order created", "meta": "Jun 10, 2026 9:05 AM\nby Piter Garcia", "tone": "blue"},
+            {"label": "Assigned to Carlos M.", "meta": "Jun 10, 2026 9:10 AM", "tone": "blue"},
+            {"label": "Status changed to In Progress", "meta": "Jun 10, 2026 9:30 AM", "tone": "blue"},
+            {"label": "Note added", "meta": "Jun 10, 2026 10:15 AM", "tone": "blue"},
+            {"label": "Picture added (3)", "meta": "Jun 10, 2026 10:20 AM", "tone": "blue"},
+        ]
+
+    @staticmethod
+    def _mock_report_payload():
+        return {
+            "status": "Ready to generate",
+            "title": "Maintenance Report & Invoice",
+            "subtitle": "WO-2026-0104",
+            "property": "3 Beds Apt, Vacation Home & Pool, G-101",
+            "date": "Jun 10, 2026",
+            "checks": [
+                "Work summary & diagnostics",
+                "Parts & labor breakdown",
+                "Photos & notes",
+                "Professional invoice layout",
+            ],
+        }
+
+    @staticmethod
+    def _priority_for_event(event):
+        if event.cost_amount >= Decimal("150"):
+            return "High"
+        if event.cost_amount >= Decimal("90"):
+            return "Medium"
+        return "Low"
+
+    @staticmethod
+    def _status_label(status):
+        labels = {
+            MaintenanceStatus.DRAFT: "Pending",
+            MaintenanceStatus.LOGGED: "Open",
+            MaintenanceStatus.SCHEDULED: "Open",
+            MaintenanceStatus.IN_PROGRESS: "In Progress",
+            MaintenanceStatus.COMPLETED: "Completed",
+            MaintenanceStatus.DOCUMENTED: "Completed",
+            MaintenanceStatus.BILLED: "Completed",
+            MaintenanceStatus.ARCHIVED: "Completed",
+        }
+        return labels.get(status, str(status).replace("_", " ").title())
+
+    @staticmethod
+    def _status_class(status):
+        return str(status).strip().lower().replace(" ", "-") or "open"
+
+
 class CustomersCRMService:
     """Service layer for the server-rendered Customers CRM page."""
 
