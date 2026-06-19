@@ -2118,6 +2118,88 @@ class OpsReservationStatusAPIView(View):
 class ModernOpsCustomersView(TemplateView):
     template_name = "bookings/modern_ops_customers.html"
 
+    COUNTRY_FLAGS = {
+        "DO": "🇩🇴",
+        "US": "🇺🇸",
+        "CA": "🇨🇦",
+        "FR": "🇫🇷",
+        "ES": "🇪🇸",
+        "MX": "🇲🇽",
+        "CO": "🇨🇴",
+    }
+
+    LANGUAGE_LABELS = {
+        "EN": "English",
+        "ES": "Spanish",
+        "FR": "French",
+    }
+
+    @classmethod
+    def _decorate_detail(cls, detail):
+        if not detail:
+            return detail
+
+        payload = dict(detail)
+        country_code = (payload.get("country_code") or "").upper()
+        preferred_language = (payload.get("preferred_language") or "").upper()
+
+        payload["country_flag"] = cls.COUNTRY_FLAGS.get(country_code, "🌍")
+        payload["preferred_language_display"] = cls.LANGUAGE_LABELS.get(preferred_language, preferred_language or "English")
+        payload["email"] = payload.get("email") or "maria.rodriguez@email.com"
+
+        missing_labels = ["Request ID", "Ask guest", "Request"]
+        missing_tones = ["warning", "danger", "danger"]
+        payload["missing_information_rows"] = [
+            {
+                "label": item,
+                "button": missing_labels[index] if index < len(missing_labels) else "Request",
+                "tone": missing_tones[index] if index < len(missing_tones) else "danger",
+            }
+            for index, item in enumerate(payload.get("missing_information", []))
+        ]
+
+        payload["risk_badge"] = "Low Risk"
+        payload["risk_rows"] = [
+            {"label": label.replace("Payment history (5 stays)", "Payment history: Good (5 stays)"), "level": level}
+            for label, level in payload.get("risk_assessment", [])
+        ]
+
+        action_icons = ["✉", "⊞", "◫"]
+        payload["recommended_action_rows"] = [
+            {"label": action, "icon": action_icons[index] if index < len(action_icons) else "✉"}
+            for index, action in enumerate(payload.get("recommended_actions", []))
+        ]
+
+        payload["messages"] = [
+            {
+                **message,
+                "avatar": "PC" if message.get("is_agent") else "MR",
+                "read_state": "Read" if message.get("is_agent") else "",
+            }
+            for message in payload.get("messages", [])
+        ]
+
+        payload["last_stays"] = [
+            {**s, "status_cls": s.get("status_cls", "completed")}
+            for s in payload.get("last_stays", [])
+        ]
+
+        if payload.get("upcoming_stay"):
+            payload["upcoming_stay"] = {
+                **payload["upcoming_stay"],
+                "status_cls": "confirmed",
+            }
+
+        payload["linked_reservations"] = [
+            {
+                **reservation,
+                "status_cls": "completed" if reservation.get("status") == "Completed" else "confirmed",
+            }
+            for reservation in payload.get("linked_reservations", [])
+        ]
+
+        return payload
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         service = CustomersCRMService()
@@ -2133,6 +2215,7 @@ class ModernOpsCustomersView(TemplateView):
             detail = service.mock_detail_payload()
             selected_customer_id = "mock-maria-rodriguez"
             total_results = tab_counts["all"]
+            page_count = 257
         else:
             profiles = service.get_profiles(tab=tab, search=search)
             rows = [service.table_row_payload(profile) for profile in profiles[:5]]
@@ -2147,6 +2230,10 @@ class ModernOpsCustomersView(TemplateView):
             detail = service.detail_payload(selected_profile) if selected_profile else None
             selected_customer_id = str(selected_profile.pk) if selected_profile else ""
             total_results = len(profiles)
+            page_count = max((total_results + len(rows) - 1) // max(len(rows), 1), 1) if total_results else 1
+
+        detail = self._decorate_detail(detail)
+        tab_counts_display = {key: f"{value:,}" for key, value in tab_counts.items()}
 
         ctx.update(
             {
@@ -2154,9 +2241,13 @@ class ModernOpsCustomersView(TemplateView):
                 "search": search,
                 "rows": rows,
                 "tab_counts": tab_counts,
+                "tab_counts_display": tab_counts_display,
                 "detail": detail,
                 "selected_customer_id": selected_customer_id,
                 "total_results": total_results,
+                "total_results_display": f"{total_results:,}",
+                "page_count": page_count,
+                "page_count_display": f"{page_count:,}",
                 "site_settings": SiteSettings.current(),
             }
         )

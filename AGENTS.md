@@ -133,6 +133,36 @@
 - Use the Django database as the maintenance source of truth, and export maintenance records/photos/document payloads through the Drive-backed JSON/JSONL data-store contract. Do not make Drive JSON files the live transaction database.
 - Cleaning is a maintenance work type, not a separate ad hoc workflow, unless a later design explicitly creates a separate cleaning lifecycle.
 
+## Ops Page Building Pattern
+
+Follow this pattern when building or extending any ops page (Customers, Properties, Guests, Reservations, or any future `/ops/*` route). **Reservations is the next page being built after Properties and Guests.**
+
+### File roles
+- **`bookings/views.py`** — add a CBV (TemplateView) protected by `@method_decorator(ops_staff_required, name="dispatch")`. The view calls the service, decorates the payload, and passes context to the template. Business rules live here, not in the template.
+- **`bookings/services.py`** — add a dedicated service class (e.g. `CustomersCRMService`, `ReservationsCRMService`). Expose `mock_*` methods that return hard-coded sensible data while real DB queries are not yet wired, and real `table_row_payload` / `detail_payload` methods once models carry the data.
+- **`bookings/templates/bookings/modern_ops_<page>.html`** — one template per page; extends `bookings/base_ops.html` and imports a single scoped CSS file with a versioned query-string (`?v=<page>-vN`).
+- **`bookings/static/frontend/modern-dashboard/assets/ops-<page>.css`** — all styles for that page, namespaced with a page-specific BEM prefix (e.g. `.ops-cx-*` for Customers, `.ops-rsv-*` for Reservations, `.ops-gst-*` for Guests) to prevent bleed across pages.
+
+### CSS discipline
+- Bump the version suffix (`?v=<page>-vN` → `vN+1`) on the CSS `<link>` in the template every time the CSS file changes to force a hard browser refresh.
+- Use `table-layout: fixed` with a `<colgroup>` block (inline `style="width:..."` on each `<col>`) for all ops tables — this is the only reliable way to pin column widths across browsers. CSS-only `thead th` width rules can silently lose to `table-layout: auto` fallback.
+- Use `display: flex` (not grid) on the main layout container when the sidebar needs a smooth `flex-basis` width transition.
+
+### Sidebar (FairAgent) pattern
+- Layout: `display: flex; gap: 16px` on `.ops-<page>-layout`. Main column: `flex: 1; min-width: 0`. Sidebar: `flex: 0 0 44px` (collapsed) / `flex: 0 0 320px` (open), with `transition: flex-basis 0.25s ease, width 0.25s ease`.
+- Default state: collapsed (44px strip showing only the ✦ icon). Never open by default — the IntersectionObserver approach causes always-open bugs when the target card is always in the viewport.
+- JS triggers: `mouseenter` opens, `mouseleave` closes (unless pinned). A specific element click (e.g. a Messages tab or compose input) sets `isPinned = true`; a `document` click outside the sidebar sets `isPinned = false` and closes. Use `e.stopPropagation()` on pinning triggers to prevent the document handler from immediately unpinning them.
+
+### Collapsible sections pattern
+- Use native `<details>`/`<summary>` — no JS needed. Default closed (`<details>`); add the `open` attribute for sections that should start expanded.
+- Summary layout: `display: flex; justify-content: space-between` with a chevron `▾` that rotates 180° via `details[open] .chevron { transform: rotate(180deg) }`.
+- Scrollable body: wrap list content in a `<div class="...scroll">` inside `<details>` with `max-height: Xpx; overflow-y: auto; scrollbar-width: thin`.
+
+### Commit discipline
+- Commit once each major artifact is complete and verified: view, template, CSS, and service are each a natural commit boundary.
+- Commit message format: `ops/<page>: <what was done>` (e.g. `ops/customers: add collapsible Last Stays and Linked Reservations`).
+- Push after each page reaches a stable, visually verified state. Do not accumulate multiple pages' work in one push.
+
 ## Calendar Operations
 
 - The business calendar is managed from `BookableItem` admin via the custom calendar view, not from the legacy feed-setup page.

@@ -3706,6 +3706,8 @@ class CustomersCRMService:
                 status="VIP",
                 status_cls="vip",
                 last_contact_label="Jun 5, 2026",
+                avatar_cls="a1",
+                contact_icon="✉",
             ),
             self._mock_row(
                 row_id="mock-john-smith",
@@ -3720,6 +3722,8 @@ class CustomersCRMService:
                 status="Repeat",
                 status_cls="repeat",
                 last_contact_label="Jun 4, 2026",
+                avatar_cls="a2",
+                contact_icon="💬",
             ),
             self._mock_row(
                 row_id="mock-ana-lopez",
@@ -3734,6 +3738,8 @@ class CustomersCRMService:
                 status="New",
                 status_cls="new",
                 last_contact_label="Jun 3, 2026",
+                avatar_cls="a3",
+                contact_icon="✉",
             ),
             self._mock_row(
                 row_id="mock-david-brown",
@@ -3748,6 +3754,8 @@ class CustomersCRMService:
                 status="Repeat",
                 status_cls="repeat",
                 last_contact_label="Jun 2, 2026",
+                avatar_cls="a4",
+                contact_icon="📞",
             ),
             self._mock_row(
                 row_id="mock-sophie-martin",
@@ -3762,6 +3770,8 @@ class CustomersCRMService:
                 status="VIP",
                 status_cls="vip",
                 last_contact_label="Jun 1, 2026",
+                avatar_cls="a5",
+                contact_icon="✉",
             ),
         ]
 
@@ -3801,12 +3811,43 @@ class CustomersCRMService:
                     "is_agent": False,
                 },
             ],
-            "last_stay": {
-                "label": "3 Beds Apt, Vacation Home & Pool, G-101",
-                "date_range": "Jun 8 - Jun 12, 2026",
-                "amount": "$1,250.00 USD",
-                "status": "Completed",
-            },
+            "last_stays": [
+                {
+                    "label": "3 Beds Apt, Vacation Home & Pool, G-101",
+                    "date_range": "Jun 8 – Jun 12, 2026",
+                    "amount": "$1,250.00 USD",
+                    "status": "Completed",
+                    "status_cls": "completed",
+                },
+                {
+                    "label": "2 Beds Apt, Vacation Home & Pool, B-204",
+                    "date_range": "Mar 14 – Mar 18, 2026",
+                    "amount": "$880.00 USD",
+                    "status": "Completed",
+                    "status_cls": "completed",
+                },
+                {
+                    "label": "Studio, Beachfront View, A-07",
+                    "date_range": "Nov 2 – Nov 5, 2025",
+                    "amount": "$620.00 USD",
+                    "status": "Completed",
+                    "status_cls": "completed",
+                },
+                {
+                    "label": "3 Beds Apt, Vacation Home & Pool, G-101",
+                    "date_range": "Aug 10 – Aug 14, 2025",
+                    "amount": "$1,100.00 USD",
+                    "status": "Completed",
+                    "status_cls": "completed",
+                },
+                {
+                    "label": "2 Beds Apt, Vacation Home & Pool, B-204",
+                    "date_range": "May 22 – May 25, 2025",
+                    "amount": "$750.00 USD",
+                    "status": "Completed",
+                    "status_cls": "completed",
+                },
+            ],
             "upcoming_stay": {
                 "label": "2 Beds Apt, Vacation Home & Pool",
                 "date_range": "Jun 20 - Jun 24, 2026",
@@ -3828,16 +3869,23 @@ class CustomersCRMService:
             "recommended_actions": ["Send check-in instructions", "Share local guide", "Offer airport pickup"],
         }
 
+    _COUNTRY_FLAGS = {
+        "DO": "🇩🇴", "US": "🇺🇸", "CA": "🇨🇦", "FR": "🇫🇷",
+        "ES": "🇪🇸", "MX": "🇲🇽", "CO": "🇨🇴",
+    }
+
     @staticmethod
-    def _mock_row(row_id, name, email, country, country_code, channel, channel_cls, past_stays, total_spend, status, status_cls, last_contact_label):
+    def _mock_row(row_id, name, email, country, country_code, channel, channel_cls, past_stays, total_spend, status, status_cls, last_contact_label, avatar_cls="a1", contact_icon="✉"):
         return {
             "id": row_id,
             "name": name,
             "email": email,
             "phone": "",
             "avatar": "".join([part[0] for part in name.split()[:2]]).upper(),
+            "avatar_cls": avatar_cls,
             "country": country,
             "country_code": country_code,
+            "country_flag": CustomersCRMService._COUNTRY_FLAGS.get(country_code, "🌍"),
             "channel": channel,
             "channel_cls": channel_cls,
             "past_stays": past_stays,
@@ -3846,6 +3894,7 @@ class CustomersCRMService:
             "status_cls": status_cls,
             "last_contact": timezone.now(),
             "last_contact_label": last_contact_label,
+            "contact_icon": contact_icon,
             "segment": ClientSegment.VIP if status == "VIP" else ClientSegment.AVERAGE,
             "is_mock": True,
         }
@@ -3858,14 +3907,17 @@ class CustomersCRMService:
     def table_row_payload(self, profile):
         total_res = self._total_reservations(profile)
         status_label, status_cls = self._status_badge(profile)
+        country_code = self._country_code(profile)
         return {
             "id": profile.pk,
             "name": profile.name or profile.email or f"Customer {profile.pk}",
             "email": profile.email,
             "phone": profile.phone,
             "avatar": self._avatar(profile),
+            "avatar_cls": "a1",
             "country": self._country(profile),
-            "country_code": self._country_code(profile),
+            "country_code": country_code,
+            "country_flag": self._COUNTRY_FLAGS.get(country_code, "🌍"),
             "channel": profile.get_source_display(),
             "channel_cls": self._channel_cls(profile),
             "past_stays": total_res,
@@ -3874,6 +3926,7 @@ class CustomersCRMService:
             "status_cls": status_cls,
             "last_contact": profile.updated_at,
             "last_contact_label": profile.updated_at.strftime("%b %-d, %Y"),
+            "contact_icon": "✉",
             "segment": profile.segment,
             "is_mock": False,
         }
@@ -3886,8 +3939,10 @@ class CustomersCRMService:
             "email": "maria.rodriguez@mladis.com",
             "phone": "+1 (809) 555-0198",
             "avatar": "MR",
+            "avatar_cls": "a1",
             "country": "Dominican Republic",
             "country_code": "DO",
+            "country_flag": "🇩🇴",
             "channel": "Direct Website",
             "channel_cls": "direct",
             "past_stays": 5,
@@ -3896,6 +3951,7 @@ class CustomersCRMService:
             "status_cls": "vip",
             "last_contact": timezone.now(),
             "last_contact_label": "Jun 5, 2026",
+            "contact_icon": "✉",
             "segment": ClientSegment.VIP,
             "is_mock": True,
         }

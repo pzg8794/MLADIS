@@ -4,7 +4,7 @@
 {% block title %}Customers CRM · MLADIS{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-customers.css' %}?v=ops-customers-v1">
+<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-customers.css' %}?v=ops-customers-v14">
 {% endblock %}
 
 {% block content %}
@@ -21,12 +21,12 @@
     </div>
   </header>
 
-  <nav class="ops-cx-tabs" role="tablist" aria-label="Customer segments">
-    <a class="ops-cx-tab{% if tab == 'all' %} is-active{% endif %}" href="?tab=all{% if search %}&search={{ search|urlencode }}{% endif %}">All <span class="ops-cx-tab-badge">{{ tab_counts.all }}</span></a>
-    <a class="ops-cx-tab{% if tab == 'repeat' %} is-active{% endif %}" href="?tab=repeat{% if search %}&search={{ search|urlencode }}{% endif %}">Repeat Guests <span class="ops-cx-tab-badge">{{ tab_counts.repeat }}</span></a>
-    <a class="ops-cx-tab{% if tab == 'vip' %} is-active{% endif %}" href="?tab=vip{% if search %}&search={{ search|urlencode }}{% endif %}">VIP <span class="ops-cx-tab-badge">{{ tab_counts.vip }}</span></a>
-    <a class="ops-cx-tab{% if tab == 'new' %} is-active{% endif %}" href="?tab=new{% if search %}&search={{ search|urlencode }}{% endif %}">New <span class="ops-cx-tab-badge">{{ tab_counts.new }}</span></a>
-    <a class="ops-cx-tab{% if tab == 'blocked' %} is-active{% endif %}" href="?tab=blocked{% if search %}&search={{ search|urlencode }}{% endif %}">Blocked <span class="ops-cx-tab-badge">{{ tab_counts.blocked }}</span></a>
+  <nav class="ops-cx-tabs" aria-label="Customer segments">
+    <a class="ops-cx-tab{% if tab == 'all' %} is-active{% endif %}" href="?tab=all{% if search %}&search={{ search|urlencode }}{% endif %}">All <span class="ops-cx-tab-badge">{{ tab_counts_display.all }}</span></a>
+    <a class="ops-cx-tab{% if tab == 'repeat' %} is-active{% endif %}" href="?tab=repeat{% if search %}&search={{ search|urlencode }}{% endif %}">Repeat Guests <span class="ops-cx-tab-badge">{{ tab_counts_display.repeat }}</span></a>
+    <a class="ops-cx-tab{% if tab == 'vip' %} is-active{% endif %}" href="?tab=vip{% if search %}&search={{ search|urlencode }}{% endif %}">VIP <span class="ops-cx-tab-badge">{{ tab_counts_display.vip }}</span></a>
+    <a class="ops-cx-tab{% if tab == 'new' %} is-active{% endif %}" href="?tab=new{% if search %}&search={{ search|urlencode }}{% endif %}">New <span class="ops-cx-tab-badge">{{ tab_counts_display.new }}</span></a>
+    <a class="ops-cx-tab{% if tab == 'blocked' %} is-active{% endif %}" href="?tab=blocked{% if search %}&search={{ search|urlencode }}{% endif %}">Blocked <span class="ops-cx-tab-badge">{{ tab_counts_display.blocked }}</span></a>
   </nav>
 
   <form class="ops-cx-filters" method="get" action="">
@@ -37,49 +37,73 @@
     <label class="ops-cx-search" aria-label="Search guests">
       <span>⌕</span>
       <input type="text" name="search" value="{{ search }}" placeholder="Search guests by name, email, phone, or reservation...">
+      <kbd class="ops-cx-search-kbd">⌘ F</kbd>
     </label>
-    <select class="ops-cx-select" name="channel" aria-label="Source or channel">
-      <option value="">All channels</option>
-      <option>Direct booking</option>
-      <option>Airbnb</option>
-      <option>Social login</option>
-      <option>Manual entry</option>
-    </select>
-    <select class="ops-cx-select" name="country" aria-label="Country">
-      <option value="">All countries</option>
-      <option>Dominican Republic</option>
-      <option>United States</option>
-      <option>Canada</option>
-    </select>
-    <select class="ops-cx-select" name="tags" aria-label="Tags">
-      <option value="">All tags</option>
-      <option>VIP</option>
-      <option>Repeat</option>
-      <option>Needs review</option>
-    </select>
+    <div class="ops-cx-filter-group">
+      <span class="ops-cx-filter-label">Source / Channel</span>
+      <select class="ops-cx-select" name="channel" aria-label="Source or channel">
+        <option value="">All channels</option>
+        <option>Direct booking</option>
+        <option>Airbnb</option>
+        <option>Social login</option>
+        <option>Manual entry</option>
+      </select>
+    </div>
+    <div class="ops-cx-filter-group">
+      <span class="ops-cx-filter-label">Country</span>
+      <select class="ops-cx-select" name="country" aria-label="Country">
+        <option value="">All countries</option>
+        <option>Dominican Republic</option>
+        <option>United States</option>
+        <option>Canada</option>
+      </select>
+    </div>
+    <div class="ops-cx-filter-group">
+      <span class="ops-cx-filter-label">Tags</span>
+      <select class="ops-cx-select" name="tags" aria-label="Tags">
+        <option value="">All tags</option>
+        <option>VIP</option>
+        <option>Repeat</option>
+        <option>Needs review</option>
+      </select>
+    </div>
     <button class="ops-cx-btn" type="submit">More filters</button>
   </form>
 
-  <section class="ops-cx-grid-top" aria-label="Customer table and AI sidebar">
-    <div class="ops-cx-table-shell">
+  <section class="ops-cx-layout" aria-label="Customers CRM content">
+    <div class="ops-cx-main-column">
+      <section class="ops-cx-grid-top" aria-label="Customer table">
+        <div class="ops-cx-table-shell">
       <table class="ops-cx-table">
+        <colgroup>
+          <col style="width:36px">
+          <col><!-- Guest: auto, gets remainder -->
+          <col style="width:16%">
+          <col style="width:12%">
+          <col style="width:8%">
+          <col style="width:10%">
+          <col style="width:8%">
+          <col style="width:24%">
+        </colgroup>
         <thead>
           <tr>
+            <th class="ops-cx-th-check"><input type="checkbox" class="ops-cx-check-all" aria-label="Select all guests"></th>
             <th>Guest</th>
             <th>Country</th>
             <th>Channel</th>
             <th>Past stays</th>
             <th>Total spend</th>
             <th>Status</th>
-            <th>Last contact</th>
+            <th class="ops-cx-th-last">Last contact</th>
           </tr>
         </thead>
         <tbody>
           {% for row in rows %}
             <tr class="ops-cx-row{% if row.id|stringformat:'s' == selected_customer_id %} is-selected{% endif %}{% if row.is_mock %} is-mock{% endif %}"{% if not row.is_mock %} onclick="window.location='?tab={{ tab }}&customer={{ row.id }}{% if search %}&search={{ search|urlencode }}{% endif %}'"{% endif %}>
+              <td class="ops-cx-td-check"><input type="checkbox" class="ops-cx-check" aria-label="Select {{ row.name }}"></td>
               <td>
                 <div class="ops-cx-guest">
-                  <span class="ops-cx-avatar">{{ row.avatar }}</span>
+                  <span class="ops-cx-avatar ops-cx-avatar--{{ row.avatar_cls }}">{{ row.avatar }}</span>
                   <div>
                     <p class="ops-cx-guest-name">{{ row.name }}</p>
                     <p class="ops-cx-guest-email">{{ row.email|default:'No email' }}</p>
@@ -87,7 +111,7 @@
                 </div>
               </td>
               <td>
-                <span class="ops-cx-country"><span class="ops-cx-country-code">{{ row.country_code }}</span> {{ row.country }}</span>
+                <span class="ops-cx-country">{{ row.country_flag }} {{ row.country }}</span>
               </td>
               <td>
                 <span class="ops-cx-pill ops-cx-pill--channel-{{ row.channel_cls }}">{{ row.channel }}</span>
@@ -97,101 +121,97 @@
               <td>
                 <span class="ops-cx-pill ops-cx-pill--status-{{ row.status_cls }}">{{ row.status }}</span>
               </td>
-              <td>{{ row.last_contact_label }}</td>
+              <td>
+                <div class="ops-cx-lc-cell">
+                  <span class="ops-cx-lc-date">{{ row.last_contact_label }}</span>
+                  <span class="ops-cx-lc-icon">{{ row.contact_icon }}</span>
+                  <button class="ops-cx-row-menu" type="button" aria-label="More actions for {{ row.name }}">⋮</button>
+                </div>
+              </td>
             </tr>
           {% empty %}
             <tr>
-              <td colspan="7">No customers found for this filter.</td>
+              <td colspan="8">No customers found for this filter.</td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
-      <footer class="ops-cx-footer">Showing {{ rows|length }} of {{ total_results }} result{{ total_results|pluralize }}.</footer>
-    </div>
-
-    <aside class="ops-cx-agent" aria-label="FairAgent assistant">
-      <h3>FairAgent</h3>
-      <div>
-        <h4>Suggested Reply</h4>
-        <div class="ops-cx-agent-note">
-          Hi {{ detail.display_name|default:'guest' }}. Early check-in is available for your upcoming stay on Jun 20. Your apartment will be ready by 1:00 PM. Let us know if you need transport or local recommendations!
-        </div>
+      <footer class="ops-cx-footer">Showing 1 to {{ rows|length }} of {{ total_results_display }} result{{ total_results|pluralize }}.</footer>
+      <div class="ops-cx-pagination" aria-label="Pagination">
+        <button type="button" class="ops-cx-page-btn" aria-label="Previous page">&lsaquo;</button>
+        <button type="button" class="ops-cx-page-btn is-active">1</button>
+        <button type="button" class="ops-cx-page-btn">2</button>
+        <button type="button" class="ops-cx-page-btn">3</button>
+        <span class="ops-cx-page-ellipsis">...</span>
+        <button type="button" class="ops-cx-page-btn">{{ page_count_display }}</button>
+        <button type="button" class="ops-cx-page-btn" aria-label="Next page">&rsaquo;</button>
       </div>
-      <button class="ops-cx-action-btn" type="button">Use this reply</button>
-
-      <div>
-        <h4>Missing Information</h4>
-        <div class="ops-cx-list">
-          {% for item in detail.missing_information %}
-            <div class="ops-cx-list-row"><span>{{ item }}</span><button class="ops-cx-btn" type="button">Request</button></div>
-          {% endfor %}
         </div>
-      </div>
+      </section>
 
-      <div>
-        <h4>Risk Assessment</h4>
-        <div class="ops-cx-list">
-          {% for label, level in detail.risk_assessment %}
-            <div class="ops-cx-list-row"><span class="ops-cx-risk-{{ level }}">{{ label }}</span></div>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div>
-        <h4>Recommended Actions</h4>
-        <div class="ops-cx-list">
-          {% for action in detail.recommended_actions %}
-            <div class="ops-cx-list-row"><span>{{ action }}</span></div>
-          {% endfor %}
-        </div>
-      </div>
-    </aside>
-  </section>
-
-  {% if detail %}
-    <section class="ops-cx-grid-bottom" aria-label="Selected customer details">
-      <article class="ops-cx-card">
-        <div class="ops-cx-profile-head">
+      {% if detail %}
+      <section class="ops-cx-grid-bottom" aria-label="Selected customer details">
+      <article class="ops-cx-card ops-cx-card--profile">
+        <div class="ops-cx-profile-head ops-cx-profile-head--rich">
           <span class="ops-cx-avatar">{{ detail.avatar }}</span>
-          <div>
-            <h3>{{ detail.display_name }}</h3>
-            <p>{{ detail.country_code }} · {{ detail.country }} · {{ detail.phone }}</p>
+          <div class="ops-cx-profile-stack">
+            <div class="ops-cx-profile-title-row">
+              <h3>{{ detail.display_name }}</h3>
+              <span class="ops-cx-pill ops-cx-pill--status-vip ops-cx-pill--vip-guest">✧ {{ detail.status_label }}</span>
+            </div>
+            <p>{{ detail.email }} <span class="ops-cx-inline-sep">•</span> {{ detail.phone }}</p>
           </div>
         </div>
 
-        <div class="ops-cx-tags">
-          {% for tag in detail.tags %}
-            <span class="ops-cx-tag">{{ tag }}</span>
-          {% endfor %}
-        </div>
+        <p class="ops-cx-profile-country"><span>{{ detail.country_flag }}</span> {{ detail.country }}</p>
 
-        <div class="ops-cx-profile-meta">
-          <div class="ops-cx-meta-row"><span>Preferred language</span><strong>{{ detail.preferred_language }}</strong></div>
+        <a class="ops-cx-profile-link" href="#">↗ View full profile</a>
+
+        <div class="ops-cx-profile-meta ops-cx-profile-meta--compact">
+          <div class="ops-cx-meta-row"><span>Preferred language</span><strong>{{ detail.preferred_language_display }}</strong></div>
           <div class="ops-cx-meta-row"><span>Birthday</span><strong>{{ detail.birthday }}</strong></div>
           <div class="ops-cx-meta-row"><span>Travel style</span><strong>{{ detail.travel_style }}</strong></div>
           <div class="ops-cx-meta-row"><span>Guest since</span><strong>{{ detail.guest_since }}</strong></div>
-          <div class="ops-cx-meta-row"><span>Status</span><span class="ops-cx-pill ops-cx-pill--status-{{ detail.status_cls }}">{{ detail.status_label }}</span></div>
+          <div class="ops-cx-meta-row ops-cx-meta-row--tags"><span>Tags</span>
+            <div class="ops-cx-tags">
+          {% for tag in detail.tags %}
+            <span class="ops-cx-tag">{{ tag }}</span>
+          {% endfor %}
+              <button class="ops-cx-tag ops-cx-tag--button" type="button">+ Add tag</button>
+            </div>
+          </div>
         </div>
 
-        <p class="ops-cx-notes">{{ detail.notes }}</p>
+        <div class="ops-cx-notes-block">
+          <strong>Notes</strong>
+          <p class="ops-cx-notes">{{ detail.notes }}</p>
+          <button class="ops-cx-note-edit" type="button" aria-label="Edit note">✎</button>
+        </div>
       </article>
 
-      <article class="ops-cx-card">
+      <article class="ops-cx-card ops-cx-card--messages">
         <div class="ops-cx-msg-tabs">
-          <strong>Messages</strong>
-          <span>Documents</span>
-          <span>Payments</span>
-          <span>Activity</span>
+          <strong data-tab="messages">Messages</strong>
+          <span data-tab="documents">Documents</span>
+          <span data-tab="payments">Payments</span>
+          <span data-tab="deposits">Deposits</span>
+          <span data-tab="activity">Activity</span>
         </div>
 
         <div class="ops-cx-thread">
           {% for message in detail.messages %}
-            <div class="ops-cx-bubble{% if message.is_agent %} is-agent{% endif %}">
-              <div class="ops-cx-bubble-head">
-                <span>{{ message.author }}</span>
-                <span>{{ message.time }}</span>
+            <div class="ops-cx-message{% if message.is_agent %} is-agent{% endif %}">
+              <span class="ops-cx-message-avatar">{{ message.avatar }}</span>
+              <div class="ops-cx-bubble{% if message.is_agent %} is-agent{% endif %}">
+                <div class="ops-cx-bubble-head">
+                  <span>{{ message.author }}</span>
+                  <span>{{ message.time }}</span>
+                </div>
+                <p>{{ message.body }}</p>
+                {% if message.read_state %}
+                  <div class="ops-cx-bubble-read">✓ {{ message.read_state }}</div>
+                {% endif %}
               </div>
-              <p>{{ message.body }}</p>
             </div>
           {% endfor %}
         </div>
@@ -199,51 +219,202 @@
         <form class="ops-cx-compose" action="" method="post">
           {% csrf_token %}
           <input type="text" placeholder="Type your message..." aria-label="Compose message">
-          <button type="button">Send</button>
+          <div class="ops-cx-compose-bar">
+            <div class="ops-cx-compose-tools">
+              <button type="button" aria-label="Attach file">⌘</button>
+              <button type="button" aria-label="Insert emoji">☺</button>
+              <button type="button" aria-label="More options">◌</button>
+            </div>
+            <div class="ops-cx-send-group">
+              <button type="button" class="ops-cx-send-main">Send</button>
+              <button type="button" class="ops-cx-send-caret" aria-label="More send options">⌄</button>
+            </div>
+          </div>
         </form>
       </article>
 
-      <article class="ops-cx-card ops-cx-stay-block">
-        <div>
-          <h4>Last Stay</h4>
-          {% if detail.last_stay %}
-            <div class="ops-cx-stay-card">
-              <h4>{{ detail.last_stay.label }}</h4>
-              <p>{{ detail.last_stay.date_range }}</p>
-              <p>{{ detail.last_stay.amount }} · {{ detail.last_stay.status }}</p>
-            </div>
-          {% else %}
-            <p>No stay history.</p>
-          {% endif %}
-        </div>
+      <article class="ops-cx-card ops-cx-stay-block ops-cx-card--stays">
+        <details class="ops-cx-collapse ops-cx-stay-panel">
+          <summary class="ops-cx-collapse-head">
+            <h4>Last Stays</h4>
+            <span class="ops-cx-collapse-chevron">&#9660;</span>
+          </summary>
+          <div class="ops-cx-collapse-body ops-cx-stays-scroll">
+            {% for stay in detail.last_stays %}
+              <div class="ops-cx-stay-card">
+                <div class="ops-cx-stay-row-head">
+                  <strong>{{ stay.date_range }}</strong>
+                  <span class="ops-cx-stay-status ops-cx-stay-status--{{ stay.status_cls }}">{{ stay.status }}</span>
+                </div>
+                <h4>{{ stay.label }}</h4>
+                <p>{{ stay.amount }}</p>
+              </div>
+            {% empty %}
+              <p>No stay history.</p>
+            {% endfor %}
+          </div>
+        </details>
 
-        <div>
+        <div class="ops-cx-stay-panel">
           <h4>Upcoming Stay</h4>
           {% if detail.upcoming_stay %}
             <div class="ops-cx-stay-card">
+              <div class="ops-cx-stay-row-head">
+                <strong>{{ detail.upcoming_stay.date_range }}</strong>
+                <span class="ops-cx-stay-status ops-cx-stay-status--{{ detail.upcoming_stay.status_cls }}">{{ detail.upcoming_stay.status }}</span>
+              </div>
               <h4>{{ detail.upcoming_stay.label }}</h4>
-              <p>{{ detail.upcoming_stay.date_range }}</p>
-              <p>{{ detail.upcoming_stay.amount }} · {{ detail.upcoming_stay.status }}</p>
+              <p>{{ detail.upcoming_stay.amount }}</p>
             </div>
           {% else %}
             <p>No upcoming stay.</p>
           {% endif %}
         </div>
 
-        <div class="ops-cx-linked">
-          <h4>Linked Reservations</h4>
-          {% for reservation in detail.linked_reservations %}
-            <div class="ops-cx-linked-row">
-              <strong>{{ reservation.request_key }}</strong>
-              <span>{{ reservation.date_range }}</span>
-              <span>{{ reservation.amount }}</span>
+        <details class="ops-cx-collapse ops-cx-linked" open>
+          <summary class="ops-cx-collapse-head">
+            <h4>Linked Reservations</h4>
+            <span class="ops-cx-collapse-chevron">&#9660;</span>
+          </summary>
+          <div class="ops-cx-collapse-body ops-cx-linked-scroll">
+            {% for reservation in detail.linked_reservations %}
+              <div class="ops-cx-linked-row">
+                <strong>{{ reservation.request_key }}</strong>
+                <span>{{ reservation.date_range }}</span>
+                <span>{{ reservation.amount }}</span>
+                <span class="ops-cx-stay-status ops-cx-stay-status--{{ reservation.status_cls }}">{{ reservation.status }}</span>
+              </div>
+            {% empty %}
+              <p>No linked reservations.</p>
+            {% endfor %}
+          </div>
+          <a href="#" class="ops-cx-inline-link">View all reservations &#8599;</a>
+        </details>
+      </article>
+      </section>
+      {% endif %}
+    </div>
+
+    {% if detail %}
+    <aside class="ops-cx-agent ops-cx-agent--sidebar" aria-label="FairAgent assistant" title="Hover to open FairAgent">
+      <div class="ops-cx-agent-head">
+        <span class="ops-cx-agent-icon" aria-hidden="true">✦</span>
+        <div class="ops-cx-agent-title-group">
+          <h3>FairAgent</h3>
+          <p class="ops-cx-agent-subtitle">AI Assistant</p>
+        </div>
+        <span class="ops-cx-agent-beta">Beta</span>
+      </div>
+
+      <div class="ops-cx-agent-body">
+        <h4>Suggested Reply</h4>
+        <div class="ops-cx-agent-note">
+          Hi Maria! Early check-in is available for your upcoming stay on Jun 20. Your apartment will be ready by 1:00 PM. Let us know if you need transport or local recommendations!
+        </div>
+      </div>
+
+      <div class="ops-cx-agent-actions-row">
+        <button class="ops-cx-action-btn" type="button">Use this reply</button>
+        <button class="ops-cx-btn ops-cx-btn--link" type="button">Customize</button>
+      </div>
+
+      <section class="ops-cx-side-block">
+        <h4>Missing Information</h4>
+        <div class="ops-cx-list">
+          {% for item in detail.missing_information_rows %}
+            <div class="ops-cx-list-row ops-cx-list-row--plain">
+              <span class="ops-cx-item-label"><span class="ops-cx-item-dot ops-cx-item-dot--{{ item.tone }}"></span>{{ item.label }}</span>
+              <button class="ops-cx-inline-btn" type="button">{{ item.button }}</button>
             </div>
-          {% empty %}
-            <p>No linked reservations.</p>
           {% endfor %}
         </div>
-      </article>
-    </section>
-  {% endif %}
+      </section>
+
+      <section class="ops-cx-side-block">
+        <div class="ops-cx-side-head">
+          <h4>Risk Assessment</h4>
+          <span class="ops-cx-stay-status ops-cx-stay-status--completed">{{ detail.risk_badge }}</span>
+        </div>
+        <div class="ops-cx-list">
+          {% for item in detail.risk_rows %}
+            <div class="ops-cx-list-row ops-cx-list-row--plain">
+              <span class="ops-cx-item-label"><span class="ops-cx-item-check">✓</span>{{ item.label }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="ops-cx-side-block">
+        <h4>Recommended Actions</h4>
+        <div class="ops-cx-action-stack">
+          {% for action in detail.recommended_action_rows %}
+            <button class="ops-cx-reco-btn" type="button"><span>{{ action.icon }}</span>{{ action.label }}</button>
+          {% endfor %}
+        </div>
+      </section>
+
+      <div class="ops-cx-send-panel">
+        <button class="ops-cx-action-btn" type="button">Send message</button>
+        <button class="ops-cx-send-caret ops-cx-send-caret--panel" type="button" aria-label="More send actions">⌄</button>
+      </div>
+    </aside>
+    {% endif %}
+  </section>
 </main>
+
+<script>
+(function () {
+  var sidebar = document.querySelector('.ops-cx-agent--sidebar');
+  if (!sidebar) return;
+
+  var isPinned = false;
+
+  function pin()   { isPinned = true;  openSidebar(); }
+  function unpin() { isPinned = false; closeSidebar(); }
+
+  function openSidebar() {
+    sidebar.classList.add('agent-open');
+    sidebar.removeAttribute('title');
+  }
+
+  function closeSidebar() {
+    isPinned = false;
+    sidebar.classList.remove('agent-open');
+    sidebar.setAttribute('title', 'Hover to open FairAgent');
+  }
+
+  // Hover
+  sidebar.addEventListener('mouseenter', openSidebar);
+  sidebar.addEventListener('mouseleave', function () {
+    if (!isPinned) {
+      sidebar.classList.remove('agent-open');
+      sidebar.setAttribute('title', 'Hover to open FairAgent');
+    }
+  });
+
+  // Clicking the Messages tab pins it open
+  var messagesTab = document.querySelector('.ops-cx-msg-tabs [data-tab="messages"]');
+  if (messagesTab) {
+    messagesTab.addEventListener('click', function (e) {
+      e.stopPropagation();
+      pin();
+    });
+  }
+
+  // Clicking the "Type your message" input also pins it open
+  var msgInput = document.querySelector('.ops-cx-card--messages input[type="text"]');
+  if (msgInput) {
+    msgInput.addEventListener('click', function (e) {
+      e.stopPropagation();
+      pin();
+    });
+  }
+
+  // Clicking anywhere else on the page → unpin + close
+  document.addEventListener('click', function (e) {
+    if (sidebar.contains(e.target)) return;
+    unpin();
+  });
+}());
+</script>
 {% endblock %}
