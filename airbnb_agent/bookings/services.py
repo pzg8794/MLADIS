@@ -4142,3 +4142,308 @@ class CustomersCRMService:
         if profile.segment == ClientSegment.BLACKLISTED:
             actions = ["Require manual approval", "Request ID verification"]
         return actions
+
+
+class PaymentsTransactionsService:
+    """Service layer for the server-rendered Payments & Transactions page."""
+
+    def page_payload(self, selected_id=""):
+        rows = self._live_rows()
+        using_mock = not rows
+        if using_mock:
+            rows = self.mock_rows()
+
+        selected = next((row for row in rows if row["id"] == selected_id), rows[0] if rows else None)
+        detail = self._detail_payload(selected, using_mock=using_mock) if selected else None
+
+        return {
+            "summary_cards": self._summary_cards(using_mock=using_mock),
+            "rows": rows,
+            "detail": detail,
+            "selected_transaction_id": selected["id"] if selected else "",
+            "total_results": len(rows),
+            "total_results_display": f"{len(rows):,}",
+            "generated_at": timezone.now(),
+            "date_range_label": "Jun 6 – Jun 12, 2026" if using_mock else "Live ledger",
+        }
+
+    def _summary_cards(self, using_mock=False):
+        if using_mock:
+            return [
+                {"label": "Total Collected", "value": "$18,540", "trend": "+15% vs last 7 days", "tone": "green"},
+                {"label": "Pending Payments", "value": "$4,320", "trend": "-8% vs last 7 days", "tone": "blue"},
+                {"label": "Refunded", "value": "$620", "trend": "+5% vs last 7 days", "tone": "orange"},
+                {"label": "Payouts in Transit", "value": "$2,100", "trend": "2 payouts", "tone": "violet"},
+            ]
+
+        paid_total = Invoice.objects.filter(status=InvoiceStatus.PAID).aggregate(total=Sum("total_cents"))["total"] or 0
+        pending_total = Invoice.objects.filter(status__in=[InvoiceStatus.DRAFT, InvoiceStatus.SENT]).aggregate(total=Sum("total_cents"))["total"] or 0
+        refunded_total = DamageDeposit.objects.filter(status=DepositStatus.CANCELED).aggregate(total=Sum("amount_cents"))["total"] or 0
+        transit_total = ReservationPaymentHold.objects.filter(status=DepositStatus.REQUIRES_CAPTURE).aggregate(total=Sum("amount_cents"))["total"] or 0
+
+        return [
+            {"label": "Total Collected", "value": self._money(paid_total), "trend": f"{Invoice.objects.filter(status=InvoiceStatus.PAID).count()} paid invoices", "tone": "green"},
+            {"label": "Pending Payments", "value": self._money(pending_total), "trend": f"{Invoice.objects.filter(status__in=[InvoiceStatus.DRAFT, InvoiceStatus.SENT]).count()} open invoices", "tone": "blue"},
+            {"label": "Refunded", "value": self._money(refunded_total), "trend": f"{DamageDeposit.objects.filter(status=DepositStatus.CANCELED).count()} canceled deposits", "tone": "orange"},
+            {"label": "Payouts in Transit", "value": self._money(transit_total), "trend": f"{ReservationPaymentHold.objects.filter(status=DepositStatus.REQUIRES_CAPTURE).count()} authorized holds", "tone": "violet"},
+        ]
+
+    def _live_rows(self):
+        invoices = list(
+            Invoice.objects.select_related("inquiry__item", "customer_profile")
+            .order_by("-issue_date", "-created_at")[:10]
+        )
+        if not invoices:
+            return []
+
+        inquiry_ids = [invoice.inquiry_id for invoice in invoices if invoice.inquiry_id]
+        deposits = list(
+            DamageDeposit.objects.select_related("inquiry", "item")
+            .filter(inquiry_id__in=inquiry_ids)
+            .order_by("-created_at")
+        )
+        holds = list(
+            ReservationPaymentHold.objects.select_related("inquiry", "item")
+            .filter(inquiry_id__in=inquiry_ids)
+            .order_by("-created_at")
+        )
+
+        deposits_by_inquiry = {}
+        for deposit in deposits:
+            deposits_by_inquiry.setdefault(deposit.inquiry_id, []).append(deposit)
+
+        holds_by_inquiry = {}
+        for hold in holds:
+            holds_by_inquiry.setdefault(hold.inquiry_id, []).append(hold)
+
+        rows = []
+        for invoice in invoices:
+            inquiry = invoice.inquiry
+            invoice_deposits = deposits_by_inquiry.get(invoice.inquiry_id, [])
+            invoice_holds = holds_by_inquiry.get(invoice.inquiry_id, [])
+            primary_payment = invoice_holds[0] if invoice_holds else (invoice_deposits[0] if invoice_deposits else None)
+            rows.append(
+                {
+                    "id": f"invoice-{invoice.pk}",
+                    "transaction_id": invoice.invoice_number,
+                    "guest": invoice.recipient_name,
+                    "reservation": inquiry.request_key if inquiry else "—",
+                    "listing": inquiry.item.business_display_name if inquiry and inquiry.item else "Manual invoice",
+                    "channel": "Direct Website" if inquiry else "Manual Invoice",
+                    "method": self._payment_method_label(primary_payment),
+                    "date_label": invoice.issue_date.strftime("%b %-d, %Y") if invoice.issue_date else "—",
+                    "time_label": invoice.created_at.strftime("%-I:%M %p") if invoice.created_at else "—",
+                    "amount": invoice.display_total,
+                    "status": self._invoice_status_label(invoice),
+                    "status_cls": self._invoice_status_class(invoice),
+                    "invoice_icon": "↗",
+                    "invoice_url": reverse("bookings:invoice-print", args=[invoice.public_token]),
+                    "is_mock": False,
+                    "_invoice": invoice,
+                    "_deposits": invoice_deposits,
+                    "_holds": invoice_holds,
+                }
+            )
+        return rows
+
+    def mock_rows(self):
+        return [
+            self._mock_row("mock-txn-10541", "TXN-2026-10541", "Maria Rodriguez", "R-1042", "3 Beds Apt, G-101", "Direct Website", "VISA •••• 4242", "Jun 12, 2026", "9:30 AM", "$1,250.00", "Paid", "paid"),
+            self._mock_row("mock-txn-10540", "TXN-2026-10540", "John Smith", "R-1040", "2 Beds Apt, Pool", "Airbnb", "MC •••• 5655", "Jun 11, 2026", "4:15 PM", "$550.00", "Paid", "paid"),
+            self._mock_row("mock-txn-10539", "TXN-2026-10539", "Ana Lopez", "R-1039", "Meeting Room 1", "Corporate Booking", "ACH Transfer", "Jun 10, 2026", "11:20 AM", "$250.00", "Paid", "paid"),
+            self._mock_row("mock-txn-10538", "TXN-2026-10538", "David Brown", "R-1038", "6 Beds Apt, G-101", "Vrbo", "VISA •••• 1111", "Jun 9, 2026", "2:45 PM", "$2,100.00", "Settled", "settled"),
+            self._mock_row("mock-txn-10537", "TXN-2026-10537", "Sophie Martin", "R-1037", "3 Beds Apt, G-101", "Booking.com", "MC •••• 8888", "Jun 9, 2026", "10:05 AM", "$500.00", "Pending", "pending"),
+            self._mock_row("mock-txn-10536", "TXN-2026-10536", "Carlos Mendez", "R-1036", "2 Beds Apt, Pool", "Direct Website", "Amex •••• 1005", "Jun 8, 2026", "8:20 PM", "$1,320.00", "Paid", "paid"),
+            self._mock_row("mock-txn-10535", "TXN-2026-10535", "Emily Johnson", "R-1035", "Conference Room A", "Direct Website", "VISA •••• 4242", "Jun 8, 2026", "1:10 PM", "$180.00", "Refunded", "refunded"),
+            self._mock_row("mock-txn-10534", "TXN-2026-10534", "Michael Lee", "R-1034", "6 Beds Apt, Pool", "Airbnb", "MC •••• 2222", "Jun 7, 2026", "6:40 PM", "$2,350.00", "Paid", "paid"),
+            self._mock_row("mock-txn-10533", "TXN-2026-10533", "Laura Garcia", "R-1033", "3 Beds Apt, G-101", "Corporate Booking", "ACH Transfer", "Jun 7, 2026", "9:00 AM", "$300.00", "Pending", "pending"),
+            self._mock_row("mock-txn-10532", "TXN-2026-10532", "Robert Wilson", "R-1032", "2 Beds Apt, Pool", "Vrbo", "VISA •••• 9009", "Jun 6, 2026", "3:15 PM", "$720.00", "Paid", "paid"),
+        ]
+
+    def _detail_payload(self, row, using_mock=False):
+        if not row:
+            return None
+        if using_mock or row.get("is_mock"):
+            return self._mock_detail_payload(row)
+
+        invoice = row["_invoice"]
+        deposits = row.get("_deposits", [])
+        holds = row.get("_holds", [])
+        linked_reservation = invoice.inquiry
+
+        deposit_history = []
+        for deposit in deposits:
+            deposit_history.append(
+                {
+                    "label": "Damage deposit",
+                    "amount": deposit.display_amount,
+                    "status": deposit.get_status_display(),
+                    "status_cls": self._deposit_status_class(deposit.status),
+                    "meta": deposit.created_at.strftime("%b %-d, %Y") if deposit.created_at else "—",
+                }
+            )
+        for hold in holds:
+            deposit_history.append(
+                {
+                    "label": "Reservation payment hold",
+                    "amount": hold.display_amount,
+                    "status": hold.get_status_display(),
+                    "status_cls": self._deposit_status_class(hold.status),
+                    "meta": hold.created_at.strftime("%b %-d, %Y") if hold.created_at else "—",
+                }
+            )
+
+        timeline = [
+            {
+                "label": "Invoice created",
+                "meta": invoice.created_at.strftime("%b %-d, %Y · %-I:%M %p") if invoice.created_at else "—",
+                "tone": "complete",
+            },
+        ]
+        if holds:
+            timeline.append(
+                {
+                    "label": "Reservation hold recorded",
+                    "meta": holds[0].created_at.strftime("%b %-d, %Y · %-I:%M %p") if holds[0].created_at else "—",
+                    "tone": "active",
+                }
+            )
+        if deposits:
+            timeline.append(
+                {
+                    "label": "Deposit workflow linked",
+                    "meta": deposits[0].created_at.strftime("%b %-d, %Y · %-I:%M %p") if deposits[0].created_at else "—",
+                    "tone": "active",
+                }
+            )
+        timeline.append(
+            {
+                "label": f"Invoice {invoice.get_status_display().lower()}",
+                "meta": invoice.updated_at.strftime("%b %-d, %Y · %-I:%M %p") if invoice.updated_at else "—",
+                "tone": "complete" if invoice.status == InvoiceStatus.PAID else "pending",
+            }
+        )
+
+        return {
+            "transaction_id": row["transaction_id"],
+            "status": row["status"],
+            "status_cls": row["status_cls"],
+            "amount": row["amount"],
+            "date_label": row["date_label"],
+            "time_label": row["time_label"],
+            "invoice_number": invoice.invoice_number,
+            "invoice_url": row["invoice_url"],
+            "issue_date": invoice.issue_date.strftime("%b %-d, %Y") if invoice.issue_date else "—",
+            "due_date": invoice.due_date.strftime("%b %-d, %Y") if invoice.due_date else "—",
+            "amount_due": invoice.display_total,
+            "linked_reservation": {
+                "request_key": linked_reservation.request_key if linked_reservation else "—",
+                "listing": linked_reservation.item.business_display_name if linked_reservation and linked_reservation.item else "—",
+                "date_range": f"{linked_reservation.check_in:%b %-d} – {linked_reservation.check_out:%b %-d, %Y}" if linked_reservation and linked_reservation.check_in and linked_reservation.check_out else "—",
+                "guest": linked_reservation.guest_name if linked_reservation else row["guest"],
+                "url": reverse("bookings:ops-reservations") if linked_reservation else reverse("bookings:ops-reservations"),
+            },
+            "deposit_history": deposit_history or [{"label": "No linked deposit records", "amount": "—", "status": "Waiting", "status_cls": "pending", "meta": "Create one from Deposits"}],
+            "timeline": timeline,
+            "notes": invoice.notes or "Invoice, reservation payment hold, and deposit ledger are linked across Payments and Deposits.",
+            "quick_actions": [
+                {"label": "Open deposits ledger", "url": reverse("bookings:ops-deposits")},
+                {"label": "View reservation", "url": reverse("bookings:ops-reservations")},
+                {"label": "Open invoice", "url": row["invoice_url"]},
+            ],
+        }
+
+    @staticmethod
+    def _money(cents):
+        return f"${(cents or 0) / 100:,.2f}"
+
+    @staticmethod
+    def _payment_method_label(payment_record):
+        if not payment_record:
+            return "Direct invoice"
+        if payment_record.payment_provider == DepositProvider.PAYPAL:
+            return "PayPal"
+        if isinstance(payment_record, ReservationPaymentHold):
+            return "Card hold"
+        return "Card on file"
+
+    @staticmethod
+    def _invoice_status_label(invoice):
+        if invoice.status == InvoiceStatus.PAID:
+            return "Paid"
+        if invoice.status == InvoiceStatus.CANCELED:
+            return "Refunded"
+        return "Pending"
+
+    @staticmethod
+    def _invoice_status_class(invoice):
+        if invoice.status == InvoiceStatus.PAID:
+            return "paid"
+        if invoice.status == InvoiceStatus.CANCELED:
+            return "refunded"
+        return "pending"
+
+    @staticmethod
+    def _deposit_status_class(status):
+        if status in {DepositStatus.CAPTURED, DepositStatus.REQUIRES_CAPTURE}:
+            return "paid"
+        if status in {DepositStatus.CANCELED, DepositStatus.FAILED}:
+            return "refunded"
+        return "pending"
+
+    @staticmethod
+    def _mock_row(row_id, transaction_id, guest, reservation, listing, channel, method, date_label, time_label, amount, status, status_cls):
+        return {
+            "id": row_id,
+            "transaction_id": transaction_id,
+            "guest": guest,
+            "reservation": reservation,
+            "listing": listing,
+            "channel": channel,
+            "method": method,
+            "date_label": date_label,
+            "time_label": time_label,
+            "amount": amount,
+            "status": status,
+            "status_cls": status_cls,
+            "invoice_icon": "↗",
+            "invoice_url": "#",
+            "is_mock": True,
+        }
+
+    def _mock_detail_payload(self, row):
+        return {
+            "transaction_id": row["transaction_id"],
+            "status": row["status"],
+            "status_cls": row["status_cls"],
+            "amount": row["amount"],
+            "date_label": row["date_label"],
+            "time_label": row["time_label"],
+            "invoice_number": "INV-2026-3314",
+            "invoice_url": "#",
+            "issue_date": "Jun 12, 2026",
+            "due_date": "Jun 12, 2026",
+            "amount_due": row["amount"],
+            "linked_reservation": {
+                "request_key": row["reservation"],
+                "listing": "3 Beds Apt, Vacation Home & Pool, G-101",
+                "date_range": "Jun 8 – Jun 14, 2026 · 6 nights",
+                "guest": row["guest"],
+                "url": "/ops/reservations/",
+            },
+            "deposit_history": [
+                {"label": "Deposit required (50%)", "amount": "$625.00", "status": "Paid", "status_cls": "paid", "meta": "Due: May 25, 2026"},
+                {"label": "Remaining balance", "amount": "$625.00", "status": "Paid", "status_cls": "paid", "meta": "Due: Jun 12, 2026"},
+            ],
+            "timeline": [
+                {"label": "Payment received", "meta": "$1,250.00 · Visa •••• 4242 · Jun 12, 2026 9:30 AM", "tone": "complete"},
+                {"label": "Invoice sent", "meta": "INV-2026-3314 · Jun 12, 2026 9:28 AM", "tone": "active"},
+                {"label": "Booking confirmed", "meta": "R-1042 · Jun 6, 2026 9:12 AM", "tone": "pending"},
+            ],
+            "notes": "Direct booking via mladis.com. Deposit and reservation payment records remain accessible in the Deposits ledger.",
+            "quick_actions": [
+                {"label": "Open deposits ledger", "url": "/ops/deposits/"},
+                {"label": "View reservation", "url": "/ops/reservations/"},
+                {"label": "Open invoice", "url": "#"},
+            ],
+        }

@@ -1,0 +1,216 @@
+{% extends "bookings/base_ops.html" %}
+{% load static %}
+
+{% block title %}Payments & Transactions · MLADIS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-payments.css' %}?v=ops-payments-v1">
+{% endblock %}
+
+{% block content %}
+<main class="ops-pay-page" aria-label="Payments and transactions">
+  <header class="ops-pay-header">
+    <div>
+      <h1>Payments &amp; Transactions</h1>
+      <p>Track guest payments, direct-booking invoices, refunds, and reconciled transaction flows.</p>
+    </div>
+    <div class="ops-pay-header-actions">
+      <button class="ops-pay-btn ops-pay-btn--ghost" type="button">{{ date_range_label }}</button>
+      <button class="ops-pay-btn" type="button">Filters</button>
+      <button class="ops-pay-btn" type="button">Export</button>
+    </div>
+  </header>
+
+  <section class="ops-pay-summary" aria-label="Payment summary cards">
+    {% for card in summary_cards %}
+      <article class="ops-pay-kpi ops-pay-kpi--{{ card.tone }}">
+        <span class="ops-pay-kpi-icon" aria-hidden="true"></span>
+        <div>
+          <p class="ops-pay-kpi-label">{{ card.label }}</p>
+          <strong class="ops-pay-kpi-value">{{ card.value }}</strong>
+          <p class="ops-pay-kpi-trend">{{ card.trend }}</p>
+        </div>
+      </article>
+    {% endfor %}
+  </section>
+
+  <section class="ops-pay-layout" aria-label="Payments content">
+    <div class="ops-pay-main">
+      <div class="ops-pay-toolbar">
+        <div class="ops-pay-toolbar-left">
+          <button class="ops-pay-select" type="button">All Channels</button>
+          <button class="ops-pay-select" type="button">All Statuses</button>
+          <button class="ops-pay-select" type="button">{{ date_range_label }}</button>
+          <button class="ops-pay-select" type="button">All Methods</button>
+          <button class="ops-pay-clear" type="button">Clear filters</button>
+        </div>
+        <label class="ops-pay-search" aria-label="Search transactions">
+          <span>⌕</span>
+          <input type="text" value="" placeholder="Search transactions...">
+        </label>
+      </div>
+
+      <div class="ops-pay-table-shell">
+        <table class="ops-pay-table">
+          <colgroup>
+            <col class="ops-pay-col-check">
+            <col class="ops-pay-col-transaction">
+            <col class="ops-pay-col-guest">
+            <col class="ops-pay-col-reservation">
+            <col class="ops-pay-col-listing">
+            <col class="ops-pay-col-channel">
+            <col class="ops-pay-col-method">
+            <col class="ops-pay-col-date">
+            <col class="ops-pay-col-amount">
+            <col class="ops-pay-col-status">
+          </colgroup>
+          <thead>
+            <tr>
+              <th><input type="checkbox" aria-label="Select all transactions"></th>
+              <th>Transaction ID</th>
+              <th>Guest</th>
+              <th>Reservation</th>
+              <th>Listing</th>
+              <th>Channel</th>
+              <th>Method</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr class="ops-pay-row{% if row.id == selected_transaction_id %} is-selected{% endif %}" onclick="window.location='?transaction={{ row.id }}'">
+                <td><input type="checkbox" aria-label="Select {{ row.transaction_id }}"></td>
+                <td class="ops-pay-txn">{{ row.transaction_id }}</td>
+                <td>{{ row.guest }}</td>
+                <td>{{ row.reservation }}</td>
+                <td>{{ row.listing }}</td>
+                <td>{{ row.channel }}</td>
+                <td>{{ row.method }}</td>
+                <td>
+                  <div class="ops-pay-date">
+                    <span>{{ row.date_label }}</span>
+                    <small>{{ row.time_label }}</small>
+                  </div>
+                </td>
+                <td class="ops-pay-amount">{{ row.amount }}</td>
+                <td><span class="ops-pay-pill ops-pay-pill--{{ row.status_cls }}">{{ row.status }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <footer class="ops-pay-footer">
+          <span>Showing 1 to 10 of {{ total_results_display }} results</span>
+          <nav class="ops-pay-pagination" aria-label="Payments pagination">
+            <button type="button">‹</button>
+            <button type="button" class="is-active">1</button>
+            <button type="button">2</button>
+            <button type="button">3</button>
+            <button type="button">›</button>
+          </nav>
+        </footer>
+      </div>
+    </div>
+
+    {% if detail %}
+      <aside class="ops-pay-detail" aria-label="Transaction details">
+        <section class="ops-pay-panel">
+          <div class="ops-pay-detail-head">
+            <div>
+              <h3>Transaction Details</h3>
+              <strong>{{ detail.transaction_id }}</strong>
+              <p>{{ detail.date_label }} at {{ detail.time_label }}</p>
+            </div>
+            <span class="ops-pay-pill ops-pay-pill--{{ detail.status_cls }}">{{ detail.status }}</span>
+          </div>
+          <div class="ops-pay-total">{{ detail.amount }}</div>
+          <p class="ops-pay-subtext">Transaction total</p>
+        </section>
+
+        <section class="ops-pay-panel">
+          <div class="ops-pay-section-head">
+            <h4>Invoice Preview</h4>
+            <a href="{{ detail.invoice_url }}">View full invoice</a>
+          </div>
+          <div class="ops-pay-invoice-box">
+            <div class="ops-pay-invoice-thumb">
+              <span>INVOICE</span>
+            </div>
+            <div class="ops-pay-invoice-meta">
+              <p><strong>Invoice</strong> {{ detail.invoice_number }}</p>
+              <p><span>Issue date</span><span>{{ detail.issue_date }}</span></p>
+              <p><span>Due date</span><span>{{ detail.due_date }}</span></p>
+              <p><span>Amount due</span><span>{{ detail.amount_due }}</span></p>
+            </div>
+          </div>
+        </section>
+
+        <section class="ops-pay-panel">
+          <div class="ops-pay-section-head">
+            <h4>Linked Reservation</h4>
+            <a href="{{ detail.linked_reservation.url }}">View reservation</a>
+          </div>
+          <p class="ops-pay-linked-key">{{ detail.linked_reservation.request_key }}</p>
+          <p>{{ detail.linked_reservation.listing }}</p>
+          <p>{{ detail.linked_reservation.date_range }}</p>
+          <p class="ops-pay-subtext">Guest: {{ detail.linked_reservation.guest }}</p>
+        </section>
+
+        <section class="ops-pay-panel">
+          <div class="ops-pay-section-head">
+            <h4>Deposit History</h4>
+            <a href="/ops/deposits/">Open deposits</a>
+          </div>
+          <div class="ops-pay-stack">
+            {% for entry in detail.deposit_history %}
+              <div class="ops-pay-history-row">
+                <div>
+                  <strong>{{ entry.label }}</strong>
+                  <small>{{ entry.meta }}</small>
+                </div>
+                <div class="ops-pay-history-side">
+                  <span>{{ entry.amount }}</span>
+                  <span class="ops-pay-pill ops-pay-pill--{{ entry.status_cls }}">{{ entry.status }}</span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="ops-pay-panel">
+          <h4>Payment Timeline</h4>
+          <div class="ops-pay-timeline">
+            {% for item in detail.timeline %}
+              <div class="ops-pay-timeline-row">
+                <span class="ops-pay-dot ops-pay-dot--{{ item.tone }}"></span>
+                <div>
+                  <strong>{{ item.label }}</strong>
+                  <small>{{ item.meta }}</small>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="ops-pay-panel">
+          <div class="ops-pay-section-head">
+            <h4>Notes</h4>
+          </div>
+          <p>{{ detail.notes }}</p>
+        </section>
+
+        <section class="ops-pay-panel">
+          <h4>Quick Actions</h4>
+          <div class="ops-pay-actions">
+            {% for action in detail.quick_actions %}
+              <a class="ops-pay-action" href="{{ action.url }}">{{ action.label }}</a>
+            {% endfor %}
+          </div>
+        </section>
+      </aside>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

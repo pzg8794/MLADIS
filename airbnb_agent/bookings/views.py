@@ -67,6 +67,7 @@ from .services import (
     BookingCalendarService,
     CustomersCRMService,
     MaintenanceService,
+    PaymentsTransactionsService,
     ReservationPricingService,
     StayListingService,
 )
@@ -2251,6 +2252,20 @@ class ModernOpsCustomersView(TemplateView):
                 "site_settings": SiteSettings.current(),
             }
         )
+        return ctx
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class ModernOpsPaymentsView(TemplateView):
+    template_name = "bookings/modern_ops_payments.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        payload = PaymentsTransactionsService().page_payload(
+            selected_id=self.request.GET.get("transaction", "").strip()
+        )
+        ctx.update(payload)
+        ctx["site_settings"] = SiteSettings.current()
         return ctx
 
 

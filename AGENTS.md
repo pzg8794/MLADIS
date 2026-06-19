@@ -135,7 +135,7 @@
 
 ## Ops Page Building Pattern
 
-Follow this pattern when building or extending any ops page (Customers, Properties, Guests, Reservations, or any future `/ops/*` route). **Reservations is the next page being built after Properties and Guests.**
+Follow this pattern when building or extending any ops page (Customers, Properties, Guests, Payments, Deposits, Reservations, or any future `/ops/*` route). **Reservations is the next page being built after Properties, Guests, Payments, and Deposits.**
 
 ### File roles
 - **`bookings/views.py`** — add a CBV (TemplateView) protected by `@method_decorator(ops_staff_required, name="dispatch")`. The view calls the service, decorates the payload, and passes context to the template. Business rules live here, not in the template.
@@ -162,6 +162,12 @@ Follow this pattern when building or extending any ops page (Customers, Properti
 - Commit once each major artifact is complete and verified: view, template, CSS, and service are each a natural commit boundary.
 - Commit message format: `ops/<page>: <what was done>` (e.g. `ops/customers: add collapsible Last Stays and Linked Reservations`).
 - Push after each page reaches a stable, visually verified state. Do not accumulate multiple pages' work in one push.
+
+### Payments and Deposits contract
+- Payments and Deposits are separate ops pages and separate sidebar routes. Never point one nav item at the other's URL.
+- Payments composes its page from the shared transactional objects: `Invoice`, `ReservationPaymentHold`, and `DamageDeposit`.
+- Deposits remains the hold/deposit ledger page centered on `DamageDeposit` records.
+- The two pages must cross-link: Payments should expose the related deposits ledger for a transaction, and Deposits should remain the canonical place to inspect or act on hold/deposit records.
 
 ## Calendar Operations
 
