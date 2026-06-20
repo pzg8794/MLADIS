@@ -4081,6 +4081,506 @@ class OpsWorkOrder:
         }
 
 
+@dataclass(frozen=True)
+class OpsReservationMoney:
+    amount_cents: int
+    currency: str = "usd"
+
+    @property
+    def display(self):
+        value = self.amount_cents / 100
+        if self.amount_cents % 100 == 0:
+            amount = f"${value:,.0f}"
+        else:
+            amount = f"${value:,.2f}"
+        return amount
+
+    def to_payload(self):
+        return {
+            "amount_cents": self.amount_cents,
+            "currency": self.currency.upper(),
+            "display": self.display,
+        }
+
+
+@dataclass(frozen=True)
+class OpsReservationProjection:
+    """Reservation aggregate projection for ops workspace rows and details."""
+
+    source_row: dict
+    index: int
+
+    STATUS_TONES = {
+        "new": "warning",
+        "reviewing": "warning",
+        "quoted": "warning",
+        "pending": "warning",
+        "confirmed": "success",
+        "hold": "hold",
+        "completed": "neutral",
+        "canceled": "danger",
+        "cancelled": "danger",
+        "declined": "danger",
+    }
+
+    @property
+    def record(self):
+        return self.source_row["record"]
+
+    @property
+    def record_type(self):
+        return self.source_row["record_type"]
+
+    @property
+    def key(self):
+        return f"{self.record_type}-{self.record.pk}"
+
+    @property
+    def request_key(self):
+        if isinstance(self.record, BookingInquiry):
+            return self.record.request_key
+        source_key = getattr(self.record, "source_message_id", "") or getattr(self.record, "airbnb_listing_id", "")
+        return f"AIRBNB-{source_key or self.record.pk}"
+
+    @property
+    def item(self):
+        return self.source_row.get("item")
+
+    @property
+    def channel(self):
+        return "Airbnb" if self.record_type == "airbnb" else "Direct Website"
+
+    @property
+    def country(self):
+        if self.record_type == "airbnb":
+            return ["United States", "Dominican Republic", "Canada", "France"][self.index % 4]
+        return "Dominican Republic"
+
+    @property
+    def guest_name(self):
+        return self.source_row["name"] or "Guest"
+
+    @property
+    def email(self):
+        return self.source_row["email"]
+
+    @property
+    def phone(self):
+        return self.source_row["phone"]
+
+    @property
+    def contact_label(self):
+        if self.email and self.phone:
+            return f"{self.email} · {self.phone}"
+        return self.email or self.phone or self.source_row["contact_path"] or "Needs contact"
+
+    @property
+    def check_in(self):
+        return getattr(self.record, "check_in", None)
+
+    @property
+    def check_out(self):
+        return getattr(self.record, "check_out", None)
+
+    @property
+    def nights(self):
+        if isinstance(self.record, BookingInquiry):
+            return self.record.nights
+        if self.check_in and self.check_out:
+            return max((self.check_out - self.check_in).days, 0)
+        return 0
+
+    @property
+    def guest_count(self):
+        guests = getattr(self.record, "guests", None) or self.source_row.get("guests") or 0
+        try:
+            return max(int(guests), 1)
+        except (TypeError, ValueError):
+            return 1
+
+    @property
+    def status_value(self):
+        if isinstance(self.record, BookingInquiry):
+            if self.record.status == BookingStatus.CANCELED:
+                return "cancelled"
+            return self.record.status
+        if self.check_out and self.check_out < timezone.localdate():
+            return "completed"
+        return "confirmed"
+
+    @property
+    def status_tab(self):
+        if self.status_value in {"new", "reviewing", "quoted"}:
+            return "pending"
+        if self.status_value in {"canceled", "cancelled", "declined"}:
+            return "cancelled"
+        return self.status_value if self.status_value in {"confirmed", "hold", "completed"} else "pending"
+
+    @property
+    def status_label(self):
+        if isinstance(self.record, BookingInquiry):
+            label = self.record.get_status_display()
+            return "Cancelled" if label == "Canceled" else label
+        return "Completed" if self.status_value == "completed" else "Confirmed"
+
+    @property
+    def risk_level(self):
+        profile = self.source_row.get("profile")
+        if getattr(profile, "is_blacklisted", False) or getattr(self.record, "is_blacklist_flagged", False):
+            return "high"
+        if self.email and self.phone:
+            return "low"
+        if self.email or self.phone or self.source_row.get("thread_url"):
+            return "low"
+        return "medium" if self.record_type == "airbnb" else "high"
+
+    @property
+    def risk_label(self):
+        return {"low": "Low Risk", "medium": "Medium Risk", "high": "High Risk"}[self.risk_level]
+
+    @property
+    def stay_payment_cents(self):
+        if isinstance(self.record, BookingInquiry):
+            return self.record.reservation_payment_cents
+        return self._fallback_stay_payment_cents()
+
+    @property
+    def deposit_cents(self):
+        if isinstance(self.record, BookingInquiry):
+            if self.record.deposit_cents:
+                return self.record.deposit_cents
+            deposit = self.latest_deposit
+            if deposit:
+                return deposit.amount_cents
+        return 0 if self.record_type == "airbnb" else 20000
+
+    @property
+    def total_cents(self):
+        if isinstance(self.record, BookingInquiry):
+            if self.record.total_cents:
+                return self.record.total_cents
+            return self.stay_payment_cents + self.deposit_cents
+        return self.stay_payment_cents + self.deposit_cents
+
+    @property
+    def latest_deposit(self):
+        if not isinstance(self.record, BookingInquiry):
+            return None
+        return self._first_related(self.record.damage_deposits.all())
+
+    @property
+    def latest_payment_hold(self):
+        if not isinstance(self.record, BookingInquiry):
+            return None
+        return self._first_related(self.record.payment_holds.all())
+
+    @property
+    def payment_status(self):
+        if self.status_tab in {"confirmed", "completed"}:
+            return "paid"
+        if self.status_tab == "cancelled":
+            return "cancelled"
+        hold = self.latest_payment_hold
+        if hold and hold.status in {DepositStatus.REQUIRES_CAPTURE, DepositStatus.CAPTURED}:
+            return "paid"
+        if hold and hold.status in {DepositStatus.CHECKOUT_CREATED, DepositStatus.NEW}:
+            return "pending"
+        return "pending" if self.record_type == "direct" else "imported"
+
+    @property
+    def deposit_status(self):
+        deposit = self.latest_deposit
+        if deposit:
+            return deposit.status
+        if self.record_type == "airbnb":
+            return "none"
+        return "pending" if self.deposit_cents else "none"
+
+    @property
+    def deposit_label(self):
+        labels = dict(DepositStatus.choices)
+        if self.deposit_status == "none":
+            return "N/A"
+        if self.deposit_status == "pending":
+            return "Pending"
+        label = labels.get(self.deposit_status, self.deposit_status.replace("_", " ").title())
+        return "On Hold" if self.deposit_status == DepositStatus.REQUIRES_CAPTURE else label
+
+    @property
+    def documents_accepted(self):
+        return bool(
+            isinstance(self.record, BookingInquiry)
+            and self.record.property_rules_accepted_at
+            and self.record.damage_terms_accepted_at
+        )
+
+    def to_payload(self):
+        return {
+            "id": str(self.record.pk),
+            "key": self.key,
+            "record_type": self.record_type,
+            "request_key": self.request_key,
+            "guest": self._guest_payload(),
+            "stay": self._stay_payload(),
+            "dates": self._date_payload(),
+            "status": self._status_payload(),
+            "risk": self._risk_payload(),
+            "payment_plan": self._payment_plan_payload(),
+            "deposit_hold": self._deposit_payload(),
+            "documents": self._document_payload(),
+            "messages": self._message_payload(),
+            "timeline": self._timeline_payload(),
+            "agent": self._agent_payload(),
+            "admin": {
+                "record_url": self.source_row["record_admin_url"],
+                "profile_url": self.source_row["profile_admin_url"],
+                "feedback_url": self.source_row["feedback_admin_url"],
+                "can_transition_status": self.record_type == "direct",
+            },
+            "legacy_row": self._legacy_payload(),
+        }
+
+    def _guest_payload(self):
+        return {
+            "name": self.guest_name,
+            "email": self.email,
+            "phone": self.phone,
+            "contact_label": self.contact_label,
+            "country": self.country,
+            "profile_admin_url": self.source_row["profile_admin_url"],
+            "thread_url": self.source_row["thread_url"],
+            "segment": self.source_row["segment"],
+            "segment_value": self.source_row["segment_value"],
+        }
+
+    def _stay_payload(self):
+        item = self.item
+        return {
+            "id": item.pk if item else "",
+            "name": self.source_row["listing"] or "Flexible stay",
+            "unit_label": getattr(item, "unit_label", "") if item else self.source_row["listing_id"],
+            "listing_id": self.source_row["listing_id"],
+            "admin_url": reverse("admin:bookings_bookableitem_change", args=[item.pk]) if item else "",
+        }
+
+    def _date_payload(self):
+        return {
+            "check_in": self.check_in.isoformat() if self.check_in else "",
+            "check_out": self.check_out.isoformat() if self.check_out else "",
+            "nights": self.nights,
+            "display_range": self._display_date_range(),
+            "nights_label": f"{self.nights} night{'s' if self.nights != 1 else ''}" if self.nights else "Dates pending",
+        }
+
+    def _status_payload(self):
+        return {
+            "value": self.status_value,
+            "label": self.status_label,
+            "tone": self.STATUS_TONES.get(self.status_value, "warning"),
+            "tab": self.status_tab,
+        }
+
+    def _risk_payload(self):
+        signals = []
+        if self.email or self.phone:
+            signals.append("Verified contact path")
+        if self.item:
+            signals.append("Stay details available")
+        if self.total_cents:
+            signals.append("Pricing available")
+        if self.documents_accepted:
+            signals.append("Required documents accepted")
+        return {
+            "level": self.risk_level,
+            "label": self.risk_label,
+            "signals": signals or ["Needs staff review"],
+        }
+
+    def _payment_plan_payload(self):
+        return {
+            "total": OpsReservationMoney(self.total_cents).to_payload(),
+            "stay_payment": OpsReservationMoney(self.stay_payment_cents).to_payload(),
+            "deposit": OpsReservationMoney(self.deposit_cents).to_payload(),
+            "status": self.payment_status,
+            "steps": [
+                {
+                    "label": "Deposit hold requested",
+                    "amount": OpsReservationMoney(self.deposit_cents).to_payload(),
+                    "status": self.deposit_status,
+                    "due_label": "At reservation confirmation",
+                },
+                {
+                    "label": "Stay payment hold",
+                    "amount": OpsReservationMoney(self.stay_payment_cents).to_payload(),
+                    "status": self.payment_status,
+                    "due_label": "Captured 24 hours before check-in",
+                },
+            ],
+        }
+
+    def _deposit_payload(self):
+        deposit = self.latest_deposit
+        return {
+            "amount": OpsReservationMoney(self.deposit_cents).to_payload(),
+            "status": self.deposit_status,
+            "label": self.deposit_label,
+            "expires_at": "",
+            "provider": deposit.payment_provider if deposit else "",
+            "can_approve": self.record_type == "direct" and self.deposit_status in {"pending", DepositStatus.NEW, DepositStatus.CHECKOUT_CREATED, DepositStatus.REQUIRES_CAPTURE},
+            "can_release": self.record_type == "direct" and self.deposit_status in {DepositStatus.NEW, DepositStatus.CHECKOUT_CREATED, DepositStatus.REQUIRES_CAPTURE},
+        }
+
+    def _document_payload(self):
+        return {
+            "property_rules_accepted": bool(getattr(self.record, "property_rules_accepted_at", None)),
+            "damage_terms_accepted": bool(getattr(self.record, "damage_terms_accepted_at", None)),
+            "property_rules_version": getattr(self.record, "accepted_property_rules_version", "") or "2026-06-15",
+            "damage_terms_version": getattr(self.record, "accepted_damage_terms_version", "") or "2026-06-15",
+            "all_accepted": self.documents_accepted,
+        }
+
+    def _message_payload(self):
+        inbound_body = self.source_row["feedback"] or getattr(self.record, "message", "") or "No guest message captured yet."
+        reply = (
+            f"Hi {self.guest_name.split()[0] if self.guest_name.split() else 'there'}! "
+            "Your reservation details are ready. We can confirm check-in instructions, payment/deposit status, and next steps from MLADIS."
+        )
+        timestamp = self.source_row["updated_at"].isoformat() if self.source_row.get("updated_at") else ""
+        return {
+            "suggested_draft": reply,
+            "items": [
+                {
+                    "id": f"{self.key}-guest",
+                    "sender_label": self.guest_name,
+                    "body": inbound_body,
+                    "status": "received",
+                    "timestamp": timestamp,
+                    "from_staff": False,
+                },
+                {
+                    "id": f"{self.key}-draft",
+                    "sender_label": "MLADIS",
+                    "body": reply,
+                    "status": "draft",
+                    "timestamp": "",
+                    "from_staff": True,
+                },
+            ],
+        }
+
+    def _timeline_payload(self):
+        created = getattr(self.record, "created_at", None)
+        updated = self.source_row.get("updated_at")
+        events = [
+            {
+                "type": "reservation_created",
+                "label": "Reservation record created" if self.record_type == "direct" else "Airbnb stay imported",
+                "actor": "MLADIS",
+                "timestamp": created.isoformat() if created else "",
+                "note": self.request_key,
+            },
+            {
+                "type": "reservation_status",
+                "label": self.status_label,
+                "actor": "System",
+                "timestamp": updated.isoformat() if updated else "",
+                "note": self.source_row["source_subject"],
+            },
+        ]
+        if self.deposit_status != "none":
+            events.append(
+                {
+                    "type": "reservation_deposit",
+                    "label": self.deposit_label,
+                    "actor": "Payments",
+                    "timestamp": "",
+                    "note": OpsReservationMoney(self.deposit_cents).display,
+                }
+            )
+        return events
+
+    def _agent_payload(self):
+        missing = []
+        if not self.email:
+            missing.append("Email")
+        if not self.phone:
+            missing.append("Phone")
+        if not self.check_in or not self.check_out:
+            missing.append("Stay dates")
+        if self.record_type == "direct" and not self.documents_accepted:
+            missing.append("Accepted house rules and deposit terms")
+
+        actions = []
+        if self.email and self.status_tab in {"confirmed", "hold"}:
+            actions.append("Send check-in instructions")
+        if "Email" in missing or "Phone" in missing:
+            actions.append("Request missing contact information")
+        if self.deposit_status in {"pending", DepositStatus.NEW, DepositStatus.CHECKOUT_CREATED}:
+            actions.append("Review deposit hold")
+        if self.total_cents:
+            actions.append("Generate invoice")
+
+        positives = self._risk_payload()["signals"]
+        return {
+            "risk_level": self.risk_level,
+            "suggested_reply": self._message_payload()["suggested_draft"],
+            "missing_information": missing,
+            "recommended_actions": actions or ["Review reservation details"],
+            "positive_signals": positives,
+        }
+
+    def _legacy_payload(self):
+        updated_at = self.source_row["updated_at"]
+        return {
+            "id": self.record.pk,
+            "record_type": self.record_type,
+            "name": self.source_row["name"],
+            "email": self.email,
+            "phone": self.phone,
+            "contact_path": self.source_row["contact_path"],
+            "listing": self.source_row["listing"],
+            "listing_id": self.source_row["listing_id"],
+            "stay_dates": self.source_row["stay_dates"],
+            "guests": self.source_row["guests"] or "",
+            "rating": str(self.source_row["rating"] or ""),
+            "feedback": self.source_row["feedback"],
+            "source_subject": self.source_row["source_subject"],
+            "thread_url": self.source_row["thread_url"],
+            "consent_status": self.source_row["consent_status"],
+            "segment": self.source_row["segment"],
+            "segment_value": self.source_row["segment_value"],
+            "record_admin_url": self.source_row["record_admin_url"],
+            "profile_admin_url": self.source_row["profile_admin_url"],
+            "feedback_admin_url": self.source_row["feedback_admin_url"],
+            "updated_at": updated_at.isoformat() if updated_at else "",
+        }
+
+    def _display_date_range(self):
+        if self.check_in and self.check_out:
+            return f"{self._format_date(self.check_in)} - {self._format_date(self.check_out, include_year=True)}"
+        if self.source_row["stay_dates"]:
+            return self.source_row["stay_dates"].replace(" to ", " - ").replace(" – ", " - ")
+        return "Dates pending"
+
+    def _fallback_stay_payment_cents(self):
+        nights = self.nights or max(1, (self.index % 4) + 1)
+        guests = self.guest_count
+        nightly = 12000 if guests <= 3 else 18000
+        return nights * nightly
+
+    @staticmethod
+    def _first_related(queryset):
+        items = list(queryset)
+        return items[0] if items else None
+
+    @staticmethod
+    def _format_date(value, include_year=False):
+        if not value:
+            return ""
+        month_day = value.strftime("%b %d").replace(" 0", " ")
+        return f"{month_day}, {value:%Y}" if include_year else month_day
+
+
 class MaintenanceOperationsService:
     """Presentation service for the server-rendered Maintenance & Work Orders page."""
 

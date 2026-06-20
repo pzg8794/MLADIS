@@ -70,6 +70,7 @@ from .services import (
     CustomersCRMService,
     MaintenanceOperationsService,
     MaintenanceService,
+    OpsReservationProjection,
     PaymentsTransactionsService,
     ReservationPricingService,
     StayListingService,
@@ -1835,6 +1836,7 @@ class OpsReservationsView(TemplateView):
         rows = []
         records = (
             BookingInquiry.objects.select_related("customer_profile", "item", "coupon", "cancellation_policy")
+            .prefetch_related("damage_deposits", "payment_holds")
             .order_by("-check_in", "guest_name", "-updated_at")
         )
         for record in records:
@@ -2044,6 +2046,10 @@ class OpsReservationsAPIView(View):
         view.setup(request)
         rows = view._reservation_customer_rows()
         all_rows = view._reservation_customer_rows(apply_filter=False)
+        reservations = [
+            OpsReservationProjection(row, index).to_payload()
+            for index, row in enumerate(rows)
+        ]
         direct_count = sum(1 for row in all_rows if row["record_type"] == "direct")
         airbnb_count = sum(1 for row in all_rows if row["record_type"] == "airbnb")
         return JsonResponse(
@@ -2066,6 +2072,7 @@ class OpsReservationsAPIView(View):
                 "export_url": view._export_url(),
                 "legacy_url": reverse("bookings:ops-reservations"),
                 "rows": [self._row_payload(request, row) for row in rows],
+                "reservations": reservations,
                 "generated_at": timezone.now().isoformat(),
             }
         )
@@ -2128,7 +2135,26 @@ class OpsReservationStatusAPIView(View):
             reservation.save(update_fields=["status", "canceled_at", "cancellation_reason", "updated_at"])
         else:
             reservation.save(update_fields=["status", "updated_at"])
-        return JsonResponse({"ok": True, "status": reservation.get_status_display()})
+
+        view = OpsReservationsView()
+        view.setup(request)
+        rows = view._reservation_customer_rows(apply_filter=False)
+        selected_row = next(
+            (
+                row
+                for row in rows
+                if row["record_type"] == "direct" and row["record"].pk == reservation.pk
+            ),
+            None,
+        )
+        normalized = OpsReservationProjection(selected_row, 0).to_payload() if selected_row else None
+        return JsonResponse(
+            {
+                "ok": True,
+                "status": reservation.get_status_display(),
+                "reservation": normalized,
+            }
+        )
 
 
 @method_decorator(ops_staff_required, name="dispatch")

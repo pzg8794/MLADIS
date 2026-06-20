@@ -4,6 +4,7 @@ import {
   OpsReservationSegment,
   OpsReservationsSnapshot,
 } from '../domain/models';
+import { OpsReservation, type OpsReservationPayload } from '../domain/reservations';
 import { HttpClient } from './HttpClient';
 
 interface ApiOpsReservationMetric {
@@ -50,11 +51,13 @@ interface ApiOpsReservationsSnapshot {
   export_url: string;
   legacy_url: string;
   rows: ApiOpsReservationRow[];
+  reservations?: OpsReservationPayload[];
   generated_at: string;
 }
 
 export interface OpsReservationsRepository {
   getSnapshot(): Promise<OpsReservationsSnapshot>;
+  updateStatus(reservation: OpsReservation, status: 'reviewing' | 'confirmed' | 'cancelled'): Promise<OpsReservation | null>;
 }
 
 export class ApiOpsReservationsRepository implements OpsReservationsRepository {
@@ -62,37 +65,51 @@ export class ApiOpsReservationsRepository implements OpsReservationsRepository {
 
   async getSnapshot(): Promise<OpsReservationsSnapshot> {
     const data = await this.http.get<ApiOpsReservationsSnapshot>(this.snapshotPath());
+    const rows = data.rows.map((row) => new OpsReservationRow(
+      row.id,
+      row.record_type,
+      row.name,
+      row.email,
+      row.phone,
+      row.contact_path,
+      row.listing,
+      row.listing_id,
+      row.stay_dates,
+      row.guests,
+      row.rating,
+      row.feedback,
+      row.source_subject,
+      row.thread_url,
+      row.consent_status,
+      row.segment,
+      row.segment_value,
+      row.record_admin_url,
+      row.profile_admin_url,
+      row.feedback_admin_url,
+      row.updated_at,
+    ));
+    const reservations = data.reservations?.length
+      ? data.reservations.map((reservation) => OpsReservation.fromPayload(reservation))
+      : data.rows.map((row, index) => OpsReservation.fromLegacyRow(row, index));
+
     return new OpsReservationsSnapshot(
       data.summary_cards.map((metric) => new OpsReservationMetric(metric.label, metric.value, metric.caption)),
       data.segment_options.map((segment) => new OpsReservationSegment(segment.value, segment.label, segment.count, segment.url)),
       data.selected_segment,
       data.export_url,
       data.legacy_url,
-      data.rows.map((row) => new OpsReservationRow(
-        row.id,
-        row.record_type,
-        row.name,
-        row.email,
-        row.phone,
-        row.contact_path,
-        row.listing,
-        row.listing_id,
-        row.stay_dates,
-        row.guests,
-        row.rating,
-        row.feedback,
-        row.source_subject,
-        row.thread_url,
-        row.consent_status,
-        row.segment,
-        row.segment_value,
-        row.record_admin_url,
-        row.profile_admin_url,
-        row.feedback_admin_url,
-        row.updated_at,
-      )),
+      rows,
       data.generated_at,
+      reservations,
     );
+  }
+
+  async updateStatus(reservation: OpsReservation, status: 'reviewing' | 'confirmed' | 'cancelled'): Promise<OpsReservation | null> {
+    const data = await this.http.post<{ reservation?: OpsReservationPayload }>(
+      `/api/ops/reservations/${reservation.id}/status/`,
+      { status },
+    );
+    return data.reservation ? OpsReservation.fromPayload(data.reservation) : null;
   }
 
   private snapshotPath(): string {

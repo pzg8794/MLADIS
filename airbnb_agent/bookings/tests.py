@@ -3632,7 +3632,7 @@ Viajeros
         response = self.client.get(reverse("bookings:ops-reservations"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MLADIS Modern Dashboard")
+        self.assertContains(response, "MLADIS Command Center")
         self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         api_response = self.client.get(reverse("bookings:ops-reservations-api"))
@@ -3644,6 +3644,52 @@ Viajeros
         self.assertIn("Loved the pool", payload["rows"][0]["feedback"])
         self.assertTrue(payload["rows"][0]["feedback_admin_url"])
         self.assertIn("VIP", [option["label"] for option in payload["segment_options"]])
+        self.assertEqual(payload["reservations"][0]["key"], f"airbnb-{record.pk}")
+        self.assertEqual(payload["reservations"][0]["guest"]["name"], "Diana")
+        self.assertEqual(payload["reservations"][0]["stay"]["name"], "6 Bedrooms Vacation Home & Pool")
+        self.assertEqual(payload["reservations"][0]["dates"]["nights"], 10)
+        self.assertEqual(payload["reservations"][0]["status"]["tab"], "completed")
+        self.assertEqual(payload["reservations"][0]["agent"]["risk_level"], "low")
+
+    def test_ops_reservation_status_api_returns_updated_reservation_object(self):
+        user = get_user_model().objects.create_user(
+            username="reservation-status-ops",
+            password="secret",
+            is_staff=True,
+        )
+        self.client.force_login(user)
+        item = BookableItem.objects.create(
+            name="3 Beds Apt, Vacation Home & Pool, G-101",
+            slug="reservation-status-stay",
+            category=BookingCategory.STAY,
+            short_description="Direct reservation stay.",
+            starting_price=Decimal("120.00"),
+            is_active=True,
+        )
+        reservation = BookingInquiry.objects.create(
+            item=item,
+            guest_name="Direct Guest",
+            email="direct@example.com",
+            phone="201-555-0101",
+            check_in=date(2026, 6, 20),
+            check_out=date(2026, 6, 22),
+            guests=2,
+            status=BookingStatus.REVIEWING,
+        )
+
+        response = self.client.post(
+            reverse("bookings:ops-reservation-status-api", args=[reservation.pk]),
+            data=json.dumps({"status": "confirmed"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["reservation"]["key"], f"direct-{reservation.pk}")
+        self.assertEqual(payload["reservation"]["guest"]["name"], "Direct Guest")
+        self.assertEqual(payload["reservation"]["status"]["tab"], "confirmed")
+        self.assertTrue(payload["reservation"]["admin"]["can_transition_status"])
 
     def test_ops_reservations_filters_by_customer_group_and_exports_csv(self):
         user = get_user_model().objects.create_user(
