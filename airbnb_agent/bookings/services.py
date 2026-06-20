@@ -864,6 +864,317 @@ class BookingCalendarService:
         return f"${value:,.2f}"
 
 
+class CalendarOperationsService:
+    """Presentation service for the server-rendered ops Booking Calendar page."""
+
+    DEFAULT_FOCUS_DATE = date(2025, 6, 17)
+    WINDOW_DAYS = 23
+    MOCK_ROOMS = [
+        {
+            "title": "3 Beds Apt - Vacation Home & Pool - G-101",
+            "unit": "G-101",
+            "unit_count": "10",
+            "beds": "3 Beds",
+            "tone": "purple",
+            "marker": "G-101",
+        },
+        {
+            "title": "3 Beds Apt - Vacation Home & Pool - G-102",
+            "unit": "G-102",
+            "unit_count": "3",
+            "beds": "3 Beds",
+            "tone": "blue",
+            "marker": "G-102",
+        },
+        {
+            "title": "6 Beds Apts - Vacation Home & Pool - G-All",
+            "unit": "G-All",
+            "unit_count": "2",
+            "beds": "6 Beds",
+            "tone": "orange",
+            "marker": "G-All",
+        },
+    ]
+
+    def page_payload(self, *, request_path="", view_mode="month", focus_date_value="", selected_stay=""):
+        focus_date = self._focus_date(focus_date_value)
+        month_start = focus_date.replace(day=1)
+        window_start = month_start - timedelta(days=1)
+        days = [window_start + timedelta(days=offset) for offset in range(self.WINDOW_DAYS)]
+        window_end = days[-1]
+
+        stays = list(
+            BookableItem.objects.filter(category=BookingCategory.STAY, is_active=True)
+            .prefetch_related("gallery_images")
+            .order_by("name")[: len(self.MOCK_ROOMS)]
+        )
+        live = self._live_calendar_maps(stays, window_start, window_end)
+        rows = [
+            self._row_payload(index, stays[index] if index < len(stays) else None, days, focus_date, live)
+            for index in range(len(self.MOCK_ROOMS))
+        ]
+        reservation_count = live["reservation_count"] or 24
+
+        return {
+            "calendar_section": self._section_from_path(request_path),
+            "calendar_view": view_mode if view_mode in {"month", "week", "day"} else "month",
+            "month_label": focus_date.strftime("%B %Y"),
+            "booking_count": reservation_count,
+            "day_columns": [self._day_payload(day, focus_date) for day in days],
+            "calendar_rows": rows,
+            "room_chips": [
+                {
+                    "label": row["unit"],
+                    "count": row["count"],
+                    "tone": row["tone"],
+                    "active": index == 0,
+                    "href": f"/ops/calendar/?stay={row['slug'] or row['unit']}",
+                }
+                for index, row in enumerate(rows)
+            ],
+            "property_options": self._property_options(stays, selected_stay),
+            "previous_url": f"/ops/calendar/?date={(focus_date - timedelta(days=30)).isoformat()}",
+            "next_url": f"/ops/calendar/?date={(focus_date + timedelta(days=30)).isoformat()}",
+            "today_url": f"/ops/calendar/?date={timezone.localdate().isoformat()}",
+            "new_booking_url": reverse("admin:bookings_bookinginquiry_add"),
+            "settings_url": reverse("admin:bookings_calendarfeed_changelist"),
+            "generated_at": timezone.now(),
+        }
+
+    def _live_calendar_maps(self, stays, window_start, window_end):
+        item_ids = [stay.pk for stay in stays if stay and stay.pk]
+        reservation_map = {}
+        block_map = {}
+        override_map = {}
+        if not item_ids:
+            return {
+                "reservations": reservation_map,
+                "blocks": block_map,
+                "overrides": override_map,
+                "reservation_count": 0,
+            }
+
+        reservations = list(
+            BookingInquiry.objects.filter(
+                item_id__in=item_ids,
+                status__in=BookingCalendarService.ACTIVE_BOOKING_STATUSES,
+                check_in__lte=window_end,
+                check_out__gt=window_start,
+            ).order_by("check_in", "id")
+        )
+        blocks = list(
+            AvailabilityBlock.objects.filter(
+                item_id__in=item_ids,
+                is_active=True,
+                start_date__lte=window_end,
+                end_date__gte=window_start,
+            ).order_by("start_date", "id")
+        )
+        overrides = list(
+            DailyPriceOverride.objects.filter(
+                item_id__in=item_ids,
+                is_active=True,
+                start_date__lte=window_end,
+                end_date__gte=window_start,
+            ).order_by("start_date", "id")
+        )
+
+        for reservation in reservations:
+            for day in self._days_in_range(reservation.check_in, reservation.check_out - timedelta(days=1), window_start, window_end):
+                reservation_map.setdefault(reservation.item_id, {}).setdefault(day, []).append(reservation)
+        for block in blocks:
+            for day in self._days_in_range(block.start_date, block.end_date, window_start, window_end):
+                block_map.setdefault(block.item_id, {}).setdefault(day, []).append(block)
+        for override in overrides:
+            for day in self._days_in_range(override.start_date, override.end_date, window_start, window_end):
+                override_map.setdefault(override.item_id, {}).setdefault(day, []).append(override)
+
+        return {
+            "reservations": reservation_map,
+            "blocks": block_map,
+            "overrides": override_map,
+            "reservation_count": len(reservations),
+        }
+
+    @staticmethod
+    def _days_in_range(start, end, lower_bound, upper_bound):
+        current = max(start, lower_bound)
+        end = min(end, upper_bound)
+        while current <= end:
+            yield current
+            current += timedelta(days=1)
+
+    def _row_payload(self, index, stay, days, focus_date, live):
+        mock = self.MOCK_ROOMS[index]
+        title = stay.business_display_name if stay else mock["title"]
+        unit = self._unit_label(title) or mock["unit"]
+        return {
+            "title": title,
+            "slug": stay.slug if stay else "",
+            "unit": unit,
+            "count": self._room_count(stay, index, live),
+            "beds": self._bed_label(stay, mock),
+            "tone": mock["tone"],
+            "cells": [
+                self._cell_payload(index, stay.pk if stay else None, day, offset, focus_date, live)
+                for offset, day in enumerate(days)
+            ],
+        }
+
+    def _cell_payload(self, row_index, item_id, day, offset, focus_date, live):
+        if item_id:
+            live_cell = self._live_cell(item_id, day, live)
+            if live_cell:
+                live_cell["is_active_day"] = day == focus_date
+                return live_cell
+
+        cell = self._mock_cell(row_index, offset)
+        cell.update(
+            {
+                "date": day,
+                "date_iso": day.isoformat(),
+                "is_active_day": day == focus_date,
+                "href": f"/ops/calendar/?date={day.isoformat()}",
+            }
+        )
+        return cell
+
+    def _live_cell(self, item_id, day, live):
+        reservations = live["reservations"].get(item_id, {}).get(day, [])
+        if reservations:
+            reservation = reservations[0]
+            guests = reservation.guests or 1
+            return {
+                "status": "reservation",
+                "label": f"{guests} guests",
+                "meta": f"+{max(guests + 1, 2)}",
+                "date": day,
+                "date_iso": day.isoformat(),
+                "href": reverse("admin:bookings_bookinginquiry_change", args=[reservation.pk]),
+            }
+
+        blocks = live["blocks"].get(item_id, {}).get(day, [])
+        if blocks:
+            block = blocks[0]
+            return {
+                "status": "blocked",
+                "label": "Blocked",
+                "meta": "",
+                "date": day,
+                "date_iso": day.isoformat(),
+                "href": reverse("admin:bookings_availabilityblock_change", args=[block.pk]),
+            }
+
+        overrides = live["overrides"].get(item_id, {}).get(day, [])
+        if overrides:
+            override = overrides[-1]
+            return {
+                "status": "override",
+                "label": f"${override.nightly_price:,.0f}",
+                "meta": "",
+                "date": day,
+                "date_iso": day.isoformat(),
+                "href": reverse("admin:bookings_dailypriceoverride_change", args=[override.pk]),
+            }
+        return None
+
+    @staticmethod
+    def _mock_cell(row_index, offset):
+        if row_index == 1 and offset == 22:
+            return {"status": "blocked", "label": "Blocked", "meta": ""}
+
+        if row_index == 0 and offset >= 14:
+            label_by_offset = {
+                14: "3 guests",
+                15: "3 guests",
+                16: "3 guests",
+                17: "1 guests",
+                18: "1 guests",
+                19: "1 guests",
+                20: "1 guests",
+                21: "1 guests",
+                22: "2 guests",
+            }
+            meta_by_offset = {14: "+3", 15: "+7", 16: "+9", 17: "+5", 18: "+8", 19: "+8", 20: "+8", 21: "+9", 22: "+4"}
+            return {
+                "status": "reservation",
+                "label": label_by_offset.get(offset, "1 guests"),
+                "meta": meta_by_offset.get(offset, ""),
+            }
+
+        if row_index == 2 and offset >= 14:
+            return {"status": "override", "label": "12 guests", "meta": ""}
+
+        return {"status": "available", "label": "Available", "meta": ""}
+
+    @staticmethod
+    def _day_payload(day, focus_date):
+        return {
+            "date": day,
+            "date_iso": day.isoformat(),
+            "weekday": day.strftime("%a"),
+            "day": day.day,
+            "is_focus": day == focus_date,
+        }
+
+    @staticmethod
+    def _focus_date(value):
+        if value:
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                if len(value) == 7:
+                    try:
+                        return date.fromisoformat(f"{value}-17")
+                    except ValueError:
+                        pass
+        return CalendarOperationsService.DEFAULT_FOCUS_DATE
+
+    @staticmethod
+    def _section_from_path(path):
+        if "/list/" in path:
+            return "list"
+        if "/rooms/" in path:
+            return "rooms"
+        if "/analytics/" in path:
+            return "analytics"
+        return "calendar"
+
+    @staticmethod
+    def _unit_label(title):
+        match = re.search(r"\b([A-Z])[-\s]?(All|\d{3})\b", title or "", flags=re.IGNORECASE)
+        if not match:
+            return ""
+        return f"{match.group(1).upper()}-{match.group(2)}"
+
+    @staticmethod
+    def _bed_label(stay, mock):
+        if stay and stay.bedrooms:
+            return f"{stay.bedrooms} Beds"
+        if stay and stay.beds:
+            return f"{stay.beds} Beds"
+        return mock["beds"]
+
+    @staticmethod
+    def _property_options(stays, selected_stay):
+        options = [{"label": "All Properties", "value": "all", "active": not selected_stay}]
+        options.extend(
+            {
+                "label": stay.business_display_name,
+                "value": stay.slug,
+                "active": stay.slug == selected_stay,
+            }
+            for stay in stays
+        )
+        return options
+
+    def _room_count(self, stay, index, live):
+        if not stay:
+            return self.MOCK_ROOMS[index]["unit_count"]
+        real_count = sum(len(day_rows) for day_rows in live["reservations"].get(stay.pk, {}).values())
+        return str(real_count or self.MOCK_ROOMS[index]["unit_count"])
+
+
 class AdminAccessService:
     """Promotes known owner/admin emails after password or social login."""
 

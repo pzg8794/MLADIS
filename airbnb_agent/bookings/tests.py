@@ -3719,8 +3719,8 @@ class CalendarOpsTests(TestCase):
         response = self.client.get(reverse("bookings:calendar-ops"), follow=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MLADIS Modern Dashboard")
-        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+        self.assertContains(response, "Booking Calendar")
+        self.assertContains(response, "frontend/modern-dashboard/assets/ops-calendar.css")
 
     def test_calendar_workspace_subroutes_load_for_staff(self):
         user = get_user_model().objects.create_user(
@@ -3736,8 +3736,8 @@ class CalendarOpsTests(TestCase):
                 response = self.client.get(reverse(f"bookings:{route_name}"))
 
                 self.assertEqual(response.status_code, 200)
-                self.assertContains(response, "MLADIS Modern Dashboard")
-                self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+                self.assertContains(response, "Booking Calendar")
+                self.assertContains(response, "frontend/modern-dashboard/assets/ops-calendar.css")
 
     def test_calendar_ops_api_returns_snapshot_and_mutates_manual_records(self):
         user = get_user_model().objects.create_user(

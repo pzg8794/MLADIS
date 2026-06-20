@@ -109,16 +109,24 @@
           </thead>
           <tbody>
             {% for row in rows %}
-              <tr class="{% if row.id == selected_work_order_id %}is-selected{% endif %}" onclick="window.location='?work_order={{ row.id }}'">
-                <td><input type="checkbox" aria-label="Select {{ row.work_order_id }}"{% if row.id == selected_work_order_id %} checked{% endif %} onclick="event.stopPropagation()"></td>
-                <td><strong>{{ row.title }}</strong></td>
+              <tr class="{% if row.id == selected_work_order_id %}is-selected{% endif %}" data-work-order-url="/ops/maintenance/?work_order={{ row.id }}" tabindex="0">
+                <td><input type="checkbox" aria-label="Select {{ row.work_order_id }}"{% if row.id == selected_work_order_id %} checked{% endif %}></td>
+                <td>
+                  <a class="ops-mnt-row-open" href="/ops/maintenance/?work_order={{ row.id }}">
+                    <strong>{{ row.title }}</strong>
+                  </a>
+                </td>
                 <td>{{ row.property }}</td>
                 <td>{{ row.reservation }}</td>
                 <td>{{ row.assigned_to }}</td>
                 <td><span class="ops-mnt-pill ops-mnt-pill--priority-{{ row.priority_cls }}">{{ row.priority }}</span></td>
                 <td>{{ row.cost }}</td>
                 <td>{{ row.date_label }}</td>
-                <td><span class="ops-mnt-pill ops-mnt-pill--status-{{ row.status_cls }}">{{ row.status }}</span></td>
+                <td>
+                  <a class="ops-mnt-status-open" href="/ops/maintenance/?work_order={{ row.id }}">
+                    <span class="ops-mnt-pill ops-mnt-pill--status-{{ row.status_cls }}">{{ row.status }}</span>
+                  </a>
+                </td>
               </tr>
             {% endfor %}
           </tbody>
@@ -267,4 +275,25 @@
     {% endif %}
   </section>
 </main>
+<script>
+  (() => {
+    document.querySelectorAll("[data-work-order-url]").forEach((row) => {
+      const openRow = () => {
+        window.location.href = row.getAttribute("data-work-order-url");
+      };
+
+      row.addEventListener("click", (event) => {
+        if (event.target.closest("a, button, input, label")) return;
+        openRow();
+      });
+
+      row.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        if (event.target.closest("a, button, input, label")) return;
+        event.preventDefault();
+        openRow();
+      });
+    });
+  })();
+</script>
 {% endblock %}

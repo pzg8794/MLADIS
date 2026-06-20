@@ -1,0 +1,128 @@
+{% extends "bookings/base_ops.html" %}
+{% load static %}
+
+{% block title %}Booking Calendar · MLADIS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-calendar.css' %}?v=ops-calendar-v1">
+{% endblock %}
+
+{% block content %}
+<main class="ops-cal-page" aria-label="Booking calendar">
+  <aside class="ops-cal-rail" aria-label="Calendar workspace navigation">
+    <div>
+      <p>Operations</p>
+      <nav>
+        <a href="/ops/calendar/" class="{% if calendar_section == 'calendar' %}is-active{% endif %}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+          Calendar
+        </a>
+        <a href="/ops/calendar/list/" class="{% if calendar_section == 'list' %}is-active{% endif %}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
+          List View
+        </a>
+        <a href="/ops/calendar/rooms/" class="{% if calendar_section == 'rooms' %}is-active{% endif %}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V7l9-4 9 4v14"/><path d="M9 21v-8h6v8"/><path d="M7 10h.01"/><path d="M17 10h.01"/></svg>
+          Rooms
+        </a>
+        <a href="/ops/calendar/analytics/" class="{% if calendar_section == 'analytics' %}is-active{% endif %}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+          Analytics
+        </a>
+      </nav>
+    </div>
+    <div class="ops-cal-rail-actions">
+      <a href="{{ settings_url }}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        Settings
+      </a>
+      <a class="ops-cal-new-booking" href="{{ new_booking_url }}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        New Booking
+      </a>
+    </div>
+  </aside>
+
+  <section class="ops-cal-main">
+    <header class="ops-cal-header">
+      <div>
+        <h1>Booking Calendar</h1>
+        <p>{{ month_label }} · {{ booking_count }} bookings this month</p>
+      </div>
+
+      <nav class="ops-cal-room-chips" aria-label="Property booking counts">
+        {% for chip in room_chips %}
+          <a class="ops-cal-room-chip ops-cal-room-chip--{{ chip.tone }}{% if chip.active %} is-active{% endif %}" href="{{ chip.href }}">
+            <span aria-hidden="true"></span>
+            {{ chip.label }} · {{ chip.count }}
+          </a>
+        {% endfor %}
+        <button class="ops-cal-property-select" type="button">All Properties
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+      </nav>
+
+      <div class="ops-cal-actions">
+        <a class="ops-cal-today" href="{{ today_url }}">Today</a>
+        <a class="ops-cal-icon" href="{{ previous_url }}" aria-label="Previous period">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </a>
+        <a class="ops-cal-icon" href="{{ next_url }}" aria-label="Next period">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </a>
+        <button class="ops-cal-filter" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16"/><path d="M7 12h10"/><path d="M10 19h4"/></svg>
+          Filter
+        </button>
+      </div>
+    </header>
+
+    <div class="ops-cal-view-tabs" aria-label="Calendar view">
+      <a class="{% if calendar_view == 'month' %}is-active{% endif %}" href="/ops/calendar/?view=month">Month</a>
+      <a class="{% if calendar_view == 'week' %}is-active{% endif %}" href="/ops/calendar/?view=week">Week</a>
+      <a class="{% if calendar_view == 'day' %}is-active{% endif %}" href="/ops/calendar/?view=day">Day</a>
+    </div>
+
+    <section class="ops-cal-board" aria-label="Room booking calendar">
+      <div class="ops-cal-grid" style="--day-count: {{ day_columns|length }};">
+        <div class="ops-cal-room-date">Room / Date</div>
+        {% for day in day_columns %}
+          <a class="ops-cal-day-head{% if day.is_focus %} is-focus{% endif %}" href="/ops/calendar/?date={{ day.date_iso }}">
+            <span>{{ day.weekday }}</span>
+            <strong>{{ day.day }}</strong>
+          </a>
+        {% endfor %}
+
+        {% for row in calendar_rows %}
+          <article class="ops-cal-room ops-cal-room--{{ row.tone }}">
+            <div class="ops-cal-room-icon" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-7h6v7"/></svg>
+            </div>
+            <strong>{{ row.title }}</strong>
+            <small>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>
+              {{ row.beds }}
+            </small>
+          </article>
+          {% for cell in row.cells %}
+            <a class="ops-cal-cell ops-cal-cell--{{ cell.status }}{% if cell.is_active_day %} is-active-day{% endif %}" href="{{ cell.href }}" aria-label="{{ row.unit }} {{ cell.date|date:'M j' }} {{ cell.label }}">
+              <span>{{ cell.label }}</span>
+              {% if cell.meta %}<em>{{ cell.meta }}</em>{% endif %}
+            </a>
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </section>
+
+    <footer class="ops-cal-footer">
+      <div class="ops-cal-legend" aria-label="Calendar legend">
+        <span><i class="is-available"></i>Available</span>
+        <span><i class="is-reservation"></i>Reservation</span>
+        <span><i class="is-blocked"></i>Blocked</span>
+        <span><i class="is-override"></i>Price override</span>
+      </div>
+      <p>All times shown in property local time.</p>
+    </footer>
+  </section>
+</main>
+{% endblock %}
