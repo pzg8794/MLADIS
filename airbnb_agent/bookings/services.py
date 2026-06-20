@@ -3951,6 +3951,7 @@ class MaintenanceOperationsService:
         if using_mock:
             rows = self.mock_rows()
 
+        rows = self._with_toggle_urls(rows, selected_id=selected_id)
         selected = next((row for row in rows if row["id"] == selected_id), None) if selected_id else None
         return {
             "summary_cards": self._summary_cards(using_mock=using_mock),
@@ -3963,6 +3964,17 @@ class MaintenanceOperationsService:
             "new_work_order_url": reverse("admin:bookings_maintenanceevent_add"),
             "generated_at": timezone.now(),
         }
+
+    @staticmethod
+    def _with_toggle_urls(rows, selected_id=""):
+        base_url = reverse("bookings:ops-maintenance")
+        decorated_rows = []
+        for row in rows:
+            detail_url = f"{base_url}?work_order={row['id']}"
+            decorated = {**row, "detail_url": detail_url}
+            decorated["toggle_url"] = base_url if row["id"] == selected_id else detail_url
+            decorated_rows.append(decorated)
+        return decorated_rows
 
     def _summary_cards(self, using_mock=False):
         if using_mock:

@@ -4,7 +4,7 @@
 {% block title %}Maintenance & Work Orders · MLADIS{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-maintenance.css' %}?v=ops-maintenance-v8">
+<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-maintenance.css' %}?v=ops-maintenance-v9">
 {% endblock %}
 
 {% block content %}
@@ -109,25 +109,25 @@
           </thead>
           <tbody>
             {% for row in rows %}
-              <tr class="{% if row.id == selected_work_order_id %}is-selected{% endif %}" data-work-order-url="/ops/maintenance/?work_order={{ row.id }}">
+              <tr class="{% if row.id == selected_work_order_id %}is-selected{% endif %}" data-work-order-url="{{ row.toggle_url }}">
                 <td><input type="checkbox" aria-label="Select {{ row.work_order_id }}"{% if row.id == selected_work_order_id %} checked{% endif %}></td>
                 <td>
-                  <a class="ops-mnt-cell-link ops-mnt-row-open" href="/ops/maintenance/?work_order={{ row.id }}">
+                  <a class="ops-mnt-cell-link ops-mnt-row-open" href="{{ row.toggle_url }}">
                     <strong>{{ row.title }}</strong>
                   </a>
                 </td>
-                <td><a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">{{ row.property }}</a></td>
-                <td><a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">{{ row.reservation }}</a></td>
-                <td><a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">{{ row.assigned_to }}</a></td>
+                <td><a class="ops-mnt-cell-link" href="{{ row.toggle_url }}">{{ row.property }}</a></td>
+                <td><a class="ops-mnt-cell-link" href="{{ row.toggle_url }}">{{ row.reservation }}</a></td>
+                <td><a class="ops-mnt-cell-link" href="{{ row.toggle_url }}">{{ row.assigned_to }}</a></td>
                 <td>
-                  <a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">
+                  <a class="ops-mnt-cell-link" href="{{ row.toggle_url }}">
                     <span class="ops-mnt-pill ops-mnt-pill--priority-{{ row.priority_cls }}">{{ row.priority }}</span>
                   </a>
                 </td>
-                <td><a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">{{ row.cost }}</a></td>
-                <td><a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">{{ row.date_label }}</a></td>
+                <td><a class="ops-mnt-cell-link" href="{{ row.toggle_url }}">{{ row.cost }}</a></td>
+                <td><a class="ops-mnt-cell-link" href="{{ row.toggle_url }}">{{ row.date_label }}</a></td>
                 <td>
-                  <a class="ops-mnt-cell-link ops-mnt-status-open" href="/ops/maintenance/?work_order={{ row.id }}">
+                  <a class="ops-mnt-cell-link ops-mnt-status-open" href="{{ row.toggle_url }}">
                     <span class="ops-mnt-pill ops-mnt-pill--status-{{ row.status_cls }}">{{ row.status }}</span>
                   </a>
                 </td>

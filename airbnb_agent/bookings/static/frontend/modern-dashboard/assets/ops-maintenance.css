@@ -1748,3 +1748,75 @@
     min-height: 0;
   }
 }
+
+/* v9 interaction/layout contract: selecting a row must not crush the table. */
+.ops-mnt-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.ops-mnt-list-card {
+  width: 100%;
+}
+
+.ops-mnt-table {
+  min-width: 880px;
+}
+
+.ops-mnt-detail {
+  width: 100%;
+  max-width: 100%;
+  flex-basis: auto;
+  position: static;
+}
+
+.ops-mnt-detail-card {
+  width: 100%;
+}
+
+@media (min-width: 1500px) {
+  .ops-mnt-workspace:not(.ops-mnt-workspace--no-detail) {
+    grid-template-columns: minmax(780px, 1fr) minmax(560px, 660px);
+  }
+
+  .ops-mnt-workspace:not(.ops-mnt-workspace--no-detail) .ops-mnt-table {
+    min-width: 790px;
+  }
+
+  .ops-mnt-detail {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+.ops-mnt-stat-grid article > span,
+.ops-mnt-stat-grid article > strong,
+.ops-mnt-stat-grid .ops-mnt-stat-pill,
+.ops-mnt-assignee strong,
+.ops-mnt-assignee small {
+  font-size: 10.5px;
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.ops-mnt-stat-grid article > span {
+  font-weight: 700;
+}
+
+.ops-mnt-stat-grid article > strong,
+.ops-mnt-stat-grid .ops-mnt-stat-pill,
+.ops-mnt-assignee strong,
+.ops-mnt-assignee small {
+  font-weight: 500;
+}
+
+.ops-mnt-stat-grid .ops-mnt-stat-pill {
+  min-height: 19px;
+  padding: 2px 8px;
+}
+
+.ops-mnt-assignee {
+  align-items: center;
+}
