@@ -4,7 +4,7 @@
 {% block title %}Maintenance & Work Orders · MLADIS{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-maintenance.css' %}?v=ops-maintenance-v7">
+<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-maintenance.css' %}?v=ops-maintenance-v8">
 {% endblock %}
 
 {% block content %}
@@ -15,18 +15,18 @@
       <p>Track, manage, and automate property maintenance and vendor work.</p>
     </div>
     <div class="ops-mnt-header-actions">
-      <button class="ops-mnt-btn" type="button">
+      <a class="ops-mnt-btn" href="#work-orders">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
         Filters
-      </button>
-      <button class="ops-mnt-btn" type="button">
+      </a>
+      <a class="ops-mnt-btn" href="{% url 'bookings:ops-maintenance-api' %}">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Export
-      </button>
-      <button class="ops-mnt-btn ops-mnt-btn--primary" type="button">
+      </a>
+      <a class="ops-mnt-btn ops-mnt-btn--primary" href="{{ new_work_order_url }}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
         New Work Order
-      </button>
+      </a>
     </div>
   </header>
 
@@ -66,8 +66,8 @@
     {% endfor %}
   </section>
 
-  <section class="ops-mnt-workspace" aria-label="Maintenance workspace">
-    <section class="ops-mnt-list-card" aria-label="Work orders">
+  <section class="ops-mnt-workspace{% if not detail %} ops-mnt-workspace--no-detail{% endif %}" aria-label="Maintenance workspace">
+    <section id="work-orders" class="ops-mnt-list-card" aria-label="Work orders">
       <div class="ops-mnt-list-head">
         <h2>
           <span class="ops-mnt-list-icon" aria-hidden="true"></span>
@@ -96,7 +96,7 @@
           </colgroup>
           <thead>
             <tr>
-              <th><input type="checkbox" aria-label="Select all work orders"></th>
+              <th><input type="checkbox" aria-label="Select all work orders" onclick="event.stopPropagation()"></th>
               <th>Title</th>
               <th>Property</th>
               <th>Reservation</th>
@@ -110,7 +110,7 @@
           <tbody>
             {% for row in rows %}
               <tr class="{% if row.id == selected_work_order_id %}is-selected{% endif %}" onclick="window.location='?work_order={{ row.id }}'">
-                <td><input type="checkbox" aria-label="Select {{ row.work_order_id }}"{% if row.id == selected_work_order_id %} checked{% endif %}></td>
+                <td><input type="checkbox" aria-label="Select {{ row.work_order_id }}"{% if row.id == selected_work_order_id %} checked{% endif %} onclick="event.stopPropagation()"></td>
                 <td><strong>{{ row.title }}</strong></td>
                 <td>{{ row.property }}</td>
                 <td>{{ row.reservation }}</td>
@@ -145,9 +145,9 @@
               <strong>{{ detail.work_order_id }}</strong>
               <span class="ops-mnt-pill ops-mnt-pill--status-{{ detail.status_cls }}">{{ detail.status }}</span>
             </div>
-            <div class="ops-mnt-detail-icons" aria-hidden="true">
-              <span>↗</span>
-              <span>×</span>
+            <div class="ops-mnt-detail-icons">
+              <span aria-hidden="true">↗</span>
+              <a href="/ops/maintenance/" aria-label="Close selected work order">×</a>
             </div>
           </header>
 

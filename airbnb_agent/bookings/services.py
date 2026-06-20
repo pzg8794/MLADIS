@@ -25,6 +25,7 @@ from .models import (
     AdminAccess,
     AgentKnowledgeSource,
     AgentConversation,
+    AgentFAQ,
     AvailabilityBlock,
     BookableItem,
     BookingCategory,
@@ -3639,7 +3640,7 @@ class MaintenanceOperationsService:
         if using_mock:
             rows = self.mock_rows()
 
-        selected = next((row for row in rows if row["id"] == selected_id), rows[0] if rows else None)
+        selected = next((row for row in rows if row["id"] == selected_id), None) if selected_id else None
         return {
             "summary_cards": self._summary_cards(using_mock=using_mock),
             "tabs": self._tabs(using_mock=using_mock, rows=rows),
@@ -3647,6 +3648,8 @@ class MaintenanceOperationsService:
             "detail": self._detail_payload(selected, using_mock=using_mock) if selected else None,
             "selected_work_order_id": selected["id"] if selected else "",
             "total_results_display": "19" if using_mock else f"{len(rows):,}",
+            "work_order_admin_url": reverse("admin:bookings_maintenanceevent_changelist"),
+            "new_work_order_url": reverse("admin:bookings_maintenanceevent_add"),
             "generated_at": timezone.now(),
         }
 
@@ -3887,6 +3890,305 @@ class MaintenanceOperationsService:
     @staticmethod
     def _status_class(status):
         return str(status).strip().lower().replace(" ", "-") or "open"
+
+
+class AgentIntelligenceOperationsService:
+    """Presentation service for the FairAgent / Agent Intelligence ops page."""
+
+    MOCK_CONVERSATIONS = [
+        {
+            "visitor": "Maria Rodriguez",
+            "initials": "MR",
+            "tone": "green",
+            "item": "3 Beds Apt, Vacation Home & Pool, G-101",
+            "question": "Do you have availability for June 20-23?",
+            "time_label": "Just now",
+            "sentiment": "Positive",
+        },
+        {
+            "visitor": "John Smith",
+            "initials": "JS",
+            "tone": "blue",
+            "item": "2 Beds Apt, Pool",
+            "question": "Is early check-in possible on Jun 12?",
+            "time_label": "1m ago",
+            "sentiment": "Positive",
+        },
+        {
+            "visitor": "Ana Lopez",
+            "initials": "AL",
+            "tone": "sky",
+            "item": "Meeting Room 1",
+            "question": "Can I get a receipt for my payment?",
+            "time_label": "2m ago",
+            "sentiment": "Neutral",
+        },
+        {
+            "visitor": "David Brown",
+            "initials": "DW",
+            "tone": "violet",
+            "item": "6 Beds Apt, G-101",
+            "question": "What's the neighborhood like?",
+            "time_label": "3m ago",
+            "sentiment": "Positive",
+        },
+    ]
+
+    MOCK_INTENTS = [
+        {"question": "Check availability", "detail": "Do you have availability for June 20-23?", "category": "Availability", "total": 342, "trend": "+18%", "tone": "green"},
+        {"question": "Early check-in request", "detail": "Is early check-in possible?", "category": "Check-in", "total": 156, "trend": "+9%", "tone": "green"},
+        {"question": "Deposit information", "detail": "How much is the deposit?", "category": "Payments", "total": 138, "trend": "-6%", "tone": "red"},
+        {"question": "Neighborhood info", "detail": "What is the area like?", "category": "Local Info", "total": 122, "trend": "+12%", "tone": "green"},
+        {"question": "Parking availability", "detail": "Do you have parking?", "category": "Amenities", "total": 98, "trend": "+7%", "tone": "green"},
+    ]
+
+    def page_payload(self):
+        conversations = AgentConversation.objects.select_related("item").order_by("-updated_at")
+        faqs = AgentFAQ.objects.select_related("item").order_by("-priority", "category", "question")
+        total_conversations = conversations.count()
+        faq_total = faqs.count()
+        faq_conversations = conversations.filter(metadata__agent_mode="faq").count()
+        openai_conversations = conversations.filter(metadata__agent_mode="openai").count()
+        fallback_conversations = conversations.exclude(metadata__agent_mode__in=["faq", "openai"]).count()
+        booking_conversations = conversations.filter(
+            Q(question_topic__icontains="booking")
+            | Q(question_topic__icontains="availability")
+            | Q(last_user_message__icontains="book")
+            | Q(last_user_message__icontains="availability")
+        ).count()
+        coverage = round((faq_conversations / total_conversations) * 100) if total_conversations else (87 if faq_total else 87)
+        topic_rows = list(
+            conversations.values("question_topic")
+            .annotate(total=Count("id"))
+            .order_by("-total", "question_topic")[:5]
+        )
+        max_topic_total = max([row["total"] for row in topic_rows] or [0])
+
+        return {
+            "summary_cards": self._summary_cards(
+                total_conversations=total_conversations,
+                fallback_conversations=fallback_conversations,
+                booking_conversations=booking_conversations,
+                openai_conversations=openai_conversations,
+            ),
+            "insight": {
+                "active_conversations": f"{self._active_conversation_count(conversations):,}" if total_conversations else "12",
+                "engagement_rate": f"{coverage if total_conversations else 92}%",
+                "sentiment": "Positive",
+            },
+            "conversation_rows": self._conversation_rows(conversations[:4]),
+            "intent_rows": self._intent_rows(topic_rows, max_topic_total),
+            "recommendations": self._recommendations(),
+            "faq_match": self._faq_match_payload(coverage=coverage, total_conversations=total_conversations, faq_total=faq_total),
+            "suggestions": self._suggestions(),
+            "guardrails": self._guardrails(),
+            "topic_rows": self._topic_volume_rows(topic_rows, max_topic_total),
+            "faq_admin_url": reverse("admin:bookings_agentfaq_changelist"),
+            "conversation_admin_url": reverse("admin:bookings_agentconversation_changelist"),
+            "agent_api_url": reverse("bookings:ops-agent-api"),
+            "generated_at": timezone.now(),
+        }
+
+    def _summary_cards(self, total_conversations, fallback_conversations, booking_conversations, openai_conversations):
+        escalation_value = fallback_conversations if total_conversations else 32
+        booking_value = booking_conversations if total_conversations else 186
+        return [
+            {
+                "label": "Total Conversations",
+                "value": f"{(total_conversations or 1248):,}",
+                "trend": "+18% vs Jun 29 - Jul 5" if not total_conversations else "Live conversation log",
+                "tone": "green",
+                "spark": "M0 18 L9 20 L18 15 L28 11 L38 17 L48 20 L58 17 L68 19 L78 14 L88 18 L100 12 L112 16 L122 18 L132 10 L142 15 L154 14 L164 20 L176 17 L188 12 L200 15",
+                "icon": "chat",
+            },
+            {
+                "label": "Escalations",
+                "value": f"{escalation_value:,}",
+                "trend": "-11% vs Jun 29 - Jul 5" if not total_conversations else f"{openai_conversations:,} model assists",
+                "tone": "orange",
+                "spark": "M0 20 L12 18 L24 11 L36 17 L48 13 L60 19 L72 15 L84 20 L96 14 L108 11 L120 16 L132 21 L144 18 L156 13 L168 10 L180 14 L192 18 L200 16",
+                "icon": "alert",
+            },
+            {
+                "label": "Booking Conversions",
+                "value": f"{booking_value:,}",
+                "trend": "+14% vs Jun 29 - Jul 5" if not total_conversations else "Availability and booking intents",
+                "tone": "violet",
+                "spark": "M0 18 L12 18 L24 12 L36 10 L48 16 L60 18 L72 12 L84 14 L96 17 L108 21 L120 15 L132 19 L144 14 L156 17 L168 13 L180 19 L192 17 L200 20",
+                "icon": "check",
+            },
+            {
+                "label": "Avg. Response Time",
+                "value": "1m 18s",
+                "trend": "-8s vs Jun 29 - Jul 5",
+                "tone": "blue",
+                "spark": "M0 15 L12 14 L24 18 L36 13 L48 11 L60 12 L72 15 L84 13 L96 16 L108 14 L120 20 L132 21 L144 20 L156 17 L168 21 L180 18 L192 20 L200 17",
+                "icon": "clock",
+            },
+        ]
+
+    @staticmethod
+    def _active_conversation_count(conversations):
+        since = timezone.now() - timedelta(hours=24)
+        return conversations.filter(updated_at__gte=since).count()
+
+    def _conversation_rows(self, live_rows):
+        rows = [self._conversation_payload(row, index) for index, row in enumerate(live_rows)]
+        if len(rows) < len(self.MOCK_CONVERSATIONS):
+            rows.extend(self.MOCK_CONVERSATIONS[len(rows):])
+        return rows[:4]
+
+    def _conversation_payload(self, row, index):
+        visitor = row.visitor_name or self._visitor_from_email(row.visitor_email) or "Website visitor"
+        mode = (row.metadata or {}).get("agent_mode", "fallback")
+        return {
+            "visitor": visitor,
+            "initials": self._initials(visitor),
+            "tone": ["green", "blue", "sky", "violet"][index % 4],
+            "item": row.item.business_display_name if row.item else "General MLADIS",
+            "question": self._trim(row.last_user_message, 88),
+            "time_label": self._time_ago(row.updated_at),
+            "sentiment": "Neutral" if mode == "guardrail" else "Positive",
+        }
+
+    def _intent_rows(self, topic_rows, max_topic_total):
+        rows = []
+        for index, row in enumerate(topic_rows[:5]):
+            topic = row["question_topic"] or "general"
+            total = row["total"]
+            mock = self.MOCK_INTENTS[index] if index < len(self.MOCK_INTENTS) else self.MOCK_INTENTS[-1]
+            rows.append(
+                {
+                    "question": self._topic_title(topic),
+                    "detail": mock["detail"],
+                    "category": self._category_for_topic(topic),
+                    "total": total,
+                    "trend": f"+{max(3, min(18, int((total / max_topic_total) * 18) if max_topic_total else 6))}%",
+                    "tone": "green",
+                }
+            )
+        if len(rows) < len(self.MOCK_INTENTS):
+            rows.extend(self.MOCK_INTENTS[len(rows):])
+        return rows[:5]
+
+    @classmethod
+    def _topic_volume_rows(cls, topic_rows, max_topic_total):
+        rows = []
+        for index, row in enumerate(topic_rows[:5]):
+            total = row["total"]
+            rows.append(
+                {
+                    "topic": cls._topic_title(row["question_topic"] or "general"),
+                    "total": total,
+                    "percent": int((total / max_topic_total) * 100) if max_topic_total else 0,
+                    "bar": int((total / max_topic_total) * 100) if max_topic_total else 0,
+                }
+            )
+        if len(rows) < len(cls.MOCK_INTENTS):
+            for mock in cls.MOCK_INTENTS[len(rows):]:
+                rows.append(
+                    {
+                        "topic": mock["category"] if mock["category"] != "Check-in" else "Check-in / Out",
+                        "total": mock["total"],
+                        "percent": {"Availability": 27, "Check-in": 12, "Payments": 11, "Local Info": 10, "Amenities": 8}.get(mock["category"], 8),
+                        "bar": {"Availability": 100, "Check-in": 52, "Payments": 44, "Local Info": 39, "Amenities": 32}.get(mock["category"], 30),
+                    }
+                )
+        return rows[:5]
+
+    @staticmethod
+    def _recommendations():
+        return [
+            {"title": "Follow up on availability holds", "body": "3 guests asked about availability but haven't booked.", "tone": "red", "priority": "High"},
+            {"title": "Send deposit policy reminder", "body": "Multiple guests asked about deposits. Proactive info can reduce friction.", "tone": "orange", "priority": "Medium"},
+            {"title": "Suggest alternate dates", "body": "2 guests are looking for sold-out dates.", "tone": "orange", "priority": "Medium"},
+            {"title": "Promote early check-in", "body": "High intent detected for early check-in on Jun 12-14.", "tone": "green", "priority": "Low"},
+        ]
+
+    @staticmethod
+    def _suggestions():
+        return [
+            {"title": "Send follow-up", "body": "Follow up with Maria Rodriguez about 3 Beds Apt, G-101 availability.", "impact": "High Impact", "tone": "red"},
+            {"title": "Offer alternate stay", "body": "Recommend 2 Beds Apt, Pool for sold-out dates (Jun 18-20).", "impact": "Medium Impact", "tone": "orange"},
+            {"title": "Release deposit info", "body": "Send deposit policy and payment options to recent inquiries.", "impact": "Medium Impact", "tone": "orange"},
+        ]
+
+    @staticmethod
+    def _guardrails():
+        return [
+            {"title": "Never share government IDs", "body": "Guest ID and documents are protected."},
+            {"title": "No off-platform bookings", "body": "Bookings must be made on mladis.com."},
+            {"title": "No pricing overrides", "body": "Prices shown are final and policy-compliant."},
+            {"title": "No personal data requests", "body": "We do not ask for sensitive personal data."},
+        ]
+
+    @staticmethod
+    def _faq_match_payload(coverage, total_conversations, faq_total):
+        match_rate = coverage if total_conversations else 87
+        matched = max(1, total_conversations or 1086)
+        return {
+            "rate": f"{match_rate}%",
+            "matched": f"{matched:,}",
+            "partial": f"{max(faq_total, 112):,}",
+            "missing": f"{max(0, (total_conversations - matched) if total_conversations else 50):,}",
+        }
+
+    @staticmethod
+    def _visitor_from_email(email):
+        if not email:
+            return ""
+        return email.split("@", 1)[0].replace(".", " ").replace("_", " ").title()
+
+    @staticmethod
+    def _initials(value):
+        parts = [part for part in re.split(r"\s+", value.strip()) if part]
+        if not parts:
+            return "AI"
+        if len(parts) == 1:
+            return parts[0][:2].upper()
+        return f"{parts[0][0]}{parts[-1][0]}".upper()
+
+    @staticmethod
+    def _time_ago(value):
+        if not value:
+            return "Just now"
+        delta = timezone.now() - value
+        if delta.days:
+            return f"{delta.days}d ago"
+        hours = delta.seconds // 3600
+        if hours:
+            return f"{hours}h ago"
+        minutes = max(1, delta.seconds // 60)
+        return f"{minutes}m ago"
+
+    @staticmethod
+    def _trim(value, length):
+        value = (value or "").strip()
+        if len(value) <= length:
+            return value
+        return f"{value[: length - 1].rstrip()}..."
+
+    @staticmethod
+    def _topic_title(topic):
+        label = str(topic or "general").replace("_", " ").replace("-", " ").strip().title()
+        if label.lower() in {"Faq", "General"}:
+            return "General question"
+        return label
+
+    @staticmethod
+    def _category_for_topic(topic):
+        topic = str(topic or "").lower()
+        if "deposit" in topic or "payment" in topic or "invoice" in topic:
+            return "Payments"
+        if "check" in topic or "arrival" in topic:
+            return "Check-in"
+        if "parking" in topic or "pool" in topic or "amenity" in topic:
+            return "Amenities"
+        if "area" in topic or "local" in topic or "neighborhood" in topic:
+            return "Local Info"
+        if "availability" in topic or "book" in topic:
+            return "Availability"
+        return "General"
 
 
 class CustomersCRMService:

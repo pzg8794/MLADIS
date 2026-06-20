@@ -1493,3 +1493,221 @@
     padding-left: 0;
   }
 }
+
+/* v8 alignment pass: match the Payments page structure and keep detail hidden until selected. */
+.ops-mnt-header-actions {
+  gap: 12px;
+}
+
+.ops-mnt-btn {
+  min-width: 104px;
+  min-height: 38px;
+  align-items: center;
+  border-radius: 7px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.035);
+  line-height: 1;
+}
+
+.ops-mnt-btn--primary {
+  min-width: 172px;
+  background: linear-gradient(135deg, #0784a3, #078fb1);
+}
+
+.ops-mnt-workspace {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.ops-mnt-workspace--no-detail {
+  display: block;
+}
+
+.ops-mnt-list-card {
+  flex: 1 1 auto;
+  min-height: 668px;
+}
+
+.ops-mnt-workspace--no-detail .ops-mnt-list-card {
+  width: 100%;
+}
+
+.ops-mnt-detail {
+  flex: 0 0 660px;
+  width: 660px;
+  min-width: 0;
+  display: flex;
+  position: sticky;
+  top: 16px;
+}
+
+.ops-mnt-detail-card {
+  width: 100%;
+  min-height: 668px;
+}
+
+.ops-mnt-table {
+  min-width: 790px;
+}
+
+.ops-mnt-workspace--no-detail .ops-mnt-table {
+  min-width: 880px;
+}
+
+.ops-mnt-col-check { width: 34px; }
+.ops-mnt-col-title { width: 17.5%; }
+.ops-mnt-col-property { width: 17%; }
+.ops-mnt-col-reservation { width: 10%; }
+.ops-mnt-col-assigned { width: 12%; }
+.ops-mnt-col-priority { width: 9%; }
+.ops-mnt-col-cost { width: 7%; }
+.ops-mnt-col-date { width: 13%; }
+.ops-mnt-col-status { width: 14%; }
+
+.ops-mnt-table th,
+.ops-mnt-table td {
+  padding: 11px 7px;
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+
+.ops-mnt-table td strong {
+  font-size: 10.8px;
+  line-height: 1.24;
+}
+
+.ops-mnt-pill,
+.ops-mnt-stat-pill {
+  max-width: 100%;
+  min-height: 18px;
+  padding: 3px 6px;
+  font-size: 9.5px;
+  line-height: 1;
+}
+
+.ops-mnt-pill--status-in-progress {
+  padding-inline: 5px;
+}
+
+.ops-mnt-detail-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.ops-mnt-detail-icons a {
+  color: inherit;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.ops-mnt-detail-title h2 {
+  font-size: 18px;
+  line-height: 1.12;
+}
+
+.ops-mnt-detail-title p {
+  font-size: 12px;
+}
+
+.ops-mnt-detail-title span {
+  font-size: 11px;
+}
+
+.ops-mnt-detail-actions button {
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.ops-mnt-stat-grid {
+  grid-template-columns: 0.8fr 1.05fr 1.18fr 0.9fr 0.9fr;
+  margin: 0 14px 10px;
+}
+
+.ops-mnt-stat-grid article {
+  min-height: 58px;
+  gap: 4px;
+  padding: 9px 10px;
+}
+
+.ops-mnt-stat-grid span {
+  font-size: 9.5px;
+  line-height: 1;
+}
+
+.ops-mnt-stat-grid strong {
+  font-size: 12px;
+  line-height: 1.12;
+}
+
+.ops-mnt-assignee {
+  gap: 7px;
+}
+
+.ops-mnt-assignee span {
+  width: 26px;
+  height: 26px;
+  font-size: 9px;
+}
+
+.ops-mnt-assignee strong {
+  font-size: 11.5px;
+}
+
+.ops-mnt-assignee small {
+  font-size: 9px;
+}
+
+.ops-mnt-detail-grid {
+  grid-template-columns: minmax(245px, 1fr) minmax(176px, 0.74fr) 136px;
+  gap: 12px;
+  padding: 0 14px 10px;
+}
+
+.ops-mnt-photo-panel h3,
+.ops-mnt-notes-panel h3,
+.ops-mnt-timeline h3,
+.ops-mnt-report h3 {
+  font-size: 11px;
+  line-height: 1.18;
+}
+
+.ops-mnt-notes-panel p {
+  color: #52627a;
+  font-size: 10px;
+  line-height: 1.36;
+}
+
+.ops-mnt-timeline {
+  min-height: 300px;
+  padding: 0 0 0 8px;
+}
+
+.ops-mnt-links {
+  padding: 0 14px 10px;
+}
+
+.ops-mnt-report {
+  margin: 0 14px 14px;
+  padding: 10px;
+}
+
+.ops-mnt-report-body {
+  grid-template-columns: minmax(270px, 1fr) minmax(188px, 0.72fr);
+}
+
+@media (max-width: 1180px) {
+  .ops-mnt-workspace {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .ops-mnt-detail,
+  .ops-mnt-list-card {
+    min-height: 0;
+  }
+}

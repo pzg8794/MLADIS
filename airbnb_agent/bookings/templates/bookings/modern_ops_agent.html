@@ -1,0 +1,240 @@
+{% extends "bookings/base_ops.html" %}
+{% load static %}
+
+{% block title %}FairAgent / Agent Intelligence &middot; MLADIS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-agent.css' %}?v=ops-agent-v1">
+{% endblock %}
+
+{% block content %}
+<main class="ops-agent-page" aria-label="FairAgent and agent intelligence">
+  <header class="ops-agent-header">
+    <div class="ops-agent-title">
+      <h1>FairAgent / Agent Intelligence <span>Beta</span></h1>
+      <p>Monitor AI conversations, user intent, and performance. Improve guest experiences with actionable insights.</p>
+    </div>
+    <div class="ops-agent-actions">
+      <div class="ops-agent-action-row">
+        <a class="ops-agent-btn ops-agent-btn--primary" href="{{ conversation_admin_url }}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
+          New Agent Session
+        </a>
+        <a class="ops-agent-btn" href="{{ conversation_admin_url }}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+          Review Logs
+        </a>
+        <a class="ops-agent-icon-btn" href="{{ agent_api_url }}" aria-label="Open agent API">...</a>
+      </div>
+      <div class="ops-agent-filter-row">
+        <button class="ops-agent-btn" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+          Jun 6 - Jun 12, 2026
+          <span>&#8964;</span>
+        </button>
+        <button class="ops-agent-btn" type="button">Model: All Models <span>&#8964;</span></button>
+        <button class="ops-agent-btn" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+          Filters
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <section class="ops-agent-summary" aria-label="Agent performance summary">
+    {% for card in summary_cards %}
+      <article class="ops-agent-kpi ops-agent-kpi--{{ card.tone }}">
+        <div class="ops-agent-kpi-top">
+          <span class="ops-agent-kpi-icon" aria-hidden="true">
+            {% if card.icon == "chat" %}
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 10h8"/><path d="M8 14h5"/></svg>
+            {% elif card.icon == "alert" %}
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            {% elif card.icon == "check" %}
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="m8 12 3 3 5-6"/></svg>
+            {% else %}
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            {% endif %}
+          </span>
+          <button type="button" aria-label="More options">...</button>
+        </div>
+        <div class="ops-agent-kpi-copy">
+          <p>{{ card.label }}</p>
+          <strong>{{ card.value }}</strong>
+          <span>{{ card.trend }}</span>
+        </div>
+        <svg class="ops-agent-sparkline" viewBox="0 0 200 30" preserveAspectRatio="none" aria-hidden="true">
+          <path d="{{ card.spark }}"></path>
+        </svg>
+      </article>
+    {% endfor %}
+  </section>
+
+  <section class="ops-agent-midgrid" aria-label="Agent intelligence workspace">
+    <section class="ops-agent-panel ops-agent-live">
+      <header class="ops-agent-panel-head">
+        <h2>Live Conversation Insights</h2>
+        <span class="ops-agent-live-pill">Live</span>
+      </header>
+      <div class="ops-agent-mini-stats">
+        <div><span>Active conversations</span><strong>{{ insight.active_conversations }}</strong></div>
+        <div><span>Engagement rate</span><strong>{{ insight.engagement_rate }}</strong></div>
+        <div><span>Sentiment</span><strong class="is-positive">{{ insight.sentiment }} &#9786;</strong></div>
+      </div>
+      <div class="ops-agent-conversation-list">
+        {% for row in conversation_rows %}
+          <article>
+            <span class="ops-agent-avatar ops-agent-avatar--{{ row.tone }}">{{ row.initials }}</span>
+            <div>
+              <strong>{{ row.visitor }}</strong>
+              <small>{{ row.item }}</small>
+              <p>{{ row.question }}</p>
+            </div>
+            <aside>
+              <time>{{ row.time_label }}</time>
+              <span class="ops-agent-sentiment ops-agent-sentiment--{{ row.sentiment|lower }}">{{ row.sentiment }}</span>
+            </aside>
+          </article>
+        {% endfor %}
+      </div>
+      <a class="ops-agent-panel-link" href="{{ conversation_admin_url }}">View all active conversations &rsaquo;</a>
+    </section>
+
+    <section class="ops-agent-panel ops-agent-intents">
+      <header class="ops-agent-panel-head">
+        <h2>Recent User Intents / Questions</h2>
+        <a href="{{ conversation_admin_url }}">View all</a>
+      </header>
+      <table>
+        <thead>
+          <tr>
+            <th>Intent / Question</th>
+            <th>Category</th>
+            <th>Conversations</th>
+            <th>Trend</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in intent_rows %}
+            <tr>
+              <td>
+                <span class="ops-agent-doc-icon ops-agent-doc-icon--{{ row.tone }}" aria-hidden="true"></span>
+                <div><strong>{{ row.question }}</strong><small>{{ row.detail }}</small></div>
+              </td>
+              <td>{{ row.category }}</td>
+              <td>{{ row.total }}</td>
+              <td><span class="ops-agent-trend ops-agent-trend--{{ row.tone }}">{{ row.trend }}</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <footer class="ops-agent-table-footer">
+        <span>Showing 1 to 5 of 20 intents</span>
+        <nav aria-label="Intent pages"><button type="button">&lsaquo;</button><button class="is-active" type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">&rsaquo;</button></nav>
+      </footer>
+    </section>
+
+    <section class="ops-agent-panel ops-agent-actions-panel">
+      <header class="ops-agent-panel-head">
+        <h2>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"/></svg>
+          Recommended Next Actions
+        </h2>
+      </header>
+      <div class="ops-agent-recommendations">
+        {% for item in recommendations %}
+          <article>
+            <span class="ops-agent-rec-icon ops-agent-rec-icon--{{ item.tone }}" aria-hidden="true"></span>
+            <div><strong>{{ item.title }}</strong><p>{{ item.body }}</p></div>
+            <b class="ops-agent-priority ops-agent-priority--{{ item.tone }}">{{ item.priority }}</b>
+            <em aria-hidden="true">&rsaquo;</em>
+          </article>
+        {% endfor %}
+      </div>
+      <a class="ops-agent-wide-link" href="{{ conversation_admin_url }}">View all suggestions</a>
+    </section>
+  </section>
+
+  <section class="ops-agent-bottomgrid" aria-label="Knowledge and guardrails">
+    <section class="ops-agent-panel ops-agent-faq">
+      <header class="ops-agent-panel-head">
+        <h2>FAQ / Knowledge Match Rate</h2>
+        <span class="ops-agent-beta">Beta</span>
+      </header>
+      <div class="ops-agent-donut-row">
+        <div class="ops-agent-donut" style="--match: {{ faq_match.rate|cut:'%' }}%;">
+          <strong>{{ faq_match.rate }}</strong>
+          <span>Match Rate</span>
+        </div>
+        <dl>
+          <div><dt><i class="is-blue"></i>Matched</dt><dd>87% ({{ faq_match.matched }})</dd></div>
+          <div><dt><i class="is-orange"></i>Partial Match</dt><dd>9% ({{ faq_match.partial }})</dd></div>
+          <div><dt><i class="is-red"></i>No Match</dt><dd>4% ({{ faq_match.missing }})</dd></div>
+        </dl>
+      </div>
+      <a class="ops-agent-wide-link" href="{{ faq_admin_url }}">Improve knowledge base</a>
+    </section>
+
+    <section class="ops-agent-panel ops-agent-suggestions">
+      <header class="ops-agent-panel-head">
+        <h2>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"/></svg>
+          AI Suggestions <small>(Auto-generated)</small>
+        </h2>
+      </header>
+      <div class="ops-agent-suggestion-list">
+        {% for item in suggestions %}
+          <article>
+            <span class="ops-agent-rec-icon ops-agent-rec-icon--{{ item.tone }}" aria-hidden="true"></span>
+            <div><strong>{{ item.title }}</strong><p>{{ item.body }}</p></div>
+            <b class="ops-agent-priority ops-agent-priority--{{ item.tone }}">{{ item.impact }}</b>
+            <a href="{{ faq_admin_url }}">Apply</a>
+          </article>
+        {% endfor %}
+      </div>
+      <a class="ops-agent-panel-link" href="{{ faq_admin_url }}">View all suggestions &rsaquo;</a>
+    </section>
+
+    <section class="ops-agent-panel ops-agent-guardrails">
+      <header class="ops-agent-panel-head">
+        <h2>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#41516a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+          Protected Guardrails
+        </h2>
+        <span class="ops-agent-always">Always On</span>
+      </header>
+      <div class="ops-agent-guard-list">
+        {% for item in guardrails %}
+          <article><span aria-hidden="true">&#10003;</span><div><strong>{{ item.title }}</strong><p>{{ item.body }}</p></div></article>
+        {% endfor %}
+      </div>
+      <a class="ops-agent-wide-link" href="{{ faq_admin_url }}">View guardrail settings</a>
+    </section>
+
+    <section class="ops-agent-panel ops-agent-topics">
+      <header class="ops-agent-panel-head">
+        <h2>Top Topics by Volume</h2>
+        <a href="{{ conversation_admin_url }}">View all</a>
+      </header>
+      <table>
+        <thead><tr><th>Topic</th><th>Conversations</th><th>%</th></tr></thead>
+        <tbody>
+          {% for row in topic_rows %}
+            <tr>
+              <td>{{ row.topic }}</td>
+              <td><span style="--bar: {{ row.bar }}%;"></span>{{ row.total }}</td>
+              <td>{{ row.percent }}%</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <a class="ops-agent-wide-link" href="{{ conversation_admin_url }}">View all topics</a>
+    </section>
+  </section>
+
+  <footer class="ops-agent-footer">
+    <span>All times shown in America/Santo Domingo (AST)</span>
+    <span>&#10227; Auto-updated just now</span>
+  </footer>
+</main>
+{% endblock %}

@@ -143,6 +143,13 @@ Follow this pattern when building or extending any ops page (Customers, Properti
 - **`bookings/templates/bookings/modern_ops_<page>.html`** — one template per page; extends `bookings/base_ops.html` and imports a single scoped CSS file with a versioned query-string (`?v=<page>-vN`).
 - **`bookings/static/frontend/modern-dashboard/assets/ops-<page>.css`** — all styles for that page, namespaced with a page-specific BEM prefix (e.g. `.ops-cx-*` for Customers, `.ops-rsv-*` for Reservations, `.ops-gst-*` for Guests) to prevent bleed across pages.
 
+### Real-data-first contract
+- Every ops page must be a functional MVC page, not a static picture of a mock. The Django view calls a page service; the service queries real transactional models first; the template renders the service payload; scoped CSS only styles that payload.
+- Mock data is allowed only as fallback or filler when the real data set cannot yet populate the complete mock layout. Never replace available database records with mock records just to match a screenshot.
+- Services must keep the boundary obvious: real queryset methods, payload builders, and `mock_*` fallback methods belong in `bookings/services.py`. Templates must not invent fake state, fake counts, fake selections, or fake links.
+- Buttons, row selections, detail panels, admin links, API exports, and empty states must remain functional even when some cards use mock fallback rows.
+- Guests, Payments, Properties, and the current Maintenance page are the reference implementation style. New pages such as FairAgent must follow the same service/view/template/scoped-CSS pattern.
+
 ### CSS discipline
 - Bump the version suffix (`?v=<page>-vN` → `vN+1`) on the CSS `<link>` in the template every time the CSS file changes to force a hard browser refresh.
 - Use `table-layout: fixed` with a `<colgroup>` block (inline `style="width:..."` on each `<col>`) for all ops tables — this is the only reliable way to pin column widths across browsers. CSS-only `thead th` width rules can silently lose to `table-layout: auto` fallback.
