@@ -109,21 +109,25 @@
           </thead>
           <tbody>
             {% for row in rows %}
-              <tr class="{% if row.id == selected_work_order_id %}is-selected{% endif %}" data-work-order-url="/ops/maintenance/?work_order={{ row.id }}" tabindex="0">
+              <tr class="{% if row.id == selected_work_order_id %}is-selected{% endif %}" data-work-order-url="/ops/maintenance/?work_order={{ row.id }}">
                 <td><input type="checkbox" aria-label="Select {{ row.work_order_id }}"{% if row.id == selected_work_order_id %} checked{% endif %}></td>
                 <td>
-                  <a class="ops-mnt-row-open" href="/ops/maintenance/?work_order={{ row.id }}">
+                  <a class="ops-mnt-cell-link ops-mnt-row-open" href="/ops/maintenance/?work_order={{ row.id }}">
                     <strong>{{ row.title }}</strong>
                   </a>
                 </td>
-                <td>{{ row.property }}</td>
-                <td>{{ row.reservation }}</td>
-                <td>{{ row.assigned_to }}</td>
-                <td><span class="ops-mnt-pill ops-mnt-pill--priority-{{ row.priority_cls }}">{{ row.priority }}</span></td>
-                <td>{{ row.cost }}</td>
-                <td>{{ row.date_label }}</td>
+                <td><a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">{{ row.property }}</a></td>
+                <td><a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">{{ row.reservation }}</a></td>
+                <td><a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">{{ row.assigned_to }}</a></td>
                 <td>
-                  <a class="ops-mnt-status-open" href="/ops/maintenance/?work_order={{ row.id }}">
+                  <a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">
+                    <span class="ops-mnt-pill ops-mnt-pill--priority-{{ row.priority_cls }}">{{ row.priority }}</span>
+                  </a>
+                </td>
+                <td><a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">{{ row.cost }}</a></td>
+                <td><a class="ops-mnt-cell-link" href="/ops/maintenance/?work_order={{ row.id }}">{{ row.date_label }}</a></td>
+                <td>
+                  <a class="ops-mnt-cell-link ops-mnt-status-open" href="/ops/maintenance/?work_order={{ row.id }}">
                     <span class="ops-mnt-pill ops-mnt-pill--status-{{ row.status_cls }}">{{ row.status }}</span>
                   </a>
                 </td>
