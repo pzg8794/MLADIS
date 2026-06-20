@@ -530,7 +530,8 @@
   font-weight: 900;
 }
 
-.ops-mnt-stat-grid strong {
+.ops-mnt-stat-grid strong,
+.ops-mnt-stat-grid .ops-mnt-stat-value {
   color: #0f172a;
   font-size: 15px;
   white-space: pre-line;
@@ -1793,8 +1794,9 @@
 
 .ops-mnt-stat-grid article > span,
 .ops-mnt-stat-grid article > strong,
+.ops-mnt-stat-grid .ops-mnt-stat-value,
 .ops-mnt-stat-grid .ops-mnt-stat-pill,
-.ops-mnt-assignee strong,
+.ops-mnt-assignee-name,
 .ops-mnt-assignee small {
   font-size: 10.5px;
   line-height: 1.18;
@@ -1806,8 +1808,9 @@
 }
 
 .ops-mnt-stat-grid article > strong,
+.ops-mnt-stat-grid .ops-mnt-stat-value,
 .ops-mnt-stat-grid .ops-mnt-stat-pill,
-.ops-mnt-assignee strong,
+.ops-mnt-assignee-name,
 .ops-mnt-assignee small {
   font-weight: 500;
 }

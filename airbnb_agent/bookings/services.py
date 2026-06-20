@@ -3935,6 +3935,152 @@ class StayListingService:
         )
 
 
+@dataclass(frozen=True)
+class OpsWorkOrderPhoto:
+    """Evidence child object owned by an ops WorkOrder projection."""
+
+    label: str
+    url: str = ""
+    css_class: str = ""
+
+    def to_payload(self):
+        return {"url": self.url, "label": self.label, "css_class": self.css_class}
+
+
+@dataclass(frozen=True)
+class OpsWorkOrderTimelineEvent:
+    """Timeline child object owned by an ops WorkOrder projection."""
+
+    label: str
+    meta: str
+    tone: str = "blue"
+
+    def to_payload(self):
+        return {"label": self.label, "meta": self.meta, "tone": self.tone}
+
+
+@dataclass(frozen=True)
+class OpsWorkOrderReportState:
+    """Report-preview value object projected from a WorkOrder."""
+
+    work_order_number: str
+    property_name: str
+    reported_date: str
+    ready: bool = True
+
+    def to_payload(self):
+        return {
+            "status": "Ready to generate" if self.ready else "Needs review",
+            "title": "Maintenance Report & Invoice",
+            "subtitle": self.work_order_number,
+            "property": self.property_name,
+            "date": self.reported_date,
+            "checks": [
+                "Work summary & diagnostics",
+                "Parts & labor breakdown",
+                "Photos & notes",
+                "Professional invoice layout",
+            ],
+        }
+
+
+@dataclass(frozen=True)
+class OpsWorkOrder:
+    """Domain projection for the MaintenanceEvent-backed WorkOrder aggregate."""
+
+    id: str
+    number: str
+    title: str
+    property_name: str
+    reservation_key: str
+    reservation_range: str
+    assignee_name: str
+    assignee_role: str
+    priority: str
+    status: str
+    cost_display: str
+    table_cost_display: str
+    date_label: str
+    reported_date: str
+    notes: tuple[str, ...]
+    photos: tuple[OpsWorkOrderPhoto, ...]
+    timeline: tuple[OpsWorkOrderTimelineEvent, ...]
+    linked_listing: str = ""
+    linked_reservation: str = ""
+    is_mock: bool = False
+
+    @property
+    def priority_cls(self):
+        return self.priority.strip().lower().replace(" ", "-") or "medium"
+
+    @property
+    def status_cls(self):
+        return self.status.strip().lower().replace(" ", "-") or "open"
+
+    @property
+    def is_completed(self):
+        return self.status in {"Completed", "Archived"}
+
+    @property
+    def is_overdue(self):
+        return self.status == "Overdue"
+
+    @property
+    def is_open(self):
+        return not self.is_completed
+
+    @property
+    def assignee_avatar(self):
+        parts = [part[0] for part in self.assignee_name.replace(".", " ").split() if part]
+        return "".join(parts[:2]).upper() or "WO"
+
+    def to_row_payload(self):
+        return {
+            "id": self.id,
+            "work_order_id": self.number,
+            "title": self.title,
+            "property": self.property_name,
+            "reservation": self.reservation_key,
+            "assigned_to": self.assignee_name,
+            "priority": self.priority,
+            "priority_cls": self.priority_cls,
+            "cost": self.table_cost_display,
+            "date_label": self.date_label,
+            "status": self.status,
+            "status_cls": self.status_cls,
+            "is_mock": self.is_mock,
+        }
+
+    def to_detail_payload(self):
+        return {
+            "work_order_id": self.number,
+            "status": self.status,
+            "status_cls": self.status_cls,
+            "title": self.title,
+            "property": self.property_name,
+            "reservation": self.reservation_key,
+            "reservation_range": self.reservation_range,
+            "metrics": [
+                {"label": "Cost", "value": self.cost_display},
+                {"label": "Time", "value": self.reported_date},
+                {"label": "Assigned To", "value": self.assignee_name, "meta": self.assignee_role, "avatar": self.assignee_avatar},
+                {"label": "Priority", "value": self.priority, "cls": self.priority_cls},
+                {"label": "Status", "value": self.status, "cls": self.status_cls},
+            ],
+            "photos": [photo.to_payload() for photo in self.photos],
+            "notes": list(self.notes),
+            "linked_listing": self.linked_listing or self.property_name,
+            "linked_reservation": self.linked_reservation or self.reservation_key,
+            "timeline": [event.to_payload() for event in self.timeline],
+            "report": OpsWorkOrderReportState(
+                work_order_number=self.number,
+                property_name=self.property_name,
+                reported_date=self.reported_date.split("\n")[0] if self.reported_date else self.date_label,
+                ready=bool(self.photos and self.notes),
+            ).to_payload(),
+        }
+
+
 class MaintenanceOperationsService:
     """Presentation service for the server-rendered Maintenance & Work Orders page."""
 
@@ -3946,19 +4092,28 @@ class MaintenanceOperationsService:
     }
 
     def page_payload(self, selected_id=""):
-        rows = self._live_rows()
-        using_mock = len(rows) < 8
+        work_orders = self._live_work_orders()
+        using_mock = len(work_orders) < 8
         if using_mock:
-            rows = self.mock_rows()
+            seen_ids = {work_order.id for work_order in work_orders}
+            work_orders = [
+                *work_orders,
+                *[
+                    work_order
+                    for work_order in self.mock_work_orders()
+                    if work_order.id not in seen_ids
+                ],
+            ][:8]
 
+        rows = [work_order.to_row_payload() for work_order in work_orders]
         rows = self._with_toggle_urls(rows, selected_id=selected_id)
-        selected = next((row for row in rows if row["id"] == selected_id), None) if selected_id else None
+        selected = next((work_order for work_order in work_orders if work_order.id == selected_id), None) if selected_id else None
         return {
-            "summary_cards": self._summary_cards(using_mock=using_mock),
+            "summary_cards": self._summary_cards(work_orders=work_orders),
             "tabs": self._tabs(using_mock=using_mock, rows=rows),
             "rows": rows,
-            "detail": self._detail_payload(selected, using_mock=using_mock) if selected else None,
-            "selected_work_order_id": selected["id"] if selected else "",
+            "detail": selected.to_detail_payload() if selected else None,
+            "selected_work_order_id": selected.id if selected else "",
             "total_results_display": "19" if using_mock else f"{len(rows):,}",
             "work_order_admin_url": reverse("admin:bookings_maintenanceevent_changelist"),
             "new_work_order_url": reverse("admin:bookings_maintenanceevent_add"),
@@ -3976,24 +4131,15 @@ class MaintenanceOperationsService:
             decorated_rows.append(decorated)
         return decorated_rows
 
-    def _summary_cards(self, using_mock=False):
-        if using_mock:
-            return [
-                {"label": "Open Work Orders", "value": "19", "trend": "-8% vs last 7 days", "tone": "blue"},
-                {"label": "Overdue Items", "value": "3", "trend": "+200% vs last 7 days", "tone": "orange"},
-                {"label": "This Month Cost", "value": "$5,240", "trend": "+14% vs last month", "tone": "violet"},
-                {"label": "Completed Jobs", "value": "27", "trend": "+35% vs last 7 days", "tone": "green"},
-            ]
-
-        month_start = timezone.localdate().replace(day=1)
-        events = MaintenanceEvent.objects.all()
-        open_count = events.filter(status__in=self.OPEN_STATUSES).count()
-        overdue_cutoff = timezone.now() - timedelta(days=7)
-        overdue_count = events.filter(status__in=self.OPEN_STATUSES, reported_at__lt=overdue_cutoff).count()
-        month_cost = events.filter(reported_at__date__gte=month_start).aggregate(total=Sum("cost_amount"))["total"] or Decimal("0")
-        completed_count = events.filter(
-            status__in={MaintenanceStatus.COMPLETED, MaintenanceStatus.DOCUMENTED, MaintenanceStatus.BILLED}
-        ).count()
+    def _summary_cards(self, work_orders):
+        open_count = sum(1 for work_order in work_orders if work_order.is_open)
+        overdue_count = sum(1 for work_order in work_orders if work_order.is_overdue)
+        month_cost = sum(
+            Decimal(work_order.cost_display.replace("$", "").replace(",", "").split()[0])
+            for work_order in work_orders
+            if work_order.cost_display not in {"—", ""}
+        )
+        completed_count = sum(1 for work_order in work_orders if work_order.is_completed)
         return [
             {"label": "Open Work Orders", "value": f"{open_count:,}", "trend": "Needs action", "tone": "blue"},
             {"label": "Overdue Items", "value": f"{overdue_count:,}", "trend": "Older than 7 days", "tone": "orange"},
@@ -4029,164 +4175,131 @@ class MaintenanceOperationsService:
             ],
         ]
 
-    def _live_rows(self):
+    def _live_work_orders(self):
         events = list(
             MaintenanceEvent.objects.select_related("item", "booking", "created_by")
             .prefetch_related("photos")
             .order_by("-reported_at", "-created_at")[:8]
         )
-        rows = []
+        work_orders = []
         for index, event in enumerate(events, start=1):
             status = self._status_label(event.status)
             priority = self._priority_for_event(event)
-            rows.append(
-                {
-                    "id": str(event.pk),
-                    "work_order_id": f"WO-{event.reported_at:%Y}-{1000 + index:04d}" if event.reported_at else f"WO-LIVE-{index:04d}",
-                    "title": event.title,
-                    "property": event.item.business_display_name if event.item else "Unassigned property",
-                    "reservation": event.booking.request_key if event.booking else "—",
-                    "assigned_to": event.vendor_name or "Maintenance Team",
-                    "priority": priority,
-                    "priority_cls": priority.lower(),
-                    "cost": f"${event.cost_amount:,.0f}",
-                    "date_label": event.reported_at.strftime("%b %-d, %-I:%M %p") if event.reported_at else "—",
-                    "status": status,
-                    "status_cls": self._status_class(status),
-                    "is_mock": False,
-                    "_event": event,
-                }
+            booking = event.booking
+            work_order_number = f"WO-{event.reported_at:%Y}-{1000 + index:04d}" if event.reported_at else f"WO-LIVE-{index:04d}"
+            work_orders.append(
+                OpsWorkOrder(
+                    id=str(event.pk),
+                    number=work_order_number,
+                    title=event.title,
+                    property_name=event.item.business_display_name if event.item else "Unassigned property",
+                    reservation_key=booking.request_key if booking else "—",
+                    reservation_range=f"{booking.check_in:%b %-d} – {booking.check_out:%b %-d, %Y}" if booking else "Not linked",
+                    assignee_name=event.vendor_name or "Maintenance Team",
+                    assignee_role="Vendor" if event.vendor_name else "Internal",
+                    priority=priority,
+                    status=status,
+                    cost_display=event.display_cost.replace(" USD", ""),
+                    table_cost_display=f"${event.cost_amount:,.0f}",
+                    date_label=event.reported_at.strftime("%b %-d, %-I:%M %p") if event.reported_at else "—",
+                    reported_date=event.reported_at.strftime("%b %-d, %Y\n%-I:%M %p") if event.reported_at else "—",
+                    notes=tuple(
+                        note
+                        for note in [
+                            event.effective_description or "Guest reported an issue. Maintenance notes will appear here after review.",
+                            event.admin_notes or "Recommend follow-up after completion.",
+                        ]
+                        if note
+                    ),
+                    photos=tuple(
+                        OpsWorkOrderPhoto(url=photo.image_url, label=photo.caption or "Evidence photo")
+                        for photo in list(event.photos.all()[:3])
+                    )
+                    or self._mock_photos(),
+                    timeline=self._timeline_for_work_order(
+                        number=work_order_number,
+                        status=status,
+                        assignee=event.vendor_name or "Maintenance Team",
+                        reported_at=event.reported_at,
+                        actor=getattr(event.created_by, "get_full_name", lambda: "")() or getattr(event.created_by, "username", "Staff"),
+                        photo_count=event.photo_count,
+                    ),
+                    linked_listing=event.item.business_display_name if event.item else "Unassigned property",
+                    linked_reservation=f"{booking.request_key} | {booking.check_in:%b %-d} – {booking.check_out:%b %-d, %Y}" if booking else "—",
+                    is_mock=False,
+                )
             )
-        return rows
+        return work_orders
 
-    def mock_rows(self):
+    def mock_work_orders(self):
         return [
-            self._mock_row("wo-2026-0104", "WO-2026-0104", "AC not cooling", "3 Beds Apt, Pool, G-101", "R-1042", "Carlos M.", "High", "$180", "Jun 10, 9:30 AM", "In Progress"),
-            self._mock_row("wo-2026-0103", "WO-2026-0103", "Leak in bathroom sink", "2 Beds Apt, Pool", "R-1035", "Plumbing Pro", "Medium", "$95", "Jun 9, 2:15 PM", "Open"),
-            self._mock_row("wo-2026-0102", "WO-2026-0102", "Replace ceiling light", "Meeting Room 1", "—", "Maintenance Team", "Low", "$40", "Jun 9, 11:00 AM", "Open"),
-            self._mock_row("wo-2026-0101", "WO-2026-0101", "Pool pump not working", "6 Beds Apt, Pool", "R-1040", "Carlos M.", "High", "$225", "Jun 8, 10:45 AM", "Pending"),
-            self._mock_row("wo-2026-0100", "WO-2026-0100", "Door lock issue", "2 Beds Apt, Pool", "—", "Lock & Key Co.", "Medium", "$120", "Jun 7, 4:30 PM", "Completed"),
-            self._mock_row("wo-2026-0099", "WO-2026-0099", "Refrigerator not cooling", "3 Beds Apt, G-101", "R-1028", "Appliance Fixers", "High", "$160", "Jun 7, 1:20 PM", "Completed"),
-            self._mock_row("wo-2026-0098", "WO-2026-0098", "TV not turning on", "6 Beds Apt, Pool", "—", "Tech Support", "Low", "$60", "Jun 6, 9:10 AM", "Completed"),
-            self._mock_row("wo-2026-0097", "WO-2026-0097", "Paint touch-up", "Conference Room A", "—", "Maintenance Team", "Low", "$75", "Jun 6, 8:30 AM", "Completed"),
+            self._mock_work_order("wo-2026-0104", "WO-2026-0104", "AC not cooling", "3 Beds Apt, Vacation Home & Pool, G-101", "R-1042", "Jun 8 – Jun 14, 2026", "Carlos M.", "Technician", "High", "$180.00", "Jun 10, 9:30 AM", "Jun 10, 2026\n9:30 AM", "In Progress", ["Guest reported AC not cooling properly. Checked thermostat and filter. Refrigerant was low. Recharged unit and tested - now cooling well.", "Recommend full AC service in next 30 days."]),
+            self._mock_work_order("wo-2026-0103", "WO-2026-0103", "Leak in bathroom sink", "2 Beds Apt, Pool", "R-1035", "Jun 9 – Jun 11, 2026", "Plumbing Pro", "Vendor", "Medium", "$95.00", "Jun 9, 2:15 PM", "Jun 9, 2026\n2:15 PM", "Open", ["Bathroom sink leak reported by guest. Vendor needs to inspect trap and supply line.", "Keep the guest updated after the first visit."]),
+            self._mock_work_order("wo-2026-0102", "WO-2026-0102", "Replace ceiling light", "Meeting Room 1", "—", "Not linked", "Maintenance Team", "Internal", "Low", "$40.00", "Jun 9, 11:00 AM", "Jun 9, 2026\n11:00 AM", "Open", ["Ceiling light flickers during evening setup. Replace bulb and test fixture.", "No reservation is linked to this internal work order."]),
+            self._mock_work_order("wo-2026-0101", "WO-2026-0101", "Pool pump not working", "6 Beds Apt, Vacation Home & Pool", "R-1040", "Jun 8 – Jun 12, 2026", "Carlos M.", "Technician", "High", "$225.00", "Jun 8, 10:45 AM", "Jun 8, 2026\n10:45 AM", "Pending", ["Pool circulation issue found during turnover check. Waiting for replacement part confirmation.", "Do not mark completed until pump pressure is verified."]),
+            self._mock_work_order("wo-2026-0100", "WO-2026-0100", "Door lock issue", "2 Beds Apt, Pool", "—", "Not linked", "Lock & Key Co.", "Vendor", "Medium", "$120.00", "Jun 7, 4:30 PM", "Jun 7, 2026\n4:30 PM", "Completed", ["Smart lock keypad was intermittently failing. Vendor replaced battery pack and tested access.", "Guest access code should be regenerated before the next check-in."]),
+            self._mock_work_order("wo-2026-0099", "WO-2026-0099", "Refrigerator not cooling", "3 Beds Apt, G-101", "R-1028", "Jun 7 – Jun 9, 2026", "Appliance Fixers", "Vendor", "High", "$160.00", "Jun 7, 1:20 PM", "Jun 7, 2026\n1:20 PM", "Completed", ["Refrigerator temperature was above safe range. Condenser cleaned and thermostat reset.", "Monitor for 24 hours after completion."]),
+            self._mock_work_order("wo-2026-0098", "WO-2026-0098", "TV not turning on", "6 Beds Apt, Pool", "—", "Not linked", "Tech Support", "Vendor", "Low", "$60.00", "Jun 6, 9:10 AM", "Jun 6, 2026\n9:10 AM", "Completed", ["Living room TV was not powering on. Power adapter was loose behind the console.", "Remote batteries were replaced."]),
+            self._mock_work_order("wo-2026-0097", "WO-2026-0097", "Paint touch-up", "Conference Room A", "—", "Not linked", "Maintenance Team", "Internal", "Low", "$75.00", "Jun 6, 8:30 AM", "Jun 6, 2026\n8:30 AM", "Completed", ["Wall scuffs near the entrance were patched and repainted.", "Touch-up matched existing paint color."]),
         ]
 
-    def _mock_row(self, row_id, work_order_id, title, property_name, reservation, assigned_to, priority, cost, date_label, status):
-        return {
-            "id": row_id,
-            "work_order_id": work_order_id,
-            "title": title,
-            "property": property_name,
-            "reservation": reservation,
-            "assigned_to": assigned_to,
-            "priority": priority,
-            "priority_cls": priority.lower(),
-            "cost": cost,
-            "date_label": date_label,
-            "status": status,
-            "status_cls": self._status_class(status),
-            "is_mock": True,
-        }
-
-    def _detail_payload(self, row, using_mock=False):
-        if not row:
-            return None
-        if using_mock or row.get("is_mock"):
-            return self._mock_detail_payload(row)
-
-        event = row["_event"]
-        booking = event.booking
-        photos = list(event.photos.all()[:3])
-        return {
-            "work_order_id": row["work_order_id"],
-            "status": row["status"],
-            "status_cls": row["status_cls"],
-            "title": event.title,
-            "property": event.item.business_display_name if event.item else "Unassigned property",
-            "reservation": booking.request_key if booking else "—",
-            "reservation_range": f"{booking.check_in:%b %-d} – {booking.check_out:%b %-d, %Y}" if booking else "Not linked",
-            "metrics": [
-                {"label": "Cost", "value": event.display_cost.replace(" USD", "")},
-                {"label": "Time", "value": event.reported_at.strftime("%b %-d, %Y\n%-I:%M %p") if event.reported_at else "—"},
-                {"label": "Assigned To", "value": event.vendor_name or "Maintenance Team", "meta": "Vendor"},
-                {"label": "Priority", "value": row["priority"], "cls": row["priority_cls"]},
-                {"label": "Status", "value": row["status"], "cls": row["status_cls"]},
-            ],
-            "photos": [
-                {"url": photo.image_url, "label": photo.caption or "Evidence photo", "css_class": ""}
-                for photo in photos
-            ]
-            or self._mock_photos(),
-            "notes": [
-                event.effective_description or "Guest reported an issue. Maintenance notes will appear here after review.",
-                event.admin_notes or "Recommend follow-up after completion.",
-            ],
-            "linked_listing": event.item.business_display_name if event.item else "Unassigned property",
-            "linked_reservation": booking.request_key if booking else "—",
-            "timeline": self._mock_timeline(),
-            "report": self._mock_report_payload(),
-        }
-
-    def _mock_detail_payload(self, row):
-        return {
-            "work_order_id": "WO-2026-0104",
-            "status": "In Progress",
-            "status_cls": "in-progress",
-            "title": "AC not cooling",
-            "property": "3 Beds Apt, Vacation Home & Pool, G-101",
-            "reservation": "R-1042",
-            "reservation_range": "Jun 8 – Jun 14, 2026",
-            "metrics": [
-                {"label": "Cost", "value": "$180.00"},
-                {"label": "Time", "value": "Jun 10, 2026\n9:30 AM"},
-                {"label": "Assigned To", "value": "Carlos M.", "meta": "Technician"},
-                {"label": "Priority", "value": "High", "cls": "high"},
-                {"label": "Status", "value": "In Progress", "cls": "in-progress"},
-            ],
-            "photos": self._mock_photos(),
-            "notes": [
-                "Guest reported AC not cooling properly. Checked thermostat and filter. Refrigerant was low. Recharged unit and tested - now cooling well.",
-                "Recommend full AC service in next 30 days.",
-            ],
-            "linked_listing": "3 Beds Apt, Vacation Home & Pool, G-101",
-            "linked_reservation": "R-1042 | Jun 8 – Jun 14, 2026",
-            "timeline": self._mock_timeline(),
-            "report": self._mock_report_payload(),
-        }
+    def _mock_work_order(self, row_id, number, title, property_name, reservation_key, reservation_range, assignee, assignee_role, priority, cost, date_label, reported_date, status, notes):
+        return OpsWorkOrder(
+            id=row_id,
+            number=number,
+            title=title,
+            property_name=property_name,
+            reservation_key=reservation_key,
+            reservation_range=reservation_range,
+            assignee_name=assignee,
+            assignee_role=assignee_role,
+            priority=priority,
+            status=status,
+            cost_display=cost,
+            table_cost_display=cost.replace(".00", ""),
+            date_label=date_label,
+            reported_date=reported_date,
+            notes=tuple(notes),
+            photos=self._mock_photos(),
+            timeline=self._timeline_for_work_order(
+                number=number,
+                status=status,
+                assignee=assignee,
+                reported_at=None,
+                actor="Piter Garcia",
+                photo_count=3,
+                date_label=date_label,
+            ),
+            linked_listing=property_name,
+            linked_reservation=f"{reservation_key} | {reservation_range}" if reservation_key != "—" else "—",
+            is_mock=True,
+        )
 
     @staticmethod
     def _mock_photos():
-        return [
-            {"url": "", "label": "Outdoor unit", "css_class": "unit"},
-            {"url": "", "label": "Compressor fan", "css_class": "fan"},
-            {"url": "", "label": "Interior vent", "css_class": "vent"},
-        ]
+        return (
+            OpsWorkOrderPhoto(label="Outdoor unit", css_class="unit"),
+            OpsWorkOrderPhoto(label="Compressor fan", css_class="fan"),
+            OpsWorkOrderPhoto(label="Interior vent", css_class="vent"),
+        )
 
     @staticmethod
-    def _mock_timeline():
-        return [
-            {"label": "Work order created", "meta": "Jun 10, 2026 9:05 AM\nby Piter Garcia", "tone": "blue"},
-            {"label": "Assigned to Carlos M.", "meta": "Jun 10, 2026 9:10 AM", "tone": "blue"},
-            {"label": "Status changed to In Progress", "meta": "Jun 10, 2026 9:30 AM", "tone": "blue"},
-            {"label": "Note added", "meta": "Jun 10, 2026 10:15 AM", "tone": "blue"},
-            {"label": "Picture added (3)", "meta": "Jun 10, 2026 10:20 AM", "tone": "blue"},
+    def _timeline_for_work_order(number, status, assignee, reported_at, actor, photo_count, date_label=""):
+        if reported_at:
+            created_label = reported_at.strftime("%b %-d, %Y %-I:%M %p")
+            assigned_label = reported_at.strftime("%b %-d, %Y %-I:%M %p")
+        else:
+            created_label = date_label
+            assigned_label = date_label
+        timeline = [
+            OpsWorkOrderTimelineEvent("Work order created", f"{created_label}\nby {actor}"),
+            OpsWorkOrderTimelineEvent(f"Assigned to {assignee}", assigned_label),
+            OpsWorkOrderTimelineEvent(f"Status changed to {status}", assigned_label),
+            OpsWorkOrderTimelineEvent("Note added", assigned_label),
         ]
-
-    @staticmethod
-    def _mock_report_payload():
-        return {
-            "status": "Ready to generate",
-            "title": "Maintenance Report & Invoice",
-            "subtitle": "WO-2026-0104",
-            "property": "3 Beds Apt, Vacation Home & Pool, G-101",
-            "date": "Jun 10, 2026",
-            "checks": [
-                "Work summary & diagnostics",
-                "Parts & labor breakdown",
-                "Photos & notes",
-                "Professional invoice layout",
-            ],
-        }
+        if photo_count:
+            timeline.append(OpsWorkOrderTimelineEvent(f"Picture added ({photo_count})", assigned_label))
+        return tuple(timeline)
 
     @staticmethod
     def _priority_for_event(event):

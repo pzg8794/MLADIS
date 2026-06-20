@@ -181,15 +181,15 @@
               <article>
                 <span>{{ metric.label }}</span>
                 {% if metric.cls %}
-                  <strong class="ops-mnt-stat-pill ops-mnt-stat-pill--{{ metric.cls }}">{{ metric.value }}</strong>
+                  <span class="ops-mnt-stat-pill ops-mnt-stat-pill--{{ metric.cls }}">{{ metric.value }}</span>
                 {% elif metric.label == "Assigned To" %}
                   <div class="ops-mnt-assignee">
-                    <span aria-hidden="true">CM</span>
-                    <strong>{{ metric.value }}</strong>
+                    <span aria-hidden="true">{{ metric.avatar }}</span>
+                    <span class="ops-mnt-assignee-name">{{ metric.value }}</span>
                     <small>{{ metric.meta }}</small>
                   </div>
                 {% else %}
-                  <strong>{{ metric.value|linebreaksbr }}</strong>
+                  <span class="ops-mnt-stat-value">{{ metric.value|linebreaksbr }}</span>
                 {% endif %}
               </article>
             {% endfor %}
