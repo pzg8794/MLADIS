@@ -62,6 +62,7 @@ from .models import (
     ReservationPaymentHold,
     SiteSettings,
 )
+from .ops_finance import DepositHoldOperationsService, PaymentsTransactionsService
 from .services import (
     AgentAccessContext,
     AgentIntelligenceOperationsService,
@@ -71,7 +72,6 @@ from .services import (
     MaintenanceOperationsService,
     MaintenanceService,
     OpsReservationProjection,
-    PaymentsTransactionsService,
     ReservationPricingService,
     StayListingService,
 )
@@ -2312,6 +2312,42 @@ class ModernOpsPaymentsView(TemplateView):
 
 
 @method_decorator(ops_staff_required, name="dispatch")
+class OpsPaymentsAPIView(View):
+    def get(self, request):
+        payload = PaymentsTransactionsService().page_payload(
+            selected_id=request.GET.get("transaction", "").strip()
+        )
+        return JsonResponse(
+            {
+                "summary_cards": payload["summary_cards"],
+                "rows": payload["rows"],
+                "detail": payload["detail"],
+                "transactions": payload["payment_transactions"],
+                "selected_transaction_id": payload["selected_transaction_id"],
+                "total_results": payload["total_results"],
+                "generated_at": payload["generated_at"].isoformat(),
+            }
+        )
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsPaymentTransactionActionAPIView(View):
+    def post(self, request, transaction_key, action):
+        try:
+            transaction = PaymentsTransactionsService().action(transaction_key, action)
+        except ValidationError as error:
+            return JsonResponse({"ok": False, "errors": OpsMaintenanceAPIView._validation_errors(error)}, status=400)
+        if "application/json" in request.headers.get("accept", ""):
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "transaction": transaction.to_payload() if transaction else None,
+                }
+            )
+        return redirect(f"{reverse('bookings:ops-payments')}?transaction={transaction_key}")
+
+
+@method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsDepositsView(TemplateView):
     template_name = "bookings/modern_dashboard.html"
 
@@ -2691,42 +2727,8 @@ class OpsCustomersAPIView(View):
 
 @method_decorator(ops_staff_required, name="dispatch")
 class OpsDepositsAPIView(View):
-    ACTIVE_HOLD_STATUSES = {
-        DepositStatus.NEW,
-        DepositStatus.REQUIRES_CONFIGURATION,
-        DepositStatus.CHECKOUT_CREATED,
-        DepositStatus.REQUIRES_CAPTURE,
-    }
-
     def get(self, request):
-        deposits = DamageDeposit.objects.select_related("item", "inquiry").order_by("-created_at")
-        active = deposits.filter(status__in=self.ACTIVE_HOLD_STATUSES)
-        captured = deposits.filter(status=DepositStatus.CAPTURED)
-        failed = deposits.filter(status=DepositStatus.FAILED)
-        rows = [self._deposit_payload(request, deposit) for deposit in deposits]
-        return JsonResponse(
-            {
-                "summary_cards": [
-                    self._metric("Records", deposits.count(), "Deposit ledger."),
-                    self._metric("Active holds", active.count(), "Open workflows."),
-                    self._metric("Capture-ready", deposits.filter(status=DepositStatus.REQUIRES_CAPTURE).count(), "Authorized holds."),
-                    self._metric("Captured", captured.count(), "Charged."),
-                    self._metric("Failed", failed.count(), "Needs follow-up."),
-                    self._metric("Active value", self._money(active.aggregate(total=Sum("amount_cents"))["total"]), "Open holds."),
-                    self._metric("Captured value", self._money(captured.aggregate(total=Sum("amount_cents"))["total"]), "Captured."),
-                ],
-                "status_options": [
-                    {"value": "", "label": "All", "count": deposits.count()},
-                    *[
-                        {"value": value, "label": label, "count": deposits.filter(status=value).count()}
-                        for value, label in DepositStatus.choices
-                    ],
-                ],
-                "rows": rows,
-                "admin_url": reverse("admin:bookings_damagedeposit_changelist"),
-                "generated_at": timezone.now().isoformat(),
-            }
-        )
+        return JsonResponse(DepositHoldOperationsService().snapshot_payload(request))
 
     @staticmethod
     def _metric(label, value, caption):
@@ -2760,6 +2762,23 @@ class OpsDepositsAPIView(View):
             "created_label": self._date_label(deposit.created_at),
             "updated_at": deposit.updated_at.isoformat(),
         }
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsDepositHoldActionAPIView(View):
+    def post(self, request, hold_key, action):
+        service = DepositHoldOperationsService()
+        try:
+            hold = service.apply_action(hold_key, action, actor=request.user)
+        except ValidationError as error:
+            return JsonResponse({"ok": False, "errors": OpsMaintenanceAPIView._validation_errors(error)}, status=400)
+        return JsonResponse(
+            {
+                "ok": True,
+                "hold": hold.to_row_payload(request),
+                "snapshot": service.snapshot_payload(request),
+            }
+        )
 
 
 @method_decorator(ops_staff_required, name="dispatch")

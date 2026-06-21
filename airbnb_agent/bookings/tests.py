@@ -59,6 +59,7 @@ from .models import (
     EmailDeliveryStatus,
     Invoice,
     InvoiceLineItem,
+    InvoiceStatus,
     MarketingConsentStatus,
     MaintenanceEvent,
     MaintenancePhoto,
@@ -2457,6 +2458,119 @@ class InvoicePageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, invoice.invoice_number)
         self.assertContains(response, "$500.00 USD")
+
+
+@override_settings(STORAGES=TEST_STORAGES)
+class OpsFinanceObjectTests(TestCase):
+    def setUp(self):
+        self.staff = get_user_model().objects.create_user(
+            username="finance-ops",
+            email="finance-ops@example.com",
+            password="secret",
+            is_staff=True,
+        )
+        self.item = BookableItem.objects.create(
+            name="3 Beds Apt, Vacation Home & Pool, G-101",
+            slug="finance-stay-g101",
+            category=BookingCategory.STAY,
+            short_description="A finance test stay.",
+            is_active=True,
+        )
+        self.inquiry = BookingInquiry.objects.create(
+            item=self.item,
+            guest_name="Maria Rodriguez",
+            email="maria@example.com",
+            phone="+1 809 555 0169",
+            check_in=timezone.localdate() + timedelta(days=4),
+            check_out=timezone.localdate() + timedelta(days=7),
+            guests=2,
+            total_cents=42000,
+        )
+        self.invoice = Invoice.objects.create(
+            inquiry=self.inquiry,
+            recipient_name="Maria Rodriguez",
+            recipient_email="maria@example.com",
+            status=InvoiceStatus.DRAFT,
+            subtotal_cents=42000,
+            deposit_cents=20000,
+            total_cents=62000,
+        )
+        self.deposit = DamageDeposit.objects.create(
+            inquiry=self.inquiry,
+            item=self.item,
+            guest_name="Maria Rodriguez",
+            email="maria@example.com",
+            amount_cents=20000,
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.CHECKOUT_CREATED,
+            stripe_checkout_session_id="cs_test_deposit",
+        )
+        self.hold = ReservationPaymentHold.objects.create(
+            inquiry=self.inquiry,
+            item=self.item,
+            guest_name="Maria Rodriguez",
+            email="maria@example.com",
+            amount_cents=42000,
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.REQUIRES_CAPTURE,
+            stripe_payment_intent_id="pi_test_stay",
+        )
+
+    def test_payments_api_exposes_payment_transaction_objects(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("bookings:ops-payments-api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["transactions"][0]["id"], f"invoice-{self.invoice.pk}")
+        self.assertEqual(payload["transactions"][0]["type"], "stay_payment")
+        self.assertEqual(payload["detail"]["deposit_history"][0]["label"], "Damage deposit hold")
+        self.assertEqual(payload["detail"]["quick_actions"][1]["kind"], "post")
+
+    def test_payment_action_mark_paid_updates_invoice_object(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("bookings:ops-payment-action-api", args=[f"invoice-{self.invoice.pk}", "mark-paid"]),
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.status, InvoiceStatus.PAID)
+        self.assertEqual(self.invoice.email_status, EmailDeliveryStatus.SENT)
+        self.assertEqual(response.json()["transaction"]["status"], InvoiceStatus.PAID)
+
+    def test_deposits_api_exposes_deposit_hold_objects(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("bookings:ops-deposits-api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        row_ids = {row["id"] for row in payload["rows"]}
+        self.assertIn(f"damage-{self.deposit.pk}", row_ids)
+        self.assertIn(f"stay-{self.hold.pk}", row_ids)
+        selected = next(row for row in payload["rows"] if row["id"] == f"damage-{self.deposit.pk}")
+        self.assertEqual(selected["guest_name"], "Maria Rodriguez")
+        self.assertEqual(selected["reservation"]["key"], self.inquiry.request_key)
+        self.assertTrue(selected["timeline"])
+        self.assertTrue(selected["payment_attempts"])
+        self.assertTrue(selected["actions"]["can_approve"])
+
+    def test_deposit_action_approve_updates_selected_hold(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("bookings:ops-deposit-hold-action-api", args=[f"damage-{self.deposit.pk}", "approve"])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.deposit.refresh_from_db()
+        self.assertEqual(self.deposit.status, DepositStatus.REQUIRES_CAPTURE)
+        self.assertEqual(response.json()["hold"]["id"], f"damage-{self.deposit.pk}")
+        self.assertEqual(response.json()["hold"]["status"], DepositStatus.REQUIRES_CAPTURE)
 
 
 @override_settings(STORAGES=TEST_STORAGES)

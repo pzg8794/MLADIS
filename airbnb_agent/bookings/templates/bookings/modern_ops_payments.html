@@ -263,10 +263,20 @@
               <h4>Quick Actions</h4>
               <div class="ops-pay-actions">
                 {% for action in detail.quick_actions %}
-                  <a class="ops-pay-action" href="{{ action.url }}">
-                    <span class="ops-pay-action-icon" aria-hidden="true"></span>
-                    {{ action.label }}
-                  </a>
+                  {% if action.kind == "post" %}
+                    <form method="post" action="{{ action.url }}">
+                      {% csrf_token %}
+                      <button class="ops-pay-action" type="submit">
+                        <span class="ops-pay-action-icon" aria-hidden="true"></span>
+                        {{ action.label }}
+                      </button>
+                    </form>
+                  {% else %}
+                    <a class="ops-pay-action" href="{{ action.url }}">
+                      <span class="ops-pay-action-icon" aria-hidden="true"></span>
+                      {{ action.label }}
+                    </a>
+                  {% endif %}
                 {% endfor %}
               </div>
             </div>

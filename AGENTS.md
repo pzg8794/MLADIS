@@ -137,6 +137,8 @@
 
 Follow this pattern when building or extending any ops page (Customers, Properties, Guests, Payments, Deposits, Reservations, or any future `/ops/*` route). **Reservations is the next page being built after Properties, Guests, Payments, and Deposits.**
 
+Read `docs/architecture/ops-object-page-process.md` before changing any ops object page. That document records the repeatable object-first process: backend aggregate projection, controller/API payload, frontend domain object, repository/service/factory, functional component rendering, tests, browser verification, then commit and push.
+
 ### File roles
 - **`bookings/views.py`** — add a CBV (TemplateView) protected by `@method_decorator(ops_staff_required, name="dispatch")`. The view calls the service, decorates the payload, and passes context to the template. Business rules live here, not in the template.
 - **`bookings/services.py`** — add a dedicated service class (e.g. `CustomersCRMService`, `ReservationsCRMService`). Expose `mock_*` methods that return hard-coded sensible data while real DB queries are not yet wired, and real `table_row_payload` / `detail_payload` methods once models carry the data.

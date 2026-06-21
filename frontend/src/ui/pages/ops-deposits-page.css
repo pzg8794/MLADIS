@@ -81,6 +81,29 @@
   min-width: 218px;
 }
 
+.deposit-v4-alert {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  border: 1px solid var(--deposit-line);
+  border-radius: 8px;
+  padding: 0 14px;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.deposit-v4-alert--success {
+  color: #047857;
+  border-color: #b7efc5;
+  background: #ecfdf5;
+}
+
+.deposit-v4-alert--error {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
 .deposit-v4-summary-row,
 .deposit-v4-workspace {
   display: grid;
@@ -258,6 +281,7 @@
   gap: 12px;
   align-items: center;
   min-height: 30px;
+  cursor: pointer;
 }
 
 .deposit-v4-expiring article i {
@@ -899,12 +923,21 @@
   line-height: 1.45;
 }
 
+.deposit-v4-muted {
+  margin: 0;
+  color: #536684;
+  font-size: 0.78rem;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
 .deposit-v4-actions {
   display: grid;
   gap: 4px;
 }
 
-.deposit-v4-actions button {
+.deposit-v4-actions button,
+.deposit-v4-action-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -916,6 +949,7 @@
   background: #ffffff;
   font-size: 0.72rem;
   font-weight: 950;
+  text-decoration: none;
 }
 
 .deposit-v4-actions .deposit-v4-primary {
@@ -924,6 +958,11 @@
   color: #ffffff;
   background: #078aa5;
   box-shadow: 0 12px 22px rgba(7, 138, 165, 0.2);
+}
+
+.deposit-v4-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
 }
 
 .deposit-v4-actions > div {

@@ -1218,19 +1218,29 @@
   margin-top: 7px;
 }
 
+.ops-pay-actions form {
+  margin: 0;
+}
+
 .ops-pay-action {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   width: 100%;
   min-height: 25px;
+  border: 0;
   padding: 4px 7px;
   border-radius: 6px;
   color: #17233c;
+  background: transparent;
   text-align: left;
   font-size: 9px;
+  font: inherit;
+  font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .ops-pay-action-icon {
