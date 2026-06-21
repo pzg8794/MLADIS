@@ -2739,7 +2739,10 @@ class OpsFinanceObjectTests(TestCase):
     def test_payments_api_exposes_payment_transaction_objects(self):
         self.client.force_login(self.staff)
 
-        response = self.client.get(reverse("bookings:ops-payments-api"))
+        response = self.client.get(
+            reverse("bookings:ops-payments-api"),
+            {"transaction": f"invoice-{self.invoice.pk}"},
+        )
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -2748,6 +2751,16 @@ class OpsFinanceObjectTests(TestCase):
         self.assertEqual(payload["detail"]["deposit_history"][0]["label"], "Damage deposit hold")
         self.assertEqual(payload["detail"]["quick_actions"][1]["kind"], "post")
         self.assertEqual(payload["detail"]["quick_actions"][1]["icon"], "paid")
+
+    def test_payments_api_keeps_transaction_detail_closed_without_selection(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("bookings:ops-payments-api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["selected_transaction_id"], "")
+        self.assertIsNone(payload["detail"])
 
     def test_payment_action_mark_paid_updates_invoice_object(self):
         self.client.force_login(self.staff)

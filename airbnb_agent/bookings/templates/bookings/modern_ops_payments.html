@@ -108,7 +108,10 @@
           </thead>
           <tbody>
             {% for row in rows %}
-              <tr class="ops-pay-row{% if row.id == selected_transaction_id %} is-selected{% endif %}" onclick="window.location='?transaction={{ row.id }}'">
+              <tr
+                class="ops-pay-row{% if row.id == selected_transaction_id %} is-selected{% endif %}"
+                data-payment-toggle-url="{% if row.id == selected_transaction_id %}{% url 'bookings:ops-payments' %}{% else %}{% url 'bookings:ops-payments' %}?transaction={{ row.id }}{% endif %}"
+              >
                 <td><input type="checkbox" aria-label="Select {{ row.transaction_id }}"{% if row.id == selected_transaction_id %} checked{% endif %}></td>
                 <td class="ops-pay-txn">{{ row.transaction_id }}</td>
                 <td>{{ row.guest }}</td>
@@ -175,7 +178,7 @@
         <section class="ops-pay-panel">
           <div class="ops-pay-detail-top">
             <h3>Transaction Details</h3>
-            <button class="ops-pay-close" type="button" aria-label="Close detail">✕</button>
+            <a class="ops-pay-close" href="{% url 'bookings:ops-payments' %}" aria-label="Close detail">✕</a>
           </div>
           <div class="ops-pay-detail-txn">
             <strong>{{ detail.transaction_id }}</strong>
@@ -320,4 +323,12 @@
     {% endif %}
   </section>
 </main>
+<script>
+  document.querySelectorAll("[data-payment-toggle-url]").forEach((row) => {
+    row.addEventListener("click", (event) => {
+      if (event.target.closest("a, button, input, label, select, textarea")) return;
+      window.location.href = row.getAttribute("data-payment-toggle-url");
+    });
+  });
+</script>
 {% endblock %}

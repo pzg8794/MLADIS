@@ -570,12 +570,12 @@ class PaymentsTransactionsService:
         using_mock = not transactions
         if using_mock:
             rows = self.mock_rows()
-            selected = next((row for row in rows if row["id"] == selected_id), rows[0] if rows else None)
+            selected = next((row for row in rows if row["id"] == selected_id), None) if selected_id else None
             detail = self._mock_detail_payload(selected) if selected else None
             selected_key = selected["id"] if selected else ""
         else:
             rows = [transaction.to_row_payload() for transaction in transactions]
-            selected = next((item for item in transactions if item.key == selected_id), transactions[0] if transactions else None)
+            selected = next((item for item in transactions if item.key == selected_id), None) if selected_id else None
             detail = selected.detail_payload() if selected else None
             selected_key = selected.key if selected else ""
 

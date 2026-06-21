@@ -325,7 +325,7 @@ export function OpsDepositsPage() {
     service.loadDeposits()
       .then((nextSnapshot) => {
         setSnapshot(nextSnapshot);
-        setSelectedId((current) => current || nextSnapshot.rows[0]?.id || '');
+        setSelectedId((current) => (current && nextSnapshot.rows.some((row) => row.id === current) ? current : ''));
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load deposits.'));
   }, [service]);
@@ -338,7 +338,7 @@ export function OpsDepositsPage() {
   useEffect(() => {
     if (!snapshot) return;
     if (selectedId && snapshot.rows.some((row) => row.id === selectedId)) return;
-    if (selectedId) setSelectedId(snapshot.rows[0]?.id || '');
+    if (selectedId) setSelectedId('');
   }, [selectedId, snapshot]);
 
   const selected = snapshot?.rows.find((row) => row.id === selectedId) || null;
@@ -401,7 +401,7 @@ export function OpsDepositsPage() {
         <div className="deposit-v4-metric-grid">
           {snapshot.summaryCards.map((metric) => <DepositMetricCard metric={metric} key={metric.label} />)}
         </div>
-        <ExpiringSoonPanel holds={snapshot.expiringHolds} onSelect={setSelectedId} />
+        <ExpiringSoonPanel holds={snapshot.expiringHolds} onSelect={toggleSelected} />
       </section>
 
       <section className={`deposit-v4-workspace ${selected ? 'deposit-v4-workspace--detail-open' : 'deposit-v4-workspace--no-detail'}`}>
