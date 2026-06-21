@@ -63,7 +63,7 @@ const fallbackOpsNavItems: RuntimeOpsNavItem[] = [
   { group: 'Business', label: 'Properties', href: '/ops/properties/', icon: 'stays', description: 'Properties and availability', tone: '#059669', bg: '#d1fae5', shortcutAction: 'Manage', shortcutTone: 'blue' },
   { group: 'Business', label: 'Tasks', href: '/ops/workboard/', icon: 'tasks', description: 'Assigned jobs and completion', tone: '#d97706', bg: '#fef3c7', shortcutAction: 'Open', shortcutTone: 'violet', badge: '12' },
   { group: 'Admin', label: 'Settings', href: '/ops/settings/', icon: 'settings', description: 'Public site copy and identity', tone: '#475569', bg: '#e2e8f0', shortcutAction: 'Manage', shortcutTone: 'amber' },
-  { group: 'Admin', label: 'Users', href: '/ops/admin/', icon: 'users-admin', description: 'Access, roles, operators', tone: '#1d4ed8', bg: '#dbeafe', shortcutAction: 'Manage', shortcutTone: 'violet' },
+  { group: 'Admin', label: 'Admin', href: '/ops/admin/', icon: 'users-admin', description: 'Access, roles, operators', tone: '#1d4ed8', bg: '#dbeafe', shortcutAction: 'Manage', shortcutTone: 'violet' },
 ];
 
 function isRuntimeOpsNavItem(value: unknown): value is RuntimeOpsNavItem {

@@ -117,7 +117,7 @@ class OpsNavigationContractTests(TestCase):
         ("Business", "Properties", "/ops/properties/"),
         ("Business", "Tasks", "/ops/workboard/"),
         ("Admin", "Settings", "/ops/settings/"),
-        ("Admin", "Users", "/ops/admin/"),
+        ("Admin", "Admin", "/ops/admin/"),
     ]
 
     def setUp(self):
@@ -190,7 +190,7 @@ class OpsNavigationContractTests(TestCase):
     def test_ops_settings_routes(self):
         self._assert_route("/ops/settings/", "bookings:ops-settings")
 
-    def test_ops_users_routes(self):
+    def test_ops_admin_routes(self):
         self._assert_route("/ops/admin/", "bookings:ops-admin")
 
     def test_legacy_stays_route_redirects_to_properties(self):
@@ -865,7 +865,7 @@ class ModernOpsDashboardTests(TestCase):
         response = self.client.get(reverse("bookings:ops-dashboard"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MLADIS Modern Dashboard")
+        self.assertContains(response, "mladis-ops-nav-items")
         self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
     def test_modern_dashboard_redirects_anonymous_users_to_social_login(self):
@@ -2823,7 +2823,7 @@ class OpsDashboardTests(TestCase):
         response = self.client.get(reverse("bookings:ops-dashboard"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MLADIS Modern Dashboard")
+        self.assertContains(response, "mladis-ops-nav-items")
         self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         summary_response = self.client.get(reverse("bookings:ops-summary-api"))
@@ -2859,7 +2859,7 @@ class OpsDashboardTests(TestCase):
         response = self.client.get(reverse("bookings:ops-reports"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MLADIS Modern Dashboard")
+        self.assertContains(response, "mladis-ops-nav-items")
         self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         api_response = self.client.get(reverse("bookings:ops-reports-api"))
@@ -2921,10 +2921,24 @@ class OpsDashboardTests(TestCase):
             metadata={"agent_mode": "faq"},
         )
 
-        for route_name in ["ops-customers", "ops-deposits", "ops-agent"]:
+        AdminAccess.objects.create(
+            email=staff.email,
+            name="Ops Staff",
+            phone="+1 555 0100",
+            notes="Primary operations access record.",
+            is_active=True,
+        )
+        site_settings = SiteSettings.current()
+        site_settings.request_notifications_email = True
+        site_settings.property_rules_body = "Registered guests only.\nNo smoking indoors."
+        site_settings.save(update_fields=["request_notifications_email", "property_rules_body", "updated_at"])
+
+        for route_name in ["ops-customers", "ops-deposits", "ops-agent", "ops-admin", "ops-settings", "ops-reports"]:
             response = self.client.get(reverse(f"bookings:{route_name}"))
             self.assertEqual(response.status_code, 200)
-            self.assertContains(response, "MLADIS Modern Dashboard")
+            self.assertContains(response, "mladis-ops-nav-items")
+            if route_name in {"ops-deposits", "ops-admin", "ops-settings", "ops-reports"}:
+                self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         customers_payload = self.client.get(reverse("bookings:ops-customers-api")).json()
         self.assertEqual(customers_payload["rows"][0]["name"], "VIP Guest")
@@ -2937,6 +2951,18 @@ class OpsDashboardTests(TestCase):
         agent_payload = self.client.get(reverse("bookings:ops-agent-api")).json()
         self.assertEqual(agent_payload["conversations"][0]["topic"], "deposit")
         self.assertIn("How does the deposit work?", [row["question"] for row in agent_payload["faqs"]])
+
+        admin_payload = self.client.get(reverse("bookings:ops-admin-api")).json()
+        self.assertEqual(admin_payload["rows"][0]["email"], staff.email)
+        self.assertEqual(admin_payload["rows"][0]["access_status"], "Protected")
+        self.assertEqual(admin_payload["role_options"][0]["label"], "All")
+
+        settings_payload = self.client.get(reverse("bookings:ops-settings-api")).json()
+        section_ids = [section["id"] for section in settings_payload["sections"]]
+        self.assertIn("brand", section_ids)
+        self.assertIn("documents", section_ids)
+        self.assertIn("providers", section_ids)
+        self.assertIn("site_settings", settings_payload["admin_urls"])
 
     @override_settings(SOCIAL_AUTH_CANONICAL_ORIGIN="https://mladis.com", SOCIAL_AUTH_PROVIDER_ORIGINS={})
     def test_oauth_diagnostics_displays_callback_urls(self):

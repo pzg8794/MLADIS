@@ -1,11 +1,13 @@
 import {
   OpsAgentSnapshot,
+  OpsAdminSnapshot,
   OpsCalendarSnapshot,
   OpsCustomersSnapshot,
   OpsDepositsSnapshot,
   OpsMaintenanceEvent,
   OpsMaintenanceSnapshot,
   OpsReportsSnapshot,
+  OpsSettingsSnapshot,
   OpsWorkboardSnapshot,
   OpsWorkItem,
 } from '../domain/models';
@@ -30,6 +32,14 @@ export class OpsWorkspaceService {
 
   async loadReports(): Promise<OpsReportsSnapshot> {
     return this.repository.getReports();
+  }
+
+  async loadAdmin(): Promise<OpsAdminSnapshot> {
+    return this.repository.getAdmin();
+  }
+
+  async loadSettings(): Promise<OpsSettingsSnapshot> {
+    return this.repository.getSettings();
   }
 
   async loadCustomers(): Promise<OpsCustomersSnapshot> {

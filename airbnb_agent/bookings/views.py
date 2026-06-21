@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 from uuid import uuid4
 
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.conf import settings
@@ -38,6 +38,7 @@ from .forms import (
 from .models import (
     AgentConversation,
     AgentFAQ,
+    AdminAccess,
     AirbnbGuestRecord,
     AvailabilityBlock,
     BookableItem,
@@ -2892,6 +2893,196 @@ class OpsAgentAPIView(View):
             "is_active": row.is_active,
             "admin_url": request.build_absolute_uri(reverse("admin:bookings_agentfaq_change", args=[row.pk])),
             "updated_at": row.updated_at.isoformat(),
+        }
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsAdminAPIView(View):
+    def get(self, request):
+        User = get_user_model()
+        users = list(User.objects.order_by("-is_superuser", "-is_staff", "username")[:100])
+        access_records = {
+            access.email.lower(): access
+            for access in AdminAccess.objects.order_by("email")
+            if access.email
+        }
+        rows = [self._user_payload(request, user, access_records.get((user.email or "").lower())) for user in users]
+        role_counts = {
+            "owner": sum(1 for row in rows if row["role_value"] == "owner"),
+            "staff": sum(1 for row in rows if row["role_value"] == "staff"),
+            "active": sum(1 for row in rows if row["status_value"] == "active"),
+            "invited": sum(1 for row in rows if row["access_status_value"] == "invited"),
+        }
+        return JsonResponse(
+            {
+                "summary_cards": [
+                    self._metric("Admin users", len(rows), "Django accounts."),
+                    self._metric("Staff", role_counts["staff"] + role_counts["owner"], "Can enter ops."),
+                    self._metric("Owners", role_counts["owner"], "Superuser access."),
+                    self._metric("Active", role_counts["active"], "Enabled accounts."),
+                    self._metric("Access records", AdminAccess.objects.count(), "Provisioning rules."),
+                    self._metric("Invited", role_counts["invited"], "Access waiting on account."),
+                ],
+                "role_options": [
+                    {"value": "", "label": "All", "count": len(rows)},
+                    {"value": "owner", "label": "Owners", "count": role_counts["owner"]},
+                    {"value": "staff", "label": "Staff", "count": role_counts["staff"]},
+                    {"value": "guest", "label": "Guests", "count": sum(1 for row in rows if row["role_value"] == "guest")},
+                    {"value": "inactive", "label": "Inactive", "count": sum(1 for row in rows if row["status_value"] == "inactive")},
+                ],
+                "rows": rows,
+                "admin_url": reverse("admin:auth_user_changelist"),
+                "access_admin_url": reverse("admin:bookings_adminaccess_changelist"),
+                "generated_at": timezone.now().isoformat(),
+            }
+        )
+
+    @staticmethod
+    def _metric(label, value, caption):
+        return {"label": label, "value": value, "caption": caption}
+
+    def _user_payload(self, request, user, access):
+        role_value = "owner" if user.is_superuser else "staff" if user.is_staff else "guest"
+        role_label = "Owner" if role_value == "owner" else "Staff" if role_value == "staff" else "Guest"
+        access_active = bool(access and access.is_active)
+        access_status_value = "protected" if user.is_staff and access_active else "invited" if access_active else "standard"
+        access_status = "Protected" if access_status_value == "protected" else "Invited" if access_status_value == "invited" else "Standard"
+        full_name = user.get_full_name().strip()
+        display_name = full_name or user.username or user.email or f"User {user.pk}"
+        return {
+            "id": user.pk,
+            "name": display_name,
+            "username": user.username,
+            "email": user.email,
+            "phone": access.phone if access else "",
+            "role": role_label,
+            "role_value": role_value,
+            "status": "Active" if user.is_active else "Inactive",
+            "status_value": "active" if user.is_active else "inactive",
+            "access_status": access_status,
+            "access_status_value": access_status_value,
+            "is_staff": user.is_staff,
+            "is_superuser": user.is_superuser,
+            "last_login": self._date_label(user.last_login),
+            "joined": self._date_label(user.date_joined),
+            "notes": (access.notes if access else "")[:220],
+            "admin_url": request.build_absolute_uri(reverse("admin:auth_user_change", args=[user.pk])),
+            "access_admin_url": request.build_absolute_uri(reverse("admin:bookings_adminaccess_change", args=[access.pk])) if access else reverse("admin:bookings_adminaccess_add"),
+        }
+
+    @staticmethod
+    def _date_label(value):
+        return timezone.localtime(value).strftime("%b %-d, %Y %-I:%M %p") if value else "Never"
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsSettingsAPIView(View):
+    def get(self, request):
+        site_settings = SiteSettings.current()
+        property_rules = self._body_lines(site_settings.property_rules_body)
+        damage_terms = self._body_lines(site_settings.damage_terms_body)
+        notification_enabled = sum(
+            [
+                site_settings.request_notifications_email,
+                site_settings.request_notifications_sms,
+                site_settings.request_notifications_whatsapp,
+            ]
+        )
+        provider_flags = self._provider_flags()
+        return JsonResponse(
+            {
+                "summary_cards": [
+                    self._metric("Site profile", site_settings.site_name, "Public brand object."),
+                    self._metric("Notifications", f"{notification_enabled}/3", "Enabled channels."),
+                    self._metric("House rules", len(property_rules), f"Version {site_settings.property_rules_version}."),
+                    self._metric("Damage terms", len(damage_terms), f"Version {site_settings.damage_terms_version}."),
+                    self._metric("Agent limit", site_settings.agent_question_limit, "Questions per user."),
+                    self._metric("Providers", f"{sum(provider_flags.values())}/4", "Configured locally."),
+                ],
+                "sections": [
+                    {
+                        "id": "brand",
+                        "label": "Brand & Public Site",
+                        "status": "Ready",
+                        "status_tone": "green",
+                        "description": "Customer-facing identity and contact information from SiteSettings.",
+                        "fields": [
+                            self._field("site_name", "Site name", site_settings.site_name, "text"),
+                            self._field("contact_email", "Contact email", site_settings.contact_email, "email"),
+                            self._field("public_address_label", "Public address label", site_settings.public_address_label, "text"),
+                            self._field("logo_url", "Logo URL", site_settings.logo_url, "url"),
+                        ],
+                    },
+                    {
+                        "id": "documents",
+                        "label": "Rules & Guest Documents",
+                        "status": "Published",
+                        "status_tone": "blue",
+                        "description": "Property rules and damage-hold terms that gate checkout.",
+                        "fields": [
+                            self._field("property_rules_title", "Property rules title", site_settings.property_rules_title, "text"),
+                            self._field("property_rules_version", "Property rules version", site_settings.property_rules_version, "text"),
+                            self._field("property_rules_body", "Property rules body", "\n".join(property_rules), "textarea"),
+                            self._field("damage_terms_title", "Damage terms title", site_settings.damage_terms_title, "text"),
+                            self._field("damage_terms_version", "Damage terms version", site_settings.damage_terms_version, "text"),
+                            self._field("damage_terms_body", "Damage terms body", "\n".join(damage_terms), "textarea"),
+                        ],
+                    },
+                    {
+                        "id": "notifications",
+                        "label": "Notifications",
+                        "status": "Partial" if notification_enabled < 3 else "Ready",
+                        "status_tone": "orange" if notification_enabled < 3 else "green",
+                        "description": "Admin request notification channels. SMS and WhatsApp stay off until providers exist.",
+                        "fields": [
+                            self._field("request_notifications_email", "Email notifications", site_settings.request_notifications_email, "boolean"),
+                            self._field("request_notifications_sms", "SMS notifications", site_settings.request_notifications_sms, "boolean"),
+                            self._field("request_notifications_whatsapp", "WhatsApp notifications", site_settings.request_notifications_whatsapp, "boolean"),
+                        ],
+                    },
+                    {
+                        "id": "providers",
+                        "label": "Providers & Access",
+                        "status": "Operational",
+                        "status_tone": "violet",
+                        "description": "Safe boolean status only. Secrets are never exposed in the page payload.",
+                        "fields": [
+                            self._field("stripe", "Stripe", provider_flags["stripe"], "boolean"),
+                            self._field("paypal", "PayPal", provider_flags["paypal"], "boolean"),
+                            self._field("email", "Email backend", provider_flags["email"], "boolean"),
+                            self._field("openai", "OpenAI", provider_flags["openai"], "boolean"),
+                        ],
+                    },
+                ],
+                "admin_urls": {
+                    "site_settings": reverse("admin:bookings_sitesettings_changelist"),
+                    "oauth": reverse("bookings:oauth-diagnostics"),
+                    "agent_faq": reverse("admin:bookings_agentfaq_changelist"),
+                    "users": reverse("bookings:ops-admin"),
+                },
+                "generated_at": timezone.now().isoformat(),
+            }
+        )
+
+    @staticmethod
+    def _metric(label, value, caption):
+        return {"label": label, "value": value, "caption": caption}
+
+    @staticmethod
+    def _field(key, label, value, field_type):
+        return {"key": key, "label": label, "value": value, "type": field_type}
+
+    @staticmethod
+    def _body_lines(body):
+        return [line.strip() for line in (body or "").splitlines() if line.strip()]
+
+    @staticmethod
+    def _provider_flags():
+        return {
+            "stripe": bool(getattr(settings, "STRIPE_SECRET_KEY", "") or getattr(settings, "STRIPE_TEST_SECRET_KEY", "")),
+            "paypal": bool(getattr(settings, "PAYPAL_CLIENT_ID", "")),
+            "email": bool(getattr(settings, "EMAIL_BACKEND", "")),
+            "openai": bool(getattr(settings, "OPENAI_API_KEY", "")),
         }
 
 

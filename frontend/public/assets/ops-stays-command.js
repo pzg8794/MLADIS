@@ -4,20 +4,19 @@
 
   const heroImage = '/static/frontend/modern-dashboard/stays/stay-6br.jpg';
   const fallbackModules = [
-    ['Dashboard', 'Command overview and live metrics', '/ops/dashboard/', '#2563eb', '#dbeafe'],
+    ['Command Center', 'Command overview and live metrics', '/ops/dashboard/', '#2563eb', '#dbeafe'],
     ['Reservations', 'Guest stays, channels, arrivals', '/ops/reservations/', '#0ea5e9', '#e0f2fe'],
     ['Calendar', 'Availability, blocks, pricing', '/ops/calendar/', '#7c3aed', '#ede9fe'],
-    ['Stays', 'Listings, rooms, readiness', '/ops/stays/', '#0f766e', '#ccfbf1'],
+    ['Guests', 'Guest stays, channels, arrivals', '/ops/customers/', '#0f766e', '#ccfbf1'],
     ['Maintenance', 'Issues, photos, repair status', '/ops/maintenance/', '#f97316', '#ffedd5'],
     ['Payments', 'Checkout status and providers', '/ops/payments/', '#0891b2', '#cffafe'],
     ['Deposits', 'Holds, captures, releases', '/ops/deposits/', '#e11d48', '#ffe4e6'],
     ['Reports', 'Revenue, occupancy, trends', '/ops/reports/', '#6d28d9', '#f3e8ff'],
-    ['Agent Intelligence', 'AI suggestions and training', '/ops/agent/', '#0d9488', '#ccfbf1'],
-    ['Listings', 'Properties and availability', '/ops/listings/', '#059669', '#d1fae5'],
-    ['Customers', 'Profiles, consent, segments', '/ops/customers/', '#16a34a', '#dcfce7'],
+    ['FairAgent', 'AI suggestions and training', '/ops/agent/', '#0d9488', '#ccfbf1'],
+    ['Properties', 'Properties and availability', '/ops/properties/', '#059669', '#d1fae5'],
     ['Tasks', 'Assigned jobs and completion', '/ops/workboard/', '#d97706', '#fef3c7'],
     ['Settings', 'Public site copy and identity', '/ops/settings/', '#475569', '#e2e8f0'],
-    ['Users', 'Access, roles, operators', '/ops/admin/', '#1d4ed8', '#dbeafe'],
+    ['Admin', 'Access, roles, operators', '/ops/admin/', '#1d4ed8', '#dbeafe'],
   ];
 
   function readRuntimeModules() {

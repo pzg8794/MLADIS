@@ -3,6 +3,9 @@ import {
   OpsAgentFaq,
   OpsAgentSnapshot,
   OpsAgentTopic,
+  OpsAdminRoleOption,
+  OpsAdminSnapshot,
+  OpsAdminUserRow,
   OpsChart,
   OpsChartRow,
   OpsCalendarDay,
@@ -25,6 +28,9 @@ import {
   OpsMaintenanceStay,
   OpsMetric,
   OpsReportsSnapshot,
+  OpsSettingsField,
+  OpsSettingsSection,
+  OpsSettingsSnapshot,
   OpsSegmentOption,
   OpsWorkboardSnapshot,
   OpsWorkItem,
@@ -60,6 +66,65 @@ interface ApiOpsReportsSnapshot {
   report_until: string;
   legacy_url: string;
   calendar_url: string;
+}
+
+interface ApiOpsAdminRoleOption {
+  value: string;
+  label: string;
+  count: number;
+}
+
+interface ApiOpsAdminUserRow {
+  id: number;
+  name: string;
+  username: string;
+  email: string;
+  phone: string;
+  role: string;
+  role_value: string;
+  status: string;
+  status_value: string;
+  access_status: string;
+  access_status_value: string;
+  is_staff: boolean;
+  is_superuser: boolean;
+  last_login: string;
+  joined: string;
+  notes: string;
+  admin_url: string;
+  access_admin_url: string;
+}
+
+interface ApiOpsAdminSnapshot {
+  summary_cards: ApiOpsMetric[];
+  role_options: ApiOpsAdminRoleOption[];
+  rows: ApiOpsAdminUserRow[];
+  admin_url: string;
+  access_admin_url: string;
+  generated_at: string;
+}
+
+interface ApiOpsSettingsField {
+  key: string;
+  label: string;
+  value: string | boolean | number;
+  type: string;
+}
+
+interface ApiOpsSettingsSection {
+  id: string;
+  label: string;
+  status: string;
+  status_tone: string;
+  description: string;
+  fields: ApiOpsSettingsField[];
+}
+
+interface ApiOpsSettingsSnapshot {
+  summary_cards: ApiOpsMetric[];
+  sections: ApiOpsSettingsSection[];
+  admin_urls: Record<string, string>;
+  generated_at: string;
 }
 
 interface ApiOpsSegmentOption {
@@ -447,6 +512,8 @@ export interface OpsWorkspaceRepository {
   getWorkboard(): Promise<OpsWorkboardSnapshot>;
   setWorkItemCompletion(id: number, completed: boolean): Promise<OpsWorkItem>;
   getReports(): Promise<OpsReportsSnapshot>;
+  getAdmin(): Promise<OpsAdminSnapshot>;
+  getSettings(): Promise<OpsSettingsSnapshot>;
   getCustomers(): Promise<OpsCustomersSnapshot>;
   getDeposits(): Promise<OpsDepositsSnapshot>;
   getAgent(): Promise<OpsAgentSnapshot>;
@@ -509,6 +576,59 @@ export class ApiOpsWorkspaceRepository implements OpsWorkspaceRepository {
       data.report_until,
       data.legacy_url,
       data.calendar_url,
+    );
+  }
+
+  async getAdmin(): Promise<OpsAdminSnapshot> {
+    const data = await this.http.get<ApiOpsAdminSnapshot>('/api/ops/admin/');
+    return new OpsAdminSnapshot(
+      data.summary_cards.map(toMetric),
+      data.role_options.map((option) => new OpsAdminRoleOption(option.value, option.label, option.count)),
+      data.rows.map((row) => new OpsAdminUserRow(
+        row.id,
+        row.name,
+        row.username,
+        row.email,
+        row.phone,
+        row.role,
+        row.role_value,
+        row.status,
+        row.status_value,
+        row.access_status,
+        row.access_status_value,
+        row.is_staff,
+        row.is_superuser,
+        row.last_login,
+        row.joined,
+        row.notes,
+        row.admin_url,
+        row.access_admin_url,
+      )),
+      data.admin_url,
+      data.access_admin_url,
+      data.generated_at,
+    );
+  }
+
+  async getSettings(): Promise<OpsSettingsSnapshot> {
+    const data = await this.http.get<ApiOpsSettingsSnapshot>('/api/ops/settings/');
+    return new OpsSettingsSnapshot(
+      data.summary_cards.map(toMetric),
+      data.sections.map((section) => new OpsSettingsSection(
+        section.id,
+        section.label,
+        section.status,
+        section.status_tone,
+        section.description,
+        section.fields.map((field) => new OpsSettingsField(
+          field.key,
+          field.label,
+          field.value,
+          field.type,
+        )),
+      )),
+      data.admin_urls,
+      data.generated_at,
     );
   }
 

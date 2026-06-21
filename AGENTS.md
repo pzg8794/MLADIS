@@ -229,7 +229,7 @@ If you need to change the left navigation, change `OPS_NAV_ITEMS` first. Then up
 | 10 | Properties | `/ops/properties/` | Django (`modern_ops_stays.html`) |
 | 11 | Tasks | `/ops/workboard/` | React app |
 | 12 | Settings | `/ops/settings/` | React app |
-| 13 | Users | `/ops/admin/` | React app |
+| 13 | Admin | `/ops/admin/` | React app |
 
 **If a label or URL is changed, it must be changed in all three sources in the same commit. No partial updates.**
 

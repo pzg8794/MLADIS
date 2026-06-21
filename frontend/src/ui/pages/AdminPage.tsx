@@ -1,213 +1,263 @@
-import { ArrowRight, Box, CalendarDays, CheckCircle2, ClipboardList, Clock3, Database, DollarSign, LayoutGrid, MessageCircle, Radio, Settings, ShieldCheck, Sparkles, TrendingUp, Users, Wrench, type LucideIcon } from 'lucide-react';
-import { OPS_NAV_ITEMS } from '../opsNavigation';
-import './admin-page.css';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  ExternalLink,
+  LockKeyhole,
+  Mail,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  UserCog,
+  Users,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
+import { OpsWorkspaceFactory } from '../../application/OpsWorkspaceFactory';
+import { OpsAdminSnapshot, OpsAdminUserRow, OpsMetric } from '../../domain/models';
+import './ops-admin-page.css';
 
-const ADMIN_HERO_IMAGE = `${import.meta.env.BASE_URL}admin-command-hero.png`;
+const metricIcons: LucideIcon[] = [Users, ShieldCheck, UserCog, CheckCircle2, LockKeyhole, Mail];
+const metricTones = ['blue', 'green', 'violet', 'teal', 'orange', 'slate'];
 
-class AdminShortcut {
-  constructor(
-    public readonly label: string,
-    public readonly description: string,
-    public readonly href: string,
-    public readonly icon: LucideIcon,
-    public readonly action: string,
-    public readonly tone: 'blue' | 'violet' | 'teal' | 'amber' | 'rose' = 'blue',
-  ) {}
+function initials(row: OpsAdminUserRow) {
+  const source = row.name || row.username || row.email || 'Admin';
+  return source.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'A';
 }
 
-class AdminMetric {
-  constructor(
-    public readonly label: string,
-    public readonly value: string,
-    public readonly caption: string,
-    public readonly icon: typeof ShieldCheck,
-    public readonly tone: 'blue' | 'violet' | 'teal' | 'amber' | 'rose' = 'blue',
-  ) {}
+function statusTone(row: OpsAdminUserRow) {
+  if (!row.statusValue || row.statusValue === 'inactive') return 'red';
+  if (row.accessStatusValue === 'protected') return 'green';
+  if (row.accessStatusValue === 'invited') return 'orange';
+  return 'blue';
 }
 
-class AdminFeedItem {
-  constructor(
-    public readonly time: string,
-    public readonly title: string,
-    public readonly detail: string,
-    public readonly icon: typeof ShieldCheck,
-    public readonly tone: 'blue' | 'green' | 'amber' | 'cyan',
-  ) {}
-}
-
-class AdminHealthCard {
-  constructor(
-    public readonly label: string,
-    public readonly value: string,
-    public readonly caption: string,
-    public readonly icon: typeof ShieldCheck,
-    public readonly tone: 'blue' | 'green' | 'teal' | 'slate',
-  ) {}
-}
-
-const shortcuts = OPS_NAV_ITEMS.map((item) => new AdminShortcut(
-  item.label,
-  item.description,
-  item.href,
-  item.iconComponent,
-  item.shortcutAction,
-  item.shortcutTone,
-));
-
-const metrics = [
-  new AdminMetric('Active stays', '128', '↑ 12% vs yesterday', Box, 'violet'),
-  new AdminMetric('Pending requests', '23', '↑ 5 new', Clock3, 'amber'),
-  new AdminMetric('Deposit holds', '$74,560', '12 holds', ShieldCheck, 'teal'),
-  new AdminMetric('Open tasks', '18', '↓ 3 completed', ClipboardList, 'blue'),
-];
-
-const feedItems = [
-  new AdminFeedItem('2m ago', 'New reservation created', '#R-58291 · Ocean View Villa · Aug 12 - 16', CalendarDays, 'blue'),
-  new AdminFeedItem('7m ago', 'Deposit captured', '$2,450.00 · #R-58288 · Beach House', ShieldCheck, 'green'),
-  new AdminFeedItem('16m ago', 'Maintenance issue reported', 'AC not cooling · Unit 3B · High priority', Wrench, 'amber'),
-  new AdminFeedItem('28m ago', 'Guest message received', 'Late check-in request · #R-58285', MessageCircle, 'cyan'),
-  new AdminFeedItem('35m ago', 'Payment refunded', '$125.00 · #R-58262 · Cancellation', DollarSign, 'green'),
-];
-
-const healthCards = [
-  new AdminHealthCard('Staff access', 'Staff only', 'Protected', Users, 'slate'),
-  new AdminHealthCard('Controlled edits', 'Enabled', 'Audit on', TrendingUp, 'green'),
-  new AdminHealthCard('Build status', 'Production', 'v2.4.17', ClipboardList, 'blue'),
-  new AdminHealthCard('Last backup', 'Today, 3:14 AM', 'Automated', Database, 'teal'),
-];
-
-export function AdminPage() {
+function MetricCard({ metric, index }: { metric: OpsMetric; index: number }) {
+  const Icon = metricIcons[index % metricIcons.length];
+  const tone = metricTones[index % metricTones.length];
   return (
-    <main className="dashboard-content admin-page">
-      <section className="admin-hero">
+    <article className={`ops-admin-metric ops-admin-tone--${tone}`}>
+      <span><Icon size={18} /></span>
+      <div>
+        <small>{metric.label}</small>
+        <strong>{metric.value}</strong>
+        <em>{metric.caption}</em>
+      </div>
+    </article>
+  );
+}
+
+function StatusBadge({ label, tone }: { label: string; tone: string }) {
+  return <span className={`ops-admin-badge ops-admin-badge--${tone}`}>{label}</span>;
+}
+
+function exportAdmin(snapshot: OpsAdminSnapshot) {
+  const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `mladis-admin-access-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function AdminDetail({ row, onClose }: { row: OpsAdminUserRow; onClose: () => void }) {
+  return (
+    <aside className="ops-admin-detail">
+      <button className="ops-admin-close" onClick={onClose} type="button" aria-label="Close admin details"><X size={17} /></button>
+      <section className="ops-admin-person">
+        <span className={`ops-admin-avatar ops-admin-avatar--${statusTone(row)}`}>{initials(row)}</span>
         <div>
-          <h1>Admin command center <Sparkles size={28} /></h1>
-          <p>Your operational cockpit for reservations, guests, properties, and everything in between.</p>
-          <a href="#admin-workspaces" className="admin-primary-link">
-            Open all workspaces
-            <ArrowRight size={16} />
-          </a>
+          <h2>{row.name}</h2>
+          <p>{row.email || 'Email missing'}</p>
+          <strong>{row.username}</strong>
         </div>
-        <figure className="admin-hero-media">
-          <img src={ADMIN_HERO_IMAGE} alt="MLADIS pool workspace" />
-          <figcaption>
-            <span><i /> System healthy</span>
-            <span>Last sync: 2m ago</span>
-            <span>All systems operational</span>
-          </figcaption>
-        </figure>
       </section>
 
-      <section className="admin-body-grid">
-        <div className="admin-main-stack">
-          <section className="admin-metric-grid" aria-label="Admin metrics">
-            {metrics.map((metric) => {
-              const Icon = metric.icon;
-              return (
-                <article className={`admin-metric-card admin-metric-card--${metric.tone}`} key={metric.label}>
-                  <span><Icon size={24} /></span>
-                  <div>
-                    <small>{metric.label}</small>
-                    <strong>{metric.value}</strong>
-                    <em>{metric.caption}</em>
-                  </div>
-                </article>
-              );
-            })}
-          </section>
+      <section className="ops-admin-facts">
+        <div><small>Role</small><span>{row.role}</span></div>
+        <div><small>Status</small><span>{row.status}</span></div>
+        <div><small>Access</small><StatusBadge label={row.accessStatus} tone={statusTone(row)} /></div>
+        <div><small>Staff</small><span>{row.isStaff ? 'Yes' : 'No'}</span></div>
+      </section>
 
-          <section className="admin-operations" id="admin-workspaces">
-            <header className="admin-section-header">
-              <div>
-                <h2><ClipboardList size={22} /> Operations hub</h2>
-                <p>Access the tools and data you need to run a world-class hospitality operation.</p>
-              </div>
-              <div className="admin-view-actions" aria-label="Workspace controls">
-                <button type="button" aria-label="Grid view"><LayoutGrid size={17} /></button>
-                <button type="button"><Settings size={17} /> Customize</button>
-              </div>
-            </header>
+      <section className="ops-admin-section">
+        <h3>Account timeline</h3>
+        <ol>
+          <li><i /><span>Joined</span><strong>{row.joined}</strong></li>
+          <li><i /><span>Last login</span><strong>{row.lastLogin}</strong></li>
+          <li><i /><span>Provisioning</span><strong>{row.accessStatus}</strong></li>
+        </ol>
+      </section>
 
-            <section className="admin-shortcut-grid">
-              {shortcuts.map((shortcut) => {
-                const Icon = shortcut.icon;
-                return (
-                  <a className={`admin-shortcut admin-shortcut--${shortcut.tone}`} href={shortcut.href} key={shortcut.label}>
-                    <span className="admin-shortcut__icon"><Icon size={23} /></span>
-                    <span>
-                      <strong>{shortcut.label}</strong>
-                      <p>{shortcut.description}</p>
-                      <small>{shortcut.action} <ArrowRight size={13} /></small>
-                    </span>
-                  </a>
-                );
-              })}
-            </section>
-          </section>
+      <section className="ops-admin-section">
+        <h3>Access notes</h3>
+        <p>{row.notes || 'No AdminAccess notes are attached to this operator yet.'}</p>
+      </section>
+
+      <section className="ops-admin-actions">
+        <a className="ops-admin-primary" href={row.adminUrl}><UserCog size={15} /> Open Django user</a>
+        <a href={row.accessAdminUrl}><ShieldCheck size={15} /> Access record</a>
+        {row.email && <a href={`mailto:${row.email}`}><Mail size={15} /> Email operator</a>}
+      </section>
+    </aside>
+  );
+}
+
+export function AdminPage() {
+  const service = useMemo(() => OpsWorkspaceFactory.create(), []);
+  const [snapshot, setSnapshot] = useState<OpsAdminSnapshot | null>(null);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [role, setRole] = useState('');
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    service.loadAdmin()
+      .then((data) => {
+        if (mounted) setSnapshot(data);
+      })
+      .catch((caught: unknown) => {
+        if (mounted) setError(caught instanceof Error ? caught.message : 'Could not load admin access.');
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [service]);
+
+  const rows = useMemo(() => {
+    if (!snapshot) return [];
+    const query = search.trim().toLowerCase();
+    return snapshot.rows.filter((row) => {
+      const matchesRole = !role
+        || row.roleValue === role
+        || (role === 'inactive' && row.statusValue === 'inactive');
+      const matchesSearch = !query || [
+        row.name,
+        row.username,
+        row.email,
+        row.phone,
+        row.role,
+        row.status,
+        row.accessStatus,
+        row.notes,
+      ].some((value) => value.toLowerCase().includes(query));
+      return matchesRole && matchesSearch;
+    });
+  }, [role, search, snapshot]);
+
+  const selected = rows.find((row) => row.id === selectedId) || null;
+
+  if (error) {
+    return <section className="dashboard-error"><AlertCircle /> {error}</section>;
+  }
+
+  if (!snapshot) {
+    return <main className="dashboard-content ops-admin-page"><section className="ops-admin-card">Loading admin access...</section></main>;
+  }
+
+  return (
+    <main className="dashboard-content ops-admin-page">
+      <section className="ops-admin-titlebar">
+        <div>
+          <h1>Admin</h1>
+          <p>Manage operators, staff access, protected accounts, and admin provisioning records.</p>
         </div>
+        <div className="ops-admin-title-actions">
+          <a href={snapshot.adminUrl}><UserCog size={16} /> Django users <ChevronDown size={15} /></a>
+          <button type="button"><SlidersHorizontal size={16} /> Filters</button>
+          <button type="button" onClick={() => exportAdmin(snapshot)}><Download size={16} /> Export</button>
+        </div>
+      </section>
 
-        <aside className="admin-side-rail">
-          <section className="admin-feed-card" aria-label="Live operations feed">
-            <header>
-              <h2><Radio size={16} /> Live operations feed</h2>
-              <a href="/ops/reports/">View all</a>
-            </header>
-            <div>
-              {feedItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <article className={`admin-feed-item admin-feed-item--${item.tone}`} key={`${item.time}-${item.title}`}>
-                    <time>{item.time}</time>
-                    <span><Icon size={17} /></span>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <p>{item.detail}</p>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-            <p><CheckCircle2 size={14} /> All activity is up to date</p>
-          </section>
+      <section className="ops-admin-metric-grid">
+        {snapshot.summaryCards.map((metric, index) => <MetricCard metric={metric} index={index} key={metric.label} />)}
+      </section>
 
-          <section className="admin-health-panel" aria-label="System health and access">
-            <header>
-              <h2>System health &amp; access</h2>
-              <a href="/ops/settings/">Details</a>
-            </header>
-            <div>
-              {healthCards.map((card) => {
-                const Icon = card.icon;
-                return (
-                  <article className={`admin-health-tile admin-health-tile--${card.tone}`} key={card.label}>
-                    <span><Icon size={18} /></span>
-                    <strong>{card.label}<b>{card.value}</b></strong>
-                    <em>{card.caption}</em>
-                  </article>
-                );
-              })}
+      <section className={`ops-admin-workspace ${selected ? 'is-detail-open' : ''}`}>
+        <section className="ops-admin-card ops-admin-table-card">
+          <div className="ops-admin-toolbar">
+            <label>
+              <Search size={15} />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, email, role, notes..." />
+              <kbd>⌘ F</kbd>
+            </label>
+            <div className="ops-admin-role-tabs">
+              {snapshot.roleOptions.map((option) => (
+                <button className={role === option.value ? 'is-active' : ''} key={option.value || 'all'} onClick={() => setRole(option.value)} type="button">
+                  {option.label}
+                  <small>{option.count}</small>
+                </button>
+              ))}
             </div>
-            <article className="admin-uptime-card">
-              <div>
-                <strong>Uptime</strong>
-                <b>99.99%</b>
-                <span>30-day</span>
-              </div>
-              <div className="admin-uptime-chart" aria-label="30-day uptime trend">
-                <svg viewBox="0 0 260 48" preserveAspectRatio="none" role="img" aria-hidden="true">
-                  <defs>
-                    <linearGradient id="admin-uptime-fill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#bbf7d0" stopOpacity="0.72" />
-                      <stop offset="100%" stopColor="#bbf7d0" stopOpacity="0.08" />
-                    </linearGradient>
-                  </defs>
-                  <path className="admin-uptime-chart__area" d="M0 35 C13 29 25 28 38 31 C52 36 64 27 78 28 C92 30 104 33 118 29 C132 24 145 27 158 25 C172 23 185 30 198 27 C211 24 224 26 236 22 C247 18 254 20 260 17 L260 48 L0 48 Z" />
-                  <path className="admin-uptime-chart__line" d="M0 35 C13 29 25 28 38 31 C52 36 64 27 78 28 C92 30 104 33 118 29 C132 24 145 27 158 25 C172 23 185 30 198 27 C211 24 224 26 236 22 C247 18 254 20 260 17" />
-                </svg>
-              </div>
-            </article>
-          </section>
-        </aside>
+          </div>
+
+          <div className="ops-admin-table-scroll">
+            <table>
+              <colgroup>
+                <col style={{ width: '34px' }} />
+                <col style={{ width: '28%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '24%' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th />
+                  <th>Operator</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Last Login</th>
+                  <th>Access Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr className={row.id === selectedId ? 'is-selected' : ''} key={row.id} onClick={() => setSelectedId((current) => (current === row.id ? null : row.id))}>
+                    <td>
+                      <button className={`ops-admin-check ${row.id === selectedId ? 'is-checked' : ''}`} type="button" aria-label={`Select ${row.name}`}>
+                        {row.id === selectedId && <CheckCircle2 size={13} />}
+                      </button>
+                    </td>
+                    <td>
+                      <div className="ops-admin-user-cell">
+                        <span className={`ops-admin-avatar ops-admin-avatar--${statusTone(row)}`}>{initials(row)}</span>
+                        <span><strong>{row.name}</strong><small>{row.email || row.username}</small></span>
+                      </div>
+                    </td>
+                    <td>{row.role}</td>
+                    <td><StatusBadge label={row.accessStatus} tone={statusTone(row)} /></td>
+                    <td>{row.lastLogin}</td>
+                    <td>{row.notes || 'No notes'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <footer className="ops-admin-footer">
+            <span>Showing {rows.length ? 1 : 0} to {rows.length} of {snapshot.rows.length} admin records</span>
+            <nav aria-label="Admin pagination">
+              <button type="button" aria-label="Previous page"><ChevronLeft size={16} /></button>
+              <button className="is-active" type="button">1</button>
+              <button type="button">2</button>
+              <button type="button" aria-label="Next page"><ChevronRight size={16} /></button>
+            </nav>
+          </footer>
+        </section>
+
+        {selected && <AdminDetail row={selected} onClose={() => setSelectedId(null)} />}
+      </section>
+
+      <section className="ops-admin-shortcuts">
+        <a href={snapshot.accessAdminUrl}><ShieldCheck size={16} /> Manage AdminAccess records <ExternalLink size={14} /></a>
+        <a href="/ops/settings/"><LockKeyhole size={16} /> Review system settings <ExternalLink size={14} /></a>
       </section>
     </main>
   );

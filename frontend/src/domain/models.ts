@@ -560,6 +560,77 @@ export class OpsReportsSnapshot {
   ) {}
 }
 
+export class OpsAdminRoleOption {
+  constructor(
+    public readonly value: string,
+    public readonly label: string,
+    public readonly count: number,
+  ) {}
+}
+
+export class OpsAdminUserRow {
+  constructor(
+    public readonly id: number,
+    public readonly name: string,
+    public readonly username: string,
+    public readonly email: string,
+    public readonly phone: string,
+    public readonly role: string,
+    public readonly roleValue: string,
+    public readonly status: string,
+    public readonly statusValue: string,
+    public readonly accessStatus: string,
+    public readonly accessStatusValue: string,
+    public readonly isStaff: boolean,
+    public readonly isSuperuser: boolean,
+    public readonly lastLogin: string,
+    public readonly joined: string,
+    public readonly notes: string,
+    public readonly adminUrl: string,
+    public readonly accessAdminUrl: string,
+  ) {}
+}
+
+export class OpsAdminSnapshot {
+  constructor(
+    public readonly summaryCards: OpsMetric[],
+    public readonly roleOptions: OpsAdminRoleOption[],
+    public readonly rows: OpsAdminUserRow[],
+    public readonly adminUrl: string,
+    public readonly accessAdminUrl: string,
+    public readonly generatedAt: string,
+  ) {}
+}
+
+export class OpsSettingsField {
+  constructor(
+    public readonly key: string,
+    public readonly label: string,
+    public readonly value: string | boolean | number,
+    public readonly type: string,
+  ) {}
+}
+
+export class OpsSettingsSection {
+  constructor(
+    public readonly id: string,
+    public readonly label: string,
+    public readonly status: string,
+    public readonly statusTone: string,
+    public readonly description: string,
+    public readonly fields: OpsSettingsField[],
+  ) {}
+}
+
+export class OpsSettingsSnapshot {
+  constructor(
+    public readonly summaryCards: OpsMetric[],
+    public readonly sections: OpsSettingsSection[],
+    public readonly adminUrls: Record<string, string>,
+    public readonly generatedAt: string,
+  ) {}
+}
+
 export class OpsSegmentOption {
   constructor(
     public readonly value: string,

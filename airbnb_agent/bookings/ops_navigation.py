@@ -149,7 +149,7 @@ OPS_NAV_ITEMS = [
     },
     {
         "group": "Admin",
-        "label": "Users",
+        "label": "Admin",
         "href": "/ops/admin/",
         "icon": "users-admin",
         "description": "Access, roles, operators",
