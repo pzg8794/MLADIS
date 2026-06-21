@@ -1134,7 +1134,7 @@
 }
 
 .ops-pay-dep-qa-row {
-  grid-template-columns: minmax(0, 1fr) 134px;
+  grid-template-columns: 1fr;
   gap: 0;
   margin: -10px -14px;
 }
@@ -1145,7 +1145,7 @@
 }
 
 .ops-pay-dep-qa-row > div + div {
-  border-left: 1px solid #e8eef6;
+  border-top: 1px solid #e8eef6;
 }
 
 .ops-pay-stack {

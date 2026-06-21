@@ -246,8 +246,8 @@
 }
 
 .deposit-v4-expiring {
-  min-height: 126px;
-  height: 126px;
+  min-height: 130px;
+  height: 130px;
   overflow: hidden;
   border-color: #f3c97a;
   background: #ffffff;
