@@ -62,7 +62,19 @@ from .models import (
     ReservationPaymentHold,
     SiteSettings,
 )
-from .services import AgentAccessContext, BookingCalendarService, MaintenanceService, ReservationPricingService
+from .ops_finance import DepositHoldOperationsService, PaymentsTransactionsService
+from .services import (
+    AgentAccessContext,
+    AgentIntelligenceOperationsService,
+    BookingCalendarService,
+    CalendarOperationsService,
+    CustomersCRMService,
+    MaintenanceOperationsService,
+    MaintenanceService,
+    OpsReservationProjection,
+    ReservationPricingService,
+    StayListingService,
+)
 from .social_auth import SOCIAL_LOGIN_PROVIDER_SPECS, get_social_login_providers
 from .social_auth import get_provider_spec, provider_auth_origin, request_origin
 
@@ -1318,12 +1330,101 @@ class CalendarOpsView(TemplateView):
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsCalendarView(TemplateView):
-    template_name = "bookings/modern_dashboard.html"
+    template_name = "bookings/modern_ops_calendar.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        service = CalendarOperationsService()
+        context.update(
+            service.page_payload(
+                request_path=self.request.path,
+                view_mode=self.request.GET.get("view", "month"),
+                focus_date_value=self.request.GET.get("date", ""),
+                selected_stay=self.request.GET.get("stay", ""),
+            )
+        )
+        return context
 
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsStaysView(TemplateView):
-    template_name = "bookings/modern_dashboard.html"
+    """
+    Ops Stays & Listings page (Object 2).
+
+    Renders a server-side two-column layout that matches the Stays & Listings
+    mock: property card list on the left, selected listing detail panel on the
+    right.  All data is provided by StayListingService; mocked values are
+    documented in that service.
+
+    Query params:
+        tab    – "all" | "published" | "draft" | "inactive" | "maintenance" |
+                 "archived"  (default "all")
+        search – free-text filter applied to stay name
+        stay   – slug of the listing whose detail panel should be open
+    """
+
+    template_name = "bookings/modern_ops_stays.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        service = StayListingService()
+        route_name = getattr(getattr(self.request, "resolver_match", None), "url_name", "")
+        is_properties_page = route_name == "ops-properties"
+
+        tab = self.request.GET.get("tab", "all")
+        search = self.request.GET.get("search", "").strip()
+        selected_slug = self.request.GET.get("stay", "")
+
+        stays = service.get_stays(tab=tab, search=search)
+        tab_counts = service.get_tab_counts()
+        cards = [service.card_payload(s) for s in stays]
+
+        # Resolve the selected stay: explicit slug → first stay → None
+        selected_stay = None
+        if selected_slug:
+            selected_stay = next(
+                (s for s in stays if s.slug == selected_slug), None
+            )
+        if selected_stay is None and stays:
+            selected_stay = stays[0]
+
+        detail = service.detail_payload(selected_stay) if selected_stay else None
+
+        ctx.update(
+            {
+                "page_title": "Properties" if is_properties_page else "Guests",
+                "page_heading": "Properties" if is_properties_page else "Guests",
+                "page_subtitle": (
+                    "Manage live properties, public content, amenities, pricing, and operational readiness."
+                    if is_properties_page
+                    else "Manage guest stays, channels, arrivals, and operational readiness."
+                ),
+                "page_action_label": "Add New Property" if is_properties_page else "Add New Guest",
+                "page_search_placeholder": (
+                    "Search by property name, area, listing..."
+                    if is_properties_page
+                    else "Search by guest name, email, stay..."
+                ),
+                "page_search_aria_label": "Search properties" if is_properties_page else "Search guests",
+                "page_list_aria_label": "Property cards" if is_properties_page else "Guest cards",
+                "page_detail_aria_label": "Property detail" if is_properties_page else "Guest detail",
+                "tab": tab,
+                "search": search,
+                "cards": cards,
+                "detail": detail,
+                "tab_counts": tab_counts,
+                "selected_slug": selected_stay.slug if selected_stay else "",
+                "site_settings": self._site_settings(),
+            }
+        )
+        return ctx
+
+    @staticmethod
+    def _site_settings():
+        try:
+            return SiteSettings.objects.first()
+        except Exception:
+            return None
 
 
 @method_decorator(ops_staff_required, name="dispatch")
@@ -1753,6 +1854,7 @@ class OpsReservationsView(TemplateView):
         rows = []
         records = (
             BookingInquiry.objects.select_related("customer_profile", "item", "coupon", "cancellation_policy")
+            .prefetch_related("damage_deposits", "payment_holds")
             .order_by("-check_in", "guest_name", "-updated_at")
         )
         for record in records:
@@ -1962,6 +2064,10 @@ class OpsReservationsAPIView(View):
         view.setup(request)
         rows = view._reservation_customer_rows()
         all_rows = view._reservation_customer_rows(apply_filter=False)
+        reservations = [
+            OpsReservationProjection(row, index).to_payload()
+            for index, row in enumerate(rows)
+        ]
         direct_count = sum(1 for row in all_rows if row["record_type"] == "direct")
         airbnb_count = sum(1 for row in all_rows if row["record_type"] == "airbnb")
         return JsonResponse(
@@ -1984,6 +2090,7 @@ class OpsReservationsAPIView(View):
                 "export_url": view._export_url(),
                 "legacy_url": reverse("bookings:ops-reservations"),
                 "rows": [self._row_payload(request, row) for row in rows],
+                "reservations": reservations,
                 "generated_at": timezone.now().isoformat(),
             }
         )
@@ -2046,12 +2153,227 @@ class OpsReservationStatusAPIView(View):
             reservation.save(update_fields=["status", "canceled_at", "cancellation_reason", "updated_at"])
         else:
             reservation.save(update_fields=["status", "updated_at"])
-        return JsonResponse({"ok": True, "status": reservation.get_status_display()})
+
+        view = OpsReservationsView()
+        view.setup(request)
+        rows = view._reservation_customer_rows(apply_filter=False)
+        selected_row = next(
+            (
+                row
+                for row in rows
+                if row["record_type"] == "direct" and row["record"].pk == reservation.pk
+            ),
+            None,
+        )
+        normalized = OpsReservationProjection(selected_row, 0).to_payload() if selected_row else None
+        return JsonResponse(
+            {
+                "ok": True,
+                "status": reservation.get_status_display(),
+                "reservation": normalized,
+            }
+        )
 
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsCustomersView(TemplateView):
-    template_name = "bookings/modern_dashboard.html"
+    template_name = "bookings/modern_ops_customers.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(
+            {
+                "page_title": "Guests",
+                "page_heading": "Guests",
+                "page_subtitle": "Manage guest relationships, profiles, travel details, and communication history.",
+            }
+        )
+        return ctx
+
+    COUNTRY_FLAGS = {
+        "DO": "🇩🇴",
+        "US": "🇺🇸",
+        "CA": "🇨🇦",
+        "FR": "🇫🇷",
+        "ES": "🇪🇸",
+        "MX": "🇲🇽",
+        "CO": "🇨🇴",
+    }
+
+    LANGUAGE_LABELS = {
+        "EN": "English",
+        "ES": "Spanish",
+        "FR": "French",
+    }
+
+    @classmethod
+    def _decorate_detail(cls, detail):
+        if not detail:
+            return detail
+
+        payload = dict(detail)
+        country_code = (payload.get("country_code") or "").upper()
+        preferred_language = (payload.get("preferred_language") or "").upper()
+
+        payload["country_flag"] = cls.COUNTRY_FLAGS.get(country_code, "🌍")
+        payload["preferred_language_display"] = cls.LANGUAGE_LABELS.get(preferred_language, preferred_language or "English")
+        payload["email"] = payload.get("email") or "maria.rodriguez@email.com"
+
+        missing_labels = ["Request ID", "Ask guest", "Request"]
+        missing_tones = ["warning", "danger", "danger"]
+        payload["missing_information_rows"] = [
+            {
+                "label": item,
+                "button": missing_labels[index] if index < len(missing_labels) else "Request",
+                "tone": missing_tones[index] if index < len(missing_tones) else "danger",
+            }
+            for index, item in enumerate(payload.get("missing_information", []))
+        ]
+
+        payload["risk_badge"] = "Low Risk"
+        payload["risk_rows"] = [
+            {"label": label.replace("Payment history (5 stays)", "Payment history: Good (5 stays)"), "level": level}
+            for label, level in payload.get("risk_assessment", [])
+        ]
+
+        action_icons = ["✉", "⊞", "◫"]
+        payload["recommended_action_rows"] = [
+            {"label": action, "icon": action_icons[index] if index < len(action_icons) else "✉"}
+            for index, action in enumerate(payload.get("recommended_actions", []))
+        ]
+
+        payload["messages"] = [
+            {
+                **message,
+                "avatar": "PC" if message.get("is_agent") else "MR",
+                "read_state": "Read" if message.get("is_agent") else "",
+            }
+            for message in payload.get("messages", [])
+        ]
+
+        payload["last_stays"] = [
+            {**s, "status_cls": s.get("status_cls", "completed")}
+            for s in payload.get("last_stays", [])
+        ]
+
+        if payload.get("upcoming_stay"):
+            payload["upcoming_stay"] = {
+                **payload["upcoming_stay"],
+                "status_cls": "confirmed",
+            }
+
+        payload["linked_reservations"] = [
+            {
+                **reservation,
+                "status_cls": "completed" if reservation.get("status") == "Completed" else "confirmed",
+            }
+            for reservation in payload.get("linked_reservations", [])
+        ]
+
+        return payload
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        service = CustomersCRMService()
+
+        tab = self.request.GET.get("tab", "all")
+        search = self.request.GET.get("search", "").strip()
+        selected_id = self.request.GET.get("customer", "").strip()
+
+        use_mock_dataset = tab == "all" and not search
+        if use_mock_dataset:
+            rows = service.mock_table_rows()
+            tab_counts = service.mock_tab_counts()
+            detail = service.mock_detail_payload()
+            selected_customer_id = "mock-maria-rodriguez"
+            total_results = tab_counts["all"]
+            page_count = 257
+        else:
+            profiles = service.get_profiles(tab=tab, search=search)
+            rows = [service.table_row_payload(profile) for profile in profiles[:5]]
+            tab_counts = service.get_tab_counts()
+
+            selected_profile = None
+            if selected_id.isdigit():
+                selected_profile = next((profile for profile in profiles if profile.pk == int(selected_id)), None)
+            if selected_profile is None and profiles:
+                selected_profile = profiles[0]
+
+            detail = service.detail_payload(selected_profile) if selected_profile else None
+            selected_customer_id = str(selected_profile.pk) if selected_profile else ""
+            total_results = len(profiles)
+            page_count = max((total_results + len(rows) - 1) // max(len(rows), 1), 1) if total_results else 1
+
+        detail = self._decorate_detail(detail)
+        tab_counts_display = {key: f"{value:,}" for key, value in tab_counts.items()}
+
+        ctx.update(
+            {
+                "tab": tab,
+                "search": search,
+                "rows": rows,
+                "tab_counts": tab_counts,
+                "tab_counts_display": tab_counts_display,
+                "detail": detail,
+                "selected_customer_id": selected_customer_id,
+                "total_results": total_results,
+                "total_results_display": f"{total_results:,}",
+                "page_count": page_count,
+                "page_count_display": f"{page_count:,}",
+                "site_settings": SiteSettings.current(),
+            }
+        )
+        return ctx
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class ModernOpsPaymentsView(TemplateView):
+    template_name = "bookings/modern_ops_payments.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        payload = PaymentsTransactionsService().page_payload(
+            selected_id=self.request.GET.get("transaction", "").strip()
+        )
+        ctx.update(payload)
+        ctx["site_settings"] = SiteSettings.current()
+        return ctx
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsPaymentsAPIView(View):
+    def get(self, request):
+        payload = PaymentsTransactionsService().page_payload(
+            selected_id=request.GET.get("transaction", "").strip()
+        )
+        return JsonResponse(
+            {
+                "summary_cards": payload["summary_cards"],
+                "rows": payload["rows"],
+                "detail": payload["detail"],
+                "transactions": payload["payment_transactions"],
+                "selected_transaction_id": payload["selected_transaction_id"],
+                "total_results": payload["total_results"],
+                "generated_at": payload["generated_at"].isoformat(),
+            }
+        )
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsPaymentTransactionActionAPIView(View):
+    def post(self, request, transaction_key, action):
+        try:
+            transaction = PaymentsTransactionsService().action(transaction_key, action)
+        except ValidationError as error:
+            return JsonResponse({"ok": False, "errors": OpsMaintenanceAPIView._validation_errors(error)}, status=400)
+        if "application/json" in request.headers.get("accept", ""):
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "transaction": transaction.to_payload() if transaction else None,
+                }
+            )
+        return redirect(f"{reverse('bookings:ops-payments')}?transaction={transaction_key}")
 
 
 @method_decorator(ops_staff_required, name="dispatch")
@@ -2061,12 +2383,27 @@ class ModernOpsDepositsView(TemplateView):
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsAgentView(TemplateView):
-    template_name = "bookings/modern_dashboard.html"
+    template_name = "bookings/modern_ops_agent.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(AgentIntelligenceOperationsService().page_payload())
+        ctx["site_settings"] = SiteSettings.current()
+        return ctx
 
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsMaintenanceView(TemplateView):
-    template_name = "bookings/modern_dashboard.html"
+    template_name = "bookings/modern_ops_maintenance.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        payload = MaintenanceOperationsService().page_payload(
+            selected_id=self.request.GET.get("work_order", "").strip()
+        )
+        ctx.update(payload)
+        ctx["site_settings"] = SiteSettings.current()
+        return ctx
 
 
 @method_decorator(ops_staff_required, name="dispatch")
@@ -2419,42 +2756,8 @@ class OpsCustomersAPIView(View):
 
 @method_decorator(ops_staff_required, name="dispatch")
 class OpsDepositsAPIView(View):
-    ACTIVE_HOLD_STATUSES = {
-        DepositStatus.NEW,
-        DepositStatus.REQUIRES_CONFIGURATION,
-        DepositStatus.CHECKOUT_CREATED,
-        DepositStatus.REQUIRES_CAPTURE,
-    }
-
     def get(self, request):
-        deposits = DamageDeposit.objects.select_related("item", "inquiry").order_by("-created_at")
-        active = deposits.filter(status__in=self.ACTIVE_HOLD_STATUSES)
-        captured = deposits.filter(status=DepositStatus.CAPTURED)
-        failed = deposits.filter(status=DepositStatus.FAILED)
-        rows = [self._deposit_payload(request, deposit) for deposit in deposits]
-        return JsonResponse(
-            {
-                "summary_cards": [
-                    self._metric("Records", deposits.count(), "Deposit ledger."),
-                    self._metric("Active holds", active.count(), "Open workflows."),
-                    self._metric("Capture-ready", deposits.filter(status=DepositStatus.REQUIRES_CAPTURE).count(), "Authorized holds."),
-                    self._metric("Captured", captured.count(), "Charged."),
-                    self._metric("Failed", failed.count(), "Needs follow-up."),
-                    self._metric("Active value", self._money(active.aggregate(total=Sum("amount_cents"))["total"]), "Open holds."),
-                    self._metric("Captured value", self._money(captured.aggregate(total=Sum("amount_cents"))["total"]), "Captured."),
-                ],
-                "status_options": [
-                    {"value": "", "label": "All", "count": deposits.count()},
-                    *[
-                        {"value": value, "label": label, "count": deposits.filter(status=value).count()}
-                        for value, label in DepositStatus.choices
-                    ],
-                ],
-                "rows": rows,
-                "admin_url": reverse("admin:bookings_damagedeposit_changelist"),
-                "generated_at": timezone.now().isoformat(),
-            }
-        )
+        return JsonResponse(DepositHoldOperationsService().snapshot_payload(request))
 
     @staticmethod
     def _metric(label, value, caption):
@@ -2488,6 +2791,23 @@ class OpsDepositsAPIView(View):
             "created_label": self._date_label(deposit.created_at),
             "updated_at": deposit.updated_at.isoformat(),
         }
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsDepositHoldActionAPIView(View):
+    def post(self, request, hold_key, action):
+        service = DepositHoldOperationsService()
+        try:
+            hold = service.apply_action(hold_key, action, actor=request.user)
+        except ValidationError as error:
+            return JsonResponse({"ok": False, "errors": OpsMaintenanceAPIView._validation_errors(error)}, status=400)
+        return JsonResponse(
+            {
+                "ok": True,
+                "hold": hold.to_row_payload(request),
+                "snapshot": service.snapshot_payload(request),
+            }
+        )
 
 
 @method_decorator(ops_staff_required, name="dispatch")

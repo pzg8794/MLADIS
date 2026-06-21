@@ -10,6 +10,7 @@ import {
   FileText,
   Globe2,
   HeartHandshake,
+  Headphones,
   Home,
   Info,
   LogIn,
@@ -30,6 +31,7 @@ import {
   XCircle,
   DollarSign,
   Music2,
+  Send,
 } from 'lucide-react';
 import { AccountFactory } from '../../application/AccountFactory';
 import { PublicSiteFactory } from '../../application/PublicSiteFactory';
@@ -52,6 +54,8 @@ type LegalKind = 'business' | 'privacy' | 'terms' | 'data-deletion';
 const SOL_ORIENS_MAP_EMBED_URL = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3782.782382437169!2d-69.9484538248079!3d18.538733682558327!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8eaf897e8fbf9ce9%3A0x2e510419521c5941!2sResidential%20Sol%20Oriens%20V!5e0!3m2!1sen!2sus!4v1781349935983!5m2!1sen!2sus';
 const SOL_ORIENS_STAY_MAP_EMBED_URL = mapEmbedWithDistance(SOL_ORIENS_MAP_EMBED_URL, '7600');
 const SOL_ORIENS_DIRECTIONS_URL = 'https://maps.app.goo.gl/EhA3JTQ685awyX9T9';
+const AGENT_MESSAGE_LIMIT = 500;
+const AGENT_MESSAGE_PLACEHOLDER = 'Type your message here...';
 
 function mapEmbedWithDistance(url: string, distance: string) {
   return url.replace('!1d3782.782382437169!', `!1d${distance}!`);
@@ -216,7 +220,7 @@ const copy = {
     bookingText: '',
     agentTitle: 'Booking agent',
     agentText: 'Ask about availability, guest count, deposit holds, house rules, transportation, or which apartment fits your group.',
-    formTitle: 'Start a reservation',
+    formTitle: 'Start a reservation request',
     formText: 'Send the request first. The $200 secure deposit hold opens next in a secure step.',
     pricePreview: 'Price preview',
     stayPayment: 'Stay payment hold',
@@ -224,6 +228,7 @@ const copy = {
     rules: 'Apartment rules',
     mission: 'Travel with mission',
     signInToAskAgent: 'Sign in to ask agent',
+    agentAction: 'Ask agent',
     agentLimitReached: 'Question limit reached',
     agentLimitText: 'You have reached the current question limit for this account.',
     submit: 'Send request',
@@ -268,7 +273,7 @@ const copy = {
     bookingText: '',
     agentTitle: 'Agente de reservas',
     agentText: 'Pregunta por disponibilidad, cantidad de huéspedes, depósito, reglas, transporte o cuál apartamento te conviene.',
-    formTitle: 'Iniciar reserva',
+    formTitle: 'Iniciar solicitud de reserva',
     formText: 'Envía la solicitud primero. El depósito seguro de $200 se abre después en un paso seguro.',
     pricePreview: 'Vista previa del precio',
     stayPayment: 'Retención de estadía',
@@ -276,6 +281,7 @@ const copy = {
     rules: 'Reglas del apartamento',
     mission: 'Viaja con misión',
     signInToAskAgent: 'Entra para preguntar al agente',
+    agentAction: 'Preguntar',
     agentLimitReached: 'Límite de preguntas alcanzado',
     agentLimitText: 'Has alcanzado el límite actual de preguntas para esta cuenta.',
     submit: 'Enviar solicitud',
@@ -680,10 +686,12 @@ function LegacyAgentPrompt({
             name="message"
             value={agentMessage}
             onChange={(event) => setAgentMessage(event.target.value)}
-            placeholder="Can I bring family visitors? What are the pool hours?"
+            maxLength={AGENT_MESSAGE_LIMIT}
+            placeholder={AGENT_MESSAGE_PLACEHOLDER}
           />
         </label>
-        <a className="public-agent-action" href={agentAccess.loginUrl}>{t.signInToAskAgent}</a>
+        <small className="public-agent-prompt__count">{agentMessage.length} / {AGENT_MESSAGE_LIMIT}</small>
+        <a className="public-agent-action" href={agentAccess.loginUrl}><Send size={15} /> {t.agentAction}</a>
       </div>
     );
   }
@@ -697,10 +705,12 @@ function LegacyAgentPrompt({
             name="message"
             value={agentMessage}
             onChange={(event) => setAgentMessage(event.target.value)}
-            placeholder="Can I bring family visitors? What are the pool hours?"
+            maxLength={AGENT_MESSAGE_LIMIT}
+            placeholder={AGENT_MESSAGE_PLACEHOLDER}
           />
         </label>
-        <button type="button" disabled>{t.agentLimitReached}</button>
+        <small className="public-agent-prompt__count">{agentMessage.length} / {AGENT_MESSAGE_LIMIT}</small>
+        <button type="button" disabled><Send size={15} /> {t.agentLimitReached}</button>
         <p className="public-agent-reply">{t.agentLimitText}</p>
       </div>
     );
@@ -715,10 +725,12 @@ function LegacyAgentPrompt({
             name="message"
             value={agentMessage}
             onChange={(event) => setAgentMessage(event.target.value)}
-            placeholder="Can I bring family visitors? What are the pool hours?"
+            maxLength={AGENT_MESSAGE_LIMIT}
+            placeholder={AGENT_MESSAGE_PLACEHOLDER}
           />
         </label>
-        <button type="submit" disabled={agentBusy}>{agentBusy ? 'Asking...' : 'Ask agent'}</button>
+        <small className="public-agent-prompt__count">{agentMessage.length} / {AGENT_MESSAGE_LIMIT}</small>
+        <button type="submit" disabled={agentBusy}><Send size={15} /> {agentBusy ? 'Asking...' : t.agentAction}</button>
       </form>
       {agentReply && <p className="public-agent-reply">{agentReply}</p>}
     </>
@@ -814,15 +826,15 @@ function AgentBookingSection({
 
   return (
     <section id="booking" className="public-section public-booking">
-      <div className="public-section__heading public-booking__intro">
-        <div>
-          <h2>{t.bookingTitle}</h2>
-          {t.bookingText && <p>{t.bookingText}</p>}
-        </div>
-        <GuestRatingSpotlight snapshot={snapshot} />
-      </div>
       <div className="public-booking__grid">
         <article className="public-agent-card">
+          <header className="public-agent-card__header">
+            <div>
+              <h2>{t.bookingTitle}</h2>
+              <p>Our local experts are here to help you plan the perfect stay.</p>
+            </div>
+            <Headphones size={19} />
+          </header>
           <span><Bot size={19} /> {t.agentTitle}</span>
           <p>{t.agentText}</p>
           <LegacyAgentPrompt stay={stay} token={token} agent={userContext.agent} language={language} />
@@ -833,6 +845,8 @@ function AgentBookingSection({
           )}
         </article>
 
+        <div className="public-booking__form-stack">
+          <GuestRatingSpotlight snapshot={snapshot} />
         <form className="public-booking-form" method="post" action="/inquiries/" onSubmit={submitReservationRequest}>
           <input type="hidden" name="csrfmiddlewaretoken" value={token} />
           <div className="public-booking-form__header">
@@ -902,8 +916,9 @@ function AgentBookingSection({
             <p className="public-deposit-modal__error" role="alert">This stay allows up to {guestLimit} guests.</p>
           )}
           <label>Notes<textarea name="message" rows={3} value={draft.message} onChange={(event) => updateDraft('message', event.target.value)} /></label>
-          <button type="submit" disabled={requestBusy || overGuestLimit}><CreditCard size={17} /> {requestBusy ? 'Sending...' : t.submit}</button>
+          <button type="submit" disabled={requestBusy || overGuestLimit}><Send size={16} /> {requestBusy ? 'Sending...' : t.submit}</button>
         </form>
+        </div>
       </div>
       {requestResult && (
         <DepositHoldModal
@@ -927,7 +942,8 @@ function DepositHoldModal({
   onClose: () => void;
   language: Language;
 }) {
-  const [provider, setProvider] = useState('stripe');
+  type PaymentProvider = 'stripe' | 'paypal';
+  const [provider, setProvider] = useState<PaymentProvider>('stripe');
   const [paymentChoice, setPaymentChoice] = useState<'deposit' | 'combined'>('deposit');
   const [acceptedDocuments, setAcceptedDocuments] = useState({
     rules: request.documents_accepted,
@@ -941,6 +957,20 @@ function DepositHoldModal({
   const checkoutUrl = paymentChoice === 'combined'
     ? request.reservation_payment_checkout_url || '/payments/checkout/'
     : request.deposit_checkout_url || '/deposits/checkout/';
+
+  function selectPaymentChoice(nextChoice: 'deposit' | 'combined') {
+    setPaymentChoice(nextChoice);
+    if (nextChoice === 'combined' && provider === 'paypal') {
+      setProvider('stripe');
+    }
+  }
+
+  function selectProvider(nextProvider: PaymentProvider) {
+    setProvider(nextProvider);
+    if (nextProvider === 'paypal') {
+      setPaymentChoice('deposit');
+    }
+  }
 
   function recordAcceptedDocument(kind: 'rules' | 'terms') {
     setAcceptedDocuments((current) => ({ ...current, [kind]: true }));
@@ -1094,7 +1124,7 @@ function DepositHoldModal({
                 <button
                   type="button"
                   className={`public-deposit-modal__option${paymentChoice === 'deposit' ? ' public-deposit-modal__option--selected' : ''}`}
-                  onClick={() => setPaymentChoice('deposit')}
+                  onClick={() => selectPaymentChoice('deposit')}
                 >
                   <input type="radio" checked={paymentChoice === 'deposit'} readOnly />
                   <span className="public-deposit-modal__option-icon"><ShieldCheck size={30} /></span>
@@ -1104,7 +1134,7 @@ function DepositHoldModal({
                 <button
                   type="button"
                   className={`public-deposit-modal__option${paymentChoice === 'combined' ? ' public-deposit-modal__option--selected' : ''}`}
-                  onClick={() => setPaymentChoice('combined')}
+                  onClick={() => selectPaymentChoice('combined')}
                 >
                   <input type="radio" checked={paymentChoice === 'combined'} readOnly />
                   <span className="public-deposit-modal__option-icon public-deposit-modal__option-icon--purple"><CreditCard size={30} /></span>
@@ -1114,7 +1144,7 @@ function DepositHoldModal({
               </section>
               <section className="public-deposit-modal__section">
                 <h3><span>2</span>Read and accept required documents</h3>
-                <p className="public-deposit-modal__notice">You must open each document and accept it before continuing.</p>
+                <p className="public-deposit-modal__notice">You must open each document and accept it inside the document window before continuing.</p>
                 <p className="public-deposit-modal__info"><Info size={16} /> This form updates automatically after you click Accept inside each document.</p>
                 <button
                   type="button"
@@ -1161,14 +1191,14 @@ function DepositHoldModal({
               </section>
               <section className="public-deposit-modal__section">
                 <h3><span>3</span>Select payment method</h3>
-                <label className="public-deposit-modal__method">
-                  <input type="radio" name="payment_provider" value="stripe" checked={provider === 'stripe'} onChange={(event) => setProvider(event.target.value)} />
+                <label className={`public-deposit-modal__method${provider === 'stripe' ? ' public-deposit-modal__method--selected' : ''}`}>
+                  <input type="radio" name="payment_provider" value="stripe" checked={provider === 'stripe'} onChange={() => selectProvider('stripe')} />
                   <span className="public-deposit-modal__brand-stack"><i>VISA</i><i className="public-deposit-modal__mc">**</i></span>
                   <strong>Card / wallet through Stripe</strong>
                   <small><CheckCircle2 size={12} /> Secure <em>Fast</em></small>
                 </label>
-                <label className="public-deposit-modal__method public-deposit-modal__method--disabled">
-                  <input type="radio" name="payment_provider_disabled" value="paypal" disabled />
+                <label className={`public-deposit-modal__method${provider === 'paypal' ? ' public-deposit-modal__method--selected' : ''}`}>
+                  <input type="radio" name="payment_provider" value="paypal" checked={provider === 'paypal'} onChange={() => selectProvider('paypal')} />
                   <span className="public-deposit-modal__paypal">P</span>
                   <strong>PayPal</strong>
                   <small><CheckCircle2 size={12} /> Secure</small>
@@ -1180,12 +1210,12 @@ function DepositHoldModal({
           {checkoutError && <p className="public-deposit-modal__error" role="alert">{checkoutError}</p>}
           <footer className="public-deposit-modal__actions">
             <button type="button" onClick={onClose}>Back</button>
-            <button type="submit" disabled={isStartingCheckout || provider !== 'stripe' || !allDocumentsAccepted}>
+            <button type="submit" disabled={isStartingCheckout || !allDocumentsAccepted}>
               <ShieldCheck size={17} /> {isStartingCheckout ? 'Opening checkout...' : 'Continue to secure payment'}
             </button>
           </footer>
         </form>
-        <p className="public-deposit-modal__powered">Secure - Trusted - Powered by MLADIS & Stripe</p>
+        <p className="public-deposit-modal__powered">Secure • Trusted • Powered by MLADIS & Stripe</p>
       </article>
     </div>
   );
@@ -1193,23 +1223,30 @@ function DepositHoldModal({
 
 function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Language }) {
   const t = copy[language];
-  const rules = useMemo(() => (stay.rules.length ? stay.rules : [
+  const ruleFallbacks = useMemo(() => [
     { title: 'No parties or events', description: 'Keep the stay peaceful for the residential community and nearby neighbors.' },
     { title: 'No smoking indoors', description: 'Smoking is not allowed inside the apartment or shared indoor areas.' },
     { title: 'Registered guests only', description: 'Guest count must match the reservation unless MLADIS approves a change.' },
     { title: 'Respect quiet hours', description: 'Keep noise reasonable, especially late at night and in common areas.' },
-  ]).slice(0, 4), [stay.rules]);
-  const tabs = useMemo<AgentRuleTab[]>(() => [
-    {
-      id: 'house-rules',
-      label: language === 'es' ? t.rules : 'House rules',
-      cards: rules.map((rule, index) => ({
-        title: rule.title,
-        description: rule.description,
-        icon: index === 0 ? 'shield' : index === 1 ? 'payment' : index === 2 ? 'guest' : 'calendar',
-        tone: index === 0 ? 'teal' : index === 1 ? 'blue' : index === 2 ? 'violet' : 'green',
-      })),
-    },
+    { title: 'Protect keys and locks', description: 'Report lost keys, codes, or access issues immediately so MLADIS can help.' },
+    { title: 'Keep shared areas clean', description: 'Leave the pool, halls, parking, and common spaces ready for the next guest.' },
+  ], []);
+  const ruleSupplements = useMemo(() => [
+    { title: 'Keep shared areas clean', description: 'Leave the pool, halls, parking, and common spaces ready for the next guest.' },
+    { title: 'Ask before exceptions', description: 'Message MLADIS before bringing visitors, changing plans, or using amenities differently.' },
+    { title: 'Report issues early', description: 'Send photos or details quickly if something breaks, leaks, or needs host attention.' },
+  ], []);
+  const rules = useMemo(() => {
+    const sourceRules = stay.rules.length ? [...stay.rules, ...ruleSupplements] : ruleFallbacks;
+    const seenTitles = new Set<string>();
+    return sourceRules.filter((rule) => {
+      const titleKey = rule.title.toLowerCase();
+      if (seenTitles.has(titleKey)) return false;
+      seenTitles.add(titleKey);
+      return true;
+    }).slice(0, 6);
+  }, [ruleFallbacks, ruleSupplements, stay.rules]);
+  const cardPages = useMemo<AgentRuleTab[]>(() => [
     {
       id: 'arrival-prep',
       label: 'Arrival prep',
@@ -1218,6 +1255,8 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
         { title: 'Correct guest count', description: 'Guest count controls pricing and must match the reservation.', icon: 'guest', tone: 'orange' },
         { title: 'Host review', description: 'MLADIS reviews requests before confirming details.', icon: 'document', tone: 'blue' },
         { title: 'Check-in timing', description: 'Plan arrival around confirmed instructions and account updates.', icon: 'calendar', tone: 'violet' },
+        { title: 'ID and account ready', description: 'Keep your account details current before the reservation is finalized.', icon: 'document', tone: 'green' },
+        { title: 'Arrival questions', description: 'Ask for practical arrival support before travel day.', icon: 'agent', tone: 'teal' },
       ],
     },
     {
@@ -1228,7 +1267,19 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
         { title: 'Transport planning', description: 'Ask about arrival routes, rides, and nearby stops before booking.', icon: 'agent', tone: 'teal' },
         { title: 'Beach-day options', description: 'Juan Dolio and nearby beach trips can be planned around the stay.', icon: 'star', tone: 'blue' },
         { title: 'Practical local tips', description: 'Get help with groceries, restaurants, and timing for your group.', icon: 'document', tone: 'green' },
+        { title: 'Errand planning', description: 'Coordinate malls, pharmacies, and food stops around check-in timing.', icon: 'area', tone: 'violet' },
+        { title: 'Neighborhood rhythm', description: 'Keep arrival and late-night movement considerate for residents.', icon: 'shield', tone: 'teal' },
       ],
+    },
+    {
+      id: 'house-rules',
+      label: language === 'es' ? t.rules : 'House rules',
+      cards: rules.map((rule, index) => ({
+        title: rule.title,
+        description: rule.description,
+        icon: index === 0 ? 'shield' : index === 1 ? 'payment' : index === 2 ? 'guest' : index === 3 ? 'calendar' : index === 4 ? 'document' : 'area',
+        tone: index === 0 ? 'teal' : index === 1 ? 'blue' : index === 2 ? 'violet' : index === 3 ? 'green' : index === 4 ? 'orange' : 'teal',
+      })),
     },
     {
       id: 'faqs',
@@ -1238,22 +1289,16 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
         { title: 'Refundable deposit', description: 'The damage deposit remains a secure refundable hold unless an issue is documented.', icon: 'shield', tone: 'teal' },
         { title: 'Account records', description: 'Requests, invoices, and updates stay attached to the guest account.', icon: 'document', tone: 'violet' },
         { title: 'Human support', description: 'Ask for practical help before the reservation is finalized.', icon: 'agent', tone: 'green' },
+        { title: 'Cancellation windows', description: 'Review reservation dates and policy details before submitting.', icon: 'calendar', tone: 'orange' },
+        { title: 'Messages stay saved', description: 'Important answers remain connected to the booking account.', icon: 'document', tone: 'blue' },
       ],
     },
   ], [language, rules, t.rules]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const activeTab = tabs[activeIndex] ?? tabs[0];
+  const [cardPageIndex, setCardPageIndex] = useState(0);
+  const activePage = cardPages[cardPageIndex] ?? cardPages[0];
 
-  useEffect(() => {
-    if (tabs.length <= 1) return undefined;
-    const intervalId = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % tabs.length);
-    }, 5000);
-    return () => window.clearInterval(intervalId);
-  }, [tabs.length]);
-
-  const moveTab = (direction: -1 | 1) => {
-    setActiveIndex((current) => (current + direction + tabs.length) % tabs.length);
+  const moveCards = (direction: -1 | 1) => {
+    setCardPageIndex((current) => (current + direction + cardPages.length) % cardPages.length);
   };
 
   const iconFor = (icon: AgentRuleIcon) => {
@@ -1269,15 +1314,13 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
 
   return (
     <article className="agent-rules-tabs" aria-label="Booking agent guidance">
-      <div className="agent-rules-tabs__tablist" role="tablist" aria-label="Booking guidance tabs">
-        {tabs.map((tab, index) => (
+      <div className="agent-rules-tabs__tablist" aria-label="Booking guidance card groups">
+        {cardPages.map((tab, index) => (
           <button
             type="button"
-            className={`agent-rules-tabs__tab${index === activeIndex ? ' is-active' : ''}`}
-            onClick={() => setActiveIndex(index)}
-            role="tab"
-            aria-selected={index === activeIndex}
-            aria-controls={`agent-rules-panel-${tab.id}`}
+            className={`agent-rules-tabs__tab${index === cardPageIndex ? ' is-active' : ''}`}
+            onClick={() => setCardPageIndex(index)}
+            aria-controls="agent-rules-panel"
             id={`agent-rules-tab-${tab.id}`}
             key={tab.id}
           >
@@ -1287,13 +1330,12 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
       </div>
       <div
         className="agent-rules-tabs__panel"
-        id={`agent-rules-panel-${activeTab.id}`}
-        role="tabpanel"
-        aria-labelledby={`agent-rules-tab-${activeTab.id}`}
+        id="agent-rules-panel"
+        aria-labelledby={`agent-rules-tab-${activePage.id}`}
       >
         <div className="agent-rules-tabs__cards">
-          {activeTab.cards.map((card) => (
-            <article className={`agent-rules-tabs__card agent-rules-tabs__card--${card.tone}`} key={`${activeTab.id}-${card.title}`}>
+          {activePage.cards.slice(0, 4).map((card) => (
+            <article className={`agent-rules-tabs__card agent-rules-tabs__card--${card.tone}`} key={`${activePage.id}-${card.title}`}>
               <span>{iconFor(card.icon)}</span>
               <strong>{card.title}</strong>
               <p>{card.description}</p>
@@ -1301,22 +1343,22 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
           ))}
         </div>
       </div>
-      <footer className="agent-rules-tabs__pager" aria-label="Booking guidance rotation">
-        <button type="button" onClick={() => moveTab(-1)} aria-label="Previous booking guidance tab">
+      <footer className="agent-rules-tabs__pager" aria-label="Booking guidance card pages">
+        <button type="button" onClick={() => moveCards(-1)} aria-label="Previous booking guidance cards">
           <ChevronLeft size={17} />
         </button>
         <div>
-          {tabs.map((tab, index) => (
+          {cardPages.map((tab, index) => (
             <button
               type="button"
-              className={index === activeIndex ? 'is-active' : ''}
-              onClick={() => setActiveIndex(index)}
-              aria-label={`Show ${tab.label}`}
+              className={index === cardPageIndex ? 'is-active' : ''}
+              onClick={() => setCardPageIndex(index)}
+              aria-label={`Show ${tab.label} cards`}
               key={`${tab.id}-dot`}
             />
           ))}
         </div>
-        <button type="button" onClick={() => moveTab(1)} aria-label="Next booking guidance tab">
+        <button type="button" onClick={() => moveCards(1)} aria-label="Next booking guidance cards">
           <ChevronRight size={17} />
         </button>
       </footer>
@@ -1514,6 +1556,50 @@ function HomeAreaExperience({ snapshot, language }: { snapshot: PublicSiteSnapsh
 
 function HomeRulesMapSection({ snapshot, stay, language }: { snapshot: PublicSiteSnapshot; stay: PublicStay; language: Language }) {
   const mapStays = snapshot.stays.slice(0, 3);
+  const trustGroups = [
+    {
+      label: language === 'es' ? 'Cuidado del huésped' : 'Guest care',
+      tone: 'blue',
+      items: [
+        {
+          icon: <Sparkles size={21} />,
+          title: 'Top cleanliness signal',
+          body: 'This stay carries one of the strongest cleanliness scores in the MLADIS set.',
+        },
+        {
+          icon: <MessageSquareText size={21} />,
+          title: 'Trusted communication',
+          body: 'Public review scoring shows communication as a consistent strength.',
+        },
+        {
+          icon: <Users size={21} />,
+          title: 'High guest proof',
+          body: 'The review count and rating make this a strong confidence pick.',
+        },
+      ],
+    },
+    {
+      label: language === 'es' ? 'Reserva segura' : 'Secure booking',
+      tone: 'teal',
+      items: [
+        {
+          icon: <ShieldCheck size={21} />,
+          title: 'Refundable deposit hold',
+          body: 'The damage deposit is handled as a secure refundable hold.',
+        },
+        {
+          icon: <CreditCard size={21} />,
+          title: 'Stay-payment hold',
+          body: 'The stay-payment hold is captured 24 hours before check-in.',
+        },
+        {
+          icon: <ReceiptText size={21} />,
+          title: 'Account records',
+          body: 'Requests, invoices, and updates stay tied to the guest account.',
+        },
+      ],
+    },
+  ];
   return (
     <section id="rules" className="public-section public-home-v5-rules-map">
       <div className="public-home-v5-rules-copy">
@@ -1525,7 +1611,39 @@ function HomeRulesMapSection({ snapshot, stay, language }: { snapshot: PublicSit
           <span><FileText size={17} /> Clear rules</span>
           <span><Bot size={17} /> Guest-first support</span>
         </div>
-        <RulesBook stay={stay} language={language} />
+        <article className="public-home-v5-trust-card" aria-label="MLADIS trust details">
+          <div className="public-home-v5-trust-card__tabs" aria-label="Trust detail groups">
+            {trustGroups.map((group, index) => (
+              <span className={`public-home-v5-trust-card__tab public-home-v5-trust-card__tab--${group.tone}${index === 0 ? ' is-active' : ''}`} key={group.label}>
+                {index === 0 ? <Users size={19} /> : <ShieldCheck size={19} />}
+                {group.label}
+              </span>
+            ))}
+          </div>
+          <div className="public-home-v5-trust-card__grid">
+            {trustGroups.map((group) => (
+              <div className="public-home-v5-trust-card__column" key={`${group.label}-items`}>
+                {group.items.map((item) => (
+                  <article className={`public-home-v5-trust-card__item public-home-v5-trust-card__item--${group.tone}`} key={item.title}>
+                    <span>{item.icon}</span>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <p>{item.body}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ))}
+          </div>
+          <footer className="public-home-v5-trust-card__pager" aria-label="Trust promise rotation">
+            <ChevronLeft size={16} />
+            <span>1</span>
+            <span className="is-active">2</span>
+            <span>3</span>
+            <ChevronRight size={16} />
+            <small><Clock size={15} /> Auto-advances every 15 seconds</small>
+          </footer>
+        </article>
       </div>
       <article className="public-home-v5-map-card public-home-v5-map-card--large">
         <div className="public-home-v5-map-card__header">
@@ -2074,11 +2192,11 @@ function AccountExperience({ snapshot, userContext, language }: { snapshot: Publ
 
 function AccountAdminTools() {
   const tools = [
-    new AccountAdminToolModel('Modern dashboard', '/ops/dashboard/', 'Metrics, deposits, agent questions, and stay performance.', 'dashboard', 'cyan'),
+    new AccountAdminToolModel('Operations dashboard', '/ops/dashboard/', 'Metrics, deposits, agent questions, and stay performance.', 'dashboard', 'cyan'),
     new AccountAdminToolModel('Reservations CRM', '/ops/reservations/', 'Combined direct requests and imported Airbnb guest records.', 'reservations', 'blue'),
-    new AccountAdminToolModel('Reports', '/ops/reports/', 'Modern charts for visits, bookings, deposits, feedback, and agent questions.', 'reports', 'violet'),
+    new AccountAdminToolModel('Reports', '/ops/reports/', 'Operational charts for visits, bookings, deposits, feedback, and agent questions.', 'reports', 'violet'),
     new AccountAdminToolModel('Customers', '/ops/customers/', 'Guest profiles, segments, consent, feedback, and promotion readiness.', 'customers', 'green'),
-    new AccountAdminToolModel('Deposits', '/ops/deposits/', 'Stripe and PayPal security deposit records in a modern ledger.', 'deposits', 'amber'),
+    new AccountAdminToolModel('Deposits', '/ops/deposits/', 'Stripe and PayPal security deposit records in a managed ledger.', 'deposits', 'amber'),
     new AccountAdminToolModel('Agent workspace', '/ops/agent/', 'Question analytics and FAQ training controls.', 'agent', 'teal'),
     new AccountAdminToolModel('Business calendar', '/ops/calendar/', 'Block dates, pricing overrides, and availability review.', 'calendar', 'indigo'),
     new AccountAdminToolModel('Admin tools', '/admin/', 'Full protected admin tools.', 'tools', 'rose'),

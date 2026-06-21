@@ -1,0 +1,1433 @@
+.ops-pay-page {
+  padding: 18px 22px 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.ops-pay-header,
+.ops-pay-layout,
+.ops-pay-toolbar,
+.ops-pay-history-row,
+.ops-pay-section-head,
+.ops-pay-detail-head,
+.ops-pay-invoice-box,
+.ops-pay-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ops-pay-header h1 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.ops-pay-header p,
+.ops-pay-subtext,
+.ops-pay-date small,
+.ops-pay-history-row small,
+.ops-pay-timeline-row small,
+.ops-pay-invoice-meta p,
+.ops-pay-panel p {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.ops-pay-header-actions,
+.ops-pay-toolbar-left,
+.ops-pay-actions,
+.ops-pay-pagination,
+.ops-pay-stack,
+.ops-pay-timeline,
+.ops-pay-summary,
+.ops-pay-main,
+.ops-pay-detail {
+  display: grid;
+  gap: 12px;
+}
+
+.ops-pay-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ops-pay-btn,
+.ops-pay-select,
+.ops-pay-action,
+.ops-pay-pagination button {
+  border: 1px solid #dbe4ee;
+  background: #fff;
+  color: #334155;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ops-pay-btn--primary {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  color: #fff;
+  border-color: transparent;
+}
+
+.ops-pay-btn--ghost,
+.ops-pay-clear {
+  color: #475569;
+}
+
+.ops-pay-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ops-pay-kpi,
+.ops-pay-table-shell,
+.ops-pay-panel {
+  background: #fff;
+  border: 1px solid #e5edf5;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.ops-pay-kpi {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.ops-pay-kpi-body {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.ops-pay-kpi-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ops-pay-kpi--green .ops-pay-kpi-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.ops-pay-kpi--blue .ops-pay-kpi-icon { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.ops-pay-kpi--orange .ops-pay-kpi-icon { background: linear-gradient(135deg, #fb923c, #f97316); }
+.ops-pay-kpi--violet .ops-pay-kpi-icon { background: linear-gradient(135deg, #a855f7, #7c3aed); }
+
+.ops-pay-kpi-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.ops-pay-kpi-value {
+  display: block;
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.ops-pay-kpi-trend {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.ops-pay-layout {
+  align-items: start;
+  gap: 18px;
+}
+
+.ops-pay-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ops-pay-detail {
+  flex: 0 0 300px;
+  width: 300px;
+  position: sticky;
+  top: 16px;
+}
+
+.ops-pay-toolbar,
+.ops-pay-table-shell,
+.ops-pay-panel {
+  padding: 14px;
+}
+
+.ops-pay-toolbar {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ops-pay-toolbar-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ops-pay-search {
+  border: 1px solid #dbe4ee;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  background: #fff;
+  min-width: 344px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.ops-pay-search input {
+  border: 0;
+  outline: 0;
+  padding: 8px 0;
+  width: 220px;
+  font-size: 12px;
+}
+
+.ops-pay-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.ops-pay-col-check { width: 34px; }
+.ops-pay-col-transaction { width: 13%; }
+.ops-pay-col-guest { width: 11%; }
+.ops-pay-col-reservation { width: 9%; }
+.ops-pay-col-listing { width: 14%; }
+.ops-pay-col-channel { width: 10%; }
+.ops-pay-col-method { width: 11%; }
+.ops-pay-col-date { width: 10%; }
+.ops-pay-col-amount { width: 8%; }
+.ops-pay-col-status { width: 8%; }
+.ops-pay-col-invoice { width: 4%; }
+
+.ops-pay-table th,
+.ops-pay-table td {
+  text-align: left;
+  padding: 14px 10px;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 12px;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.ops-pay-table th {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.ops-pay-table th:last-child,
+.ops-pay-table td:last-child {
+  text-align: center;
+}
+
+.ops-pay-row {
+  cursor: pointer;
+}
+
+.ops-pay-row.is-selected {
+  background: #f8fbff;
+}
+
+.ops-pay-txn,
+.ops-pay-linked-key,
+.ops-pay-amount,
+.ops-pay-total {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ops-pay-txn {
+  line-height: 1.2;
+}
+
+.ops-pay-date {
+  display: grid;
+  gap: 2px;
+}
+
+.ops-pay-invoice-cell {
+  text-align: center;
+}
+
+.ops-pay-invoice-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.ops-pay-invoice-link:hover {
+  background: #dbeafe;
+}
+
+.ops-pay-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ops-pay-pill--paid,
+.ops-pay-pill--settled {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.ops-pay-pill--pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.ops-pay-pill--refunded {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.ops-pay-footer {
+  padding-top: 12px;
+  align-items: center;
+}
+
+.ops-pay-pagination {
+  grid-auto-flow: column;
+  align-items: center;
+}
+
+.ops-pay-pagination .is-active {
+  background: #0ea5e9;
+  color: #fff;
+  border-color: #0ea5e9;
+}
+
+.ops-pay-detail-head strong,
+.ops-pay-section-head h4,
+.ops-pay-panel h3 {
+  display: block;
+  margin: 0 0 4px;
+  color: #0f172a;
+}
+
+.ops-pay-panel h3,
+.ops-pay-panel h4 {
+  margin: 0;
+}
+
+.ops-pay-total {
+  font-size: 30px;
+}
+
+.ops-pay-invoice-box {
+  align-items: stretch;
+}
+
+.ops-pay-invoice-thumb {
+  width: 90px;
+  min-height: 116px;
+  border: 1px solid #e5edf5;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f8fafc, #eef2f7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ops-pay-invoice-meta {
+  flex: 1;
+  display: grid;
+  gap: 8px;
+}
+
+.ops-pay-invoice-meta p,
+.ops-pay-history-side,
+.ops-pay-timeline-row,
+.ops-pay-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ops-pay-stack,
+.ops-pay-timeline {
+  gap: 10px;
+}
+
+.ops-pay-history-row,
+.ops-pay-timeline-row {
+  align-items: center;
+}
+
+.ops-pay-history-side {
+  align-items: center;
+}
+
+.ops-pay-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ops-pay-dot--complete { background: #22c55e; }
+.ops-pay-dot--active { background: #3b82f6; }
+.ops-pay-dot--pending { background: #cbd5e1; }
+
+.ops-pay-action {
+  display: block;
+  text-align: center;
+}
+
+@media (max-width: 1180px) {
+  .ops-pay-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-pay-layout {
+    flex-direction: column;
+  }
+
+  .ops-pay-detail {
+    width: 100%;
+    flex-basis: auto;
+    position: static;
+  }
+
+  .ops-pay-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ops-pay-toolbar-left {
+    flex-wrap: wrap;
+  }
+
+  .ops-pay-search {
+    min-width: 0;
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 860px) {
+  .ops-pay-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-pay-toolbar,
+  .ops-pay-header,
+  .ops-pay-footer,
+  .ops-pay-invoice-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ops-pay-toolbar-left,
+  .ops-pay-pagination,
+  .ops-pay-header-actions {
+    display: grid;
+    grid-auto-flow: row;
+    justify-content: stretch;
+  }
+
+  .ops-pay-search input {
+    width: 100%;
+  }
+}
+/* ── sparklines ── */
+.ops-pay-sparkline {
+  display: block;
+  width: 100%;
+  height: 24px;
+  overflow: visible;
+}
+.ops-pay-kpi--green .ops-pay-sparkline path { stroke: #22c55e; }
+.ops-pay-kpi--blue  .ops-pay-sparkline path { stroke: #3b82f6; }
+.ops-pay-kpi--orange .ops-pay-sparkline path { stroke: #fb923c; }
+.ops-pay-kpi--violet .ops-pay-sparkline path { stroke: #a855f7; }
+
+/* ── clear filters: plain text, no border ── */
+.ops-pay-clear {
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
+  padding: 9px 4px;
+  color: #475569;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ops-pay-clear:hover { color: #0f172a; }
+
+/* ── chevron in select/header buttons ── */
+.ops-pay-chevron { font-size: 10px; opacity: .7; }
+
+/* ── detail panel top row ── */
+.ops-pay-detail-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.ops-pay-detail-top h3 { margin: 0; }
+
+.ops-pay-close {
+  border: none;
+  background: none;
+  color: #94a3b8;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.ops-pay-close:hover { color: #334155; background: #f1f5f9; }
+
+/* ── TXN ID + pill inline ── */
+.ops-pay-detail-txn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+/* ── USD suffix on amount ── */
+.ops-pay-currency {
+  font-size: 14px;
+  font-weight: 400;
+  color: #64748b;
+}
+
+/* ── small link (View full invoice, Edit, Add note) ── */
+.ops-pay-link-sm {
+  font-size: 11px;
+  color: #0ea5e9;
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ops-pay-link-sm:hover { text-decoration: underline; }
+
+/* ── invoice meta head (number + Paid badge) ── */
+.ops-pay-invoice-meta-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+/* ── invoice thumbnail improvements ── */
+.ops-pay-invoice-thumb {
+  width: 80px;
+  min-height: 110px;
+  border: 1px solid #e5edf5;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 6px 6px;
+  gap: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.ops-pay-inv-logo {
+  font-size: 7px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 0.08em;
+}
+.ops-pay-inv-label {
+  font-size: 6px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.06em;
+}
+.ops-pay-inv-lines {
+  display: block;
+  width: 100%;
+  height: 48px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #e5edf5 0px, #e5edf5 1px,
+    transparent 1px, transparent 6px
+  );
+  border-radius: 2px;
+  margin-top: 4px;
+}
+
+/* ── download invoice button ── */
+.ops-pay-dl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 7px 12px;
+  border: 1px solid #dbe4ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ops-pay-dl-btn:hover { background: #f8fafc; }
+
+/* ── linked reservation head (R-1042 ↗ + View reservation btn) ── */
+.ops-pay-res-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 4px 0 6px;
+}
+
+/* ── small button (View reservation) ── */
+.ops-pay-btn--sm {
+  padding: 5px 10px !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+}
+
+/* ── deposit history + quick actions two-column grid ── */
+.ops-pay-dep-qa-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+/* ── timeline body flex-1 ── */
+.ops-pay-tl-body { flex: 1; min-width: 0; }
+
+/* ── timeline action link ── */
+.ops-pay-tl-action {
+  font-size: 10px;
+  color: #0ea5e9;
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ops-pay-tl-action:hover { text-decoration: underline; }
+
+/* ── pagination dots ── */
+.ops-pay-page-dots {
+  border: none !important;
+  background: none !important;
+  color: #94a3b8;
+  padding: 9px 4px;
+  cursor: default;
+}
+
+/* Payments mock fidelity pass. Keep this scoped to /ops/payments/. */
+.ops-pay-page {
+  padding: 22px 26px 28px;
+  gap: 14px;
+  background: #f8fbff;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "header"
+    "content";
+  align-items: start;
+}
+
+.ops-pay-header {
+  grid-area: header;
+  align-items: flex-start;
+}
+
+.ops-pay-header h1 {
+  font-size: 24px;
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.ops-pay-header p {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #53627a;
+}
+
+.ops-pay-header-actions {
+  gap: 10px;
+}
+
+.ops-pay-btn,
+.ops-pay-select {
+  min-height: 32px;
+  border-color: #d7e2ee;
+  border-radius: 7px;
+  padding: 7px 12px;
+  color: #0f1f3a;
+  font-size: 12px;
+  background: #fff;
+}
+
+.ops-pay-summary {
+  gap: 12px;
+}
+
+.ops-pay-kpi {
+  min-height: 126px;
+  padding: 16px;
+  border-color: #dfe8f2;
+  border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.045);
+}
+
+.ops-pay-kpi-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+}
+
+.ops-pay-kpi-label {
+  margin-bottom: 3px;
+  font-size: 11px;
+  line-height: 1.1;
+  color: #53627a;
+}
+
+.ops-pay-kpi-value {
+  font-size: 21px;
+  line-height: 1.12;
+  font-weight: 800;
+}
+
+.ops-pay-kpi-trend {
+  margin-top: 5px;
+  font-size: 11px;
+}
+
+.ops-pay-sparkline {
+  height: 30px;
+  margin-top: auto;
+}
+
+.ops-pay-layout {
+  grid-area: content;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.ops-pay-left {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.ops-pay-main {
+  display: block;
+  background: #fff;
+  border: 1px solid #dfe8f2;
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.045);
+  overflow: hidden;
+}
+
+.ops-pay-toolbar,
+.ops-pay-table-shell {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.ops-pay-toolbar {
+  min-height: 58px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e7edf5;
+}
+
+.ops-pay-toolbar-left {
+  gap: 9px;
+}
+
+.ops-pay-clear {
+  min-height: 30px;
+  padding: 7px 6px;
+  color: #475569;
+}
+
+.ops-pay-search {
+  min-width: 206px;
+  height: 32px;
+  border-color: #d7e2ee;
+  border-radius: 7px;
+  color: #94a3b8;
+}
+
+.ops-pay-search input {
+  width: 170px;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.ops-pay-table-shell {
+  padding: 0;
+}
+
+.ops-pay-table th,
+.ops-pay-table td {
+  padding: 9px 8px;
+  border-bottom-color: #e8eef6;
+  font-size: 11px;
+  line-height: 1.22;
+  color: #17233c;
+}
+
+.ops-pay-table th {
+  height: 36px;
+  color: #53627a;
+  font-size: 10px;
+}
+
+.ops-pay-table tbody tr {
+  height: 53px;
+}
+
+.ops-pay-row.is-selected {
+  background: #f3f8ff;
+}
+
+.ops-pay-table input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #2563eb;
+}
+
+.ops-pay-txn,
+.ops-pay-amount {
+  font-weight: 800;
+}
+
+.ops-pay-channel,
+.ops-pay-method {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops-pay-channel-mark,
+.ops-pay-card-logo {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.ops-pay-channel-mark--airbnb {
+  position: relative;
+  width: 12px;
+  height: 16px;
+}
+
+.ops-pay-channel-mark--airbnb::before {
+  content: "";
+  width: 8px;
+  height: 11px;
+  border: 2px solid #ff385c;
+  border-bottom-width: 3px;
+  border-radius: 9px 9px 7px 7px;
+  transform: rotate(28deg);
+}
+
+.ops-pay-channel-mark--booking {
+  width: 16px;
+  color: #0a5bb8;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ops-pay-channel-mark--bank {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  color: #64748b;
+}
+
+.ops-pay-channel-mark--bank::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 6px;
+  width: 12px;
+  height: 7px;
+  background:
+    linear-gradient(currentColor, currentColor) 0 6px / 12px 1.5px no-repeat,
+    repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 4px);
+}
+
+.ops-pay-channel-mark--bank::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 14px;
+  height: 5px;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.ops-pay-card-logo--visa {
+  min-width: 22px;
+  height: 11px;
+  color: #064fb2;
+  font-style: italic;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.ops-pay-card-logo--mc {
+  position: relative;
+  width: 24px;
+  height: 14px;
+}
+
+.ops-pay-card-logo--mc span {
+  position: absolute;
+  top: 1px;
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+}
+
+.ops-pay-card-logo--mc span:first-child {
+  left: 1px;
+  background: #ff5f00;
+}
+
+.ops-pay-card-logo--mc span:last-child {
+  right: 1px;
+  background: #eb001b;
+  mix-blend-mode: multiply;
+}
+
+.ops-pay-card-logo--amex,
+.ops-pay-card-logo--ach {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.ops-pay-card-logo--amex {
+  background: linear-gradient(135deg, #00a4e4, #0369a1);
+}
+
+.ops-pay-card-logo--ach {
+  color: #64748b;
+  background:
+    linear-gradient(currentColor, currentColor) 2px 5px / 2px 7px no-repeat,
+    linear-gradient(currentColor, currentColor) 6px 5px / 2px 7px no-repeat,
+    linear-gradient(currentColor, currentColor) 10px 5px / 2px 7px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 12px / 14px 1.5px no-repeat,
+    linear-gradient(135deg, transparent 0 48%, currentColor 48% 55%, transparent 55%);
+}
+
+.ops-pay-pill {
+  min-height: 18px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.ops-pay-invoice-link {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  color: #2563eb;
+  background: #eef5ff;
+}
+
+.ops-pay-footer {
+  min-height: 54px;
+  padding: 12px 14px 14px;
+  font-size: 11px;
+  color: #53627a;
+}
+
+.ops-pay-pagination {
+  gap: 10px;
+}
+
+.ops-pay-pagination button {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.ops-pay-pagination .is-active {
+  background: linear-gradient(180deg, #0ea5e9, #047c96);
+  border-color: #047c96;
+}
+
+.ops-pay-detail {
+  display: block;
+  flex: 0 0 300px;
+  width: 300px;
+  gap: 0;
+  background: #fff;
+  border: 1px solid #dfe8f2;
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.045);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.ops-pay-detail .ops-pay-panel {
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1px solid #e8eef6;
+  border-radius: 0;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+.ops-pay-detail *,
+.ops-pay-detail *::before,
+.ops-pay-detail *::after {
+  box-sizing: border-box;
+}
+
+.ops-pay-detail .ops-pay-panel:last-child {
+  border-bottom: 0;
+}
+
+.ops-pay-detail-top {
+  margin-bottom: 10px;
+}
+
+.ops-pay-panel h3 {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.ops-pay-panel h4 {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ops-pay-detail-txn {
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+
+.ops-pay-total {
+  margin-top: 10px;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.ops-pay-currency {
+  font-size: 11px;
+  color: #334155;
+}
+
+.ops-pay-invoice-box {
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.ops-pay-invoice-thumb {
+  position: relative;
+  width: 92px;
+  min-height: 122px;
+  border-radius: 7px;
+  padding: 9px 8px;
+  background: linear-gradient(180deg, #fff, #fbfdff);
+  box-shadow: inset 0 0 0 1px #dbe4ee;
+  color: #0f172a;
+}
+
+.ops-pay-invoice-thumb::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-top: 12px solid #eaf2ff;
+  border-left: 12px solid transparent;
+}
+
+.ops-pay-invoice-meta {
+  gap: 6px;
+  min-width: 0;
+}
+
+.ops-pay-invoice-meta p {
+  font-size: 11px;
+}
+
+.ops-pay-dl-btn {
+  margin: 10px 0 0 108px;
+  min-height: 30px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+
+.ops-pay-res-head {
+  margin: 7px 0 6px;
+  gap: 8px;
+}
+
+.ops-pay-linked-key,
+.ops-pay-link-sm {
+  color: #2563eb;
+}
+
+.ops-pay-dep-qa-row {
+  grid-template-columns: minmax(0, 1fr) 134px;
+  gap: 0;
+  margin: -10px -14px;
+}
+
+.ops-pay-dep-qa-row > div {
+  min-width: 0;
+  padding: 10px 14px;
+}
+
+.ops-pay-dep-qa-row > div + div {
+  border-left: 1px solid #e8eef6;
+}
+
+.ops-pay-stack {
+  position: relative;
+  gap: 0;
+  margin-top: 7px;
+}
+
+.ops-pay-stack::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 8px;
+  bottom: 12px;
+  width: 2px;
+  background: #86efac;
+}
+
+.ops-pay-history-row {
+  position: relative;
+  padding-left: 18px;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.ops-pay-history-row + .ops-pay-history-row {
+  margin-top: 8px;
+}
+
+.ops-pay-history-row::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #22c55e;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #22c55e;
+}
+
+.ops-pay-history-row strong,
+.ops-pay-timeline-row strong {
+  display: block;
+  color: #17233c;
+  font-size: 9px;
+  line-height: 1.25;
+}
+
+.ops-pay-history-row small,
+.ops-pay-timeline-row small {
+  display: block;
+  margin-top: 2px;
+  font-size: 8px;
+  line-height: 1.25;
+}
+
+.ops-pay-history-side {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.ops-pay-actions {
+  display: grid;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.ops-pay-actions form {
+  margin: 0;
+}
+
+.ops-pay-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 25px;
+  border: 0;
+  padding: 4px 7px;
+  border-radius: 6px;
+  color: #17233c;
+  background: transparent;
+  text-align: left;
+  font-size: 9px;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ops-pay-action-icon {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid #2563eb;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
+.ops-pay-actions .ops-pay-action:nth-child(2) .ops-pay-action-icon {
+  border-color: #22c55e;
+}
+
+.ops-pay-actions .ops-pay-action:nth-child(3) .ops-pay-action-icon {
+  border-color: #64748b;
+}
+
+.ops-pay-actions .ops-pay-action:nth-child(4) .ops-pay-action-icon {
+  border-color: #0ea5e9;
+  border-radius: 999px;
+}
+
+.ops-pay-actions .ops-pay-action:nth-child(5) .ops-pay-action-icon {
+  border-color: #2563eb;
+}
+
+.ops-pay-timeline {
+  position: relative;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ops-pay-timeline::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 8px;
+  bottom: 12px;
+  width: 2px;
+  background: #dbe4ee;
+}
+
+.ops-pay-timeline-row {
+  position: relative;
+  align-items: flex-start;
+  gap: 7px;
+}
+
+.ops-pay-dot {
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px currentColor;
+}
+
+.ops-pay-dot--complete {
+  color: #22c55e;
+  background: #22c55e;
+}
+
+.ops-pay-dot--active {
+  color: #94a3b8;
+  background: #94a3b8;
+}
+
+.ops-pay-dot--pending {
+  color: #cbd5e1;
+  background: #cbd5e1;
+}
+
+.ops-pay-tl-action {
+  display: none;
+}
+
+.ops-pay-panel p,
+.ops-pay-subtext {
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.ops-pay-inv-brand {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 13px;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0;
+  color: #0f172a;
+}
+
+.ops-pay-inv-seal {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0ea5e9, #0f766e);
+}
+
+.ops-pay-invoice-thumb strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0;
+  color: #0f172a;
+}
+
+.ops-pay-inv-number {
+  display: block;
+  margin-top: 2px;
+  font-size: 5px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.ops-pay-inv-doc-meta {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.ops-pay-inv-doc-meta span,
+.ops-pay-inv-total {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: #dbeafe;
+}
+
+.ops-pay-inv-doc-meta span:first-child {
+  width: 68%;
+}
+
+.ops-pay-inv-doc-meta span:last-child {
+  width: 44%;
+}
+
+.ops-pay-inv-table {
+  display: grid;
+  grid-template-columns: 1.15fr .45fr 1fr;
+  column-gap: 4px;
+  row-gap: 3px;
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 1px solid #dbe4ee;
+}
+
+.ops-pay-inv-table span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #475569;
+  font-size: 4px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ops-pay-inv-table span:nth-child(3n) {
+  text-align: right;
+  color: #0f172a;
+}
+
+.ops-pay-inv-total {
+  width: 54%;
+  margin: 10px 0 0 auto;
+  background: #0ea5e9;
+}
+
+.ops-pay-col-listing { width: 13%; }
+.ops-pay-col-channel { width: 12%; }
+.ops-pay-col-date { width: 9%; }
+
+@media (max-width: 1180px) {
+  .ops-pay-layout {
+    flex-direction: column;
+  }
+
+  .ops-pay-left,
+  .ops-pay-main,
+  .ops-pay-detail {
+    width: 100%;
+  }
+
+  .ops-pay-detail {
+    flex-basis: auto;
+  }
+}

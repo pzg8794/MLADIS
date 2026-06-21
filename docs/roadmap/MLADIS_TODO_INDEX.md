@@ -1,6 +1,6 @@
 # MLADIS TODO Index
 
-Last status sweep: 2026-06-10
+Last status sweep: 2026-06-19
 
 This file is the **single source of truth for where MLADIS TODO lists live and what their current completion status is**.
 

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from urllib.parse import parse_qs, urlparse
 from io import StringIO
 from pathlib import Path
@@ -23,7 +24,7 @@ from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import RequestFactory, TestCase, override_settings
-from django.urls import reverse
+from django.urls import resolve, reverse
 from django.utils import timezone
 import stripe
 
@@ -58,6 +59,7 @@ from .models import (
     EmailDeliveryStatus,
     Invoice,
     InvoiceLineItem,
+    InvoiceStatus,
     MarketingConsentStatus,
     MaintenanceEvent,
     MaintenancePhoto,
@@ -67,6 +69,7 @@ from .models import (
     ReservationPaymentHold,
     SiteSettings,
 )
+from .ops_navigation import OPS_NAV_ITEMS
 from .services import (
     AgentAccessContext,
     AgentRequest,
@@ -97,6 +100,302 @@ TINY_PNG_BYTES = (
     b"\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05"
     b"\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
 )
+
+
+@override_settings(STORAGES=TEST_STORAGES)
+class OpsNavigationContractTests(TestCase):
+    expected_nav = [
+        ("Overview", "Command Center", "/ops/dashboard/"),
+        ("Operations", "Reservations", "/ops/reservations/"),
+        ("Operations", "Calendar", "/ops/calendar/"),
+        ("Operations", "Guests", "/ops/customers/"),
+        ("Operations", "Maintenance", "/ops/maintenance/"),
+        ("Operations", "Payments", "/ops/payments/"),
+        ("Operations", "Deposits", "/ops/deposits/"),
+        ("Operations", "Reports", "/ops/reports/"),
+        ("Operations", "FairAgent", "/ops/agent/"),
+        ("Business", "Properties", "/ops/properties/"),
+        ("Business", "Tasks", "/ops/workboard/"),
+        ("Admin", "Settings", "/ops/settings/"),
+        ("Admin", "Users", "/ops/admin/"),
+    ]
+
+    def setUp(self):
+        self.staff_user = get_user_model().objects.create_user(
+            "piter",
+            "garciapiterz@gmail.com",
+            "secret",
+            is_staff=True,
+        )
+        self.client.force_login(self.staff_user)
+        site_settings = SiteSettings.current()
+        site_settings.logo_url = "https://cdn.example.test/mladis-logo.png"
+        site_settings.save(update_fields=["logo_url", "updated_at"])
+
+    def test_canonical_nav_has_expected_groups_labels_and_urls(self):
+        actual_nav = [(item["group"], item["label"], item["href"]) for item in OPS_NAV_ITEMS]
+
+        self.assertEqual(actual_nav, self.expected_nav)
+
+    def _assert_route(self, href: str, expected_view_name: str):
+        match = resolve(href)
+        self.assertEqual(match.view_name, expected_view_name)
+        self.assertEqual(reverse(expected_view_name), href)
+        response = self.client.get(href)
+        self.assertEqual(response.status_code, 200)
+        html_content = response.content.decode("utf-8")
+        nav_match = re.search(
+            r'<script id="mladis-ops-nav-items" type="application/json">(.*?)</script>',
+            html_content,
+            re.S,
+        )
+        self.assertIsNotNone(nav_match, "Missing canonical ops nav JSON payload")
+        nav_items = json.loads(nav_match.group(1))
+        actual_nav = [(item["group"], item["label"], item["href"]) for item in nav_items]
+        self.assertEqual(actual_nav, self.expected_nav)
+        self.assertNotIn("Business profile", html_content)
+    def test_ops_dashboard_routes(self):
+        self._assert_route("/ops/dashboard/", "bookings:ops-dashboard")
+
+    def test_ops_reservations_routes(self):
+        self._assert_route("/ops/reservations/", "bookings:ops-reservations")
+
+    def test_ops_calendar_routes(self):
+        self._assert_route("/ops/calendar/", "bookings:calendar-ops")
+
+    def test_ops_guests_routes(self):
+        self._assert_route("/ops/customers/", "bookings:ops-customers")
+
+    def test_ops_maintenance_routes(self):
+        self._assert_route("/ops/maintenance/", "bookings:ops-maintenance")
+
+    def test_ops_payments_routes(self):
+        self._assert_route("/ops/payments/", "bookings:ops-payments")
+
+    def test_ops_deposits_routes(self):
+        self._assert_route("/ops/deposits/", "bookings:ops-deposits")
+
+    def test_ops_reports_routes(self):
+        self._assert_route("/ops/reports/", "bookings:ops-reports")
+
+    def test_ops_fairagent_routes(self):
+        self._assert_route("/ops/agent/", "bookings:ops-agent")
+
+    def test_ops_properties_routes(self):
+        self._assert_route("/ops/properties/", "bookings:ops-properties")
+
+    def test_ops_tasks_routes(self):
+        self._assert_route("/ops/workboard/", "operations:workboard")
+
+    def test_ops_settings_routes(self):
+        self._assert_route("/ops/settings/", "bookings:ops-settings")
+
+    def test_ops_users_routes(self):
+        self._assert_route("/ops/admin/", "bookings:ops-admin")
+
+    def test_legacy_stays_route_redirects_to_properties(self):
+        response = self.client.get("/ops/stays/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/ops/properties/")
+
+    def test_legacy_listings_route_redirects_to_properties(self):
+        response = self.client.get("/ops/listings/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/ops/properties/")
+
+    def test_react_fallback_has_no_stale_left_nav_labels(self):
+        repo_root = Path(__file__).resolve().parents[2]
+        fallback_source = (repo_root / "frontend/src/ui/opsNavigation.ts").read_text(encoding="utf-8")
+
+        for _group, label, href in self.expected_nav:
+            with self.subTest(label=label, href=href):
+                self.assertIn(f"label: '{label}'", fallback_source)
+                self.assertIn(f"href: '{href}'", fallback_source)
+
+        stale_label_patterns = [
+            "label: 'Dashboard'",
+            "label: 'Stays'",
+            "label: 'Agent Intelligence'",
+            "label: 'Listings'",
+            "label: 'Customers'",
+            "label: 'Work Orders'",
+        ]
+        for pattern in stale_label_patterns:
+            with self.subTest(stale_label_pattern=pattern):
+                self.assertNotIn(pattern, fallback_source)
+
+    def test_sidebar_expanded_width_contract_prevents_label_clipping(self):
+        repo_root = Path(__file__).resolve().parents[2]
+        styles_source = (repo_root / "frontend/src/styles.css").read_text(encoding="utf-8")
+
+        grid_match = re.search(
+            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\.is-sidebar-expanded\s*\{\s*grid-template-columns:\s*(\d+)px\s+minmax\(0,\s*1fr\);',
+            styles_source,
+            re.MULTILINE,
+        )
+        self.assertIsNotNone(grid_match, "Missing expanded sidebar grid width rule")
+        self.assertGreaterEqual(int(grid_match.group(1)), 240)
+
+        width_match = re.search(
+            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*>\s*\.modern-admin-sidebar\.v4-command-sidebar:hover,\s*\n'
+            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*>\s*\.modern-admin-sidebar\.v4-command-sidebar:focus-within,\s*\n'
+            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*>\s*\.modern-admin-sidebar\.v4-command-sidebar\.is-expanded\s*\{\s*\n'
+            r'\s*width:\s*(\d+)px;',
+            styles_source,
+            re.MULTILINE,
+        )
+        self.assertIsNotNone(width_match, "Missing expanded sidebar width rule")
+        self.assertGreaterEqual(int(width_match.group(1)), 240)
+
+
+# ---------------------------------------------------------------------------
+# Ops route permission regression tests
+# ---------------------------------------------------------------------------
+
+@override_settings(
+    STORAGES=TEST_STORAGES,
+    MLADIS_WORKBOARD_OWNER_EMAILS=["staff@example.com"],
+    MLADIS_WORKBOARD_OWNER_USERNAMES=[],
+)
+class OpsRoutePermissionRegressionTests(TestCase):
+    """
+    Regression suite: every ops page route must return HTTP 200 for any
+    active staff member, and must deny anonymous / non-staff users (302 or 403).
+
+    History: the workboard page and API were accidentally restricted to a
+    hard-coded owner allow-list, so ordinary staff received a 403.  These
+    tests prevent that class of regression across the entire ops surface.
+    """
+
+    # All ops page routes (SPA shell served by Django)
+    OPS_PAGE_ROUTES = [
+        "/ops/dashboard/",
+        "/ops/reservations/",
+        "/ops/reports/",
+        "/ops/customers/",
+        "/ops/deposits/",
+        "/ops/agent/",
+        "/ops/maintenance/",
+        "/ops/calendar/",
+        "/ops/settings/",
+        "/ops/admin/",
+        "/ops/workboard/",
+    ]
+
+    # Parameterless read-only API routes that must be reachable by staff
+    OPS_API_ROUTES = [
+        "/api/ops/summary/",
+        "/api/ops/reports/",
+        "/api/ops/reservations/",
+        "/api/ops/customers/",
+        "/api/ops/deposits/",
+        "/api/ops/agent/",
+        "/api/ops/maintenance/",
+        "/api/ops/calendar/",
+        "/api/ops/workboard/",
+    ]
+
+    def setUp(self):
+        User = get_user_model()
+        # A staff user who is NOT in the owner email allow-list.
+        self.staff_user = User.objects.create_user(
+            "diana-staff", "diana@example.com", "pass", is_staff=True
+        )
+        self.regular_user = User.objects.create_user(
+            "guest", "guest@example.com", "pass", is_staff=False
+        )
+
+    # ---- Page routes: staff access ----------------------------------------
+
+    def test_all_ops_page_routes_return_200_for_staff(self):
+        """Every ops page route must serve the SPA shell for any staff user."""
+        self.client.force_login(self.staff_user)
+        for path in self.OPS_PAGE_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(
+                    response.status_code,
+                    200,
+                    f"Expected 200 for staff on {path}, got {response.status_code}",
+                )
+
+    # ---- Page routes: non-staff blocked ------------------------------------
+
+    def test_all_ops_page_routes_deny_anonymous_users(self):
+        """Anonymous users must be redirected away from every ops page route."""
+        for path in self.OPS_PAGE_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertIn(
+                    response.status_code,
+                    {302, 403},
+                    f"Expected redirect/deny for anon on {path}, got {response.status_code}",
+                )
+
+    def test_all_ops_page_routes_deny_non_staff_users(self):
+        """Non-staff authenticated users must not reach any ops page route."""
+        self.client.force_login(self.regular_user)
+        for path in self.OPS_PAGE_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertIn(
+                    response.status_code,
+                    {302, 403},
+                    f"Expected redirect/deny for non-staff on {path}, got {response.status_code}",
+                )
+
+    # ---- API routes: staff access -----------------------------------------
+
+    def test_all_ops_api_routes_return_200_for_staff(self):
+        """Every ops API route must return HTTP 200 for any staff user."""
+        self.client.force_login(self.staff_user)
+        for path in self.OPS_API_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(
+                    response.status_code,
+                    200,
+                    f"Expected 200 for staff on {path}, got {response.status_code}",
+                )
+
+    # ---- API routes: non-staff blocked ------------------------------------
+
+    def test_all_ops_api_routes_deny_anonymous_users(self):
+        """Anonymous users must be denied every ops API route."""
+        for path in self.OPS_API_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertIn(
+                    response.status_code,
+                    {302, 403},
+                    f"Expected redirect/deny for anon on {path}, got {response.status_code}",
+                )
+
+    def test_all_ops_api_routes_deny_non_staff_users(self):
+        """Non-staff authenticated users must not reach any ops API route."""
+        self.client.force_login(self.regular_user)
+        for path in self.OPS_API_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertIn(
+                    response.status_code,
+                    {302, 403},
+                    f"Expected redirect/deny for non-staff on {path}, got {response.status_code}",
+                )
+
+    # ---- Workboard-specific: staff must get JSON, not HTML error ----------
+
+    def test_workboard_api_returns_json_for_non_owner_staff(self):
+        """Workboard API must not silently return an HTML error page to staff."""
+        self.client.force_login(self.staff_user)
+        response = self.client.get("/api/ops/workboard/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get("Content-Type", "").split(";")[0], "application/json")
+        payload = response.json()
+        self.assertIn("lists", payload)
+        self.assertIn("summary_cards", payload)
 
 
 class BookingInquiryFormTests(TestCase):
@@ -2115,12 +2414,12 @@ class AccountReservationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Continue with Microsoft")
-        self.assertContains(response, "setup needed")
+        self.assertContains(response, "disabled")
         self.assertNotContains(response, f'action="{reverse("microsoft_login")}"')
         self.assertEqual(launch_response.status_code, 302)
         self.assertEqual(launch_response["Location"], reverse("bookings:login"))
 
-    def test_stale_microsoft_social_app_stays_hidden_by_default(self):
+    def test_stale_microsoft_social_app_stays_disabled_by_default(self):
         stale_app = SocialApp.objects.create(
             provider="microsoft",
             name="Microsoft OAuth",
@@ -2135,17 +2434,19 @@ class AccountReservationTests(TestCase):
                 "MICROSOFT_OAUTH_CLIENT_ID": "",
                 "MICROSOFT_OAUTH_CLIENT_SECRET": "",
                 "SOCIAL_AUTH_ALLOW_ADMIN_FALLBACK": "",
-                "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS": "microsoft",
+                "SOCIAL_AUTH_HIDDEN_UNCONFIGURED_PROVIDERS": "",
             },
             clear=False,
         ):
             response = self.client.get(reverse("bookings:login"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Continue with Microsoft")
+        self.assertContains(response, "Continue with Microsoft")
+        self.assertContains(response, "disabled")
+        self.assertNotContains(response, f'action="{reverse("microsoft_login")}"')
 
-    @override_settings(SOCIAL_AUTH_HIDDEN_PROVIDERS=[])
-    def test_login_page_auto_configures_microsoft_from_environment(self):
+    @override_settings(SOCIAL_AUTH_DISABLED_PROVIDERS=[])
+    def test_login_page_can_enable_microsoft_from_environment(self):
         with patch.dict(
             os.environ,
             {
@@ -2377,6 +2678,119 @@ class InvoicePageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, invoice.invoice_number)
         self.assertContains(response, "$500.00 USD")
+
+
+@override_settings(STORAGES=TEST_STORAGES)
+class OpsFinanceObjectTests(TestCase):
+    def setUp(self):
+        self.staff = get_user_model().objects.create_user(
+            username="finance-ops",
+            email="finance-ops@example.com",
+            password="secret",
+            is_staff=True,
+        )
+        self.item = BookableItem.objects.create(
+            name="3 Beds Apt, Vacation Home & Pool, G-101",
+            slug="finance-stay-g101",
+            category=BookingCategory.STAY,
+            short_description="A finance test stay.",
+            is_active=True,
+        )
+        self.inquiry = BookingInquiry.objects.create(
+            item=self.item,
+            guest_name="Maria Rodriguez",
+            email="maria@example.com",
+            phone="+1 809 555 0169",
+            check_in=timezone.localdate() + timedelta(days=4),
+            check_out=timezone.localdate() + timedelta(days=7),
+            guests=2,
+            total_cents=42000,
+        )
+        self.invoice = Invoice.objects.create(
+            inquiry=self.inquiry,
+            recipient_name="Maria Rodriguez",
+            recipient_email="maria@example.com",
+            status=InvoiceStatus.DRAFT,
+            subtotal_cents=42000,
+            deposit_cents=20000,
+            total_cents=62000,
+        )
+        self.deposit = DamageDeposit.objects.create(
+            inquiry=self.inquiry,
+            item=self.item,
+            guest_name="Maria Rodriguez",
+            email="maria@example.com",
+            amount_cents=20000,
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.CHECKOUT_CREATED,
+            stripe_checkout_session_id="cs_test_deposit",
+        )
+        self.hold = ReservationPaymentHold.objects.create(
+            inquiry=self.inquiry,
+            item=self.item,
+            guest_name="Maria Rodriguez",
+            email="maria@example.com",
+            amount_cents=42000,
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.REQUIRES_CAPTURE,
+            stripe_payment_intent_id="pi_test_stay",
+        )
+
+    def test_payments_api_exposes_payment_transaction_objects(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("bookings:ops-payments-api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["transactions"][0]["id"], f"invoice-{self.invoice.pk}")
+        self.assertEqual(payload["transactions"][0]["type"], "stay_payment")
+        self.assertEqual(payload["detail"]["deposit_history"][0]["label"], "Damage deposit hold")
+        self.assertEqual(payload["detail"]["quick_actions"][1]["kind"], "post")
+
+    def test_payment_action_mark_paid_updates_invoice_object(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("bookings:ops-payment-action-api", args=[f"invoice-{self.invoice.pk}", "mark-paid"]),
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.status, InvoiceStatus.PAID)
+        self.assertEqual(self.invoice.email_status, EmailDeliveryStatus.SENT)
+        self.assertEqual(response.json()["transaction"]["status"], InvoiceStatus.PAID)
+
+    def test_deposits_api_exposes_deposit_hold_objects(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("bookings:ops-deposits-api"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        row_ids = {row["id"] for row in payload["rows"]}
+        self.assertIn(f"damage-{self.deposit.pk}", row_ids)
+        self.assertIn(f"stay-{self.hold.pk}", row_ids)
+        selected = next(row for row in payload["rows"] if row["id"] == f"damage-{self.deposit.pk}")
+        self.assertEqual(selected["guest_name"], "Maria Rodriguez")
+        self.assertEqual(selected["reservation"]["key"], self.inquiry.request_key)
+        self.assertTrue(selected["timeline"])
+        self.assertTrue(selected["payment_attempts"])
+        self.assertTrue(selected["actions"]["can_approve"])
+
+    def test_deposit_action_approve_updates_selected_hold(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("bookings:ops-deposit-hold-action-api", args=[f"damage-{self.deposit.pk}", "approve"])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.deposit.refresh_from_db()
+        self.assertEqual(self.deposit.status, DepositStatus.REQUIRES_CAPTURE)
+        self.assertEqual(response.json()["hold"]["id"], f"damage-{self.deposit.pk}")
+        self.assertEqual(response.json()["hold"]["status"], DepositStatus.REQUIRES_CAPTURE)
 
 
 @override_settings(STORAGES=TEST_STORAGES)
@@ -3552,7 +3966,7 @@ Viajeros
         response = self.client.get(reverse("bookings:ops-reservations"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MLADIS Modern Dashboard")
+        self.assertContains(response, "MLADIS Command Center")
         self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         api_response = self.client.get(reverse("bookings:ops-reservations-api"))
@@ -3564,6 +3978,52 @@ Viajeros
         self.assertIn("Loved the pool", payload["rows"][0]["feedback"])
         self.assertTrue(payload["rows"][0]["feedback_admin_url"])
         self.assertIn("VIP", [option["label"] for option in payload["segment_options"]])
+        self.assertEqual(payload["reservations"][0]["key"], f"airbnb-{record.pk}")
+        self.assertEqual(payload["reservations"][0]["guest"]["name"], "Diana")
+        self.assertEqual(payload["reservations"][0]["stay"]["name"], "6 Bedrooms Vacation Home & Pool")
+        self.assertEqual(payload["reservations"][0]["dates"]["nights"], 10)
+        self.assertEqual(payload["reservations"][0]["status"]["tab"], "completed")
+        self.assertEqual(payload["reservations"][0]["agent"]["risk_level"], "low")
+
+    def test_ops_reservation_status_api_returns_updated_reservation_object(self):
+        user = get_user_model().objects.create_user(
+            username="reservation-status-ops",
+            password="secret",
+            is_staff=True,
+        )
+        self.client.force_login(user)
+        item = BookableItem.objects.create(
+            name="3 Beds Apt, Vacation Home & Pool, G-101",
+            slug="reservation-status-stay",
+            category=BookingCategory.STAY,
+            short_description="Direct reservation stay.",
+            starting_price=Decimal("120.00"),
+            is_active=True,
+        )
+        reservation = BookingInquiry.objects.create(
+            item=item,
+            guest_name="Direct Guest",
+            email="direct@example.com",
+            phone="201-555-0101",
+            check_in=date(2026, 6, 20),
+            check_out=date(2026, 6, 22),
+            guests=2,
+            status=BookingStatus.REVIEWING,
+        )
+
+        response = self.client.post(
+            reverse("bookings:ops-reservation-status-api", args=[reservation.pk]),
+            data=json.dumps({"status": "confirmed"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["reservation"]["key"], f"direct-{reservation.pk}")
+        self.assertEqual(payload["reservation"]["guest"]["name"], "Direct Guest")
+        self.assertEqual(payload["reservation"]["status"]["tab"], "confirmed")
+        self.assertTrue(payload["reservation"]["admin"]["can_transition_status"])
 
     def test_ops_reservations_filters_by_customer_group_and_exports_csv(self):
         user = get_user_model().objects.create_user(
@@ -3639,8 +4099,8 @@ class CalendarOpsTests(TestCase):
         response = self.client.get(reverse("bookings:calendar-ops"), follow=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MLADIS Modern Dashboard")
-        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+        self.assertContains(response, "Booking Calendar")
+        self.assertContains(response, "frontend/modern-dashboard/assets/ops-calendar.css")
 
     def test_calendar_workspace_subroutes_load_for_staff(self):
         user = get_user_model().objects.create_user(
@@ -3656,8 +4116,8 @@ class CalendarOpsTests(TestCase):
                 response = self.client.get(reverse(f"bookings:{route_name}"))
 
                 self.assertEqual(response.status_code, 200)
-                self.assertContains(response, "MLADIS Modern Dashboard")
-                self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+                self.assertContains(response, "Booking Calendar")
+                self.assertContains(response, "frontend/modern-dashboard/assets/ops-calendar.css")
 
     def test_calendar_ops_api_returns_snapshot_and_mutates_manual_records(self):
         user = get_user_model().objects.create_user(
@@ -3816,8 +4276,9 @@ class MaintenanceOpsTests(TestCase):
         response = self.client.get(reverse("bookings:ops-maintenance"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MLADIS Modern Dashboard")
-        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+        self.assertContains(response, "Maintenance &amp; Work Orders")
+        self.assertContains(response, "frontend/modern-dashboard/assets/ops-maintenance.css")
+        self.assertContains(response, "WO-2026-0104")
 
     def test_maintenance_api_rejects_completed_event_without_photo(self):
         self.client.force_login(self.user)

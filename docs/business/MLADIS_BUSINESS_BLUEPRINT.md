@@ -168,15 +168,15 @@ The company must protect Piter's personal credit.
 | High | Sign single-member operating agreement | Done | Executed by Piter on 2026-06-03. |
 | High | Sign initial written consent / member resolutions | Done | Executed by Piter on 2026-06-03. |
 | High | Prepare Queens publication package | Done | Draft package prepared. |
-| High | Start New York publication process | In progress | Queens publication designation request was sent; waiting for/track newspaper designations and publication run. |
+| High | Start New York publication process | In progress | Queens designation response was received and a publisher follow-up (2026-06-11) included a prepayment packet ($375) plus draft notice run dates (06/11-07/16); payment/launch confirmation still pending. |
 | High | Complete New York publication requirement | Todo | Six-week publication, newspaper affidavits, Certificate of Publication filing, and filed certificate archival still need completion. |
 | High | File Certificate of Publication with affidavits | Todo | Must happen after publication affidavits are received. |
-| High | Open business checking account | Todo | Bank packet is prepared; actual business account still pending. |
+| High | Open business checking account | Todo | Bank packet is prepared; actual business account still pending and needed to clear Stripe/Airbnb payout dependencies. |
 | Medium | Start bookkeeping | In progress | Starter chart of accounts is prepared; owner started a bookkeeping/booking system; final integration should wait for the OOP Finance/Booking cleanup. |
 | Medium | Confirm tax/accounting treatment with CPA | Todo | Confirm before first tax filing and before relying on any tax treatment assumptions. |
 | Medium | Confirm direct-booking tax/compliance obligations | Todo | Needed before direct bookings go live outside Airbnb. |
 | Medium | Decide whether MLADIS Bookings needs a DBA/assumed name | Todo | Revisit after parent/Booking naming settles and before public marketing relies on a separate assumed name. |
-| Medium | Connect Stripe/payment processor | Deferred | Do after banking, reconciliation, direct-booking terms, and payment/deposit workflows are clear. |
+| Medium | Connect Stripe/payment processor | In progress | Stripe account has an action-required status email requesting a valid bank account; final readiness is blocked on business checking account setup. |
 | Medium | Build lender/grant/investor data room | Todo | Use funding-readiness checklist once bank account/bookkeeping are further along. |
 | Low | Evaluate MWBE certification or incentives | Deferred | Revisit after money infrastructure and records are stable. |
 

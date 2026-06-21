@@ -3,10 +3,12 @@ from urllib.parse import parse_qs, urlparse
 from unittest.mock import patch
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
+from django.shortcuts import redirect
 from django.test import TestCase, override_settings
-from django.urls import reverse
+from django.urls import include, path, reverse
 
 from .social_auth import sync_social_apps_from_env
 
@@ -50,6 +52,22 @@ SIGNIN_SETTINGS = {
 }
 
 
+QUEUED_BOOKING_MESSAGE = "Thanks, Piter Garcia. Your booking is started."
+QUEUED_PAYMENT_MESSAGE = "Payment confirmed. Your MLADIS reservation authorization is recorded."
+
+
+def queue_booking_messages_then_login(request):
+    messages.success(request, QUEUED_BOOKING_MESSAGE)
+    messages.success(request, QUEUED_PAYMENT_MESSAGE)
+    return redirect(reverse("bookings:login"))
+
+
+urlpatterns = [
+    path("queue-booking-messages/", queue_booking_messages_then_login),
+    path("", include(("bookings.urls", "bookings"), namespace="bookings")),
+]
+
+
 @override_settings(**SIGNIN_SETTINGS)
 class SignInContractTests(TestCase):
     def setUp(self):
@@ -91,7 +109,18 @@ class SignInContractTests(TestCase):
         self.assertIn('action="/oauth/github/login/?next=%2Faccounts%2F"', html)
         self.assertIn('href="/accounts/social/facebook/?next=%2Faccounts%2F"', html)
         self.assertNotIn('href="/accounts/social/github/', html)
-        self.assertNotIn("Microsoft", html)
+        self.assertIn("Continue with Microsoft", html)
+        self.assertIn("modern-social-button--microsoft is-disabled", html)
+
+    @override_settings(ROOT_URLCONF=__name__)
+    def test_login_page_omits_queued_booking_messages(self):
+        response = self.client.get("/queue-booking-messages/", HTTP_HOST="127.0.0.1:8000", follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn("Log in to your account", html)
+        self.assertNotIn(QUEUED_BOOKING_MESSAGE, html)
+        self.assertNotIn(QUEUED_PAYMENT_MESSAGE, html)
 
     def test_google_oauth_keeps_local_callback_and_provider_account_picker(self):
         query = self._oauth_redirect_query("google_login")

@@ -10,48 +10,59 @@
     <title>{% trans "Log in" %} | MLADIS</title>
   </head>
   <body>
-    <main class="modern-auth-page">
-      <section class="modern-auth-preview">
-        <span>MLADIS account access</span>
-        <strong>Use the canonical local MLADIS runtime for sign-in testing.</strong>
-      </section>
-      <section class="modern-auth-hero">
-        <a class="public-brand" href="/">
+    <main class="modern-auth-page modern-auth-page--login">
+      <header class="modern-auth-login-header" aria-label="MLADIS account access">
+        <a class="modern-auth-login-brand" href="/">
           {% if site_settings.logo_display_url %}
             <img src="{{ site_settings.logo_display_url }}" alt="MLADIS">
           {% else %}
             <img src="{% static 'bookings/brand/mladis-connected-intelligence.png' %}" alt="MLADIS">
           {% endif %}
-          <strong>MLADIS</strong>
+          <span><strong>MLADIS</strong><small>Account access</small></span>
         </a>
-        <h1>{% trans "Welcome back to your stay dashboard." %}</h1>
-        <p>{% trans "Manage reservations, invoices, deposits, and messages — all in one MLADIS account." %}</p>
+        <div class="modern-auth-login-trust" aria-label="Account safeguards">
+          <span><i aria-hidden="true">S</i><strong>Secure &amp; Private</strong><small>Your data is always protected</small></span>
+          <span><i aria-hidden="true">F</i><strong>Fast &amp; Reliable</strong><small>Built for vacation rental pros</small></span>
+          <span><i aria-hidden="true">T</i><strong>Trusted by Hosts</strong><small>Powering great stays</small></span>
+        </div>
+        <a class="modern-auth-help" href="mailto:support@mladis.com"><i aria-hidden="true">H</i><span><strong>Need help?</strong><small>Contact support</small></span></a>
+      </header>
+
+      <section class="modern-auth-hero modern-auth-login-hero">
+        <div class="modern-auth-login-badge">Welcome back, Piter! <span aria-hidden="true">*</span></div>
+        <h1>Manage your stays.<br>Grow your business.<br><em>All in one place.</em></h1>
+        <div class="modern-auth-login-tools" aria-label="Account tools">
+          <span>Reservations</span>
+          <span>Invoices</span>
+          <span>Deposits</span>
+          <span>Messages</span>
+        </div>
+        <aside class="modern-auth-login-stats" aria-label="Account summary">
+          <span><i aria-hidden="true">P</i><strong>3 Properties</strong><small>Active listings</small></span>
+          <span><strong>$12,450</strong><small>This month</small></span>
+          <span><strong>4.93 <b aria-hidden="true">*</b></strong><small>Guest rating</small></span>
+        </aside>
       </section>
-      <section class="modern-auth-panel">
-        <h2>{% trans "Log in" %}</h2>
-        <p>{% trans "Use a connected account for faster access, or continue with email." %}</p>
-        {% if messages %}
-          <div class="public-success" role="status">
-            {% for message in messages %}
-              <p>{{ message }}</p>
-            {% endfor %}
-          </div>
-        {% endif %}
+
+      <section class="modern-auth-panel modern-auth-login-panel">
+        <small class="modern-auth-eyebrow">Welcome back</small>
+        <h2>{% trans "Log in to your account" %}</h2>
+        <p>{% trans "Access your MLADIS dashboard to manage reservations, invoices, deposits, and more." %}</p>
         <div class="modern-social-grid" aria-label="{% trans 'Social login options' %}">
           {% for provider in social_login_providers %}
             {% if provider.is_launchable %}
               {% if provider.needs_origin_bridge %}
-                <a href="{{ provider.launch_url }}">{{ provider.button_label }}</a>
+                <a class="modern-social-button modern-social-button--{{ provider.id }}" href="{{ provider.launch_url }}">{% include "registration/_social_icon.html" with provider=provider %}{{ provider.button_label }}</a>
               {% else %}
                 <form method="post" action="{{ provider.login_url }}">
                   {% csrf_token %}
-                  <button type="submit">{{ provider.button_label }}</button>
+                  <button class="modern-social-button modern-social-button--{{ provider.id }}" type="submit">{% include "registration/_social_icon.html" with provider=provider %}{{ provider.button_label }}</button>
                 </form>
               {% endif %}
             {% else %}
-              <button class="is-disabled" type="button" disabled title="{{ provider.help_text }}">
-                {{ provider.button_label }}
-                <span>{% if provider.disabled_reason %}{{ provider.disabled_reason }}{% else %}{% trans "setup needed" %}{% endif %}</span>
+              <button class="modern-social-button modern-social-button--{{ provider.id }} is-disabled" type="button" disabled title="{{ provider.help_text }}">
+                {% include "registration/_social_icon.html" with provider=provider %}{{ provider.button_label }}
+                <span class="modern-social-status">{% if provider.disabled_reason %}{{ provider.disabled_reason }}{% else %}{% trans "setup needed" %}{% endif %}</span>
               </button>
             {% endif %}
           {% endfor %}
@@ -67,17 +78,23 @@
         <form method="post" class="modern-auth-form">
           {% csrf_token %}
           {% for field in form %}
-            <label for="{{ field.id_for_label }}">
-              {{ field.label }}
+            <label class="modern-auth-field modern-auth-field--{{ field.name }}" for="{{ field.id_for_label }}">
+              <span>{% if field.name == 'username' %}{% trans "Email or Username" %}{% else %}{{ field.label }}{% endif %}{% if field.name == 'password' %}<a href="#password-help">{% trans "Forgot password?" %}</a>{% endif %}</span>
+              <b aria-hidden="true">{% if field.name == 'password' %}L{% else %}M{% endif %}</b>
               {{ field }}
               {% if field.errors %}
-                <span>{{ field.errors|striptags }}</span>
+                <em>{{ field.errors|striptags }}</em>
               {% endif %}
             </label>
           {% endfor %}
-          <button type="submit">{% trans "Log in" %}</button>
+          <button type="submit">{% trans "Log in" %}<span aria-hidden="true">&rarr;</span></button>
         </form>
-        <a class="modern-auth-link" href="{% url 'bookings:signup' %}">{% trans "Create an account" %}</a>
+        <a class="modern-auth-link" href="{% url 'bookings:signup' %}"><span aria-hidden="true">U</span>{% trans "Create a new account" %}</a>
+        <footer class="modern-auth-security">
+          <i aria-hidden="true">L</i>
+          <span><strong>Your security is our priority</strong><small>We use industry-leading encryption to protect your data.</small></span>
+          <b aria-hidden="true">S</b>
+        </footer>
       </section>
     </main>
   </body>

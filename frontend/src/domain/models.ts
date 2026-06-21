@@ -1,4 +1,6 @@
 export type TrendDirection = 'up' | 'down' | 'neutral';
+import type { OpsReservation } from './reservations';
+
 export type ReservationStatus = 'new' | 'reviewing' | 'confirmed' | 'cancelled' | 'completed';
 export type DepositStatus = 'pending' | 'authorized' | 'captured' | 'released' | 'failed';
 export type AgentMode = 'faq' | 'openai' | 'fallback';
@@ -517,6 +519,7 @@ export class OpsReservationsSnapshot {
     public readonly legacyUrl: string,
     public readonly rows: OpsReservationRow[],
     public readonly generatedAt: string,
+    public readonly reservations: OpsReservation[] = [],
   ) {}
 }
 

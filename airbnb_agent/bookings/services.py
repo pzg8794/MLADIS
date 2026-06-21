@@ -13,7 +13,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import transaction
-from django.db.models import F
+from django.db.models import Count, F, Q, Sum
+from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -24,8 +25,10 @@ from .models import (
     AdminAccess,
     AgentKnowledgeSource,
     AgentConversation,
+    AgentFAQ,
     AvailabilityBlock,
     BookableItem,
+    BookingCategory,
     BookingInquiry,
     BookingStatus,
     CancellationPolicy,
@@ -50,6 +53,7 @@ from .models import (
     PromotionStatus,
     ReservationPaymentHold,
     SiteSettings,
+    StayGalleryImage,
 )
 
 
@@ -858,6 +862,317 @@ class BookingCalendarService:
         if value is None:
             return ""
         return f"${value:,.2f}"
+
+
+class CalendarOperationsService:
+    """Presentation service for the server-rendered ops Booking Calendar page."""
+
+    DEFAULT_FOCUS_DATE = date(2025, 6, 17)
+    WINDOW_DAYS = 23
+    MOCK_ROOMS = [
+        {
+            "title": "3 Beds Apt - Vacation Home & Pool - G-101",
+            "unit": "G-101",
+            "unit_count": "10",
+            "beds": "3 Beds",
+            "tone": "purple",
+            "marker": "G-101",
+        },
+        {
+            "title": "3 Beds Apt - Vacation Home & Pool - G-102",
+            "unit": "G-102",
+            "unit_count": "3",
+            "beds": "3 Beds",
+            "tone": "blue",
+            "marker": "G-102",
+        },
+        {
+            "title": "6 Beds Apts - Vacation Home & Pool - G-All",
+            "unit": "G-All",
+            "unit_count": "2",
+            "beds": "6 Beds",
+            "tone": "orange",
+            "marker": "G-All",
+        },
+    ]
+
+    def page_payload(self, *, request_path="", view_mode="month", focus_date_value="", selected_stay=""):
+        focus_date = self._focus_date(focus_date_value)
+        month_start = focus_date.replace(day=1)
+        window_start = month_start - timedelta(days=1)
+        days = [window_start + timedelta(days=offset) for offset in range(self.WINDOW_DAYS)]
+        window_end = days[-1]
+
+        stays = list(
+            BookableItem.objects.filter(category=BookingCategory.STAY, is_active=True)
+            .prefetch_related("gallery_images")
+            .order_by("name")[: len(self.MOCK_ROOMS)]
+        )
+        live = self._live_calendar_maps(stays, window_start, window_end)
+        rows = [
+            self._row_payload(index, stays[index] if index < len(stays) else None, days, focus_date, live)
+            for index in range(len(self.MOCK_ROOMS))
+        ]
+        reservation_count = live["reservation_count"] or 24
+
+        return {
+            "calendar_section": self._section_from_path(request_path),
+            "calendar_view": view_mode if view_mode in {"month", "week", "day"} else "month",
+            "month_label": focus_date.strftime("%B %Y"),
+            "booking_count": reservation_count,
+            "day_columns": [self._day_payload(day, focus_date) for day in days],
+            "calendar_rows": rows,
+            "room_chips": [
+                {
+                    "label": row["unit"],
+                    "count": row["count"],
+                    "tone": row["tone"],
+                    "active": index == 0,
+                    "href": f"/ops/calendar/?stay={row['slug'] or row['unit']}",
+                }
+                for index, row in enumerate(rows)
+            ],
+            "property_options": self._property_options(stays, selected_stay),
+            "previous_url": f"/ops/calendar/?date={(focus_date - timedelta(days=30)).isoformat()}",
+            "next_url": f"/ops/calendar/?date={(focus_date + timedelta(days=30)).isoformat()}",
+            "today_url": f"/ops/calendar/?date={timezone.localdate().isoformat()}",
+            "new_booking_url": reverse("admin:bookings_bookinginquiry_add"),
+            "settings_url": reverse("admin:bookings_calendarfeed_changelist"),
+            "generated_at": timezone.now(),
+        }
+
+    def _live_calendar_maps(self, stays, window_start, window_end):
+        item_ids = [stay.pk for stay in stays if stay and stay.pk]
+        reservation_map = {}
+        block_map = {}
+        override_map = {}
+        if not item_ids:
+            return {
+                "reservations": reservation_map,
+                "blocks": block_map,
+                "overrides": override_map,
+                "reservation_count": 0,
+            }
+
+        reservations = list(
+            BookingInquiry.objects.filter(
+                item_id__in=item_ids,
+                status__in=BookingCalendarService.ACTIVE_BOOKING_STATUSES,
+                check_in__lte=window_end,
+                check_out__gt=window_start,
+            ).order_by("check_in", "id")
+        )
+        blocks = list(
+            AvailabilityBlock.objects.filter(
+                item_id__in=item_ids,
+                is_active=True,
+                start_date__lte=window_end,
+                end_date__gte=window_start,
+            ).order_by("start_date", "id")
+        )
+        overrides = list(
+            DailyPriceOverride.objects.filter(
+                item_id__in=item_ids,
+                is_active=True,
+                start_date__lte=window_end,
+                end_date__gte=window_start,
+            ).order_by("start_date", "id")
+        )
+
+        for reservation in reservations:
+            for day in self._days_in_range(reservation.check_in, reservation.check_out - timedelta(days=1), window_start, window_end):
+                reservation_map.setdefault(reservation.item_id, {}).setdefault(day, []).append(reservation)
+        for block in blocks:
+            for day in self._days_in_range(block.start_date, block.end_date, window_start, window_end):
+                block_map.setdefault(block.item_id, {}).setdefault(day, []).append(block)
+        for override in overrides:
+            for day in self._days_in_range(override.start_date, override.end_date, window_start, window_end):
+                override_map.setdefault(override.item_id, {}).setdefault(day, []).append(override)
+
+        return {
+            "reservations": reservation_map,
+            "blocks": block_map,
+            "overrides": override_map,
+            "reservation_count": len(reservations),
+        }
+
+    @staticmethod
+    def _days_in_range(start, end, lower_bound, upper_bound):
+        current = max(start, lower_bound)
+        end = min(end, upper_bound)
+        while current <= end:
+            yield current
+            current += timedelta(days=1)
+
+    def _row_payload(self, index, stay, days, focus_date, live):
+        mock = self.MOCK_ROOMS[index]
+        title = stay.business_display_name if stay else mock["title"]
+        unit = self._unit_label(title) or mock["unit"]
+        return {
+            "title": title,
+            "slug": stay.slug if stay else "",
+            "unit": unit,
+            "count": self._room_count(stay, index, live),
+            "beds": self._bed_label(stay, mock),
+            "tone": mock["tone"],
+            "cells": [
+                self._cell_payload(index, stay.pk if stay else None, day, offset, focus_date, live)
+                for offset, day in enumerate(days)
+            ],
+        }
+
+    def _cell_payload(self, row_index, item_id, day, offset, focus_date, live):
+        if item_id:
+            live_cell = self._live_cell(item_id, day, live)
+            if live_cell:
+                live_cell["is_active_day"] = day == focus_date
+                return live_cell
+
+        cell = self._mock_cell(row_index, offset)
+        cell.update(
+            {
+                "date": day,
+                "date_iso": day.isoformat(),
+                "is_active_day": day == focus_date,
+                "href": f"/ops/calendar/?date={day.isoformat()}",
+            }
+        )
+        return cell
+
+    def _live_cell(self, item_id, day, live):
+        reservations = live["reservations"].get(item_id, {}).get(day, [])
+        if reservations:
+            reservation = reservations[0]
+            guests = reservation.guests or 1
+            return {
+                "status": "reservation",
+                "label": f"{guests} guests",
+                "meta": f"+{max(guests + 1, 2)}",
+                "date": day,
+                "date_iso": day.isoformat(),
+                "href": reverse("admin:bookings_bookinginquiry_change", args=[reservation.pk]),
+            }
+
+        blocks = live["blocks"].get(item_id, {}).get(day, [])
+        if blocks:
+            block = blocks[0]
+            return {
+                "status": "blocked",
+                "label": "Blocked",
+                "meta": "",
+                "date": day,
+                "date_iso": day.isoformat(),
+                "href": reverse("admin:bookings_availabilityblock_change", args=[block.pk]),
+            }
+
+        overrides = live["overrides"].get(item_id, {}).get(day, [])
+        if overrides:
+            override = overrides[-1]
+            return {
+                "status": "override",
+                "label": f"${override.nightly_price:,.0f}",
+                "meta": "",
+                "date": day,
+                "date_iso": day.isoformat(),
+                "href": reverse("admin:bookings_dailypriceoverride_change", args=[override.pk]),
+            }
+        return None
+
+    @staticmethod
+    def _mock_cell(row_index, offset):
+        if row_index == 1 and offset == 22:
+            return {"status": "blocked", "label": "Blocked", "meta": ""}
+
+        if row_index == 0 and offset >= 14:
+            label_by_offset = {
+                14: "3 guests",
+                15: "3 guests",
+                16: "3 guests",
+                17: "1 guests",
+                18: "1 guests",
+                19: "1 guests",
+                20: "1 guests",
+                21: "1 guests",
+                22: "2 guests",
+            }
+            meta_by_offset = {14: "+3", 15: "+7", 16: "+9", 17: "+5", 18: "+8", 19: "+8", 20: "+8", 21: "+9", 22: "+4"}
+            return {
+                "status": "reservation",
+                "label": label_by_offset.get(offset, "1 guests"),
+                "meta": meta_by_offset.get(offset, ""),
+            }
+
+        if row_index == 2 and offset >= 14:
+            return {"status": "override", "label": "12 guests", "meta": ""}
+
+        return {"status": "available", "label": "Available", "meta": ""}
+
+    @staticmethod
+    def _day_payload(day, focus_date):
+        return {
+            "date": day,
+            "date_iso": day.isoformat(),
+            "weekday": day.strftime("%a"),
+            "day": day.day,
+            "is_focus": day == focus_date,
+        }
+
+    @staticmethod
+    def _focus_date(value):
+        if value:
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                if len(value) == 7:
+                    try:
+                        return date.fromisoformat(f"{value}-17")
+                    except ValueError:
+                        pass
+        return CalendarOperationsService.DEFAULT_FOCUS_DATE
+
+    @staticmethod
+    def _section_from_path(path):
+        if "/list/" in path:
+            return "list"
+        if "/rooms/" in path:
+            return "rooms"
+        if "/analytics/" in path:
+            return "analytics"
+        return "calendar"
+
+    @staticmethod
+    def _unit_label(title):
+        match = re.search(r"\b([A-Z])[-\s]?(All|\d{3})\b", title or "", flags=re.IGNORECASE)
+        if not match:
+            return ""
+        return f"{match.group(1).upper()}-{match.group(2)}"
+
+    @staticmethod
+    def _bed_label(stay, mock):
+        if stay and stay.bedrooms:
+            return f"{stay.bedrooms} Beds"
+        if stay and stay.beds:
+            return f"{stay.beds} Beds"
+        return mock["beds"]
+
+    @staticmethod
+    def _property_options(stays, selected_stay):
+        options = [{"label": "All Properties", "value": "all", "active": not selected_stay}]
+        options.extend(
+            {
+                "label": stay.business_display_name,
+                "value": stay.slug,
+                "active": stay.slug == selected_stay,
+            }
+            for stay in stays
+        )
+        return options
+
+    def _room_count(self, stay, index, live):
+        if not stay:
+            return self.MOCK_ROOMS[index]["unit_count"]
+        real_count = sum(len(day_rows) for day_rows in live["reservations"].get(stay.pk, {}).values())
+        return str(real_count or self.MOCK_ROOMS[index]["unit_count"])
 
 
 class AdminAccessService:
@@ -3411,4 +3726,2233 @@ class DonationService:
         return {
             "donation_id": str(donation.id),
             "mission_cause_id": str(donation.cause_id or ""),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Ops Stays & Listings page — Object 1
+# ---------------------------------------------------------------------------
+
+class StayListingService:
+    """
+    Service layer for the Stays & Listings ops page.
+
+    Real data is used wherever the model carries it; values not yet in the
+    schema (occupancy %, ADR, housekeeping schedule, tags) are mocked with
+    sensible defaults until the schema is extended.
+
+    All public methods return plain dicts or querysets safe for template use.
+    """
+
+    # Statuses that mean "this event is still open / in flight"
+    OPEN_STATUSES = {
+        MaintenanceStatus.DRAFT,
+        MaintenanceStatus.LOGGED,
+        MaintenanceStatus.SCHEDULED,
+        MaintenanceStatus.IN_PROGRESS,
+    }
+    # Statuses that count as "overdue" (unresolved for >7 days since reported)
+    OVERDUE_STATUSES = {
+        MaintenanceStatus.LOGGED,
+        MaintenanceStatus.SCHEDULED,
+    }
+
+    # -----------------------------------------------------------------------
+    # Public API
+    # -----------------------------------------------------------------------
+
+    def get_stays(self, tab="all", search=""):
+        """Return a list of BookableItem instances for the given tab / search."""
+        qs = BookableItem.objects.filter(category=BookingCategory.STAY)
+        if search:
+            qs = qs.filter(name__icontains=search)
+
+        if tab == "published":
+            qs = qs.filter(is_active=True)
+        elif tab == "draft":
+            qs = qs.filter(is_active=False)
+        elif tab == "maintenance":
+            open_ids = (
+                MaintenanceEvent.objects.filter(status__in=self.OPEN_STATUSES)
+                .values_list("item_id", flat=True)
+                .distinct()
+            )
+            qs = qs.filter(pk__in=open_ids)
+        elif tab in ("inactive", "archived"):
+            qs = qs.none()
+
+        return list(
+            qs.prefetch_related("gallery_images").order_by("name")
+        )
+
+    def get_tab_counts(self):
+        """Return {tab_name: count} dict for the tab bar badges."""
+        all_qs = BookableItem.objects.filter(category=BookingCategory.STAY)
+        open_stay_ids = set(
+            MaintenanceEvent.objects.filter(
+                status__in=self.OPEN_STATUSES,
+                item__category=BookingCategory.STAY,
+            )
+            .values_list("item_id", flat=True)
+            .distinct()
+        )
+        return {
+            "all": all_qs.count(),
+            "published": all_qs.filter(is_active=True).count(),
+            "draft": all_qs.filter(is_active=False).count(),
+            "inactive": 0,
+            "maintenance": all_qs.filter(pk__in=open_stay_ids).count(),
+            "archived": 0,
+        }
+
+    def card_payload(self, stay):
+        """Dict with all data needed to render a property card."""
+        return {
+            "stay": stay,
+            "cover_image": self._cover_image(stay),
+            "tab_status": "Published" if stay.is_active else "Draft",
+            "readiness": self._readiness(stay),
+            "tags": self._tags(stay),
+            # Occupancy / delta: mocked until calendar integration is added
+            "occupancy_pct": None,
+            "occupancy_delta": None,
+        }
+
+    def detail_payload(self, stay):
+        """Dict with all data needed to render the selected listing detail panel."""
+        maint = self._maintenance_summary(stay)
+        reservations = self._upcoming_reservations(stay)
+        res_count = reservations.count()
+        total_guests = sum(r.guests for r in reservations) if res_count else 0
+        gallery = list(stay.gallery_images.all()[:18])
+        next_clean_event = (
+            MaintenanceEvent.objects.filter(
+                item=stay,
+                work_type=MaintenanceWorkType.CLEANING,
+                status__in={MaintenanceStatus.LOGGED, MaintenanceStatus.SCHEDULED},
+            )
+            .order_by("reported_at")
+            .first()
+        )
+        return {
+            "stay": stay,
+            "gallery": gallery,
+            "gallery_total": len(gallery),
+            "cover_image": self._cover_image(stay),
+            # Mocked until occupancy/ADR models are added
+            "occupancy_pct": 72,
+            "adr": int(stay.starting_price) if stay.starting_price else 146,
+            "adr_delta": "+9% vs last 7 days",
+            # Location
+            "area_label": stay.location_label or "—",
+            # Housekeeping — next_clean and cleaner from real maintenance data when available
+            "readiness": self._readiness(stay),
+            "next_clean": next_clean_event.reported_at.date() if next_clean_event else None,
+            "cleaner_name": next_clean_event.vendor_name if (next_clean_event and next_clean_event.vendor_name) else None,
+            # Maintenance — real data
+            "open_work_orders": maint["open"],
+            "overdue": maint["overdue"],
+            "last_inspection": maint["last_inspection"],
+            # Reservations — real data
+            "upcoming_count": res_count,
+            "upcoming_guests": total_guests,
+        }
+
+    # -----------------------------------------------------------------------
+    # Private helpers
+    # -----------------------------------------------------------------------
+
+    @staticmethod
+    def _cover_image(stay):
+        """Return the URL of the first gallery image, falling back to stay.image."""
+        first = stay.gallery_images.first() if hasattr(stay, "gallery_images") else None
+        if first:
+            return first.image_url
+        return stay.image or ""
+
+    def _readiness(self, stay):
+        """
+        'Needs attention' if any open/unresolved maintenance event exists.
+        'Ready' otherwise.
+        """
+        has_open = MaintenanceEvent.objects.filter(
+            item=stay,
+            status__in=self.OPEN_STATUSES,
+        ).exists()
+        return "Needs attention" if has_open else "Ready"
+
+    @staticmethod
+    def _tags(stay):
+        """
+        Mock property feature tags.  A future amenities model would replace this.
+        Returns list of (label, css_modifier) tuples.
+        """
+        tags = []
+        if stay.airbnb_listing_id or stay.airbnb_url:
+            tags.append(("Pool", "tag--pool"))
+            tags.append(("Self check-in", "tag--checkin"))
+        tags.append(("$200 Secure hold", "tag--deposit"))
+        if stay.airbnb_url:
+            tags.append(("Direct booking", "tag--direct"))
+        return tags
+
+    def _maintenance_summary(self, stay):
+        """Return {open, overdue, last_inspection} for a stay."""
+        events = MaintenanceEvent.objects.filter(item=stay)
+        open_count = events.filter(status__in=self.OPEN_STATUSES).count()
+        overdue_cutoff = timezone.now() - timedelta(days=7)
+        overdue_count = events.filter(
+            status__in=self.OVERDUE_STATUSES,
+            reported_at__lt=overdue_cutoff,
+        ).count()
+        last_insp = (
+            events.filter(
+                work_type=MaintenanceWorkType.INSPECTION,
+                status__in={
+                    MaintenanceStatus.COMPLETED,
+                    MaintenanceStatus.DOCUMENTED,
+                    MaintenanceStatus.BILLED,
+                },
+            )
+            .order_by("-completed_at")
+            .first()
+        )
+        return {
+            "open": open_count,
+            "overdue": overdue_count,
+            "last_inspection": last_insp.completed_at.date() if (last_insp and last_insp.completed_at) else None,
+        }
+
+    @staticmethod
+    def _upcoming_reservations(stay, days=7):
+        """Return confirmed BookingInquiry objects with check-in in the next `days` days."""
+        today = date.today()
+        return BookingInquiry.objects.filter(
+            item=stay,
+            status=BookingStatus.CONFIRMED,
+            check_in__gte=today,
+            check_in__lte=today + timedelta(days=days),
+        )
+
+
+@dataclass(frozen=True)
+class OpsWorkOrderPhoto:
+    """Evidence child object owned by an ops WorkOrder projection."""
+
+    label: str
+    url: str = ""
+    css_class: str = ""
+
+    def to_payload(self):
+        return {"url": self.url, "label": self.label, "css_class": self.css_class}
+
+
+@dataclass(frozen=True)
+class OpsWorkOrderTimelineEvent:
+    """Timeline child object owned by an ops WorkOrder projection."""
+
+    label: str
+    meta: str
+    tone: str = "blue"
+
+    def to_payload(self):
+        return {"label": self.label, "meta": self.meta, "tone": self.tone}
+
+
+@dataclass(frozen=True)
+class OpsWorkOrderReportState:
+    """Report-preview value object projected from a WorkOrder."""
+
+    work_order_number: str
+    property_name: str
+    reported_date: str
+    ready: bool = True
+
+    def to_payload(self):
+        return {
+            "status": "Ready to generate" if self.ready else "Needs review",
+            "title": "Maintenance Report & Invoice",
+            "subtitle": self.work_order_number,
+            "property": self.property_name,
+            "date": self.reported_date,
+            "checks": [
+                "Work summary & diagnostics",
+                "Parts & labor breakdown",
+                "Photos & notes",
+                "Professional invoice layout",
+            ],
+        }
+
+
+@dataclass(frozen=True)
+class OpsWorkOrder:
+    """Domain projection for the MaintenanceEvent-backed WorkOrder aggregate."""
+
+    id: str
+    number: str
+    title: str
+    property_name: str
+    reservation_key: str
+    reservation_range: str
+    assignee_name: str
+    assignee_role: str
+    priority: str
+    status: str
+    cost_display: str
+    table_cost_display: str
+    date_label: str
+    reported_date: str
+    notes: tuple[str, ...]
+    photos: tuple[OpsWorkOrderPhoto, ...]
+    timeline: tuple[OpsWorkOrderTimelineEvent, ...]
+    linked_listing: str = ""
+    linked_reservation: str = ""
+    is_mock: bool = False
+
+    @property
+    def priority_cls(self):
+        return self.priority.strip().lower().replace(" ", "-") or "medium"
+
+    @property
+    def status_cls(self):
+        return self.status.strip().lower().replace(" ", "-") or "open"
+
+    @property
+    def is_completed(self):
+        return self.status in {"Completed", "Archived"}
+
+    @property
+    def is_overdue(self):
+        return self.status == "Overdue"
+
+    @property
+    def is_open(self):
+        return not self.is_completed
+
+    @property
+    def assignee_avatar(self):
+        parts = [part[0] for part in self.assignee_name.replace(".", " ").split() if part]
+        return "".join(parts[:2]).upper() or "WO"
+
+    def to_row_payload(self):
+        return {
+            "id": self.id,
+            "work_order_id": self.number,
+            "title": self.title,
+            "property": self.property_name,
+            "reservation": self.reservation_key,
+            "assigned_to": self.assignee_name,
+            "priority": self.priority,
+            "priority_cls": self.priority_cls,
+            "cost": self.table_cost_display,
+            "date_label": self.date_label,
+            "status": self.status,
+            "status_cls": self.status_cls,
+            "is_mock": self.is_mock,
+        }
+
+    def to_detail_payload(self):
+        return {
+            "work_order_id": self.number,
+            "status": self.status,
+            "status_cls": self.status_cls,
+            "title": self.title,
+            "property": self.property_name,
+            "reservation": self.reservation_key,
+            "reservation_range": self.reservation_range,
+            "metrics": [
+                {"label": "Cost", "value": self.cost_display},
+                {"label": "Time", "value": self.reported_date},
+                {"label": "Assigned To", "value": self.assignee_name, "meta": self.assignee_role, "avatar": self.assignee_avatar},
+                {"label": "Priority", "value": self.priority, "cls": self.priority_cls},
+                {"label": "Status", "value": self.status, "cls": self.status_cls},
+            ],
+            "photos": [photo.to_payload() for photo in self.photos],
+            "notes": list(self.notes),
+            "linked_listing": self.linked_listing or self.property_name,
+            "linked_reservation": self.linked_reservation or self.reservation_key,
+            "timeline": [event.to_payload() for event in self.timeline],
+            "report": OpsWorkOrderReportState(
+                work_order_number=self.number,
+                property_name=self.property_name,
+                reported_date=self.reported_date.split("\n")[0] if self.reported_date else self.date_label,
+                ready=bool(self.photos and self.notes),
+            ).to_payload(),
+        }
+
+
+@dataclass(frozen=True)
+class OpsReservationMoney:
+    amount_cents: int
+    currency: str = "usd"
+
+    @property
+    def display(self):
+        value = self.amount_cents / 100
+        if self.amount_cents % 100 == 0:
+            amount = f"${value:,.0f}"
+        else:
+            amount = f"${value:,.2f}"
+        return amount
+
+    def to_payload(self):
+        return {
+            "amount_cents": self.amount_cents,
+            "currency": self.currency.upper(),
+            "display": self.display,
+        }
+
+
+@dataclass(frozen=True)
+class OpsReservationProjection:
+    """Reservation aggregate projection for ops workspace rows and details."""
+
+    source_row: dict
+    index: int
+
+    STATUS_TONES = {
+        "new": "warning",
+        "reviewing": "warning",
+        "quoted": "warning",
+        "pending": "warning",
+        "confirmed": "success",
+        "hold": "hold",
+        "completed": "neutral",
+        "canceled": "danger",
+        "cancelled": "danger",
+        "declined": "danger",
+    }
+
+    @property
+    def record(self):
+        return self.source_row["record"]
+
+    @property
+    def record_type(self):
+        return self.source_row["record_type"]
+
+    @property
+    def key(self):
+        return f"{self.record_type}-{self.record.pk}"
+
+    @property
+    def request_key(self):
+        if isinstance(self.record, BookingInquiry):
+            return self.record.request_key
+        source_key = getattr(self.record, "source_message_id", "") or getattr(self.record, "airbnb_listing_id", "")
+        return f"AIRBNB-{source_key or self.record.pk}"
+
+    @property
+    def item(self):
+        return self.source_row.get("item")
+
+    @property
+    def channel(self):
+        return "Airbnb" if self.record_type == "airbnb" else "Direct Website"
+
+    @property
+    def country(self):
+        if self.record_type == "airbnb":
+            return ["United States", "Dominican Republic", "Canada", "France"][self.index % 4]
+        return "Dominican Republic"
+
+    @property
+    def guest_name(self):
+        return self.source_row["name"] or "Guest"
+
+    @property
+    def email(self):
+        return self.source_row["email"]
+
+    @property
+    def phone(self):
+        return self.source_row["phone"]
+
+    @property
+    def contact_label(self):
+        if self.email and self.phone:
+            return f"{self.email} · {self.phone}"
+        return self.email or self.phone or self.source_row["contact_path"] or "Needs contact"
+
+    @property
+    def check_in(self):
+        return getattr(self.record, "check_in", None)
+
+    @property
+    def check_out(self):
+        return getattr(self.record, "check_out", None)
+
+    @property
+    def nights(self):
+        if isinstance(self.record, BookingInquiry):
+            return self.record.nights
+        if self.check_in and self.check_out:
+            return max((self.check_out - self.check_in).days, 0)
+        return 0
+
+    @property
+    def guest_count(self):
+        guests = getattr(self.record, "guests", None) or self.source_row.get("guests") or 0
+        try:
+            return max(int(guests), 1)
+        except (TypeError, ValueError):
+            return 1
+
+    @property
+    def status_value(self):
+        if isinstance(self.record, BookingInquiry):
+            if self.record.status == BookingStatus.CANCELED:
+                return "cancelled"
+            return self.record.status
+        if self.check_out and self.check_out < timezone.localdate():
+            return "completed"
+        return "confirmed"
+
+    @property
+    def status_tab(self):
+        if self.status_value in {"new", "reviewing", "quoted"}:
+            return "pending"
+        if self.status_value in {"canceled", "cancelled", "declined"}:
+            return "cancelled"
+        return self.status_value if self.status_value in {"confirmed", "hold", "completed"} else "pending"
+
+    @property
+    def status_label(self):
+        if isinstance(self.record, BookingInquiry):
+            label = self.record.get_status_display()
+            return "Cancelled" if label == "Canceled" else label
+        return "Completed" if self.status_value == "completed" else "Confirmed"
+
+    @property
+    def risk_level(self):
+        profile = self.source_row.get("profile")
+        if getattr(profile, "is_blacklisted", False) or getattr(self.record, "is_blacklist_flagged", False):
+            return "high"
+        if self.email and self.phone:
+            return "low"
+        if self.email or self.phone or self.source_row.get("thread_url"):
+            return "low"
+        return "medium" if self.record_type == "airbnb" else "high"
+
+    @property
+    def risk_label(self):
+        return {"low": "Low Risk", "medium": "Medium Risk", "high": "High Risk"}[self.risk_level]
+
+    @property
+    def stay_payment_cents(self):
+        if isinstance(self.record, BookingInquiry):
+            return self.record.reservation_payment_cents
+        return self._fallback_stay_payment_cents()
+
+    @property
+    def deposit_cents(self):
+        if isinstance(self.record, BookingInquiry):
+            if self.record.deposit_cents:
+                return self.record.deposit_cents
+            deposit = self.latest_deposit
+            if deposit:
+                return deposit.amount_cents
+        return 0 if self.record_type == "airbnb" else 20000
+
+    @property
+    def total_cents(self):
+        if isinstance(self.record, BookingInquiry):
+            if self.record.total_cents:
+                return self.record.total_cents
+            return self.stay_payment_cents + self.deposit_cents
+        return self.stay_payment_cents + self.deposit_cents
+
+    @property
+    def latest_deposit(self):
+        if not isinstance(self.record, BookingInquiry):
+            return None
+        return self._first_related(self.record.damage_deposits.all())
+
+    @property
+    def latest_payment_hold(self):
+        if not isinstance(self.record, BookingInquiry):
+            return None
+        return self._first_related(self.record.payment_holds.all())
+
+    @property
+    def payment_status(self):
+        if self.status_tab in {"confirmed", "completed"}:
+            return "paid"
+        if self.status_tab == "cancelled":
+            return "cancelled"
+        hold = self.latest_payment_hold
+        if hold and hold.status in {DepositStatus.REQUIRES_CAPTURE, DepositStatus.CAPTURED}:
+            return "paid"
+        if hold and hold.status in {DepositStatus.CHECKOUT_CREATED, DepositStatus.NEW}:
+            return "pending"
+        return "pending" if self.record_type == "direct" else "imported"
+
+    @property
+    def deposit_status(self):
+        deposit = self.latest_deposit
+        if deposit:
+            return deposit.status
+        if self.record_type == "airbnb":
+            return "none"
+        return "pending" if self.deposit_cents else "none"
+
+    @property
+    def deposit_label(self):
+        labels = dict(DepositStatus.choices)
+        if self.deposit_status == "none":
+            return "N/A"
+        if self.deposit_status == "pending":
+            return "Pending"
+        label = labels.get(self.deposit_status, self.deposit_status.replace("_", " ").title())
+        return "On Hold" if self.deposit_status == DepositStatus.REQUIRES_CAPTURE else label
+
+    @property
+    def documents_accepted(self):
+        return bool(
+            isinstance(self.record, BookingInquiry)
+            and self.record.property_rules_accepted_at
+            and self.record.damage_terms_accepted_at
+        )
+
+    def to_payload(self):
+        return {
+            "id": str(self.record.pk),
+            "key": self.key,
+            "record_type": self.record_type,
+            "request_key": self.request_key,
+            "guest": self._guest_payload(),
+            "stay": self._stay_payload(),
+            "dates": self._date_payload(),
+            "status": self._status_payload(),
+            "risk": self._risk_payload(),
+            "payment_plan": self._payment_plan_payload(),
+            "deposit_hold": self._deposit_payload(),
+            "documents": self._document_payload(),
+            "messages": self._message_payload(),
+            "timeline": self._timeline_payload(),
+            "agent": self._agent_payload(),
+            "admin": {
+                "record_url": self.source_row["record_admin_url"],
+                "profile_url": self.source_row["profile_admin_url"],
+                "feedback_url": self.source_row["feedback_admin_url"],
+                "can_transition_status": self.record_type == "direct",
+            },
+            "legacy_row": self._legacy_payload(),
+        }
+
+    def _guest_payload(self):
+        return {
+            "name": self.guest_name,
+            "email": self.email,
+            "phone": self.phone,
+            "contact_label": self.contact_label,
+            "country": self.country,
+            "profile_admin_url": self.source_row["profile_admin_url"],
+            "thread_url": self.source_row["thread_url"],
+            "segment": self.source_row["segment"],
+            "segment_value": self.source_row["segment_value"],
+        }
+
+    def _stay_payload(self):
+        item = self.item
+        return {
+            "id": item.pk if item else "",
+            "name": self.source_row["listing"] or "Flexible stay",
+            "unit_label": getattr(item, "unit_label", "") if item else self.source_row["listing_id"],
+            "listing_id": self.source_row["listing_id"],
+            "admin_url": reverse("admin:bookings_bookableitem_change", args=[item.pk]) if item else "",
+        }
+
+    def _date_payload(self):
+        return {
+            "check_in": self.check_in.isoformat() if self.check_in else "",
+            "check_out": self.check_out.isoformat() if self.check_out else "",
+            "nights": self.nights,
+            "display_range": self._display_date_range(),
+            "nights_label": f"{self.nights} night{'s' if self.nights != 1 else ''}" if self.nights else "Dates pending",
+        }
+
+    def _status_payload(self):
+        return {
+            "value": self.status_value,
+            "label": self.status_label,
+            "tone": self.STATUS_TONES.get(self.status_value, "warning"),
+            "tab": self.status_tab,
+        }
+
+    def _risk_payload(self):
+        signals = []
+        if self.email or self.phone:
+            signals.append("Verified contact path")
+        if self.item:
+            signals.append("Stay details available")
+        if self.total_cents:
+            signals.append("Pricing available")
+        if self.documents_accepted:
+            signals.append("Required documents accepted")
+        return {
+            "level": self.risk_level,
+            "label": self.risk_label,
+            "signals": signals or ["Needs staff review"],
+        }
+
+    def _payment_plan_payload(self):
+        return {
+            "total": OpsReservationMoney(self.total_cents).to_payload(),
+            "stay_payment": OpsReservationMoney(self.stay_payment_cents).to_payload(),
+            "deposit": OpsReservationMoney(self.deposit_cents).to_payload(),
+            "status": self.payment_status,
+            "steps": [
+                {
+                    "label": "Deposit hold requested",
+                    "amount": OpsReservationMoney(self.deposit_cents).to_payload(),
+                    "status": self.deposit_status,
+                    "due_label": "At reservation confirmation",
+                },
+                {
+                    "label": "Stay payment hold",
+                    "amount": OpsReservationMoney(self.stay_payment_cents).to_payload(),
+                    "status": self.payment_status,
+                    "due_label": "Captured 24 hours before check-in",
+                },
+            ],
+        }
+
+    def _deposit_payload(self):
+        deposit = self.latest_deposit
+        return {
+            "amount": OpsReservationMoney(self.deposit_cents).to_payload(),
+            "status": self.deposit_status,
+            "label": self.deposit_label,
+            "expires_at": "",
+            "provider": deposit.payment_provider if deposit else "",
+            "can_approve": self.record_type == "direct" and self.deposit_status in {"pending", DepositStatus.NEW, DepositStatus.CHECKOUT_CREATED, DepositStatus.REQUIRES_CAPTURE},
+            "can_release": self.record_type == "direct" and self.deposit_status in {DepositStatus.NEW, DepositStatus.CHECKOUT_CREATED, DepositStatus.REQUIRES_CAPTURE},
+        }
+
+    def _document_payload(self):
+        return {
+            "property_rules_accepted": bool(getattr(self.record, "property_rules_accepted_at", None)),
+            "damage_terms_accepted": bool(getattr(self.record, "damage_terms_accepted_at", None)),
+            "property_rules_version": getattr(self.record, "accepted_property_rules_version", "") or "2026-06-15",
+            "damage_terms_version": getattr(self.record, "accepted_damage_terms_version", "") or "2026-06-15",
+            "all_accepted": self.documents_accepted,
+        }
+
+    def _message_payload(self):
+        inbound_body = self.source_row["feedback"] or getattr(self.record, "message", "") or "No guest message captured yet."
+        reply = (
+            f"Hi {self.guest_name.split()[0] if self.guest_name.split() else 'there'}! "
+            "Your reservation details are ready. We can confirm check-in instructions, payment/deposit status, and next steps from MLADIS."
+        )
+        timestamp = self.source_row["updated_at"].isoformat() if self.source_row.get("updated_at") else ""
+        return {
+            "suggested_draft": reply,
+            "items": [
+                {
+                    "id": f"{self.key}-guest",
+                    "sender_label": self.guest_name,
+                    "body": inbound_body,
+                    "status": "received",
+                    "timestamp": timestamp,
+                    "from_staff": False,
+                },
+                {
+                    "id": f"{self.key}-draft",
+                    "sender_label": "MLADIS",
+                    "body": reply,
+                    "status": "draft",
+                    "timestamp": "",
+                    "from_staff": True,
+                },
+            ],
+        }
+
+    def _timeline_payload(self):
+        created = getattr(self.record, "created_at", None)
+        updated = self.source_row.get("updated_at")
+        events = [
+            {
+                "type": "reservation_created",
+                "label": "Reservation record created" if self.record_type == "direct" else "Airbnb stay imported",
+                "actor": "MLADIS",
+                "timestamp": created.isoformat() if created else "",
+                "note": self.request_key,
+            },
+            {
+                "type": "reservation_status",
+                "label": self.status_label,
+                "actor": "System",
+                "timestamp": updated.isoformat() if updated else "",
+                "note": self.source_row["source_subject"],
+            },
+        ]
+        if self.deposit_status != "none":
+            events.append(
+                {
+                    "type": "reservation_deposit",
+                    "label": self.deposit_label,
+                    "actor": "Payments",
+                    "timestamp": "",
+                    "note": OpsReservationMoney(self.deposit_cents).display,
+                }
+            )
+        return events
+
+    def _agent_payload(self):
+        missing = []
+        if not self.email:
+            missing.append("Email")
+        if not self.phone:
+            missing.append("Phone")
+        if not self.check_in or not self.check_out:
+            missing.append("Stay dates")
+        if self.record_type == "direct" and not self.documents_accepted:
+            missing.append("Accepted house rules and deposit terms")
+
+        actions = []
+        if self.email and self.status_tab in {"confirmed", "hold"}:
+            actions.append("Send check-in instructions")
+        if "Email" in missing or "Phone" in missing:
+            actions.append("Request missing contact information")
+        if self.deposit_status in {"pending", DepositStatus.NEW, DepositStatus.CHECKOUT_CREATED}:
+            actions.append("Review deposit hold")
+        if self.total_cents:
+            actions.append("Generate invoice")
+
+        positives = self._risk_payload()["signals"]
+        return {
+            "risk_level": self.risk_level,
+            "suggested_reply": self._message_payload()["suggested_draft"],
+            "missing_information": missing,
+            "recommended_actions": actions or ["Review reservation details"],
+            "positive_signals": positives,
+        }
+
+    def _legacy_payload(self):
+        updated_at = self.source_row["updated_at"]
+        return {
+            "id": self.record.pk,
+            "record_type": self.record_type,
+            "name": self.source_row["name"],
+            "email": self.email,
+            "phone": self.phone,
+            "contact_path": self.source_row["contact_path"],
+            "listing": self.source_row["listing"],
+            "listing_id": self.source_row["listing_id"],
+            "stay_dates": self.source_row["stay_dates"],
+            "guests": self.source_row["guests"] or "",
+            "rating": str(self.source_row["rating"] or ""),
+            "feedback": self.source_row["feedback"],
+            "source_subject": self.source_row["source_subject"],
+            "thread_url": self.source_row["thread_url"],
+            "consent_status": self.source_row["consent_status"],
+            "segment": self.source_row["segment"],
+            "segment_value": self.source_row["segment_value"],
+            "record_admin_url": self.source_row["record_admin_url"],
+            "profile_admin_url": self.source_row["profile_admin_url"],
+            "feedback_admin_url": self.source_row["feedback_admin_url"],
+            "updated_at": updated_at.isoformat() if updated_at else "",
+        }
+
+    def _display_date_range(self):
+        if self.check_in and self.check_out:
+            return f"{self._format_date(self.check_in)} - {self._format_date(self.check_out, include_year=True)}"
+        if self.source_row["stay_dates"]:
+            return self.source_row["stay_dates"].replace(" to ", " - ").replace(" – ", " - ")
+        return "Dates pending"
+
+    def _fallback_stay_payment_cents(self):
+        nights = self.nights or max(1, (self.index % 4) + 1)
+        guests = self.guest_count
+        nightly = 12000 if guests <= 3 else 18000
+        return nights * nightly
+
+    @staticmethod
+    def _first_related(queryset):
+        items = list(queryset)
+        return items[0] if items else None
+
+    @staticmethod
+    def _format_date(value, include_year=False):
+        if not value:
+            return ""
+        month_day = value.strftime("%b %d").replace(" 0", " ")
+        return f"{month_day}, {value:%Y}" if include_year else month_day
+
+
+class MaintenanceOperationsService:
+    """Presentation service for the server-rendered Maintenance & Work Orders page."""
+
+    OPEN_STATUSES = {
+        MaintenanceStatus.DRAFT,
+        MaintenanceStatus.LOGGED,
+        MaintenanceStatus.SCHEDULED,
+        MaintenanceStatus.IN_PROGRESS,
+    }
+
+    def page_payload(self, selected_id=""):
+        work_orders = self._live_work_orders()
+        using_mock = len(work_orders) < 8
+        if using_mock:
+            seen_ids = {work_order.id for work_order in work_orders}
+            work_orders = [
+                *work_orders,
+                *[
+                    work_order
+                    for work_order in self.mock_work_orders()
+                    if work_order.id not in seen_ids
+                ],
+            ][:8]
+
+        rows = [work_order.to_row_payload() for work_order in work_orders]
+        rows = self._with_toggle_urls(rows, selected_id=selected_id)
+        selected = next((work_order for work_order in work_orders if work_order.id == selected_id), None) if selected_id else None
+        return {
+            "summary_cards": self._summary_cards(work_orders=work_orders),
+            "tabs": self._tabs(using_mock=using_mock, rows=rows),
+            "rows": rows,
+            "detail": selected.to_detail_payload() if selected else None,
+            "selected_work_order_id": selected.id if selected else "",
+            "total_results_display": "19" if using_mock else f"{len(rows):,}",
+            "work_order_admin_url": reverse("admin:bookings_maintenanceevent_changelist"),
+            "new_work_order_url": reverse("admin:bookings_maintenanceevent_add"),
+            "generated_at": timezone.now(),
+        }
+
+    @staticmethod
+    def _with_toggle_urls(rows, selected_id=""):
+        base_url = reverse("bookings:ops-maintenance")
+        decorated_rows = []
+        for row in rows:
+            detail_url = f"{base_url}?work_order={row['id']}"
+            decorated = {**row, "detail_url": detail_url}
+            decorated["toggle_url"] = base_url if row["id"] == selected_id else detail_url
+            decorated_rows.append(decorated)
+        return decorated_rows
+
+    def _summary_cards(self, work_orders):
+        open_count = sum(1 for work_order in work_orders if work_order.is_open)
+        overdue_count = sum(1 for work_order in work_orders if work_order.is_overdue)
+        month_cost = sum(
+            Decimal(work_order.cost_display.replace("$", "").replace(",", "").split()[0])
+            for work_order in work_orders
+            if work_order.cost_display not in {"—", ""}
+        )
+        completed_count = sum(1 for work_order in work_orders if work_order.is_completed)
+        return [
+            {"label": "Open Work Orders", "value": f"{open_count:,}", "trend": "Needs action", "tone": "blue"},
+            {"label": "Overdue Items", "value": f"{overdue_count:,}", "trend": "Older than 7 days", "tone": "orange"},
+            {"label": "This Month Cost", "value": f"${month_cost:,.0f}", "trend": "Live maintenance ledger", "tone": "violet"},
+            {"label": "Completed Jobs", "value": f"{completed_count:,}", "trend": "Closed records", "tone": "green"},
+        ]
+
+    @staticmethod
+    def _tabs(using_mock=False, rows=None):
+        if using_mock:
+            return [
+                {"label": "All", "count": "19", "active": True},
+                {"label": "Open", "count": "12", "active": False},
+                {"label": "In Progress", "count": "3", "active": False},
+                {"label": "Pending", "count": "1", "active": False},
+                {"label": "Completed", "count": "27", "active": False},
+                {"label": "Overdue", "count": "3", "active": False},
+            ]
+
+        rows = rows or []
+        counts = {
+            "Open": sum(1 for row in rows if row["status"] == "Open"),
+            "In Progress": sum(1 for row in rows if row["status"] == "In Progress"),
+            "Pending": sum(1 for row in rows if row["status"] == "Pending"),
+            "Completed": sum(1 for row in rows if row["status"] == "Completed"),
+            "Overdue": 0,
+        }
+        return [
+            {"label": "All", "count": f"{len(rows):,}", "active": True},
+            *[
+                {"label": label, "count": f"{count:,}", "active": False}
+                for label, count in counts.items()
+            ],
+        ]
+
+    def _live_work_orders(self):
+        events = list(
+            MaintenanceEvent.objects.select_related("item", "booking", "created_by")
+            .prefetch_related("photos")
+            .order_by("-reported_at", "-created_at")[:8]
+        )
+        work_orders = []
+        for index, event in enumerate(events, start=1):
+            status = self._status_label(event.status)
+            priority = self._priority_for_event(event)
+            booking = event.booking
+            work_order_number = f"WO-{event.reported_at:%Y}-{1000 + index:04d}" if event.reported_at else f"WO-LIVE-{index:04d}"
+            work_orders.append(
+                OpsWorkOrder(
+                    id=str(event.pk),
+                    number=work_order_number,
+                    title=event.title,
+                    property_name=event.item.business_display_name if event.item else "Unassigned property",
+                    reservation_key=booking.request_key if booking else "—",
+                    reservation_range=f"{booking.check_in:%b %-d} – {booking.check_out:%b %-d, %Y}" if booking else "Not linked",
+                    assignee_name=event.vendor_name or "Maintenance Team",
+                    assignee_role="Vendor" if event.vendor_name else "Internal",
+                    priority=priority,
+                    status=status,
+                    cost_display=event.display_cost.replace(" USD", ""),
+                    table_cost_display=f"${event.cost_amount:,.0f}",
+                    date_label=event.reported_at.strftime("%b %-d, %-I:%M %p") if event.reported_at else "—",
+                    reported_date=event.reported_at.strftime("%b %-d, %Y\n%-I:%M %p") if event.reported_at else "—",
+                    notes=tuple(
+                        note
+                        for note in [
+                            event.effective_description or "Guest reported an issue. Maintenance notes will appear here after review.",
+                            event.admin_notes or "Recommend follow-up after completion.",
+                        ]
+                        if note
+                    ),
+                    photos=tuple(
+                        OpsWorkOrderPhoto(url=photo.image_url, label=photo.caption or "Evidence photo")
+                        for photo in list(event.photos.all()[:3])
+                    )
+                    or self._mock_photos(),
+                    timeline=self._timeline_for_work_order(
+                        number=work_order_number,
+                        status=status,
+                        assignee=event.vendor_name or "Maintenance Team",
+                        reported_at=event.reported_at,
+                        actor=getattr(event.created_by, "get_full_name", lambda: "")() or getattr(event.created_by, "username", "Staff"),
+                        photo_count=event.photo_count,
+                    ),
+                    linked_listing=event.item.business_display_name if event.item else "Unassigned property",
+                    linked_reservation=f"{booking.request_key} | {booking.check_in:%b %-d} – {booking.check_out:%b %-d, %Y}" if booking else "—",
+                    is_mock=False,
+                )
+            )
+        return work_orders
+
+    def mock_work_orders(self):
+        return [
+            self._mock_work_order("wo-2026-0104", "WO-2026-0104", "AC not cooling", "3 Beds Apt, Vacation Home & Pool, G-101", "R-1042", "Jun 8 – Jun 14, 2026", "Carlos M.", "Technician", "High", "$180.00", "Jun 10, 9:30 AM", "Jun 10, 2026\n9:30 AM", "In Progress", ["Guest reported AC not cooling properly. Checked thermostat and filter. Refrigerant was low. Recharged unit and tested - now cooling well.", "Recommend full AC service in next 30 days."]),
+            self._mock_work_order("wo-2026-0103", "WO-2026-0103", "Leak in bathroom sink", "2 Beds Apt, Pool", "R-1035", "Jun 9 – Jun 11, 2026", "Plumbing Pro", "Vendor", "Medium", "$95.00", "Jun 9, 2:15 PM", "Jun 9, 2026\n2:15 PM", "Open", ["Bathroom sink leak reported by guest. Vendor needs to inspect trap and supply line.", "Keep the guest updated after the first visit."]),
+            self._mock_work_order("wo-2026-0102", "WO-2026-0102", "Replace ceiling light", "Meeting Room 1", "—", "Not linked", "Maintenance Team", "Internal", "Low", "$40.00", "Jun 9, 11:00 AM", "Jun 9, 2026\n11:00 AM", "Open", ["Ceiling light flickers during evening setup. Replace bulb and test fixture.", "No reservation is linked to this internal work order."]),
+            self._mock_work_order("wo-2026-0101", "WO-2026-0101", "Pool pump not working", "6 Beds Apt, Vacation Home & Pool", "R-1040", "Jun 8 – Jun 12, 2026", "Carlos M.", "Technician", "High", "$225.00", "Jun 8, 10:45 AM", "Jun 8, 2026\n10:45 AM", "Pending", ["Pool circulation issue found during turnover check. Waiting for replacement part confirmation.", "Do not mark completed until pump pressure is verified."]),
+            self._mock_work_order("wo-2026-0100", "WO-2026-0100", "Door lock issue", "2 Beds Apt, Pool", "—", "Not linked", "Lock & Key Co.", "Vendor", "Medium", "$120.00", "Jun 7, 4:30 PM", "Jun 7, 2026\n4:30 PM", "Completed", ["Smart lock keypad was intermittently failing. Vendor replaced battery pack and tested access.", "Guest access code should be regenerated before the next check-in."]),
+            self._mock_work_order("wo-2026-0099", "WO-2026-0099", "Refrigerator not cooling", "3 Beds Apt, G-101", "R-1028", "Jun 7 – Jun 9, 2026", "Appliance Fixers", "Vendor", "High", "$160.00", "Jun 7, 1:20 PM", "Jun 7, 2026\n1:20 PM", "Completed", ["Refrigerator temperature was above safe range. Condenser cleaned and thermostat reset.", "Monitor for 24 hours after completion."]),
+            self._mock_work_order("wo-2026-0098", "WO-2026-0098", "TV not turning on", "6 Beds Apt, Pool", "—", "Not linked", "Tech Support", "Vendor", "Low", "$60.00", "Jun 6, 9:10 AM", "Jun 6, 2026\n9:10 AM", "Completed", ["Living room TV was not powering on. Power adapter was loose behind the console.", "Remote batteries were replaced."]),
+            self._mock_work_order("wo-2026-0097", "WO-2026-0097", "Paint touch-up", "Conference Room A", "—", "Not linked", "Maintenance Team", "Internal", "Low", "$75.00", "Jun 6, 8:30 AM", "Jun 6, 2026\n8:30 AM", "Completed", ["Wall scuffs near the entrance were patched and repainted.", "Touch-up matched existing paint color."]),
+        ]
+
+    def _mock_work_order(self, row_id, number, title, property_name, reservation_key, reservation_range, assignee, assignee_role, priority, cost, date_label, reported_date, status, notes):
+        return OpsWorkOrder(
+            id=row_id,
+            number=number,
+            title=title,
+            property_name=property_name,
+            reservation_key=reservation_key,
+            reservation_range=reservation_range,
+            assignee_name=assignee,
+            assignee_role=assignee_role,
+            priority=priority,
+            status=status,
+            cost_display=cost,
+            table_cost_display=cost.replace(".00", ""),
+            date_label=date_label,
+            reported_date=reported_date,
+            notes=tuple(notes),
+            photos=self._mock_photos(),
+            timeline=self._timeline_for_work_order(
+                number=number,
+                status=status,
+                assignee=assignee,
+                reported_at=None,
+                actor="Piter Garcia",
+                photo_count=3,
+                date_label=date_label,
+            ),
+            linked_listing=property_name,
+            linked_reservation=f"{reservation_key} | {reservation_range}" if reservation_key != "—" else "—",
+            is_mock=True,
+        )
+
+    @staticmethod
+    def _mock_photos():
+        return (
+            OpsWorkOrderPhoto(label="Outdoor unit", css_class="unit"),
+            OpsWorkOrderPhoto(label="Compressor fan", css_class="fan"),
+            OpsWorkOrderPhoto(label="Interior vent", css_class="vent"),
+        )
+
+    @staticmethod
+    def _timeline_for_work_order(number, status, assignee, reported_at, actor, photo_count, date_label=""):
+        if reported_at:
+            created_label = reported_at.strftime("%b %-d, %Y %-I:%M %p")
+            assigned_label = reported_at.strftime("%b %-d, %Y %-I:%M %p")
+        else:
+            created_label = date_label
+            assigned_label = date_label
+        timeline = [
+            OpsWorkOrderTimelineEvent("Work order created", f"{created_label}\nby {actor}"),
+            OpsWorkOrderTimelineEvent(f"Assigned to {assignee}", assigned_label),
+            OpsWorkOrderTimelineEvent(f"Status changed to {status}", assigned_label),
+            OpsWorkOrderTimelineEvent("Note added", assigned_label),
+        ]
+        if photo_count:
+            timeline.append(OpsWorkOrderTimelineEvent(f"Picture added ({photo_count})", assigned_label))
+        return tuple(timeline)
+
+    @staticmethod
+    def _priority_for_event(event):
+        if event.cost_amount >= Decimal("150"):
+            return "High"
+        if event.cost_amount >= Decimal("90"):
+            return "Medium"
+        return "Low"
+
+    @staticmethod
+    def _status_label(status):
+        labels = {
+            MaintenanceStatus.DRAFT: "Pending",
+            MaintenanceStatus.LOGGED: "Open",
+            MaintenanceStatus.SCHEDULED: "Open",
+            MaintenanceStatus.IN_PROGRESS: "In Progress",
+            MaintenanceStatus.COMPLETED: "Completed",
+            MaintenanceStatus.DOCUMENTED: "Completed",
+            MaintenanceStatus.BILLED: "Completed",
+            MaintenanceStatus.ARCHIVED: "Completed",
+        }
+        return labels.get(status, str(status).replace("_", " ").title())
+
+    @staticmethod
+    def _status_class(status):
+        return str(status).strip().lower().replace(" ", "-") or "open"
+
+
+class AgentIntelligenceOperationsService:
+    """Presentation service for the FairAgent / Agent Intelligence ops page."""
+
+    MOCK_CONVERSATIONS = [
+        {
+            "visitor": "Maria Rodriguez",
+            "initials": "MR",
+            "tone": "green",
+            "item": "3 Beds Apt, Vacation Home & Pool, G-101",
+            "question": "Do you have availability for June 20-23?",
+            "time_label": "Just now",
+            "sentiment": "Positive",
+        },
+        {
+            "visitor": "John Smith",
+            "initials": "JS",
+            "tone": "blue",
+            "item": "2 Beds Apt, Pool",
+            "question": "Is early check-in possible on Jun 12?",
+            "time_label": "1m ago",
+            "sentiment": "Positive",
+        },
+        {
+            "visitor": "Ana Lopez",
+            "initials": "AL",
+            "tone": "sky",
+            "item": "Meeting Room 1",
+            "question": "Can I get a receipt for my payment?",
+            "time_label": "2m ago",
+            "sentiment": "Neutral",
+        },
+        {
+            "visitor": "David Brown",
+            "initials": "DW",
+            "tone": "violet",
+            "item": "6 Beds Apt, G-101",
+            "question": "What's the neighborhood like?",
+            "time_label": "3m ago",
+            "sentiment": "Positive",
+        },
+    ]
+
+    MOCK_INTENTS = [
+        {"question": "Check availability", "detail": "Do you have availability for June 20-23?", "category": "Availability", "total": 342, "trend": "+18%", "tone": "green"},
+        {"question": "Early check-in request", "detail": "Is early check-in possible?", "category": "Check-in", "total": 156, "trend": "+9%", "tone": "green"},
+        {"question": "Deposit information", "detail": "How much is the deposit?", "category": "Payments", "total": 138, "trend": "-6%", "tone": "red"},
+        {"question": "Neighborhood info", "detail": "What is the area like?", "category": "Local Info", "total": 122, "trend": "+12%", "tone": "green"},
+        {"question": "Parking availability", "detail": "Do you have parking?", "category": "Amenities", "total": 98, "trend": "+7%", "tone": "green"},
+    ]
+
+    def page_payload(self):
+        conversations = AgentConversation.objects.select_related("item").order_by("-updated_at")
+        faqs = AgentFAQ.objects.select_related("item").order_by("-priority", "category", "question")
+        total_conversations = conversations.count()
+        faq_total = faqs.count()
+        faq_conversations = conversations.filter(metadata__agent_mode="faq").count()
+        openai_conversations = conversations.filter(metadata__agent_mode="openai").count()
+        fallback_conversations = conversations.exclude(metadata__agent_mode__in=["faq", "openai"]).count()
+        booking_conversations = conversations.filter(
+            Q(question_topic__icontains="booking")
+            | Q(question_topic__icontains="availability")
+            | Q(last_user_message__icontains="book")
+            | Q(last_user_message__icontains="availability")
+        ).count()
+        coverage = round((faq_conversations / total_conversations) * 100) if total_conversations else (87 if faq_total else 87)
+        topic_rows = list(
+            conversations.values("question_topic")
+            .annotate(total=Count("id"))
+            .order_by("-total", "question_topic")[:5]
+        )
+        max_topic_total = max([row["total"] for row in topic_rows] or [0])
+
+        return {
+            "summary_cards": self._summary_cards(
+                total_conversations=total_conversations,
+                fallback_conversations=fallback_conversations,
+                booking_conversations=booking_conversations,
+                openai_conversations=openai_conversations,
+            ),
+            "insight": {
+                "active_conversations": f"{self._active_conversation_count(conversations):,}" if total_conversations else "12",
+                "engagement_rate": f"{coverage if total_conversations else 92}%",
+                "sentiment": "Positive",
+            },
+            "conversation_rows": self._conversation_rows(conversations[:4]),
+            "intent_rows": self._intent_rows(topic_rows, max_topic_total),
+            "recommendations": self._recommendations(),
+            "faq_match": self._faq_match_payload(coverage=coverage, total_conversations=total_conversations, faq_total=faq_total),
+            "suggestions": self._suggestions(),
+            "guardrails": self._guardrails(),
+            "topic_rows": self._topic_volume_rows(topic_rows, max_topic_total),
+            "faq_admin_url": reverse("admin:bookings_agentfaq_changelist"),
+            "conversation_admin_url": reverse("admin:bookings_agentconversation_changelist"),
+            "agent_api_url": reverse("bookings:ops-agent-api"),
+            "generated_at": timezone.now(),
+        }
+
+    def _summary_cards(self, total_conversations, fallback_conversations, booking_conversations, openai_conversations):
+        escalation_value = fallback_conversations if total_conversations else 32
+        booking_value = booking_conversations if total_conversations else 186
+        return [
+            {
+                "label": "Total Conversations",
+                "value": f"{(total_conversations or 1248):,}",
+                "trend": "+18% vs Jun 29 - Jul 5" if not total_conversations else "Live conversation log",
+                "tone": "green",
+                "spark": "M0 18 L9 20 L18 15 L28 11 L38 17 L48 20 L58 17 L68 19 L78 14 L88 18 L100 12 L112 16 L122 18 L132 10 L142 15 L154 14 L164 20 L176 17 L188 12 L200 15",
+                "icon": "chat",
+            },
+            {
+                "label": "Escalations",
+                "value": f"{escalation_value:,}",
+                "trend": "-11% vs Jun 29 - Jul 5" if not total_conversations else f"{openai_conversations:,} model assists",
+                "tone": "orange",
+                "spark": "M0 20 L12 18 L24 11 L36 17 L48 13 L60 19 L72 15 L84 20 L96 14 L108 11 L120 16 L132 21 L144 18 L156 13 L168 10 L180 14 L192 18 L200 16",
+                "icon": "alert",
+            },
+            {
+                "label": "Booking Conversions",
+                "value": f"{booking_value:,}",
+                "trend": "+14% vs Jun 29 - Jul 5" if not total_conversations else "Availability and booking intents",
+                "tone": "violet",
+                "spark": "M0 18 L12 18 L24 12 L36 10 L48 16 L60 18 L72 12 L84 14 L96 17 L108 21 L120 15 L132 19 L144 14 L156 17 L168 13 L180 19 L192 17 L200 20",
+                "icon": "check",
+            },
+            {
+                "label": "Avg. Response Time",
+                "value": "1m 18s",
+                "trend": "-8s vs Jun 29 - Jul 5",
+                "tone": "blue",
+                "spark": "M0 15 L12 14 L24 18 L36 13 L48 11 L60 12 L72 15 L84 13 L96 16 L108 14 L120 20 L132 21 L144 20 L156 17 L168 21 L180 18 L192 20 L200 17",
+                "icon": "clock",
+            },
+        ]
+
+    @staticmethod
+    def _active_conversation_count(conversations):
+        since = timezone.now() - timedelta(hours=24)
+        return conversations.filter(updated_at__gte=since).count()
+
+    def _conversation_rows(self, live_rows):
+        rows = [self._conversation_payload(row, index) for index, row in enumerate(live_rows)]
+        if len(rows) < len(self.MOCK_CONVERSATIONS):
+            rows.extend(self.MOCK_CONVERSATIONS[len(rows):])
+        return rows[:4]
+
+    def _conversation_payload(self, row, index):
+        visitor = row.visitor_name or self._visitor_from_email(row.visitor_email) or "Website visitor"
+        mode = (row.metadata or {}).get("agent_mode", "fallback")
+        return {
+            "visitor": visitor,
+            "initials": self._initials(visitor),
+            "tone": ["green", "blue", "sky", "violet"][index % 4],
+            "item": row.item.business_display_name if row.item else "General MLADIS",
+            "question": self._trim(row.last_user_message, 88),
+            "time_label": self._time_ago(row.updated_at),
+            "sentiment": "Neutral" if mode == "guardrail" else "Positive",
+        }
+
+    def _intent_rows(self, topic_rows, max_topic_total):
+        rows = []
+        for index, row in enumerate(topic_rows[:5]):
+            topic = row["question_topic"] or "general"
+            total = row["total"]
+            mock = self.MOCK_INTENTS[index] if index < len(self.MOCK_INTENTS) else self.MOCK_INTENTS[-1]
+            rows.append(
+                {
+                    "question": self._topic_title(topic),
+                    "detail": mock["detail"],
+                    "category": self._category_for_topic(topic),
+                    "total": total,
+                    "trend": f"+{max(3, min(18, int((total / max_topic_total) * 18) if max_topic_total else 6))}%",
+                    "tone": "green",
+                }
+            )
+        if len(rows) < len(self.MOCK_INTENTS):
+            rows.extend(self.MOCK_INTENTS[len(rows):])
+        return rows[:5]
+
+    @classmethod
+    def _topic_volume_rows(cls, topic_rows, max_topic_total):
+        rows = []
+        for index, row in enumerate(topic_rows[:5]):
+            total = row["total"]
+            rows.append(
+                {
+                    "topic": cls._topic_title(row["question_topic"] or "general"),
+                    "total": total,
+                    "percent": int((total / max_topic_total) * 100) if max_topic_total else 0,
+                    "bar": int((total / max_topic_total) * 100) if max_topic_total else 0,
+                }
+            )
+        if len(rows) < len(cls.MOCK_INTENTS):
+            for mock in cls.MOCK_INTENTS[len(rows):]:
+                rows.append(
+                    {
+                        "topic": mock["category"] if mock["category"] != "Check-in" else "Check-in / Out",
+                        "total": mock["total"],
+                        "percent": {"Availability": 27, "Check-in": 12, "Payments": 11, "Local Info": 10, "Amenities": 8}.get(mock["category"], 8),
+                        "bar": {"Availability": 100, "Check-in": 52, "Payments": 44, "Local Info": 39, "Amenities": 32}.get(mock["category"], 30),
+                    }
+                )
+        return rows[:5]
+
+    @staticmethod
+    def _recommendations():
+        return [
+            {"title": "Follow up on availability holds", "body": "3 guests asked about availability but haven't booked.", "tone": "red", "priority": "High"},
+            {"title": "Send deposit policy reminder", "body": "Multiple guests asked about deposits. Proactive info can reduce friction.", "tone": "orange", "priority": "Medium"},
+            {"title": "Suggest alternate dates", "body": "2 guests are looking for sold-out dates.", "tone": "orange", "priority": "Medium"},
+            {"title": "Promote early check-in", "body": "High intent detected for early check-in on Jun 12-14.", "tone": "green", "priority": "Low"},
+        ]
+
+    @staticmethod
+    def _suggestions():
+        return [
+            {"title": "Send follow-up", "body": "Follow up with Maria Rodriguez about 3 Beds Apt, G-101 availability.", "impact": "High Impact", "tone": "red"},
+            {"title": "Offer alternate stay", "body": "Recommend 2 Beds Apt, Pool for sold-out dates (Jun 18-20).", "impact": "Medium Impact", "tone": "orange"},
+            {"title": "Release deposit info", "body": "Send deposit policy and payment options to recent inquiries.", "impact": "Medium Impact", "tone": "orange"},
+        ]
+
+    @staticmethod
+    def _guardrails():
+        return [
+            {"title": "Never share government IDs", "body": "Guest ID and documents are protected."},
+            {"title": "No off-platform bookings", "body": "Bookings must be made on mladis.com."},
+            {"title": "No pricing overrides", "body": "Prices shown are final and policy-compliant."},
+            {"title": "No personal data requests", "body": "We do not ask for sensitive personal data."},
+        ]
+
+    @staticmethod
+    def _faq_match_payload(coverage, total_conversations, faq_total):
+        match_rate = coverage if total_conversations else 87
+        matched = max(1, total_conversations or 1086)
+        return {
+            "rate": f"{match_rate}%",
+            "matched": f"{matched:,}",
+            "partial": f"{max(faq_total, 112):,}",
+            "missing": f"{max(0, (total_conversations - matched) if total_conversations else 50):,}",
+        }
+
+    @staticmethod
+    def _visitor_from_email(email):
+        if not email:
+            return ""
+        return email.split("@", 1)[0].replace(".", " ").replace("_", " ").title()
+
+    @staticmethod
+    def _initials(value):
+        parts = [part for part in re.split(r"\s+", value.strip()) if part]
+        if not parts:
+            return "AI"
+        if len(parts) == 1:
+            return parts[0][:2].upper()
+        return f"{parts[0][0]}{parts[-1][0]}".upper()
+
+    @staticmethod
+    def _time_ago(value):
+        if not value:
+            return "Just now"
+        delta = timezone.now() - value
+        if delta.days:
+            return f"{delta.days}d ago"
+        hours = delta.seconds // 3600
+        if hours:
+            return f"{hours}h ago"
+        minutes = max(1, delta.seconds // 60)
+        return f"{minutes}m ago"
+
+    @staticmethod
+    def _trim(value, length):
+        value = (value or "").strip()
+        if len(value) <= length:
+            return value
+        return f"{value[: length - 1].rstrip()}..."
+
+    @staticmethod
+    def _topic_title(topic):
+        label = str(topic or "general").replace("_", " ").replace("-", " ").strip().title()
+        if label.lower() in {"Faq", "General"}:
+            return "General question"
+        return label
+
+    @staticmethod
+    def _category_for_topic(topic):
+        topic = str(topic or "").lower()
+        if "deposit" in topic or "payment" in topic or "invoice" in topic:
+            return "Payments"
+        if "check" in topic or "arrival" in topic:
+            return "Check-in"
+        if "parking" in topic or "pool" in topic or "amenity" in topic:
+            return "Amenities"
+        if "area" in topic or "local" in topic or "neighborhood" in topic:
+            return "Local Info"
+        if "availability" in topic or "book" in topic:
+            return "Availability"
+        return "General"
+
+
+class CustomersCRMService:
+    """Service layer for the server-rendered Customers CRM page."""
+
+    COUNTRY_POOL = [
+        "Dominican Republic",
+        "United States",
+        "Canada",
+        "France",
+        "Spain",
+        "Mexico",
+        "Colombia",
+    ]
+
+    def get_profiles(self, tab="all", search=""):
+        qs = (
+            CustomerProfile.objects.annotate(
+                direct_reservations=Count("booking_inquiries", distinct=True),
+                airbnb_reservations=Count("airbnb_guest_records", distinct=True),
+                feedback_total=Count("feedback_entries", distinct=True),
+                invoice_total=Count("invoices", distinct=True),
+                total_spend_cents=Coalesce(Sum("invoices__total_cents"), 0),
+            )
+            .prefetch_related("booking_inquiries__item", "feedback_entries__item")
+            .order_by("-updated_at", "name", "email")
+        )
+
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search)
+                | Q(email__icontains=search)
+                | Q(phone__icontains=search)
+            )
+
+        if tab == "vip":
+            qs = qs.filter(segment=ClientSegment.VIP)
+        elif tab == "blocked":
+            qs = qs.filter(segment=ClientSegment.BLACKLISTED)
+        elif tab == "repeat":
+            qs = qs.filter(Q(direct_reservations__gte=2) | Q(airbnb_reservations__gte=2))
+        elif tab == "new":
+            qs = qs.filter(direct_reservations=0, airbnb_reservations=0)
+
+        return list(qs)
+
+    def get_tab_counts(self):
+        base = CustomerProfile.objects.annotate(
+            direct_reservations=Count("booking_inquiries", distinct=True),
+            airbnb_reservations=Count("airbnb_guest_records", distinct=True),
+        )
+        repeat_q = Q(direct_reservations__gte=2) | Q(airbnb_reservations__gte=2)
+        return {
+            "all": base.count(),
+            "repeat": base.filter(repeat_q).count(),
+            "vip": base.filter(segment=ClientSegment.VIP).count(),
+            "new": base.filter(direct_reservations=0, airbnb_reservations=0).count(),
+            "blocked": base.filter(segment=ClientSegment.BLACKLISTED).count(),
+        }
+
+    @staticmethod
+    def mock_tab_counts():
+        return {
+            "all": 1283,
+            "repeat": 412,
+            "vip": 128,
+            "new": 743,
+            "blocked": 8,
+        }
+
+    def mock_table_rows(self):
+        return [
+            self._mock_row(
+                row_id="mock-maria-rodriguez",
+                name="Maria Rodriguez",
+                email="maria.rodriguez@gmail.com",
+                country="Dominican Republic",
+                country_code="DO",
+                channel="Direct Website",
+                channel_cls="direct",
+                past_stays=5,
+                total_spend="$4,320",
+                status="VIP",
+                status_cls="vip",
+                last_contact_label="Jun 5, 2026",
+                avatar_cls="a1",
+                contact_icon="✉",
+            ),
+            self._mock_row(
+                row_id="mock-john-smith",
+                name="John Smith",
+                email="john.smith@gmail.com",
+                country="United States",
+                country_code="US",
+                channel="Airbnb",
+                channel_cls="airbnb",
+                past_stays=2,
+                total_spend="$1,250",
+                status="Repeat",
+                status_cls="repeat",
+                last_contact_label="Jun 4, 2026",
+                avatar_cls="a2",
+                contact_icon="💬",
+            ),
+            self._mock_row(
+                row_id="mock-ana-lopez",
+                name="Ana Lopez",
+                email="ana.lopez@yahoo.com",
+                country="Dominican Republic",
+                country_code="DO",
+                channel="Booking.com",
+                channel_cls="manual",
+                past_stays=1,
+                total_spend="$650",
+                status="New",
+                status_cls="new",
+                last_contact_label="Jun 3, 2026",
+                avatar_cls="a3",
+                contact_icon="✉",
+            ),
+            self._mock_row(
+                row_id="mock-david-brown",
+                name="David Brown",
+                email="david.brown@outlook.com",
+                country="Canada",
+                country_code="CA",
+                channel="Vrbo",
+                channel_cls="manual",
+                past_stays=3,
+                total_spend="$2,100",
+                status="Repeat",
+                status_cls="repeat",
+                last_contact_label="Jun 2, 2026",
+                avatar_cls="a4",
+                contact_icon="📞",
+            ),
+            self._mock_row(
+                row_id="mock-sophie-martin",
+                name="Sophie Martin",
+                email="sophie.martin@gmail.com",
+                country="France",
+                country_code="FR",
+                channel="Direct Website",
+                channel_cls="direct",
+                past_stays=4,
+                total_spend="$3,780",
+                status="VIP",
+                status_cls="vip",
+                last_contact_label="Jun 1, 2026",
+                avatar_cls="a5",
+                contact_icon="✉",
+            ),
+        ]
+
+    def mock_detail_payload(self):
+        return {
+            "profile": None,
+            "display_name": "Maria Rodriguez",
+            "avatar": "MR",
+            "status_label": "VIP Guest",
+            "status_cls": "vip",
+            "country": "Dominican Republic",
+            "country_code": "DO",
+            "phone": "+1 (809) 555-0198",
+            "preferred_language": "EN",
+            "birthday": "May 18, 1987",
+            "travel_style": "Leisure",
+            "guest_since": "Jan 12, 2024",
+            "tags": ["Family", "Pool Lover", "Repeat"],
+            "notes": "Loves the top-floor units. Prefers late check-out when available. Traveling with kids.",
+            "messages": [
+                {
+                    "author": "Maria Rodriguez",
+                    "time": "Jun 5, 2026 9:14 AM",
+                    "body": "Hi! We'll be arriving around 3pm. Is early check-in possible?",
+                    "is_agent": False,
+                },
+                {
+                    "author": "You",
+                    "time": "Jun 5, 2026 9:32 AM",
+                    "body": "Hi Maria! Yes, early check-in is available. Your apartment will be ready by 1pm. Let us know if you need transport or local recommendations!",
+                    "is_agent": True,
+                },
+                {
+                    "author": "Maria Rodriguez",
+                    "time": "Jun 5, 2026 9:45 AM",
+                    "body": "Perfect, thank you!",
+                    "is_agent": False,
+                },
+            ],
+            "last_stays": [
+                {
+                    "label": "3 Beds Apt, Vacation Home & Pool, G-101",
+                    "date_range": "Jun 8 – Jun 12, 2026",
+                    "amount": "$1,250.00 USD",
+                    "status": "Completed",
+                    "status_cls": "completed",
+                },
+                {
+                    "label": "2 Beds Apt, Vacation Home & Pool, B-204",
+                    "date_range": "Mar 14 – Mar 18, 2026",
+                    "amount": "$880.00 USD",
+                    "status": "Completed",
+                    "status_cls": "completed",
+                },
+                {
+                    "label": "Studio, Beachfront View, A-07",
+                    "date_range": "Nov 2 – Nov 5, 2025",
+                    "amount": "$620.00 USD",
+                    "status": "Completed",
+                    "status_cls": "completed",
+                },
+                {
+                    "label": "3 Beds Apt, Vacation Home & Pool, G-101",
+                    "date_range": "Aug 10 – Aug 14, 2025",
+                    "amount": "$1,100.00 USD",
+                    "status": "Completed",
+                    "status_cls": "completed",
+                },
+                {
+                    "label": "2 Beds Apt, Vacation Home & Pool, B-204",
+                    "date_range": "May 22 – May 25, 2025",
+                    "amount": "$750.00 USD",
+                    "status": "Completed",
+                    "status_cls": "completed",
+                },
+            ],
+            "upcoming_stay": {
+                "label": "2 Beds Apt, Vacation Home & Pool",
+                "date_range": "Jun 20 - Jun 24, 2026",
+                "amount": "$950.00 USD",
+                "status": "Confirmed",
+            },
+            "linked_reservations": [
+                {"request_key": "RR-1042", "date_range": "Jun 8 - Jun 12, 2026", "amount": "$1,250.00", "status": "Completed", "status_cls": "ok"},
+                {"request_key": "RR-1125", "date_range": "Apr 2 - Apr 6, 2026", "amount": "$980.00", "status": "Completed", "status_cls": "ok"},
+                {"request_key": "RR-1268", "date_range": "Jun 20 - Jun 24, 2026", "amount": "$950.00", "status": "Confirmed", "status_cls": "ok"},
+            ],
+            "missing_information": ["Government ID not on file", "Purpose of travel", "Emergency contact"],
+            "risk_assessment": [
+                ("Verified email and phone", "low"),
+                ("Payment history (5 stays)", "low"),
+                ("No chargebacks", "low"),
+                ("Profile 100% complete", "low"),
+            ],
+            "recommended_actions": ["Send check-in instructions", "Share local guide", "Offer airport pickup"],
+        }
+
+    _COUNTRY_FLAGS = {
+        "DO": "🇩🇴", "US": "🇺🇸", "CA": "🇨🇦", "FR": "🇫🇷",
+        "ES": "🇪🇸", "MX": "🇲🇽", "CO": "🇨🇴",
+    }
+
+    @staticmethod
+    def _mock_row(row_id, name, email, country, country_code, channel, channel_cls, past_stays, total_spend, status, status_cls, last_contact_label, avatar_cls="a1", contact_icon="✉"):
+        return {
+            "id": row_id,
+            "name": name,
+            "email": email,
+            "phone": "",
+            "avatar": "".join([part[0] for part in name.split()[:2]]).upper(),
+            "avatar_cls": avatar_cls,
+            "country": country,
+            "country_code": country_code,
+            "country_flag": CustomersCRMService._COUNTRY_FLAGS.get(country_code, "🌍"),
+            "channel": channel,
+            "channel_cls": channel_cls,
+            "past_stays": past_stays,
+            "total_spend": total_spend,
+            "status": status,
+            "status_cls": status_cls,
+            "last_contact": timezone.now(),
+            "last_contact_label": last_contact_label,
+            "contact_icon": contact_icon,
+            "segment": ClientSegment.VIP if status == "VIP" else ClientSegment.AVERAGE,
+            "is_mock": True,
+        }
+
+    def table_rows(self, profiles, limit=4):
+        rows = [self.mock_anchor_row()]
+        rows.extend(self.table_row_payload(profile) for profile in profiles[:limit])
+        return rows
+
+    def table_row_payload(self, profile):
+        total_res = self._total_reservations(profile)
+        status_label, status_cls = self._status_badge(profile)
+        country_code = self._country_code(profile)
+        return {
+            "id": profile.pk,
+            "name": profile.name or profile.email or f"Customer {profile.pk}",
+            "email": profile.email,
+            "phone": profile.phone,
+            "avatar": self._avatar(profile),
+            "avatar_cls": "a1",
+            "country": self._country(profile),
+            "country_code": country_code,
+            "country_flag": self._COUNTRY_FLAGS.get(country_code, "🌍"),
+            "channel": profile.get_source_display(),
+            "channel_cls": self._channel_cls(profile),
+            "past_stays": total_res,
+            "total_spend": self._money(profile.total_spend_cents),
+            "status": status_label,
+            "status_cls": status_cls,
+            "last_contact": profile.updated_at,
+            "last_contact_label": profile.updated_at.strftime("%b %-d, %Y"),
+            "contact_icon": "✉",
+            "segment": profile.segment,
+            "is_mock": False,
+        }
+
+    @staticmethod
+    def mock_anchor_row():
+        return {
+            "id": "mock-maria-rodriguez",
+            "name": "Maria Rodriguez",
+            "email": "maria.rodriguez@mladis.com",
+            "phone": "+1 (809) 555-0198",
+            "avatar": "MR",
+            "avatar_cls": "a1",
+            "country": "Dominican Republic",
+            "country_code": "DO",
+            "country_flag": "🇩🇴",
+            "channel": "Direct Website",
+            "channel_cls": "direct",
+            "past_stays": 5,
+            "total_spend": "$4,320",
+            "status": "VIP",
+            "status_cls": "vip",
+            "last_contact": timezone.now(),
+            "last_contact_label": "Jun 5, 2026",
+            "contact_icon": "✉",
+            "segment": ClientSegment.VIP,
+            "is_mock": True,
+        }
+
+    def detail_payload(self, profile):
+        bookings = list(
+            profile.booking_inquiries.select_related("item").order_by("-check_in", "-updated_at")[:12]
+        )
+        upcoming = [b for b in bookings if b.check_in and b.check_in >= date.today()]
+        latest = bookings[0] if bookings else None
+        next_stay = upcoming[0] if upcoming else None
+        feedback = list(profile.feedback_entries.select_related("item").order_by("-created_at")[:2])
+
+        linked = [
+            {
+                "request_key": booking.request_key,
+                "date_range": f"{booking.check_in:%b %-d} - {booking.check_out:%b %-d, %Y}",
+                "amount": booking.display_total,
+                "status": booking.get_status_display(),
+                "status_cls": "ok" if booking.status == BookingStatus.CONFIRMED else "warn",
+            }
+            for booking in bookings[:3]
+        ]
+
+        return {
+            "profile": profile,
+            "display_name": profile.name or profile.email or f"Customer {profile.pk}",
+            "avatar": self._avatar(profile),
+            "status_label": self._status_badge(profile)[0],
+            "status_cls": self._status_badge(profile)[1],
+            "country": self._country(profile),
+            "country_code": self._country_code(profile),
+            "phone": profile.phone or "-",
+            "preferred_language": (profile.preferred_language or "en").upper(),
+            "birthday": self._mock_birthday(profile),
+            "travel_style": self._mock_travel_style(profile),
+            "guest_since": profile.created_at.strftime("%b %-d, %Y"),
+            "tags": self._tags(profile),
+            "notes": profile.notes or "Loves curated stays and fast communication.",
+            "messages": self._messages(profile, feedback),
+            "last_stay": self._stay_card(latest),
+            "upcoming_stay": self._stay_card(next_stay),
+            "linked_reservations": linked,
+            "missing_information": self._missing_information(profile),
+            "risk_assessment": self._risk_assessment(profile),
+            "recommended_actions": self._recommended_actions(profile),
+        }
+
+    @staticmethod
+    def _total_reservations(profile):
+        return (profile.direct_reservations or 0) + (profile.airbnb_reservations or 0)
+
+    @staticmethod
+    def _money(cents):
+        return f"${(cents or 0) / 100:,.0f}"
+
+    @staticmethod
+    def _avatar(profile):
+        text = (profile.name or profile.email or "CU").strip()
+        parts = [chunk for chunk in text.split() if chunk]
+        if len(parts) >= 2:
+            return f"{parts[0][0]}{parts[1][0]}".upper()
+        return text[:2].upper()
+
+    def _country(self, profile):
+        return self.COUNTRY_POOL[profile.pk % len(self.COUNTRY_POOL)]
+
+    def _country_code(self, profile):
+        mapping = {
+            "Dominican Republic": "DO",
+            "United States": "US",
+            "Canada": "CA",
+            "France": "FR",
+            "Spain": "ES",
+            "Mexico": "MX",
+            "Colombia": "CO",
+        }
+        return mapping.get(self._country(profile), "UN")
+
+    @staticmethod
+    def _channel_cls(profile):
+        mapping = {
+            "direct": "direct",
+            "airbnb": "airbnb",
+            "social": "social",
+            "manual": "manual",
+        }
+        return mapping.get(profile.source, "manual")
+
+    def _status_badge(self, profile):
+        if profile.segment == ClientSegment.BLACKLISTED:
+            return ("Blocked", "blocked")
+        if profile.segment == ClientSegment.VIP:
+            return ("VIP", "vip")
+        if self._total_reservations(profile) >= 2:
+            return ("Repeat", "repeat")
+        if self._total_reservations(profile) == 0:
+            return ("New", "new")
+        return ("Active", "active")
+
+    @staticmethod
+    def _mock_birthday(profile):
+        day = (profile.pk % 27) + 1
+        month = (profile.pk % 11) + 1
+        year = 1980 + (profile.pk % 18)
+        return date(year, month, day).strftime("%b %-d, %Y")
+
+    @staticmethod
+    def _mock_travel_style(profile):
+        styles = ["Leisure", "Business", "Family", "Remote work"]
+        return styles[profile.pk % len(styles)]
+
+    def _tags(self, profile):
+        tags = [profile.get_segment_display()]
+        tags.append(profile.get_source_display())
+        if self._total_reservations(profile) >= 2:
+            tags.append("Repeat")
+        return tags
+
+    def _messages(self, profile, feedback):
+        if feedback:
+            primary = feedback[0]
+            return [
+                {
+                    "author": profile.name or "Guest",
+                    "time": primary.created_at.strftime("%b %-d, %Y %I:%M %p"),
+                    "body": primary.feedback_text[:160],
+                    "is_agent": False,
+                },
+                {
+                    "author": "You",
+                    "time": timezone.now().strftime("%b %-d, %Y %I:%M %p"),
+                    "body": "Thanks for the update. We have your preferences noted and your next stay is prepared.",
+                    "is_agent": True,
+                },
+            ]
+        return [
+            {
+                "author": "You",
+                "time": timezone.now().strftime("%b %-d, %Y %I:%M %p"),
+                "body": "Welcome to MLADIS. Let us know your check-in preferences and arrival details.",
+                "is_agent": True,
+            }
+        ]
+
+    @staticmethod
+    def _stay_card(booking):
+        if not booking:
+            return None
+        stay_name = booking.item.business_display_name if booking.item else "Unassigned stay"
+        return {
+            "label": stay_name,
+            "date_range": f"{booking.check_in:%b %-d} - {booking.check_out:%b %-d, %Y}",
+            "amount": booking.display_total,
+            "status": booking.get_status_display(),
+        }
+
+    @staticmethod
+    def _missing_information(profile):
+        rows = []
+        if not profile.phone:
+            rows.append("Phone number missing")
+        if not profile.email:
+            rows.append("Email not available")
+        if profile.marketing_consent_status != MarketingConsentStatus.OPTED_IN:
+            rows.append("Promotion consent not confirmed")
+        if not rows:
+            rows.append("No blockers")
+        return rows
+
+    def _risk_assessment(self, profile):
+        risks = []
+        if profile.segment == ClientSegment.BLACKLISTED:
+            risks.append(("Profile marked as blacklisted", "high"))
+        if self._total_reservations(profile) >= 2:
+            risks.append(("Payment history available", "low"))
+        if profile.feedback_total:
+            risks.append(("Guest feedback history available", "low"))
+        if not risks:
+            risks.append(("Limited history, request extra verification", "medium"))
+        return risks
+
+    @staticmethod
+    def _recommended_actions(profile):
+        actions = ["Send check-in instructions", "Share local guide"]
+        if profile.can_receive_promotions:
+            actions.append("Send loyalty offer")
+        if profile.segment == ClientSegment.BLACKLISTED:
+            actions = ["Require manual approval", "Request ID verification"]
+        return actions
+
+
+class PaymentsTransactionsService:
+    """Service layer for the server-rendered Payments & Transactions page."""
+
+    def page_payload(self, selected_id=""):
+        rows = self._live_rows()
+        using_mock = not rows
+        if using_mock:
+            rows = self.mock_rows()
+
+        selected = next((row for row in rows if row["id"] == selected_id), rows[0] if rows else None)
+        detail = self._detail_payload(selected, using_mock=using_mock) if selected else None
+        total_results_display = "126" if using_mock else f"{len(rows):,}"
+
+        return {
+            "summary_cards": self._summary_cards(using_mock=using_mock),
+            "rows": rows,
+            "detail": detail,
+            "selected_transaction_id": selected["id"] if selected else "",
+            "total_results": len(rows),
+            "total_results_display": total_results_display,
+            "generated_at": timezone.now(),
+            "date_range_label": "Jun 6 – Jun 12, 2026" if using_mock else "Live ledger",
+        }
+
+    def _summary_cards(self, using_mock=False):
+        if using_mock:
+            return [
+                {"label": "Total Collected", "value": "$18,540", "trend": "+15% vs last 7 days", "tone": "green"},
+                {"label": "Pending Payments", "value": "$4,320", "trend": "-8% vs last 7 days", "tone": "blue"},
+                {"label": "Refunded", "value": "$620", "trend": "+5% vs last 7 days", "tone": "orange"},
+                {"label": "Payouts in Transit", "value": "$2,100", "trend": "2 payouts", "tone": "violet"},
+            ]
+
+        paid_total = Invoice.objects.filter(status=InvoiceStatus.PAID).aggregate(total=Sum("total_cents"))["total"] or 0
+        pending_total = Invoice.objects.filter(status__in=[InvoiceStatus.DRAFT, InvoiceStatus.SENT]).aggregate(total=Sum("total_cents"))["total"] or 0
+        refunded_total = DamageDeposit.objects.filter(status=DepositStatus.CANCELED).aggregate(total=Sum("amount_cents"))["total"] or 0
+        transit_total = ReservationPaymentHold.objects.filter(status=DepositStatus.REQUIRES_CAPTURE).aggregate(total=Sum("amount_cents"))["total"] or 0
+
+        return [
+            {"label": "Total Collected", "value": self._money(paid_total), "trend": f"{Invoice.objects.filter(status=InvoiceStatus.PAID).count()} paid invoices", "tone": "green"},
+            {"label": "Pending Payments", "value": self._money(pending_total), "trend": f"{Invoice.objects.filter(status__in=[InvoiceStatus.DRAFT, InvoiceStatus.SENT]).count()} open invoices", "tone": "blue"},
+            {"label": "Refunded", "value": self._money(refunded_total), "trend": f"{DamageDeposit.objects.filter(status=DepositStatus.CANCELED).count()} canceled deposits", "tone": "orange"},
+            {"label": "Payouts in Transit", "value": self._money(transit_total), "trend": f"{ReservationPaymentHold.objects.filter(status=DepositStatus.REQUIRES_CAPTURE).count()} authorized holds", "tone": "violet"},
+        ]
+
+    def _live_rows(self):
+        invoices = list(
+            Invoice.objects.select_related("inquiry__item", "customer_profile")
+            .order_by("-issue_date", "-created_at")[:10]
+        )
+        if not invoices:
+            return []
+
+        inquiry_ids = [invoice.inquiry_id for invoice in invoices if invoice.inquiry_id]
+        deposits = list(
+            DamageDeposit.objects.select_related("inquiry", "item")
+            .filter(inquiry_id__in=inquiry_ids)
+            .order_by("-created_at")
+        )
+        holds = list(
+            ReservationPaymentHold.objects.select_related("inquiry", "item")
+            .filter(inquiry_id__in=inquiry_ids)
+            .order_by("-created_at")
+        )
+
+        deposits_by_inquiry = {}
+        for deposit in deposits:
+            deposits_by_inquiry.setdefault(deposit.inquiry_id, []).append(deposit)
+
+        holds_by_inquiry = {}
+        for hold in holds:
+            holds_by_inquiry.setdefault(hold.inquiry_id, []).append(hold)
+
+        rows = []
+        for invoice in invoices:
+            inquiry = invoice.inquiry
+            invoice_deposits = deposits_by_inquiry.get(invoice.inquiry_id, [])
+            invoice_holds = holds_by_inquiry.get(invoice.inquiry_id, [])
+            primary_payment = invoice_holds[0] if invoice_holds else (invoice_deposits[0] if invoice_deposits else None)
+            rows.append(
+                {
+                    "id": f"invoice-{invoice.pk}",
+                    "transaction_id": invoice.invoice_number,
+                    "guest": invoice.recipient_name,
+                    "reservation": inquiry.request_key if inquiry else "—",
+                    "listing": inquiry.item.business_display_name if inquiry and inquiry.item else "Manual invoice",
+                    "channel": "Direct Website" if inquiry else "Manual Invoice",
+                    "method": self._payment_method_label(primary_payment),
+                    "date_label": invoice.issue_date.strftime("%b %-d, %Y") if invoice.issue_date else "—",
+                    "time_label": invoice.created_at.strftime("%-I:%M %p") if invoice.created_at else "—",
+                    "amount": invoice.display_total,
+                    "status": self._invoice_status_label(invoice),
+                    "status_cls": self._invoice_status_class(invoice),
+                    "invoice_icon": "↗",
+                    "invoice_url": reverse("bookings:invoice-print", args=[invoice.public_token]),
+                    "is_mock": False,
+                    "_invoice": invoice,
+                    "_deposits": invoice_deposits,
+                    "_holds": invoice_holds,
+                }
+            )
+        return rows
+
+    def mock_rows(self):
+        return [
+            self._mock_row("mock-txn-10541", "TXN-2026-10541", "Maria Rodriguez", "R-1042", "3 Beds Apt, G-101", "Direct Website", "VISA •••• 4242", "Jun 12, 2026", "9:30 AM", "$1,250.00", "Paid", "paid"),
+            self._mock_row("mock-txn-10540", "TXN-2026-10540", "John Smith", "R-1040", "2 Beds Apt, Pool", "Airbnb", "MC •••• 5655", "Jun 11, 2026", "4:15 PM", "$550.00", "Paid", "paid"),
+            self._mock_row("mock-txn-10539", "TXN-2026-10539", "Ana Lopez", "R-1039", "Meeting Room 1", "Corporate Booking", "ACH Transfer", "Jun 10, 2026", "11:20 AM", "$250.00", "Paid", "paid"),
+            self._mock_row("mock-txn-10538", "TXN-2026-10538", "David Brown", "R-1038", "6 Beds Apt, G-101", "Vrbo", "VISA •••• 1111", "Jun 9, 2026", "2:45 PM", "$2,100.00", "Settled", "settled"),
+            self._mock_row("mock-txn-10537", "TXN-2026-10537", "Sophie Martin", "R-1037", "3 Beds Apt, G-101", "Booking.com", "MC •••• 8888", "Jun 9, 2026", "10:05 AM", "$500.00", "Pending", "pending"),
+            self._mock_row("mock-txn-10536", "TXN-2026-10536", "Carlos Mendez", "R-1036", "2 Beds Apt, Pool", "Direct Website", "Amex •••• 1005", "Jun 8, 2026", "8:20 PM", "$1,320.00", "Paid", "paid"),
+            self._mock_row("mock-txn-10535", "TXN-2026-10535", "Emily Johnson", "R-1035", "Conference Room A", "Direct Website", "VISA •••• 4242", "Jun 8, 2026", "1:10 PM", "$180.00", "Refunded", "refunded"),
+            self._mock_row("mock-txn-10534", "TXN-2026-10534", "Michael Lee", "R-1034", "6 Beds Apt, Pool", "Airbnb", "MC •••• 2222", "Jun 7, 2026", "6:40 PM", "$2,350.00", "Paid", "paid"),
+            self._mock_row("mock-txn-10533", "TXN-2026-10533", "Laura Garcia", "R-1033", "3 Beds Apt, G-101", "Corporate Booking", "ACH Transfer", "Jun 7, 2026", "9:00 AM", "$300.00", "Pending", "pending"),
+            self._mock_row("mock-txn-10532", "TXN-2026-10532", "Robert Wilson", "R-1032", "2 Beds Apt, Pool", "Vrbo", "VISA •••• 9009", "Jun 6, 2026", "3:15 PM", "$720.00", "Paid", "paid"),
+        ]
+
+    def _detail_payload(self, row, using_mock=False):
+        if not row:
+            return None
+        if using_mock or row.get("is_mock"):
+            return self._mock_detail_payload(row)
+
+        invoice = row["_invoice"]
+        deposits = row.get("_deposits", [])
+        holds = row.get("_holds", [])
+        linked_reservation = invoice.inquiry
+
+        deposit_history = []
+        for deposit in deposits:
+            deposit_history.append(
+                {
+                    "label": "Damage deposit",
+                    "amount": deposit.display_amount,
+                    "status": deposit.get_status_display(),
+                    "status_cls": self._deposit_status_class(deposit.status),
+                    "meta": deposit.created_at.strftime("%b %-d, %Y") if deposit.created_at else "—",
+                }
+            )
+        for hold in holds:
+            deposit_history.append(
+                {
+                    "label": "Reservation payment hold",
+                    "amount": hold.display_amount,
+                    "status": hold.get_status_display(),
+                    "status_cls": self._deposit_status_class(hold.status),
+                    "meta": hold.created_at.strftime("%b %-d, %Y") if hold.created_at else "—",
+                }
+            )
+
+        timeline = [
+            {
+                "label": "Invoice created",
+                "meta": invoice.created_at.strftime("%b %-d, %Y · %-I:%M %p") if invoice.created_at else "—",
+                "tone": "complete",
+            },
+        ]
+        if holds:
+            timeline.append(
+                {
+                    "label": "Reservation hold recorded",
+                    "meta": holds[0].created_at.strftime("%b %-d, %Y · %-I:%M %p") if holds[0].created_at else "—",
+                    "tone": "active",
+                }
+            )
+        if deposits:
+            timeline.append(
+                {
+                    "label": "Deposit workflow linked",
+                    "meta": deposits[0].created_at.strftime("%b %-d, %Y · %-I:%M %p") if deposits[0].created_at else "—",
+                    "tone": "active",
+                }
+            )
+        timeline.append(
+            {
+                "label": f"Invoice {invoice.get_status_display().lower()}",
+                "meta": invoice.updated_at.strftime("%b %-d, %Y · %-I:%M %p") if invoice.updated_at else "—",
+                "tone": "complete" if invoice.status == InvoiceStatus.PAID else "pending",
+            }
+        )
+
+        return {
+            "transaction_id": row["transaction_id"],
+            "status": row["status"],
+            "status_cls": row["status_cls"],
+            "amount": row["amount"],
+            "date_label": row["date_label"],
+            "time_label": row["time_label"],
+            "invoice_number": invoice.invoice_number,
+            "invoice_url": row["invoice_url"],
+            "issue_date": invoice.issue_date.strftime("%b %-d, %Y") if invoice.issue_date else "—",
+            "due_date": invoice.due_date.strftime("%b %-d, %Y") if invoice.due_date else "—",
+            "amount_due": invoice.display_total,
+            "linked_reservation": {
+                "request_key": linked_reservation.request_key if linked_reservation else "—",
+                "listing": linked_reservation.item.business_display_name if linked_reservation and linked_reservation.item else "—",
+                "date_range": f"{linked_reservation.check_in:%b %-d} – {linked_reservation.check_out:%b %-d, %Y}" if linked_reservation and linked_reservation.check_in and linked_reservation.check_out else "—",
+                "guest": linked_reservation.guest_name if linked_reservation else row["guest"],
+                "url": reverse("bookings:ops-reservations") if linked_reservation else reverse("bookings:ops-reservations"),
+            },
+            "deposit_history": deposit_history or [{"label": "No linked deposit records", "amount": "—", "status": "Waiting", "status_cls": "pending", "meta": "Create one from Deposits"}],
+            "timeline": timeline,
+            "notes": invoice.notes or "Invoice, reservation payment hold, and deposit ledger are linked across Payments and Deposits.",
+            "quick_actions": [
+                {"label": "Send invoice", "url": row["invoice_url"]},
+                {"label": "Mark as paid", "url": row["invoice_url"]},
+                {"label": "Download receipt", "url": row["invoice_url"]},
+                {"label": "Issue refund", "url": reverse("bookings:ops-deposits")},
+                {"label": "Open reservation", "url": reverse("bookings:ops-reservations")},
+            ],
+        }
+
+    @staticmethod
+    def _money(cents):
+        return f"${(cents or 0) / 100:,.2f}"
+
+    @staticmethod
+    def _payment_method_label(payment_record):
+        if not payment_record:
+            return "Direct invoice"
+        if payment_record.payment_provider == DepositProvider.PAYPAL:
+            return "PayPal"
+        if isinstance(payment_record, ReservationPaymentHold):
+            return "Card hold"
+        return "Card on file"
+
+    @staticmethod
+    def _invoice_status_label(invoice):
+        if invoice.status == InvoiceStatus.PAID:
+            return "Paid"
+        if invoice.status == InvoiceStatus.CANCELED:
+            return "Refunded"
+        return "Pending"
+
+    @staticmethod
+    def _invoice_status_class(invoice):
+        if invoice.status == InvoiceStatus.PAID:
+            return "paid"
+        if invoice.status == InvoiceStatus.CANCELED:
+            return "refunded"
+        return "pending"
+
+    @staticmethod
+    def _deposit_status_class(status):
+        if status in {DepositStatus.CAPTURED, DepositStatus.REQUIRES_CAPTURE}:
+            return "paid"
+        if status in {DepositStatus.CANCELED, DepositStatus.FAILED}:
+            return "refunded"
+        return "pending"
+
+    @staticmethod
+    def _mock_row(row_id, transaction_id, guest, reservation, listing, channel, method, date_label, time_label, amount, status, status_cls):
+        return {
+            "id": row_id,
+            "transaction_id": transaction_id,
+            "guest": guest,
+            "reservation": reservation,
+            "listing": listing,
+            "channel": channel,
+            "method": method,
+            "date_label": date_label,
+            "time_label": time_label,
+            "amount": amount,
+            "status": status,
+            "status_cls": status_cls,
+            "invoice_icon": "↗",
+            "invoice_url": "#",
+            "is_mock": True,
+        }
+
+    def _mock_detail_payload(self, row):
+        return {
+            "transaction_id": row["transaction_id"],
+            "status": row["status"],
+            "status_cls": row["status_cls"],
+            "amount": row["amount"],
+            "date_label": row["date_label"],
+            "time_label": row["time_label"],
+            "invoice_number": "INV-2026-3314",
+            "invoice_url": "#",
+            "issue_date": "Jun 12, 2026",
+            "due_date": "Jun 12, 2026",
+            "amount_due": row["amount"],
+            "linked_reservation": {
+                "request_key": row["reservation"],
+                "listing": "3 Beds Apt, Vacation Home & Pool, G-101",
+                "date_range": "Jun 8 – Jun 14, 2026 · 6 nights",
+                "guest": row["guest"],
+                "url": "/ops/reservations/",
+            },
+            "deposit_history": [
+                {"label": "Deposit required (50%)", "amount": "$625.00", "status": "Paid", "status_cls": "paid", "meta": "Due: May 25, 2026"},
+                {"label": "Remaining balance", "amount": "$625.00", "status": "Paid", "status_cls": "paid", "meta": "Due: Jun 12, 2026"},
+            ],
+            "timeline": [
+                {"label": "Payment received", "meta": "$1,250.00 · Visa •••• 4242 · Jun 12, 2026 9:30 AM", "tone": "complete", "action_label": "Download receipt", "action_url": "#"},
+                {"label": "Invoice sent", "meta": "INV-2026-3314 · Jun 12, 2026 9:28 AM", "tone": "active", "action_label": "", "action_url": ""},
+                {"label": "Booking confirmed", "meta": "R-1042 · Jun 6, 2026 9:12 AM", "tone": "pending", "action_label": "Open reservation", "action_url": "/ops/reservations/"},
+            ],
+            "notes": "Direct booking via mladis.com.",
+            "quick_actions": [
+                {"label": "Send invoice", "url": "#"},
+                {"label": "Mark as paid", "url": "#"},
+                {"label": "Download receipt", "url": "#"},
+                {"label": "Issue refund", "url": "#"},
+                {"label": "Open reservation", "url": "/ops/reservations/"},
+            ],
         }

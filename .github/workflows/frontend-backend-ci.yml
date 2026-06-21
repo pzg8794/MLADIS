@@ -1,0 +1,74 @@
+name: Frontend and Backend CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feature/**
+      - fix/**
+      - recovery/**
+
+jobs:
+  frontend:
+    name: React frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Django-served bundle
+        run: npm run build:django
+
+  backend:
+    name: Django backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: airbnb_agent
+    env:
+      SECRET_KEY: ci-secret-key
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1,testserver
+      ACCOUNT_DEFAULT_HTTP_PROTOCOL: http
+      SITE_DOMAIN: 127.0.0.1:8000
+      SITE_NAME: MLADIS CI
+      EMAIL_BACKEND: django.core.mail.backends.locmem.EmailBackend
+      STRIPE_SECRET_KEY: sk_test_ci_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+      PAYPAL_CLIENT_ID: ci-placeholder
+      PAYPAL_CLIENT_SECRET: ci-placeholder
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: airbnb_agent/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Django system checks
+        run: python manage.py check
+
+      - name: Run booking tests
+        run: python manage.py test bookings --verbosity 2

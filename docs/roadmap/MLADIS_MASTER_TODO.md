@@ -1,6 +1,6 @@
 # MLADIS Master TODO / Roadmap
 
-Last status sweep: 2026-06-10
+Last status sweep: 2026-06-19
 
 This is the central execution checklist for MLADIS. It consolidates the business/legal checklist, platform-account tracker, architecture roadmap, live-deployment notes, and current product/re-architecture priorities.
 
@@ -36,8 +36,8 @@ Sensitive values and official private records must stay in the private Google Dr
 | Medium | Archive Diana contractor agreement | Done | Archived in private/source business records. |
 | Medium | Prepare Diana operations acknowledgment | In progress | Piter/MLADIS-signed copy exists; Diana signature/acceptance remains pending unless later confirmed. |
 | Medium | Prepare B-1 business visitor process package | Done | Prepared for future planning; not a guarantee or substitute for legal advice. |
-| High | Start Queens/NY publication process | In progress | Designation request was sent; track clerk/newspaper response and publication run. |
-| High | Complete NY publication requirement | Todo | Publish for six weeks, collect affidavits, file Certificate of Publication. |
+| High | Start Queens/NY publication process | In progress | **Weekly (The Forum, Queens designated):** Patricia confirmed $375 (6 weeks + affidavit); CC auth form submitted 2026-06-19; draft run dates 06/11–07/16; payment/launch confirmation still pending. **Daily (NY Daily News):** Order 87497 approved, $235, first run 2026-06-10 — already running. Total spent: $610. |
+| High | Complete NY publication requirement | In progress | NY Daily News (daily) running since 2026-06-10. The Forum (weekly) pending Patricia's payment confirmation. Need both papers to run 6 weeks, then collect affidavits of publication. |
 | High | File Certificate of Publication with affidavits | Todo | Do after newspaper affidavits are received. |
 | Medium | Evaluate BOI requirement status periodically | In progress | Current private tracker says domestic LLCs were exempt under 2025 interim final rule as reviewed on 2026-06-03; re-check before relying on it for future deadlines. |
 
@@ -48,8 +48,10 @@ Sensitive values and official private records must stay in the private Google Dr
 | Priority | Item | Status | Evidence / notes |
 | --- | --- | --- | --- |
 | High | Prepare bank account opening packet | Done | Packet exists; safe version does not include EIN/SSN/bank numbers. |
-| High | Open MLADIS LLC business checking account | Todo | Needs bank/fintech selection and official documents. |
-| High | Separate MLADIS income from personal funds | Blocked | Requires business account. |
+| High | Open MLADIS LLC business checking account | In progress | Mercury application submitted 2026-06-19, in review (~1 business day to approval); required documents provided. Also required to clear Airbnb payout setup. |
+| High | Resolve Stripe account status requirement (valid bank account) | Done | SoFi bank account (••••0925, routing 031101334) added as USD payout destination on 2026-06-19; Stripe account status shows no active tasks. |
+| High | Complete Stripe account settings | Done | 2026-06-19: Tax details set to Company/Single-member LLC/MLADIS LLC/EIN; Branding updated (connected-intelligence logo, #0f172a navy + #14b8a6 teal); Customer emails confirmed (reply-to garcp37@mladis.com); Payment methods: ACH Direct Debit + Bank Transfers enabled (15 total); Account status clean; Checkout styling button updated to #14b8a6. |
+| High | Separate MLADIS income from personal funds | In progress | Stripe payouts now route to SoFi business account (••••0925); Mercury LLC business account pending approval — once active, evaluate routing Stripe payouts to Mercury instead. |
 | High | Use business account for direct-booking income, deposits, refunds, expenses, software, hosting, ads, repairs, and cleaning | Blocked | Requires business account and reconciliation process. |
 | Medium | Keep reserve for refunds, chargebacks, and deposit timing | Todo | Add once bank account exists. |
 | Medium | Export monthly bank statements to private records | Blocked | Requires business account. |
