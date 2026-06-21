@@ -187,17 +187,6 @@ function ExpiringSoonPanel({ holds, onSelect }: { holds: ExpiringDepositHold[]; 
   );
 }
 
-function EmptyDetailPanel() {
-  return (
-    <aside className="deposit-v4-detail">
-      <section className="deposit-v4-person-card">
-        <h2>Select a deposit hold</h2>
-        <p className="deposit-v4-muted">Choose a row to review authorization state, timeline, payment attempts, and allowed actions.</p>
-      </section>
-    </aside>
-  );
-}
-
 function SelectedDepositPanel({
   selected,
   onClose,
@@ -331,6 +320,10 @@ export function OpsDepositsPage() {
 
   const selected = snapshot?.rows.find((row) => row.id === selectedId) || null;
 
+  function toggleSelected(id: string) {
+    setSelectedId((current) => (current === id ? '' : id));
+  }
+
   async function applyAction(action: DepositHoldAction) {
     if (!selected) return;
     setBusyAction(action);
@@ -388,23 +381,21 @@ export function OpsDepositsPage() {
         <ExpiringSoonPanel holds={snapshot.expiringHolds} onSelect={setSelectedId} />
       </section>
 
-      <section className="deposit-v4-workspace">
+      <section className={`deposit-v4-workspace ${selected ? 'deposit-v4-workspace--detail-open' : 'deposit-v4-workspace--no-detail'}`}>
         <DepositsTable
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={toggleSelected}
           visibleRows={visibleRows}
           query={query}
           onQueryChange={setQuery}
         />
-        {selected ? (
+        {selected && (
           <SelectedDepositPanel
             selected={selected}
             onClose={() => setSelectedId('')}
             onAction={applyAction}
             busyAction={busyAction}
           />
-        ) : (
-          <EmptyDetailPanel />
         )}
       </section>
     </main>
