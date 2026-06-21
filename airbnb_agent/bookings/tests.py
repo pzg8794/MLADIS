@@ -102,33 +102,108 @@ TINY_PNG_BYTES = (
 )
 
 
+@override_settings(STORAGES=TEST_STORAGES)
 class OpsNavigationContractTests(TestCase):
     expected_nav = [
-        ("Overview", "Dashboard", "/ops/dashboard/"),
+        ("Overview", "Command Center", "/ops/dashboard/"),
         ("Operations", "Reservations", "/ops/reservations/"),
         ("Operations", "Calendar", "/ops/calendar/"),
-        ("Operations", "Stays", "/ops/stays/"),
+        ("Operations", "Guests", "/ops/customers/"),
         ("Operations", "Maintenance", "/ops/maintenance/"),
         ("Operations", "Payments", "/ops/payments/"),
         ("Operations", "Deposits", "/ops/deposits/"),
         ("Operations", "Reports", "/ops/reports/"),
-        ("Operations", "Agent Intelligence", "/ops/agent/"),
-        ("Business", "Listings", "/ops/listings/"),
-        ("Business", "Customers", "/ops/customers/"),
+        ("Operations", "FairAgent", "/ops/agent/"),
+        ("Business", "Properties", "/ops/properties/"),
         ("Business", "Tasks", "/ops/workboard/"),
         ("Admin", "Settings", "/ops/settings/"),
         ("Admin", "Users", "/ops/admin/"),
     ]
+
+    def setUp(self):
+        self.staff_user = get_user_model().objects.create_user(
+            "piter",
+            "garciapiterz@gmail.com",
+            "secret",
+            is_staff=True,
+        )
+        self.client.force_login(self.staff_user)
+        site_settings = SiteSettings.current()
+        site_settings.logo_url = "https://cdn.example.test/mladis-logo.png"
+        site_settings.save(update_fields=["logo_url", "updated_at"])
 
     def test_canonical_nav_has_expected_groups_labels_and_urls(self):
         actual_nav = [(item["group"], item["label"], item["href"]) for item in OPS_NAV_ITEMS]
 
         self.assertEqual(actual_nav, self.expected_nav)
 
-    def test_every_canonical_nav_url_resolves(self):
-        for _group, label, href in self.expected_nav:
-            with self.subTest(label=label, href=href):
-                self.assertIsNotNone(resolve(href))
+    def _assert_route(self, href: str, expected_view_name: str):
+        match = resolve(href)
+        self.assertEqual(match.view_name, expected_view_name)
+        self.assertEqual(reverse(expected_view_name), href)
+        response = self.client.get(href)
+        self.assertEqual(response.status_code, 200)
+        html_content = response.content.decode("utf-8")
+        nav_match = re.search(
+            r'<script id="mladis-ops-nav-items" type="application/json">(.*?)</script>',
+            html_content,
+            re.S,
+        )
+        self.assertIsNotNone(nav_match, "Missing canonical ops nav JSON payload")
+        nav_items = json.loads(nav_match.group(1))
+        actual_nav = [(item["group"], item["label"], item["href"]) for item in nav_items]
+        self.assertEqual(actual_nav, self.expected_nav)
+        self.assertNotIn("Business profile", html_content)
+    def test_ops_dashboard_routes(self):
+        self._assert_route("/ops/dashboard/", "bookings:ops-dashboard")
+
+    def test_ops_reservations_routes(self):
+        self._assert_route("/ops/reservations/", "bookings:ops-reservations")
+
+    def test_ops_calendar_routes(self):
+        self._assert_route("/ops/calendar/", "bookings:calendar-ops")
+
+    def test_ops_guests_routes(self):
+        self._assert_route("/ops/customers/", "bookings:ops-customers")
+
+    def test_ops_maintenance_routes(self):
+        self._assert_route("/ops/maintenance/", "bookings:ops-maintenance")
+
+    def test_ops_payments_routes(self):
+        self._assert_route("/ops/payments/", "bookings:ops-payments")
+
+    def test_ops_deposits_routes(self):
+        self._assert_route("/ops/deposits/", "bookings:ops-deposits")
+
+    def test_ops_reports_routes(self):
+        self._assert_route("/ops/reports/", "bookings:ops-reports")
+
+    def test_ops_fairagent_routes(self):
+        self._assert_route("/ops/agent/", "bookings:ops-agent")
+
+    def test_ops_properties_routes(self):
+        self._assert_route("/ops/properties/", "bookings:ops-properties")
+
+    def test_ops_tasks_routes(self):
+        self._assert_route("/ops/workboard/", "operations:workboard")
+
+    def test_ops_settings_routes(self):
+        self._assert_route("/ops/settings/", "bookings:ops-settings")
+
+    def test_ops_users_routes(self):
+        self._assert_route("/ops/admin/", "bookings:ops-admin")
+
+    def test_legacy_stays_route_redirects_to_properties(self):
+        response = self.client.get("/ops/stays/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/ops/properties/")
+
+    def test_legacy_listings_route_redirects_to_properties(self):
+        response = self.client.get("/ops/listings/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/ops/properties/")
 
     def test_react_fallback_has_no_stale_left_nav_labels(self):
         repo_root = Path(__file__).resolve().parents[2]
@@ -140,15 +215,12 @@ class OpsNavigationContractTests(TestCase):
                 self.assertIn(f"href: '{href}'", fallback_source)
 
         stale_label_patterns = [
-            "label: 'Command Center'",
-            "label: 'Guests / Customers'",
-            "label: 'Properties'",
+            "label: 'Dashboard'",
+            "label: 'Stays'",
+            "label: 'Agent Intelligence'",
+            "label: 'Listings'",
+            "label: 'Customers'",
             "label: 'Work Orders'",
-            "label: 'Brand Settings'",
-            "label: 'Agent FAQ'",
-            "label: 'OAuth / Integrations'",
-            "label: 'OAuth & Integrations'",
-            "label: 'System'",
         ]
         for pattern in stale_label_patterns:
             with self.subTest(stale_label_pattern=pattern):
@@ -176,6 +248,154 @@ class OpsNavigationContractTests(TestCase):
         )
         self.assertIsNotNone(width_match, "Missing expanded sidebar width rule")
         self.assertGreaterEqual(int(width_match.group(1)), 240)
+
+
+# ---------------------------------------------------------------------------
+# Ops route permission regression tests
+# ---------------------------------------------------------------------------
+
+@override_settings(
+    STORAGES=TEST_STORAGES,
+    MLADIS_WORKBOARD_OWNER_EMAILS=["staff@example.com"],
+    MLADIS_WORKBOARD_OWNER_USERNAMES=[],
+)
+class OpsRoutePermissionRegressionTests(TestCase):
+    """
+    Regression suite: every ops page route must return HTTP 200 for any
+    active staff member, and must deny anonymous / non-staff users (302 or 403).
+
+    History: the workboard page and API were accidentally restricted to a
+    hard-coded owner allow-list, so ordinary staff received a 403.  These
+    tests prevent that class of regression across the entire ops surface.
+    """
+
+    # All ops page routes (SPA shell served by Django)
+    OPS_PAGE_ROUTES = [
+        "/ops/dashboard/",
+        "/ops/reservations/",
+        "/ops/reports/",
+        "/ops/customers/",
+        "/ops/deposits/",
+        "/ops/agent/",
+        "/ops/maintenance/",
+        "/ops/calendar/",
+        "/ops/settings/",
+        "/ops/admin/",
+        "/ops/workboard/",
+    ]
+
+    # Parameterless read-only API routes that must be reachable by staff
+    OPS_API_ROUTES = [
+        "/api/ops/summary/",
+        "/api/ops/reports/",
+        "/api/ops/reservations/",
+        "/api/ops/customers/",
+        "/api/ops/deposits/",
+        "/api/ops/agent/",
+        "/api/ops/maintenance/",
+        "/api/ops/calendar/",
+        "/api/ops/workboard/",
+    ]
+
+    def setUp(self):
+        User = get_user_model()
+        # A staff user who is NOT in the owner email allow-list.
+        self.staff_user = User.objects.create_user(
+            "diana-staff", "diana@example.com", "pass", is_staff=True
+        )
+        self.regular_user = User.objects.create_user(
+            "guest", "guest@example.com", "pass", is_staff=False
+        )
+
+    # ---- Page routes: staff access ----------------------------------------
+
+    def test_all_ops_page_routes_return_200_for_staff(self):
+        """Every ops page route must serve the SPA shell for any staff user."""
+        self.client.force_login(self.staff_user)
+        for path in self.OPS_PAGE_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(
+                    response.status_code,
+                    200,
+                    f"Expected 200 for staff on {path}, got {response.status_code}",
+                )
+
+    # ---- Page routes: non-staff blocked ------------------------------------
+
+    def test_all_ops_page_routes_deny_anonymous_users(self):
+        """Anonymous users must be redirected away from every ops page route."""
+        for path in self.OPS_PAGE_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertIn(
+                    response.status_code,
+                    {302, 403},
+                    f"Expected redirect/deny for anon on {path}, got {response.status_code}",
+                )
+
+    def test_all_ops_page_routes_deny_non_staff_users(self):
+        """Non-staff authenticated users must not reach any ops page route."""
+        self.client.force_login(self.regular_user)
+        for path in self.OPS_PAGE_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertIn(
+                    response.status_code,
+                    {302, 403},
+                    f"Expected redirect/deny for non-staff on {path}, got {response.status_code}",
+                )
+
+    # ---- API routes: staff access -----------------------------------------
+
+    def test_all_ops_api_routes_return_200_for_staff(self):
+        """Every ops API route must return HTTP 200 for any staff user."""
+        self.client.force_login(self.staff_user)
+        for path in self.OPS_API_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(
+                    response.status_code,
+                    200,
+                    f"Expected 200 for staff on {path}, got {response.status_code}",
+                )
+
+    # ---- API routes: non-staff blocked ------------------------------------
+
+    def test_all_ops_api_routes_deny_anonymous_users(self):
+        """Anonymous users must be denied every ops API route."""
+        for path in self.OPS_API_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertIn(
+                    response.status_code,
+                    {302, 403},
+                    f"Expected redirect/deny for anon on {path}, got {response.status_code}",
+                )
+
+    def test_all_ops_api_routes_deny_non_staff_users(self):
+        """Non-staff authenticated users must not reach any ops API route."""
+        self.client.force_login(self.regular_user)
+        for path in self.OPS_API_ROUTES:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertIn(
+                    response.status_code,
+                    {302, 403},
+                    f"Expected redirect/deny for non-staff on {path}, got {response.status_code}",
+                )
+
+    # ---- Workboard-specific: staff must get JSON, not HTML error ----------
+
+    def test_workboard_api_returns_json_for_non_owner_staff(self):
+        """Workboard API must not silently return an HTML error page to staff."""
+        self.client.force_login(self.staff_user)
+        response = self.client.get("/api/ops/workboard/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get("Content-Type", "").split(";")[0], "application/json")
+        payload = response.json()
+        self.assertIn("lists", payload)
+        self.assertIn("summary_cards", payload)
 
 
 class BookingInquiryFormTests(TestCase):
@@ -4056,8 +4276,9 @@ class MaintenanceOpsTests(TestCase):
         response = self.client.get(reverse("bookings:ops-maintenance"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MLADIS Modern Dashboard")
-        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+        self.assertContains(response, "Maintenance &amp; Work Orders")
+        self.assertContains(response, "frontend/modern-dashboard/assets/ops-maintenance.css")
+        self.assertContains(response, "WO-2026-0104")
 
     def test_maintenance_api_rejects_completed_event_without_photo(self):
         self.client.force_login(self.user)

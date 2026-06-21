@@ -1,18 +1,18 @@
 {% extends "bookings/base_ops.html" %}
 {% load static %}
 
-{% block title %}Customers CRM · MLADIS{% endblock %}
+{% block title %}{{ page_title|default:'Guests' }} · MLADIS{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-customers.css' %}?v=ops-customers-v14">
 {% endblock %}
 
 {% block content %}
-<main class="ops-cx-page" aria-label="Customers CRM">
+<main class="ops-cx-page" aria-label="{{ page_title|default:'Guests' }} CRM">
   <header class="ops-cx-header">
     <div>
-      <h1>Customers</h1>
-      <p>Manage guest relationships, profiles, travel details, and communication history.</p>
+      <h1>{{ page_heading|default:'Guests' }}</h1>
+      <p>{{ page_subtitle|default:'Manage guest relationships, profiles, travel details, and communication history.' }}</p>
     </div>
     <div class="ops-cx-header-actions">
       <button class="ops-cx-btn" type="button">Filters</button>
@@ -76,14 +76,14 @@
         <div class="ops-cx-table-shell">
       <table class="ops-cx-table">
         <colgroup>
-          <col style="width:36px">
-          <col><!-- Guest: auto, gets remainder -->
-          <col style="width:16%">
-          <col style="width:12%">
-          <col style="width:8%">
-          <col style="width:10%">
-          <col style="width:8%">
-          <col style="width:24%">
+          <col class="ops-cx-col-check">
+          <col class="ops-cx-col-guest"><!-- Guest: auto, gets remainder -->
+          <col class="ops-cx-col-country">
+          <col class="ops-cx-col-channel">
+          <col class="ops-cx-col-stays">
+          <col class="ops-cx-col-spend">
+          <col class="ops-cx-col-status">
+          <col class="ops-cx-col-contact">
         </colgroup>
         <thead>
           <tr>

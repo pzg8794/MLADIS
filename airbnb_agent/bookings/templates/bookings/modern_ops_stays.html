@@ -1,20 +1,20 @@
 {% extends "bookings/base_ops.html" %}
 {% load static %}
 
-{% block title %}Stays &amp; Listings &middot; MLADIS{% endblock %}
+{% block title %}{{ page_title|default:'Guests' }} &middot; MLADIS{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-stays.css' %}?v=ops-stays-v1">
 {% endblock %}
 
 {% block content %}
-        <main class="ops-sl-page" aria-label="Stays and Listings">
+        <main class="ops-sl-page" aria-label="{{ page_title|default:'Guests' }}">
 
           {# ── Page header ── #}
           <div class="ops-sl-header">
             <div>
-              <h1 class="ops-sl-h1">Stays &amp; Listings</h1>
-              <p class="ops-sl-subtitle">Manage live listings, public content, amenities, pricing, and operational readiness.</p>
+              <h1 class="ops-sl-h1">{{ page_heading|default:'Guests' }}</h1>
+              <p class="ops-sl-subtitle">{{ page_subtitle|default:'Manage guest stays, channels, arrivals, and operational readiness.' }}</p>
             </div>
             <div class="ops-sl-header__actions">
               <button class="btn-sl btn-sl--outline" type="button">
@@ -27,7 +27,7 @@
               </button>
               <a href="#" class="btn-sl btn-sl--teal">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                Add New Listing
+                {{ page_action_label|default:"Add New Guest" }}
               </a>
             </div>
           </div>
@@ -85,8 +85,8 @@
                 type="text"
                 name="search"
                 value="{{ search }}"
-                placeholder="Search by stay name, property, area..."
-                aria-label="Search listings"
+                placeholder="{{ page_search_placeholder|default:'Search by guest name, email, stay...' }}"
+                aria-label="{{ page_search_aria_label|default:'Search guests' }}"
               >
             </div>
             <select class="ops-sl-filter-select" name="area" aria-label="Filter by area">
@@ -107,7 +107,7 @@
           <div class="ops-sl-workspace{% if not detail %} ops-sl-workspace--full{% endif %}">
 
             {# ═══ Left column: listing cards ═══ #}
-            <section class="ops-sl-list" aria-label="Listing cards">
+            <section class="ops-sl-list" aria-label="{{ page_list_aria_label|default:'Guest cards' }}">
 
               {% for card in cards %}
                 <a
@@ -186,7 +186,7 @@
                 </a>
               {% empty %}
                 <p class="ops-sl-empty">
-                  {% if search %}No listings found for &ldquo;{{ search }}&rdquo;.{% else %}No listings in this category.{% endif %}
+                  {% if search %}No results found for &ldquo;{{ search }}&rdquo;.{% else %}No results in this category.{% endif %}
                 </p>
               {% endfor %}
 
@@ -199,7 +199,7 @@
 
             {# ═══ Right column: selected listing detail panel ═══ #}
             {% if detail %}
-              <aside class="ops-sl-detail" aria-label="Listing detail: {{ detail.stay.business_display_name }}">
+              <aside class="ops-sl-detail" aria-label="{{ page_detail_aria_label|default:'Guest detail' }}: {{ detail.stay.business_display_name }}">
 
                 {# Photo area with close button #}
                 <div class="ops-sl-detail__photo-wrap">
@@ -248,7 +248,7 @@
                       </a>
                     {% endif %}
                     <a href="/ops/stays/{{ detail.stay.slug }}/edit/" class="btn-sl btn-sl--sm">
-                      &#9998; Edit listing
+                      &#9998; Edit entry
                     </a>
                     <a href="/ops/calendar/?stay={{ detail.stay.slug }}" class="btn-sl btn-sl--sm">
                       &#128197; Open calendar
@@ -281,7 +281,7 @@
                           </linearGradient>
                         </defs>
                       </svg>
-                      <div class="ops-sl-avail__metric" style="text-align:right">
+                      <div class="ops-sl-avail__metric ops-sl-avail__metric--end">
                         <span class="ops-sl-avail__pct">${{ detail.adr }}</span>
                         <span class="ops-sl-avail__label">ADR</span>
                         <span class="ops-sl-avail__delta ops-sl-avail__delta--up">{{ detail.adr_delta }}</span>
@@ -361,7 +361,7 @@
                         </strong>
                       </div>
                     </div>
-                    <a href="/ops/maintenance/?stay={{ detail.stay.slug }}" class="ops-sl-detail__link" style="display:inline-block;margin-top:8px;">
+                    <a href="/ops/maintenance/?stay={{ detail.stay.slug }}" class="ops-sl-detail__link ops-sl-detail__link--spaced">
                       View maintenance &rarr;
                     </a>
                   </section>

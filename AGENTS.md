@@ -217,20 +217,19 @@ If you need to change the left navigation, change `OPS_NAV_ITEMS` first. Then up
 
 | # | Label | URL | Notes |
 |---|---|---|---|
-| 1 | Dashboard | `/ops/dashboard/` | React app |
+| 1 | Command Center | `/ops/dashboard/` | React app |
 | 2 | Reservations | `/ops/reservations/` | React app |
 | 3 | Calendar | `/ops/calendar/` | React app |
-| 4 | Stays | `/ops/stays/` | Django (`modern_ops_stays.html`) |
-| 5 | Maintenance | `/ops/maintenance/` | React app |
+| 4 | Guests | `/ops/customers/` | Django (`modern_ops_customers.html`) |
+| 5 | Maintenance | `/ops/maintenance/` | Django (`modern_ops_maintenance.html`) |
 | 6 | Payments | `/ops/payments/` | Django (`modern_ops_payments.html`) |
 | 7 | Deposits | `/ops/deposits/` | React app |
 | 8 | Reports | `/ops/reports/` | React app |
-| 9 | Agent Intelligence | `/ops/agent/` | React app |
-| 10 | Listings | `/ops/listings/` | React app |
-| 11 | Customers | `/ops/customers/` | Django (`modern_ops_customers.html`) |
-| 12 | Tasks | `/ops/workboard/` | React app |
-| 13 | Settings | `/ops/settings/` | React app |
-| 14 | Users | `/ops/admin/` | React app |
+| 9 | FairAgent | `/ops/agent/` | React app |
+| 10 | Properties | `/ops/properties/` | Django (`modern_ops_stays.html`) |
+| 11 | Tasks | `/ops/workboard/` | React app |
+| 12 | Settings | `/ops/settings/` | React app |
+| 13 | Users | `/ops/admin/` | React app |
 
 **If a label or URL is changed, it must be changed in all three sources in the same commit. No partial updates.**
 
@@ -240,7 +239,7 @@ If you need to change the left navigation, change `OPS_NAV_ITEMS` first. Then up
 
 1. **Never create a new hardcoded left-nav array in a page/component/template. Import or render the canonical object.**
 2. **Never change nav labels or URLs in `app.js` only. Change `OPS_NAV_ITEMS`, update the TypeScript fallback, rebuild, and commit all outputs together.**
-3. **Never add or remove a nav item in only one consumer. The Django runtime object, TypeScript fallback, Stays fallback, and docs must stay aligned.**
+3. **Never add or remove a nav item in only one consumer. The Django runtime object, TypeScript fallback, route redirects, and docs must stay aligned.**
 4. **Payments always -> `/ops/payments/`. Deposits always -> `/ops/deposits/`. These are separate pages with separate routes. Never conflate them.**
 5. **Every URL in the canonical nav must have a route in `urls.py`. Missing routes = 404 = bug to fix immediately.**
 6. **If the browser shows different left menus between `/ops/dashboard/` and `/ops/payments/`, stop and fix nav parity before doing any visual work.**
@@ -260,14 +259,15 @@ If you need to change the left navigation, change `OPS_NAV_ITEMS` first. Then up
 After any nav change:
 1. Load `/ops/dashboard/` → expand the sidebar → confirm labels match canonical table above.
 2. Load `/ops/payments/` → expand the sidebar → confirm same labels.
-3. Load `/ops/stays/` → confirm the quick-launch grid matches.
-4. Run `python manage.py check` from `airbnb_agent/` and `npm run build:django` from `frontend/`.
+3. Load `/ops/stays/` only as a legacy redirect to `/ops/properties/` and confirm the Properties page loads.
+4. Load `/ops/customers/` and confirm the Guests page renders.
+5. Run `python manage.py check` from `airbnb_agent/` and `npm run build:django` from `frontend/`.
 
 ### `ops-stays-command.js`
 A third nav-like list lives in `ops-stays-command.js` (the `/ops/stays/` command-center IIFE). The `modules` array in this file is kept in sync with the canonical nav above. The descriptions and colors may differ from the sidebar — only the Label and URL must match exactly.
 
 ### Invariant
-**Payments must always route to `/ops/payments/`; Deposits must always route to `/ops/deposits/`. These must agree across all three sources: `base_ops.html`, `app.js`, and `ops-stays-command.js`.** Any agent that changes a payments or deposits route must update all three sources in the same commit.
+**Payments must always route to `/ops/payments/`; Deposits must always route to `/ops/deposits/`; Guests must always route to `/ops/customers/`; Properties must always route to `/ops/properties/`. These must agree across all three sources: `base_ops.html`, `app.js`, and `ops-stays-command.js`.** Any agent that changes these routes must update all three sources in the same commit.
 
 
 ## Payments page — additional contracts

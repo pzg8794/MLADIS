@@ -1368,6 +1368,8 @@ class ModernOpsStaysView(TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         service = StayListingService()
+        route_name = getattr(getattr(self.request, "resolver_match", None), "url_name", "")
+        is_properties_page = route_name == "ops-properties"
 
         tab = self.request.GET.get("tab", "all")
         search = self.request.GET.get("search", "").strip()
@@ -1390,6 +1392,22 @@ class ModernOpsStaysView(TemplateView):
 
         ctx.update(
             {
+                "page_title": "Properties" if is_properties_page else "Guests",
+                "page_heading": "Properties" if is_properties_page else "Guests",
+                "page_subtitle": (
+                    "Manage live properties, public content, amenities, pricing, and operational readiness."
+                    if is_properties_page
+                    else "Manage guest stays, channels, arrivals, and operational readiness."
+                ),
+                "page_action_label": "Add New Property" if is_properties_page else "Add New Guest",
+                "page_search_placeholder": (
+                    "Search by property name, area, listing..."
+                    if is_properties_page
+                    else "Search by guest name, email, stay..."
+                ),
+                "page_search_aria_label": "Search properties" if is_properties_page else "Search guests",
+                "page_list_aria_label": "Property cards" if is_properties_page else "Guest cards",
+                "page_detail_aria_label": "Property detail" if is_properties_page else "Guest detail",
                 "tab": tab,
                 "search": search,
                 "cards": cards,
@@ -2160,6 +2178,17 @@ class OpsReservationStatusAPIView(View):
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsCustomersView(TemplateView):
     template_name = "bookings/modern_ops_customers.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(
+            {
+                "page_title": "Guests",
+                "page_heading": "Guests",
+                "page_subtitle": "Manage guest relationships, profiles, travel details, and communication history.",
+            }
+        )
+        return ctx
 
     COUNTRY_FLAGS = {
         "DO": "🇩🇴",

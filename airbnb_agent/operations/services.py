@@ -15,13 +15,17 @@ class WorkboardAccessPolicy:
     def can_manage(self, user):
         if not getattr(user, "is_authenticated", False) or not getattr(user, "is_active", False):
             return False
+        # Any active staff member may access the workboard.
+        if getattr(user, "is_staff", False):
+            return True
+        # Fallback: configured owner emails / usernames also grant access.
         email = (getattr(user, "email", "") or "").lower()
         username = (getattr(user, "username", "") or "").lower()
         return bool(email and email in self.owner_emails) or bool(username and username in self.owner_usernames)
 
     def require_owner(self, user):
         if not self.can_manage(user):
-            raise PermissionDenied("Only Piter Garcia can manage the MLADIS workboard.")
+            raise PermissionDenied("Workboard access requires staff privileges.")
 
 
 class WorkboardService:
