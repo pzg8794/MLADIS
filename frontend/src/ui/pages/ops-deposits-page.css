@@ -628,8 +628,11 @@
 
 .deposit-v4-detail {
   min-width: 0;
+  max-height: calc(100vh - 92px);
+  overflow-y: auto;
   position: sticky;
   top: 16px;
+  scrollbar-width: thin;
 }
 
 .deposit-v4-person-card {
@@ -726,6 +729,8 @@
   display: block;
   width: 82px;
   height: 56px;
+  border: 1px solid #e5edf5;
+  background: #eef5ff;
   object-fit: cover;
   border-radius: 7px;
 }
@@ -741,11 +746,15 @@
 }
 
 .deposit-v4-reservation-card h3 {
+  display: -webkit-box;
   margin: 3px 0 5px;
+  overflow: hidden;
   color: var(--deposit-ink);
   font-size: 12px;
   font-weight: 850;
   line-height: 1.2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .deposit-v4-hold-facts {
@@ -951,10 +960,14 @@
 .deposit-v4-note p,
 .deposit-v4-muted {
   margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
   color: #334155;
   font-size: 11px;
   font-weight: 500;
   line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
 
 .deposit-v4-actions {

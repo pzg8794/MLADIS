@@ -156,6 +156,12 @@ export class DepositMetric {
 }
 
 export class DepositReservation {
+  private static readonly fallbackImages = [
+    '/static/frontend/modern-dashboard/stays/stay-3br.jpg',
+    '/static/frontend/modern-dashboard/stays/stay-2br.jpg',
+    '/static/frontend/modern-dashboard/stays/stay-6br.jpg',
+  ];
+
   constructor(
     public readonly key: string,
     public readonly number: string,
@@ -182,6 +188,17 @@ export class DepositReservation {
 
   get nightsLabel(): string {
     return this.nights ? `${this.nights} nights` : 'Dates pending';
+  }
+
+  get imageFallbackUrl(): string {
+    const normalized = this.listing.toLowerCase();
+    if (normalized.includes('6 beds')) return DepositReservation.fallbackImages[2];
+    if (normalized.includes('2 beds')) return DepositReservation.fallbackImages[1];
+    return DepositReservation.fallbackImages[0];
+  }
+
+  get displayImageUrl(): string {
+    return this.imageUrl || this.imageFallbackUrl;
   }
 }
 
@@ -318,6 +335,14 @@ export class DepositHold {
     if (action === 'approve') return this.canApprove;
     if (action === 'release') return this.canRelease;
     return this.canRequestGuestAction;
+  }
+
+  get holdDisplayNumber(): string {
+    return `D-${String(this.recordId).padStart(4, '0')}`;
+  }
+
+  get fullHoldLabel(): string {
+    return this.holdNumber;
   }
 }
 

@@ -152,7 +152,7 @@ function DepositsTable({
                     <span><strong>{row.guestName}</strong><small>{row.email}</small></span>
                   </div>
                 </td>
-                <td><strong>{row.holdNumber}</strong><small>{row.reservation.number}</small></td>
+                <td><strong title={row.fullHoldLabel}>{row.holdDisplayNumber}</strong><small>{row.reservation.number}</small></td>
                 <td>{row.reservation.listing}</td>
                 <td><strong>{row.money.display}</strong><small>{row.money.currency}</small></td>
                 <td>{row.requestedDate}<small>{row.requestedTime}</small></td>
@@ -231,9 +231,15 @@ function SelectedDepositPanel({
         </div>
 
         <article className="deposit-v4-reservation-card">
-          <img src={selected.reservation.imageUrl} alt={selected.reservation.listing} />
+          <img
+            src={selected.reservation.displayImageUrl}
+            alt={selected.reservation.listing}
+            onError={(event) => {
+              event.currentTarget.src = selected.reservation.imageFallbackUrl;
+            }}
+          />
           <div>
-            <small>Reservation <strong>{selected.holdNumber}</strong></small>
+            <small>Reservation <strong title={selected.fullHoldLabel}>{selected.holdDisplayNumber}</strong></small>
             <h3>{selected.reservation.listing}</h3>
             <p>{selected.reservation.dateRange} • {selected.reservation.nightsLabel}</p>
           </div>
