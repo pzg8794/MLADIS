@@ -114,6 +114,17 @@ function DepositsTable({
 
       <div className="deposit-v4-table-scroll">
         <table>
+          <colgroup>
+            <col style={{ width: '34px' }} />
+            <col style={{ width: '19%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '10%' }} />
+          </colgroup>
           <thead>
             <tr>
               <th className="deposit-v4-check-cell"><span className="deposit-v4-check" /></th>
