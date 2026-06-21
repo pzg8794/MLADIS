@@ -28,6 +28,148 @@ A payment transaction exists when a provider/payment workflow creates a money-mo
 8. Payment provider actions must be server-side only.
 9. Capture/release/refund require explicit staff action unless a separate scheduled automation contract is approved.
 
+## Relationship diagram
+
+```mermaid
+classDiagram
+direction LR
+
+class Reservation {
+  +int id
+  +string requestKey
+  +string guestName
+  +date checkIn
+  +date checkOut
+  +displayTotal() string
+}
+
+class DepositHold {
+  +UUID id
+  +string holdNumber
+  +DepositHoldKind kind
+  +DepositHoldStatus status
+  +Money amount
+  +string provider
+  +string providerAuthorizationId
+  +datetime authorizedAt
+  +datetime expiresAt
+  +datetime capturedAt
+  +datetime releasedAt
+  +canCapture() boolean
+  +canRelease() boolean
+}
+
+class PaymentTransaction {
+  +UUID id
+  +string transactionNumber
+  +PaymentTransactionType type
+  +PaymentTransactionStatus status
+  +Money amount
+  +string provider
+  +string providerTransactionId
+  +datetime receivedAt
+  +datetime settledAt
+  +datetime refundedAt
+  +isPaid() boolean
+  +canRefund() boolean
+}
+
+class Invoice {
+  +UUID id
+  +string invoiceNumber
+  +InvoiceStatus status
+  +Money amountDue
+  +string documentUrl
+}
+
+class ProviderEvent {
+  +UUID id
+  +string provider
+  +string eventType
+  +string providerEventId
+  +JSON payload
+  +datetime receivedAt
+}
+
+class PaymentTimelineEvent {
+  +UUID id
+  +string eventType
+  +string label
+  +datetime createdAt
+}
+
+class HoldTimelineEvent {
+  +UUID id
+  +string eventType
+  +string label
+  +datetime createdAt
+}
+
+class PaymentReconciliationService {
+  +matchProviderEvent(event) PaymentTransaction
+  +reconcileTransaction(transaction) PaymentTransaction
+}
+
+class DepositHoldProviderService {
+  +createAuthorization(hold) DepositHold
+  +captureAuthorization(hold, amount) PaymentTransaction
+  +releaseAuthorization(hold) DepositHold
+  +syncProviderStatus(hold) DepositHold
+}
+
+class DataLakeService {
+  +emitPaymentEvent(transaction, metadata) void
+  +emitHoldEvent(hold, metadata) void
+  +emitRelationshipEvent(reservation, hold, transaction) void
+}
+
+Reservation "1" --> "many" DepositHold : authorizations
+Reservation "1" --> "many" PaymentTransaction : money movement
+DepositHold "1" --> "0..many" PaymentTransaction : capture/refund/attempts
+PaymentTransaction "0..many" --> "0..1" Invoice : invoice/receipt
+ProviderEvent "many" --> "0..1" DepositHold : may update authorization
+ProviderEvent "many" --> "0..1" PaymentTransaction : may create/reconcile
+DepositHold "1" *-- "many" HoldTimelineEvent : authorization timeline
+PaymentTransaction "1" *-- "many" PaymentTimelineEvent : payment timeline
+
+PaymentReconciliationService --> ProviderEvent
+PaymentReconciliationService --> PaymentTransaction
+DepositHoldProviderService --> DepositHold
+DepositHoldProviderService --> PaymentTransaction
+DataLakeService --> Reservation
+DataLakeService --> DepositHold
+DataLakeService --> PaymentTransaction
+```
+
+## Lifecycle bridge diagram
+
+```mermaid
+flowchart TD
+  A[Reservation created] --> B[DepositHold requested]
+  B --> C[Provider authorization created]
+  C --> D{Hold outcome}
+
+  D -->|Authorized| E[DepositHold status: AUTHORIZED]
+  D -->|Failed| F[DepositHold status: FAILED]
+  D -->|Canceled| G[DepositHold status: CANCELED]
+
+  E --> H{Staff/provider action}
+  H -->|Release hold| I[DepositHold released]
+  H -->|Capture hold| J[PaymentTransaction created: DEPOSIT_CAPTURE]
+  H -->|Guest pays stay| K[PaymentTransaction created: STAY_PAYMENT]
+
+  J --> L[Payment timeline updated]
+  K --> L
+  I --> M[Hold timeline updated]
+
+  L --> N[Invoice or receipt snapshot]
+  M --> O[Data lake hold event]
+  N --> P[Data lake payment event]
+
+  P --> Q[Reservation payment/deposit projection updates]
+  O --> Q
+```
+
 ## UI ownership
 
 Payments & Transactions page:
