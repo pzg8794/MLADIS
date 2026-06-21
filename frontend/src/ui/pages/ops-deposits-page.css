@@ -627,6 +627,7 @@
 }
 
 .deposit-v4-detail {
+  height: 600px;
   min-width: 0;
   max-height: calc(100vh - 92px);
   overflow-y: auto;
@@ -639,6 +640,7 @@
   position: relative;
   display: grid;
   gap: 11px;
+  min-height: 100%;
   padding: 13px;
 }
 
@@ -967,7 +969,7 @@
   font-weight: 500;
   line-height: 1.45;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 2;
 }
 
 .deposit-v4-actions {
@@ -1003,6 +1005,7 @@
   }
 
   .deposit-v4-detail {
+    height: auto;
     position: static;
   }
 }
