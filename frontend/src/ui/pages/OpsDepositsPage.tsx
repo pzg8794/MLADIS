@@ -84,13 +84,15 @@ function RiskBadge({ label, tone }: { label: string; tone: DepositRiskTone }) {
 function DepositsTable({
   selectedId,
   onSelect,
-  visibleRows,
+  rows,
+  totalRows,
   query,
   onQueryChange,
 }: {
   selectedId: string;
   onSelect: (id: string) => void;
-  visibleRows: DepositHold[];
+  rows: DepositHold[];
+  totalRows: number;
   query: string;
   onQueryChange: (query: string) => void;
 }) {
@@ -126,7 +128,7 @@ function DepositsTable({
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map((row) => (
+            {rows.map((row) => (
               <tr className={row.id === selectedId ? 'is-selected' : ''} key={row.id} onClick={() => onSelect(row.id)}>
                 <td className="deposit-v4-check-cell">
                   <button className={`deposit-v4-check ${row.id === selectedId ? 'is-checked' : ''}`} type="button" aria-label={`Select ${row.guestName}`}>
@@ -153,7 +155,7 @@ function DepositsTable({
       </div>
 
       <footer className="deposit-v4-table-footer">
-        <span>Showing {visibleRows.length ? 1 : 0} to {visibleRows.length} of {visibleRows.length} results</span>
+        <span>Showing {rows.length ? 1 : 0} to {rows.length} of {totalRows} results</span>
         <nav aria-label="Deposit pagination">
           <button type="button" aria-label="Previous page"><ChevronLeft size={16} /></button>
           <button className="is-active" type="button">1</button>
@@ -168,6 +170,7 @@ function DepositsTable({
 }
 
 function ExpiringSoonPanel({ holds, onSelect }: { holds: ExpiringDepositHold[]; onSelect: (id: string) => void }) {
+  const visibleHolds = holds.slice(0, 3);
   return (
     <section className="deposit-v4-expiring">
       <header>
@@ -175,7 +178,7 @@ function ExpiringSoonPanel({ holds, onSelect }: { holds: ExpiringDepositHold[]; 
         <a href="/ops/deposits/">View all ({holds.length})</a>
       </header>
       <div>
-        {holds.map((item) => (
+        {visibleHolds.map((item) => (
           <article key={item.id} onClick={() => onSelect(item.id)}>
             <i />
             <span><strong>{item.guest}</strong><small>{item.listing}</small></span>
@@ -311,6 +314,7 @@ export function OpsDepositsPage() {
   const visibleRows = useMemo(() => (
     snapshot ? service.filterDeposits(snapshot.rows, query) : []
   ), [query, service, snapshot]);
+  const pagedRows = useMemo(() => visibleRows.slice(0, 8), [visibleRows]);
 
   useEffect(() => {
     if (!snapshot) return;
@@ -385,7 +389,8 @@ export function OpsDepositsPage() {
         <DepositsTable
           selectedId={selectedId}
           onSelect={toggleSelected}
-          visibleRows={visibleRows}
+          rows={pagedRows}
+          totalRows={visibleRows.length}
           query={query}
           onQueryChange={setQuery}
         />
