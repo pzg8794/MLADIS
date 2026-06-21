@@ -974,7 +974,14 @@
 
 .deposit-v4-actions {
   border-top: 1px solid #eef2f7;
+  position: sticky;
+  bottom: -13px;
+  margin: 0 -13px -13px;
   padding-top: 10px;
+  padding-right: 13px;
+  padding-bottom: 13px;
+  padding-left: 13px;
+  background: #ffffff;
 }
 
 .deposit-v4-actions .deposit-v4-primary {
