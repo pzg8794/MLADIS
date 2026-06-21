@@ -4,7 +4,7 @@
 {% block title %}Payments & Transactions · MLADIS{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-payments.css' %}?v=ops-payments-v2">
+<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-payments.css' %}?v=ops-payments-v3">
 {% endblock %}
 
 {% block content %}
@@ -266,14 +266,24 @@
                   {% if action.kind == "post" %}
                     <form method="post" action="{{ action.url }}">
                       {% csrf_token %}
-                      <button class="ops-pay-action" type="submit">
-                        <span class="ops-pay-action-icon" aria-hidden="true"></span>
+                      <button class="ops-pay-action ops-pay-action--{{ action.tone|default:'blue' }}" type="submit">
+                        <span class="ops-pay-action-icon ops-pay-action-icon--{{ action.icon|default:'invoice' }}" aria-hidden="true"></span>
                         {{ action.label }}
                       </button>
                     </form>
+                  {% elif action.kind == "disabled" %}
+                    <button
+                      class="ops-pay-action ops-pay-action--disabled ops-pay-action--{{ action.tone|default:'blue' }}"
+                      type="button"
+                      disabled
+                      title="{{ action.disabled_reason }}"
+                    >
+                      <span class="ops-pay-action-icon ops-pay-action-icon--{{ action.icon|default:'invoice' }}" aria-hidden="true"></span>
+                      {{ action.label }}
+                    </button>
                   {% else %}
-                    <a class="ops-pay-action" href="{{ action.url }}">
-                      <span class="ops-pay-action-icon" aria-hidden="true"></span>
+                    <a class="ops-pay-action ops-pay-action--{{ action.tone|default:'blue' }}" href="{{ action.url }}">
+                      <span class="ops-pay-action-icon ops-pay-action-icon--{{ action.icon|default:'invoice' }}" aria-hidden="true"></span>
                       {{ action.label }}
                     </a>
                   {% endif %}

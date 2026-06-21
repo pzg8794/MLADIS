@@ -2747,6 +2747,7 @@ class OpsFinanceObjectTests(TestCase):
         self.assertEqual(payload["transactions"][0]["type"], "stay_payment")
         self.assertEqual(payload["detail"]["deposit_history"][0]["label"], "Damage deposit hold")
         self.assertEqual(payload["detail"]["quick_actions"][1]["kind"], "post")
+        self.assertEqual(payload["detail"]["quick_actions"][1]["icon"], "paid")
 
     def test_payment_action_mark_paid_updates_invoice_object(self):
         self.client.force_login(self.staff)

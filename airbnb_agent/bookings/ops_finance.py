@@ -30,6 +30,21 @@ ACTIVE_HOLD_STATUSES = {
 }
 
 
+def _payment_quick_action(label, kind, url="", *, action="", icon="invoice", tone="blue", disabled_reason=""):
+    payload = {
+        "label": label,
+        "kind": kind,
+        "url": url,
+        "icon": icon,
+        "tone": tone,
+    }
+    if action:
+        payload["action"] = action
+    if disabled_reason:
+        payload["disabled_reason"] = disabled_reason
+    return payload
+
+
 @dataclass(frozen=True)
 class OpsFinanceMoney:
     amount_cents: int
@@ -505,11 +520,25 @@ class PaymentTransactionProjection:
             "notes": self.invoice.notes
             or "Invoice, stay-payment hold, and deposit-hold records remain linked across Payments and Deposits.",
             "quick_actions": [
-                {"label": "Send invoice", "kind": "post", "action": "send-invoice", "url": reverse("bookings:ops-payment-action-api", args=[self.key, "send-invoice"])},
-                {"label": "Mark as paid", "kind": "post", "action": "mark-paid", "url": reverse("bookings:ops-payment-action-api", args=[self.key, "mark-paid"])},
-                {"label": "Download receipt", "kind": "link", "url": row["invoice_url"]},
-                {"label": "Issue refund", "kind": "link", "url": reverse("bookings:ops-deposits")},
-                {"label": "Open reservation", "kind": "link", "url": reverse("bookings:ops-reservations")},
+                _payment_quick_action(
+                    "Send invoice",
+                    "post",
+                    reverse("bookings:ops-payment-action-api", args=[self.key, "send-invoice"]),
+                    action="send-invoice",
+                    icon="invoice",
+                    tone="blue",
+                ),
+                _payment_quick_action(
+                    "Mark as paid",
+                    "post",
+                    reverse("bookings:ops-payment-action-api", args=[self.key, "mark-paid"]),
+                    action="mark-paid",
+                    icon="paid",
+                    tone="green",
+                ),
+                _payment_quick_action("Download receipt", "link", row["invoice_url"], icon="receipt", tone="slate"),
+                _payment_quick_action("Issue refund", "link", reverse("bookings:ops-deposits"), icon="refund", tone="cyan"),
+                _payment_quick_action("Open reservation", "link", reverse("bookings:ops-reservations"), icon="reservation", tone="blue"),
             ],
         }
 
@@ -700,11 +729,29 @@ class PaymentsTransactionsService:
             ],
             "notes": "Direct booking via mladis.com.",
             "quick_actions": [
-                {"label": "Send invoice", "kind": "link", "url": "#"},
-                {"label": "Mark as paid", "kind": "link", "url": "#"},
-                {"label": "Download receipt", "kind": "link", "url": "#"},
-                {"label": "Issue refund", "kind": "link", "url": "#"},
-                {"label": "Open reservation", "kind": "link", "url": "/ops/reservations/"},
+                _payment_quick_action(
+                    "Send invoice",
+                    "disabled",
+                    icon="invoice",
+                    tone="blue",
+                    disabled_reason="Available when a live invoice is selected.",
+                ),
+                _payment_quick_action(
+                    "Mark as paid",
+                    "disabled",
+                    icon="paid",
+                    tone="green",
+                    disabled_reason="Available when a live invoice is selected.",
+                ),
+                _payment_quick_action(
+                    "Download receipt",
+                    "disabled",
+                    icon="receipt",
+                    tone="slate",
+                    disabled_reason="Receipt download requires a live invoice.",
+                ),
+                _payment_quick_action("Issue refund", "link", reverse("bookings:ops-deposits"), icon="refund", tone="cyan"),
+                _payment_quick_action("Open reservation", "link", reverse("bookings:ops-reservations"), icon="reservation", tone="blue"),
             ],
         }
 

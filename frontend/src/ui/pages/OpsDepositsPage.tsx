@@ -51,12 +51,14 @@ function DepositMetricCard({ metric }: { metric: DepositMetric }) {
   const Icon = metricIcons[metric.tone];
   return (
     <article className={`deposit-v4-metric deposit-v4-tone--${metric.tone}`}>
-      <header>
+      <div className="deposit-v4-metric-body">
         <span className="deposit-v4-icon"><Icon size={18} /></span>
-        <small>{metric.label}</small>
-      </header>
-      <strong>{metric.value}</strong>
-      <em>{metric.trend}</em>
+        <div>
+          <small>{metric.label}</small>
+          <strong>{metric.value}</strong>
+          <em>{metric.trend}</em>
+        </div>
+      </div>
       <DepositSparkline metric={metric} />
     </article>
   );

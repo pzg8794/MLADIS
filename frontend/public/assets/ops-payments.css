@@ -1214,8 +1214,9 @@
 
 .ops-pay-actions {
   display: grid;
-  gap: 5px;
-  margin-top: 7px;
+  grid-template-columns: 1fr;
+  gap: 7px;
+  margin-top: 8px;
 }
 
 .ops-pay-actions form {
@@ -1223,49 +1224,150 @@
 }
 
 .ops-pay-action {
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
   align-items: center;
-  justify-content: flex-start;
+  justify-content: stretch;
+  gap: 8px;
   width: 100%;
-  min-height: 25px;
-  border: 0;
-  padding: 4px 7px;
-  border-radius: 6px;
+  min-height: 34px;
+  border: 1px solid #dbe4ee;
+  padding: 6px 9px;
+  border-radius: 8px;
   color: #17233c;
-  background: transparent;
+  background: #ffffff;
   text-align: left;
-  font-size: 9px;
   font: inherit;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.15;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.035);
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.ops-pay-action:hover {
+  border-color: #bfd0e3;
+  background: #f8fbff;
+  box-shadow: 0 9px 18px rgba(15, 23, 42, 0.05);
+  transform: translateY(-1px);
+}
+
+.ops-pay-action:disabled,
+.ops-pay-action--disabled {
+  color: #94a3b8;
+  background: #f8fafc;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.ops-pay-action:disabled:hover,
+.ops-pay-action--disabled:hover {
+  border-color: #dbe4ee;
+  background: #f8fafc;
+  box-shadow: none;
+  transform: none;
 }
 
 .ops-pay-action-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex: 0 0 auto;
+  color: var(--action-color, #2563eb);
+  background: var(--action-bg, #eff6ff);
+}
+
+.ops-pay-action--blue {
+  --action-color: #2563eb;
+  --action-bg: #eff6ff;
+}
+
+.ops-pay-action--green {
+  --action-color: #16a34a;
+  --action-bg: #ecfdf3;
+}
+
+.ops-pay-action--slate {
+  --action-color: #475569;
+  --action-bg: #f1f5f9;
+}
+
+.ops-pay-action--cyan {
+  --action-color: #0891b2;
+  --action-bg: #ecfeff;
+}
+
+.ops-pay-action--disabled .ops-pay-action-icon,
+.ops-pay-action:disabled .ops-pay-action-icon {
+  color: #94a3b8;
+  background: #eef2f7;
+}
+
+.ops-pay-action-icon::before,
+.ops-pay-action-icon::after {
+  content: "";
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.ops-pay-action-icon--invoice::before,
+.ops-pay-action-icon--receipt::before {
+  width: 10px;
+  height: 12px;
+  border: 1.6px solid currentColor;
+  border-radius: 2px;
+}
+
+.ops-pay-action-icon--invoice::after,
+.ops-pay-action-icon--receipt::after {
+  width: 6px;
+  height: 1.6px;
+  background: currentColor;
+  box-shadow: 0 4px 0 currentColor;
+}
+
+.ops-pay-action-icon--paid::before {
+  width: 11px;
+  height: 7px;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+.ops-pay-action-icon--refund::before {
   width: 12px;
   height: 12px;
-  border: 1.5px solid #2563eb;
-  border-radius: 3px;
-  flex: 0 0 auto;
-}
-
-.ops-pay-actions .ops-pay-action:nth-child(2) .ops-pay-action-icon {
-  border-color: #22c55e;
-}
-
-.ops-pay-actions .ops-pay-action:nth-child(3) .ops-pay-action-icon {
-  border-color: #64748b;
-}
-
-.ops-pay-actions .ops-pay-action:nth-child(4) .ops-pay-action-icon {
-  border-color: #0ea5e9;
+  border: 1.7px solid currentColor;
   border-radius: 999px;
 }
 
-.ops-pay-actions .ops-pay-action:nth-child(5) .ops-pay-action-icon {
-  border-color: #2563eb;
+.ops-pay-action-icon--refund::after {
+  width: 7px;
+  height: 7px;
+  border-top: 1.7px solid currentColor;
+  border-left: 1.7px solid currentColor;
+  transform: rotate(-45deg) translate(1px, 0);
+}
+
+.ops-pay-action-icon--reservation::before {
+  width: 11px;
+  height: 11px;
+  border: 1.7px solid currentColor;
+  border-radius: 3px;
+}
+
+.ops-pay-action-icon--reservation::after {
+  width: 7px;
+  height: 1.7px;
+  background: currentColor;
+  box-shadow: 0 -4px 0 currentColor;
 }
 
 .ops-pay-timeline {
