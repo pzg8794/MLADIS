@@ -226,28 +226,38 @@ class OpsNavigationContractTests(TestCase):
             with self.subTest(stale_label_pattern=pattern):
                 self.assertNotIn(pattern, fallback_source)
 
-    def test_sidebar_expanded_width_contract_prevents_label_clipping(self):
+    def test_sidebar_overlay_contract_keeps_pages_full_width(self):
         repo_root = Path(__file__).resolve().parents[2]
         styles_source = (repo_root / "frontend/src/styles.css").read_text(encoding="utf-8")
 
-        grid_match = re.search(
-            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\.is-sidebar-expanded\s*\{\s*grid-template-columns:\s*(\d+)px\s+minmax\(0,\s*1fr\);',
+        shell_match = re.search(
+            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*\{\s*'
+            r'grid-template-columns:\s*minmax\(0,\s*1fr\);',
             styles_source,
             re.MULTILINE,
         )
-        self.assertIsNotNone(grid_match, "Missing expanded sidebar grid width rule")
-        self.assertGreaterEqual(int(grid_match.group(1)), 240)
+        self.assertIsNotNone(shell_match, "Missing full-width ops shell grid rule")
 
-        width_match = re.search(
+        sidebar_match = re.search(
+            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*>\s*\.modern-admin-sidebar\.v4-command-sidebar\s*\{(?P<body>.*?)\n\}',
+            styles_source,
+            re.MULTILINE | re.DOTALL,
+        )
+        self.assertIsNotNone(sidebar_match, "Missing v4 sidebar overlay rule")
+        sidebar_body = sidebar_match.group("body")
+        self.assertIn("position: fixed;", sidebar_body)
+        self.assertIn("width: 248px;", sidebar_body)
+        self.assertIn("transform: translateX(-102%);", sidebar_body)
+
+        expanded_match = re.search(
             r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*>\s*\.modern-admin-sidebar\.v4-command-sidebar:hover,\s*\n'
             r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*>\s*\.modern-admin-sidebar\.v4-command-sidebar:focus-within,\s*\n'
-            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*>\s*\.modern-admin-sidebar\.v4-command-sidebar\.is-expanded\s*\{\s*\n'
-            r'\s*width:\s*(\d+)px;',
+            r'\.dashboard-shell\[data-theme-reference="gentelella-v4"\]\s*>\s*\.modern-admin-sidebar\.v4-command-sidebar\.is-expanded\s*\{(?P<body>.*?)\n\}',
             styles_source,
-            re.MULTILINE,
+            re.MULTILINE | re.DOTALL,
         )
-        self.assertIsNotNone(width_match, "Missing expanded sidebar width rule")
-        self.assertGreaterEqual(int(width_match.group(1)), 240)
+        self.assertIsNotNone(expanded_match, "Missing expanded sidebar overlay rule")
+        self.assertIn("transform: translateX(0);", expanded_match.group("body"))
 
 
 # ---------------------------------------------------------------------------

@@ -669,7 +669,6 @@
   padding: 14px;
 }
 
-.settings-v4-panel--business,
 .settings-v4-shortcuts {
   grid-column: 1 / -1;
 }
@@ -2479,28 +2478,29 @@
 .settings-v4-shortcut--violet { --settings-shortcut-tone: #7c3aed; }
 .settings-v4-shortcut--rose { --settings-shortcut-tone: #e11d48; }
 
-.settings-v4-shortcut > span {
+.settings-v4-shortcut > .settings-v4-icon-badge {
   grid-row: span 2;
-  display: grid;
   width: 34px;
   height: 34px;
-  place-items: center;
-  border-radius: 7px;
   color: var(--settings-shortcut-tone);
   background: color-mix(in srgb, var(--settings-shortcut-tone) 12%, #ffffff);
 }
 
+.settings-v4-shortcut__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
 .settings-v4-shortcut strong {
   min-width: 0;
-  overflow: hidden;
   color: #0f172a;
   font-size: 0.74rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
 }
 
 .settings-v4-shortcut small {
-  grid-column: 2;
   display: -webkit-box;
   overflow: hidden;
   color: #64748b;

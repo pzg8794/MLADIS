@@ -11877,7 +11877,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 /* Gentelella v4 exploration branch. This layer intentionally makes the 8010
    preview feel different from the current production-facing interface. */
 .dashboard-shell[data-theme-reference="gentelella-v4"] {
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 0;
   padding: 0;
   background: #f8fafc;
@@ -11885,7 +11885,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"].is-sidebar-expanded {
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"] .dashboard-main {
@@ -11896,9 +11896,10 @@ svg.modern-admin-rail-icon:not([stroke]) {
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar {
-  position: sticky;
+  position: fixed;
+  left: 0;
   top: 0;
-  width: 76px;
+  width: 248px;
   height: 100vh;
   padding: 18px 10px 16px;
   border: 0;
@@ -11909,8 +11910,17 @@ svg.modern-admin-rail-icon:not([stroke]) {
     linear-gradient(180deg, #07385a 0%, #062d4f 34%, #041d38 70%, #03162d 100%);
   box-shadow: 6px 0 28px rgba(15, 23, 42, 0.18);
   overflow: hidden;
-  transition: width 220ms ease, box-shadow 220ms ease;
+  transform: translateX(-102%);
+  transition: transform 220ms ease, box-shadow 220ms ease;
   z-index: 90;
+}
+
+.v4-sidebar-hover-zone {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 89;
+  width: 14px;
+  background: transparent;
 }
 
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar::before {
@@ -11932,7 +11942,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:hover,
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar:focus-within,
 .dashboard-shell[data-theme-reference="gentelella-v4"] > .modern-admin-sidebar.v4-command-sidebar.is-expanded {
-  width: 248px;
+  transform: translateX(0);
   box-shadow: 18px 0 46px rgba(15, 23, 42, 0.22);
 }
 
@@ -12878,7 +12888,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
 @media (min-width: 1181px) {
   .dashboard-shell[data-theme-reference="gentelella-v4"].is-sidebar-expanded {
-    grid-template-columns: 192px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -12915,7 +12925,12 @@ svg.modern-admin-rail-icon:not([stroke]) {
     height: auto;
     max-height: none;
     overflow: hidden;
+    transform: none;
     border-radius: 0;
+  }
+
+  .v4-sidebar-hover-zone {
+    display: none;
   }
 
   .dashboard-shell[data-theme-reference="gentelella-v4"] .v4-sidebar-user {

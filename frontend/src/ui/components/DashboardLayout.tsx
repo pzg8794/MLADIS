@@ -80,6 +80,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <ChevronDown size={15} />
         </div>
       </aside>
+      <div
+        className="v4-sidebar-hover-zone"
+        aria-hidden="true"
+        onMouseEnter={() => setSidebarHovered(true)}
+      />
       <div className="dashboard-main">
         <header className="dashboard-topbar v4-commandbar">
           <button
