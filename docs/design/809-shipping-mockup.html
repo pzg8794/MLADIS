@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>809 Shipping × MLADIS — Platform Mockup</title>
+<style>
+  :root {
+    --navy:   #0A1628;
+    --navy2:  #0F1F3D;
+    --navy3:  #162847;
+    --blue:   #0077CC;
+    --teal:   #00A8A8;
+    --gold:   #F2B544;
+    --green:  #22C55E;
+    --orange: #F97316;
+    --red:    #EF4444;
+    --white:  #FFFFFF;
+    --muted:  #94A3B8;
+    --surface:#1E2D45;
+    --border: rgba(255,255,255,0.08);
+    --glass:  rgba(255,255,255,0.05);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--navy); color:var(--white); min-height:100vh; }
+
+  /* ── TAB NAV ── */
+  .tab-bar {
+    position:sticky; top:0; z-index:100;
+    background:var(--navy2);
+    border-bottom:1px solid var(--border);
+    display:flex; overflow-x:auto; gap:2px; padding:0 12px;
+  }
+  .tab-bar::-webkit-scrollbar{ height:3px; } .tab-bar::-webkit-scrollbar-thumb{ background:var(--blue); }
+  .tab-btn {
+    flex-shrink:0; padding:14px 18px; background:none; border:none; color:var(--muted);
+    font-size:12px; font-weight:600; cursor:pointer; border-bottom:3px solid transparent;
+    letter-spacing:.4px; text-transform:uppercase; transition:all .2s; white-space:nowrap;
+  }
+  .tab-btn:hover { color:var(--white); }
+  .tab-btn.active { color:var(--blue); border-bottom-color:var(--blue); }
+
+  /* ── PAGES ── */
+  .page { displa
