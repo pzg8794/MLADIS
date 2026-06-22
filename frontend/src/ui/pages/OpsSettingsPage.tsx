@@ -5,7 +5,6 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarDays,
-  Check,
   CheckCircle2,
   ChevronRight,
   CircleDollarSign,
@@ -22,7 +21,6 @@ import {
   Home,
   Info,
   KeyRound,
-  Link2,
   ListChecks,
   LockKeyhole,
   Mail,
@@ -37,16 +35,16 @@ import {
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
   Upload,
   Users,
   Wallet,
   Webhook,
   Workflow,
-  Wrench,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { SettingsFactory } from '../../application/SettingsFactory';
+import type { SettingsWorkspace } from '../../domain/settings';
 import { getConfiguredLogoUrl } from '../helpers/brand';
 import './admin-page.css';
 
@@ -2142,7 +2140,7 @@ function AccessTab({ runtime, updateField, updateToggle, runAction }: SettingsTa
   );
 }
 
-function IntegrationsTab({ settings, runtime, updateSection, updateField, updateToggle, runAction }: SettingsTabProps) {
+function IntegrationsTab({ settings, runtime, updateSection, updateToggle, runAction }: SettingsTabProps) {
   const integrations: Array<{ title: string; meta: string; status: string; tone: Tone; icon: LucideIcon; key: string }> = [
     { title: 'Airbnb', meta: 'Synced 2 mins ago', status: 'Connected', tone: 'rose', icon: Home, key: 'airbnbIcal' },
     { title: 'PayPal', meta: 'Synced 3 mins ago', status: 'Connected', tone: 'blue', icon: Wallet, key: 'paypalConnected' },
@@ -2262,10 +2260,26 @@ function renderTab(props: SettingsTabProps & { activeTab: SettingsSectionId }) {
 }
 
 export function OpsSettingsPage() {
+  const settingsService = useMemo(() => SettingsFactory.create(), []);
   const [activeTab, setActiveTab] = useState<SettingsSectionId>('business');
   const [settings, setSettings] = useState<SettingsDraft>(() => loadLocalState(SETTINGS_STORAGE_KEY, defaultSettings));
   const [runtime, setRuntime] = useState<RuntimeState>(() => loadLocalState(SETTINGS_RUNTIME_KEY, defaultRuntime));
   const [statusMessage, setStatusMessage] = useState('Ready');
+  const [settingsWorkspace, setSettingsWorkspace] = useState<SettingsWorkspace | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    settingsService.loadWorkspace()
+      .then((workspace) => {
+        if (active) setSettingsWorkspace(workspace);
+      })
+      .catch(() => {
+        if (active) setSettingsWorkspace(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [settingsService]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -2360,7 +2374,7 @@ export function OpsSettingsPage() {
         })}
       </nav>
 
-      <div className="settings-v4-layout">
+      <div className="settings-v4-layout" data-settings-source={settingsWorkspace?.source ?? 'fallback'}>
         <div className={`settings-v4-main settings-v4-main--dense settings-v4-main--${activeTab}`}>
           {renderTab({ ...tabProps, activeTab })}
         </div>

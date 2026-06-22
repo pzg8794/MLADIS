@@ -18,153 +18,19 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
+import { PropertyListingsFactory } from '../../application/PropertyListingsFactory';
+import type {
+  PropertyDetailMetric,
+  PropertyListing,
+  PropertyListingStatusTone,
+  PropertyListingsWorkspace,
+} from '../../domain/properties';
 import './ops-stays-page.css';
 
-const BASE = import.meta.env.BASE_URL;
-
-type ListingTone = 'blue' | 'purple' | 'amber' | 'green' | 'orange' | 'red';
-type ListingStatusTone = 'ready' | 'attention' | 'published';
-
-class ListingTabModel {
-  constructor(
-    public readonly label: string,
-    public readonly count: string,
-    public readonly active = false,
-    public readonly separated = false,
-  ) {}
-}
-
-class ListingTagModel {
-  constructor(
-    public readonly label: string,
-    public readonly tone: ListingTone,
-  ) {}
-}
-
-class StayListingModel {
-  constructor(
-    public readonly id: string,
-    public readonly name: string,
-    public readonly location: string,
-    public readonly imageSrc: string,
-    public readonly price: string,
-    public readonly rating: string,
-    public readonly reviews: string,
-    public readonly bedrooms: string,
-    public readonly beds: string,
-    public readonly baths: string,
-    public readonly guests: string,
-    public readonly occupancy: string,
-    public readonly occupancyTrend: string,
-    public readonly readiness: string,
-    public readonly readinessTone: ListingStatusTone,
-    public readonly status: string,
-    public readonly tags: ListingTagModel[],
-  ) {}
-}
-
-class DetailMetricModel {
-  constructor(
-    public readonly label: string,
-    public readonly value: string,
-    public readonly caption: string,
-    public readonly tone: ListingTone,
-  ) {}
-}
-
-const tabs = [
-  new ListingTabModel('All', '12', true),
-  new ListingTabModel('Published', '11'),
-  new ListingTabModel('Draft', '1'),
-  new ListingTabModel('Inactive', '0'),
-  new ListingTabModel('Maintenance', '1'),
-  new ListingTabModel('Archived', '2', false, true),
-];
-
-const listings = [
-  new StayListingModel(
-    'g101',
-    '3 Beds Apt, Vacation Home & Pool, G-101',
-    'Colinas del Arroyo II, SDN',
-    `${BASE}stays/stay-3br.jpg`,
-    '$180',
-    '4.93',
-    '42 reviews',
-    '3 bedrooms',
-    '4 beds',
-    '2 baths',
-    '4 guests',
-    '72%',
-    '+12pp vs last 7 days',
-    'Ready',
-    'ready',
-    'Published',
-    [
-      new ListingTagModel('Pool', 'blue'),
-      new ListingTagModel('Self check-in', 'purple'),
-      new ListingTagModel('$200 Secure hold', 'amber'),
-      new ListingTagModel('Direct booking', 'green'),
-    ],
-  ),
-  new StayListingModel(
-    'pool-6br',
-    '6 Beds Apt, Vacation Home & Pool',
-    'Colinas del Arroyo II, SDN',
-    `${BASE}stays/stay-6br.jpg`,
-    '$250',
-    '4.87',
-    '37 reviews',
-    '6 bedrooms',
-    '8 beds',
-    '3 baths',
-    '8 guests',
-    '68%',
-    '+8pp vs last 7 days',
-    'Ready',
-    'ready',
-    'Published',
-    [
-      new ListingTagModel('Pool', 'blue'),
-      new ListingTagModel('Self check-in', 'purple'),
-      new ListingTagModel('$200 Secure hold', 'amber'),
-      new ListingTagModel('Direct booking', 'green'),
-    ],
-  ),
-  new StayListingModel(
-    'pool-2br',
-    '2 Beds Apt, Vacation Home & Pool',
-    'Colinas del Arroyo II, SDN',
-    `${BASE}stays/stay-2br.jpg`,
-    '$120',
-    '4.76',
-    '28 reviews',
-    '2 bedrooms',
-    '3 beds',
-    '2 baths',
-    '3 guests',
-    '52%',
-    '-4pp vs last 7 days',
-    'Needs attention',
-    'attention',
-    'Published',
-    [
-      new ListingTagModel('Pool', 'blue'),
-      new ListingTagModel('Self check-in', 'purple'),
-      new ListingTagModel('$200 Secure hold', 'amber'),
-      new ListingTagModel('Direct booking', 'green'),
-    ],
-  ),
-];
-
-const availability = [
-  new DetailMetricModel('Occupancy', '72%', '', 'blue'),
-  new DetailMetricModel('ADR', '$146', '+9% vs last 7 days', 'green'),
-];
-
-function ListingTabs() {
+function ListingTabs({ workspace }: { workspace: PropertyListingsWorkspace }) {
   return (
     <nav className="stays-v4-tabs" aria-label="Listing status">
-      {tabs.map((tab) => (
+      {workspace.tabs.map((tab) => (
         <button className={`${tab.active ? 'is-active' : ''}${tab.separated ? ' is-separated' : ''}`} type="button" key={tab.label}>
           {tab.label}
           <span>{tab.count}</span>
@@ -198,7 +64,7 @@ function ListingFilterBar() {
   );
 }
 
-function AmenityRow({ listing }: { listing: StayListingModel }) {
+function AmenityRow({ listing }: { listing: PropertyListing }) {
   const amenities = [
     [BedDouble, listing.bedrooms],
     [BedDouble, listing.beds],
@@ -215,7 +81,7 @@ function AmenityRow({ listing }: { listing: StayListingModel }) {
   );
 }
 
-function StatusDot({ tone, label }: { tone: ListingStatusTone; label: string }) {
+function StatusDot({ tone, label }: { tone: PropertyListingStatusTone; label: string }) {
   return <span className={`stays-v4-dot stays-v4-dot--${tone}`}><i /> {label}</span>;
 }
 
@@ -224,7 +90,7 @@ function ListingCard({
   selected,
   onSelect,
 }: {
-  listing: StayListingModel;
+  listing: PropertyListing;
   selected: boolean;
   onSelect: (id: string) => void;
 }) {
@@ -265,9 +131,11 @@ function ListingCard({
 }
 
 function ListingList({
+  workspace,
   selectedId,
   onSelect,
 }: {
+  workspace: PropertyListingsWorkspace;
   selectedId: string;
   onSelect: (id: string) => void;
 }) {
@@ -275,7 +143,7 @@ function ListingList({
     <section className="stays-v4-list-card">
       <ListingFilterBar />
       <div className="stays-v4-list">
-        {listings.map((listing) => <ListingCard listing={listing} selected={listing.id === selectedId} onSelect={onSelect} key={listing.id} />)}
+        {workspace.listings.map((listing) => <ListingCard listing={listing} selected={listing.id === selectedId} onSelect={onSelect} key={listing.id} />)}
       </div>
       <footer className="stays-v4-list-footer">
         <span>Showing 1 to 3 of 12 results</span>
@@ -311,7 +179,7 @@ function MiniMap() {
   );
 }
 
-function DetailSmallCards() {
+function DetailSmallCards({ availability }: { availability: PropertyDetailMetric[] }) {
   return (
     <div className="stays-v4-detail-grid">
       <article className="stays-v4-detail-card stays-v4-detail-card--availability">
@@ -354,7 +222,7 @@ function DetailSmallCards() {
   );
 }
 
-function SelectedListingPanel({ selected }: { selected: StayListingModel }) {
+function SelectedListingPanel({ selected, availability }: { selected: PropertyListing; availability: PropertyDetailMetric[] }) {
   return (
     <aside className="stays-v4-selected">
       <header>
@@ -379,7 +247,7 @@ function SelectedListingPanel({ selected }: { selected: StayListingModel }) {
           <button className="is-primary" type="button"><CalendarDays size={14} /> Open calendar</button>
         </div>
       </section>
-      <DetailSmallCards />
+      <DetailSmallCards availability={availability} />
       <section className="stays-v4-reservations">
         <h3>Linked Reservations</h3>
         <div>
@@ -397,8 +265,12 @@ function SelectedListingPanel({ selected }: { selected: StayListingModel }) {
 }
 
 export function OpsStayPortfolioPage() {
-  const [selectedId, setSelectedId] = useState(listings[0].id);
-  const selected = useMemo(() => listings.find((listing) => listing.id === selectedId) ?? listings[0], [selectedId]);
+  const workspace = useMemo(() => PropertyListingsFactory.create().loadWorkspace(), []);
+  const [selectedId, setSelectedId] = useState(workspace.listings[0].id);
+  const selected = useMemo(
+    () => workspace.listings.find((listing) => listing.id === selectedId) ?? workspace.listings[0],
+    [selectedId, workspace.listings],
+  );
 
   return (
     <main className="dashboard-content stays-v4-page">
@@ -416,10 +288,10 @@ export function OpsStayPortfolioPage() {
 
       <section className="stays-v4-workspace">
         <div className="stays-v4-left-column">
-          <ListingTabs />
-          <ListingList selectedId={selectedId} onSelect={setSelectedId} />
+          <ListingTabs workspace={workspace} />
+          <ListingList workspace={workspace} selectedId={selectedId} onSelect={setSelectedId} />
         </div>
-        <SelectedListingPanel selected={selected} />
+        <SelectedListingPanel selected={selected} availability={workspace.availability} />
       </section>
     </main>
   );

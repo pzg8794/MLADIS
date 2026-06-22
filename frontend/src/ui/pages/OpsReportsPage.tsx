@@ -1,114 +1,35 @@
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle, BarChart3, Building2, CalendarRange, ChevronDown, ChevronLeft, ChevronRight,
   Clock3, Download, Filter,
-  MoreHorizontal, Sparkles, Star, Tag, TrendingUp, Link2, Users, Wrench,
+  MoreHorizontal, Sparkles, Star, Tag, TrendingUp, Link2, Wrench,
 } from 'lucide-react';
+import { ReportsFactory } from '../../application/ReportsFactory';
+import type {
+  ReportChannelRow,
+  ReportHeatDay,
+  ReportInsight,
+  ReportListingShare,
+  ReportMetric,
+  ReportRevenueSeries,
+  ReportStayRow,
+  ReportWorkspace,
+} from '../../domain/reports';
 import './opsreports.css';
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type Tone = 'green' | 'cyan' | 'violet' | 'orange' | 'red';
-
-type Metric = {
-  label: string;
-  value: string;
-  delta: string;
-  icon: typeof BarChart3;
-  tone: Tone;
-  spark: number[];
+const REPORT_ICON_COMPONENTS = {
+  revenue: BarChart3,
+  occupancy: Building2,
+  adr: Tag,
+  rating: Star,
+  maintenance: Wrench,
 };
 
-type ChannelRow = { label: string; pct: number; bookings: number; widthClass: string };
-
-type ListingShare = {
-  label: string;
-  pct: number;
-  amount: string;
-  toneClass: string;
+const REPORT_INSIGHT_ICONS = {
+  trend: TrendingUp,
+  link: Link2,
+  warning: AlertTriangle,
 };
-
-type HeatDay = { day: number; intensity: number };
-
-type Insight = {
-  title: string;
-  body: string;
-  tone: 'green' | 'blue' | 'orange';
-  Icon: typeof Sparkles;
-};
-
-type StayRow = {
-  listing: string;
-  sub: string;
-  revenue: string;
-  occ: string;
-  adr: string;
-  rating: string;
-  delta: string;
-  tc: string;
-  imgSrc: string;
-};
-
-// ── Data ─────────────────────────────────────────────────────────────────────
-
-const metrics: Metric[] = [
-  { label: 'Revenue',               value: '$18,540',  delta: '+15% vs Jun 29 – Jul 5',  icon: BarChart3,  tone: 'green',  spark: [9,10,9,11,10,12,13,11,12,13,12,14] },
-  { label: 'Occupancy',             value: '72%',      delta: '+5pp vs Jun 29 – Jul 5',   icon: Building2, tone: 'cyan',   spark: [7,8,8,9,10,9,8,7,8,9,8,8] },
-  { label: 'ADR (Avg. Daily Rate)', value: '$132',     delta: '+7% vs Jun 29 – Jul 5',   icon: Tag,       tone: 'violet', spark: [8,9,8,9,8,10,11,10,9,10,9,10] },
-  { label: 'Guest Rating',          value: '4.93 / 5', delta: '+0.05 vs Jun 29 – Jul 5', icon: Star,      tone: 'orange', spark: [9,9,10,9,10,10,9,10,9,10,9,10] },
-  { label: 'Maintenance Cost',      value: '$2,310',   delta: '–6% vs Jun 29 – Jul 5',   icon: Wrench,    tone: 'red',    spark: [7,8,8,7,8,7,8,8,7,8,7,7] },
-];
-
-// 7 data points – one per day (Jun 6–12), values in $K
-const chart = {
-  curr:   [8, 11, 14.5, 13, 16, 18, 18.5],
-  prev:   [5,  7,    8,  9, 10, 11,   14],
-  labels: ['Jun 6','Jun 7','Jun 8','Jun 9','Jun 10','Jun 11','Jun 12'],
-};
-
-const channels: ChannelRow[] = [
-  { label: 'Direct Website', pct: 42, bookings: 26, widthClass: 'is-42' },
-  { label: 'Airbnb',         pct: 28, bookings: 17, widthClass: 'is-28' },
-  { label: 'Booking.com',    pct: 16, bookings: 10, widthClass: 'is-16' },
-  { label: 'Vrbo',           pct:  8, bookings:  5, widthClass: 'is-8' },
-  { label: 'Other',          pct:  6, bookings:  4, widthClass: 'is-6' },
-];
-
-const listings: ListingShare[] = [
-  { label: '6 Beds Apt, Vacation Home & Pool, G-101', pct: 34, amount: '$6,304', toneClass: 'is-blue' },
-  { label: '2 Beds Apt, Vacation Home & Pool',         pct: 26, amount: '$4,816', toneClass: 'is-violet' },
-  { label: '3 Beds Apt, Vacation Home & Pool, G-101',  pct: 20, amount: '$3,708', toneClass: 'is-orange' },
-  { label: 'Meeting Room 1',                           pct:  8, amount: '$1,482', toneClass: 'is-red' },
-  { label: 'Others',                                   pct: 12, amount: '$2,230', toneClass: 'is-gray' },
-];
-
-const heatDays: HeatDay[] = [
-  { day: 31, intensity: 0 }, { day:  1, intensity: 1 }, { day:  2, intensity: 2 },
-  { day:  3, intensity: 3 }, { day:  4, intensity: 3 }, { day:  5, intensity: 4 },
-  { day:  6, intensity: 5 }, { day:  7, intensity: 1 }, { day:  8, intensity: 2 },
-  { day:  9, intensity: 3 }, { day: 10, intensity: 4 }, { day: 11, intensity: 4 },
-  { day: 12, intensity: 5 }, { day: 13, intensity: 5 }, { day: 14, intensity: 2 },
-  { day: 15, intensity: 2 }, { day: 16, intensity: 3 }, { day: 17, intensity: 4 },
-  { day: 18, intensity: 4 }, { day: 19, intensity: 5 }, { day: 20, intensity: 5 },
-  { day: 21, intensity: 2 }, { day: 22, intensity: 2 }, { day: 23, intensity: 3 },
-  { day: 24, intensity: 4 }, { day: 25, intensity: 4 }, { day: 26, intensity: 5 },
-  { day: 27, intensity: 5 }, { day: 28, intensity: 2 }, { day: 29, intensity: 1 },
-  { day: 30, intensity: 1 }, { day:  1, intensity: 0 },
-];
-
-const insights: Insight[] = [
-  { title: 'Revenue is up 15%',           body: 'You earned $18,540 this week, up 15% compared to Jun 29 – Jul 5.',                                  tone: 'green',  Icon: TrendingUp    },
-  { title: 'Direct bookings are growing', body: 'Direct website bookings increased 12% and now represent 42% of total bookings.',                     tone: 'blue',   Icon: Link2         },
-  { title: 'Occupancy dips on weekdays',  body: 'Tuesday and Wednesday show the lowest occupancy (58%). Consider promotions to boost midweek demand.', tone: 'orange', Icon: AlertTriangle  },
-];
-
-const BASE = import.meta.env.BASE_URL;
-const stays: StayRow[] = [
-  { listing: '6 Beds Apt, Vacation Home & Pool, G-101', sub: 'Apt #16 · 5 beds',      revenue: '$6,304', occ: '78%', adr: '$146', rating: '4.97', delta: '+2', tc: 'tc-blue',   imgSrc: `${BASE}stays/stay-6br.jpg` },
-  { listing: '2 Beds Apt, Vacation Home & Pool',         sub: 'Apt #7 · 2 beds',        revenue: '$4,816', occ: '71%', adr: '$128', rating: '4.92', delta: '—',  tc: 'tc-violet', imgSrc: `${BASE}stays/stay-2br.jpg` },
-  { listing: '3 Beds Apt, Vacation Home & Pool, G-101',  sub: 'Apt #13 · 3 beds',       revenue: '$3,708', occ: '69%', adr: '$116', rating: '4.90', delta: '+1', tc: 'tc-orange', imgSrc: `${BASE}stays/stay-3br.jpg` },
-  { listing: 'Meeting Room 1',                           sub: 'Conference space',        revenue: '$1,482', occ: '62%', adr: '$89',  rating: '4.85', delta: '+1', tc: 'tc-red',    imgSrc: `${BASE}stays/stay-3br.jpg` },
-  { listing: 'Conference Room A',                        sub: 'Meeting room · seats 8',  revenue: '$1,205', occ: '58%', adr: '$76',  rating: '4.70', delta: '+1', tc: 'tc-slate',  imgSrc: `${BASE}stays/stay-2br.jpg` },
-];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -132,8 +53,8 @@ function Sparkline({ vals, color }: { vals: number[]; color: string }) {
 
 // ── Components ────────────────────────────────────────────────────────────────
 
-function MetricCard({ m }: { m: Metric }) {
-  const Icon = m.icon;
+function MetricCard({ m }: { m: ReportMetric }) {
+  const Icon = REPORT_ICON_COMPONENTS[m.iconKey];
   return (
     <article className={`ops-kpi ops-kpi--${m.tone}`}>
       <div className="ops-kpi__head">
@@ -148,14 +69,14 @@ function MetricCard({ m }: { m: Metric }) {
   );
 }
 
-function RevenueChart() {
+function RevenueChart({ chart }: { chart: ReportRevenueSeries }) {
   // All coordinates live inside the SVG – zero alignment hacks needed
   const VW = 500, VH = 185;
   const PL = 44, PR = 8, PT = 10, PB = 28;
   const PW = VW - PL - PR;   // 448
   const PH = VH - PT - PB;   // 147
   const MAX_V = 25;
-  const N = chart.labels.length; // 7
+  const N = chart.labels.length;
 
   const cx = (i: number) => PL + (i / (N - 1)) * PW;
   const cy = (v: number) => PT + (1 - v / MAX_V) * PH;
@@ -163,8 +84,8 @@ function RevenueChart() {
   const pathFor = (vals: number[]) =>
     vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${cx(i).toFixed(1)},${cy(v).toFixed(1)}`).join(' ');
 
-  const currPath = pathFor(chart.curr);
-  const prevPath = pathFor(chart.prev);
+  const currPath = pathFor(chart.current);
+  const prevPath = pathFor(chart.previous);
   const areaPath = `${currPath} L${cx(N - 1).toFixed(1)},${(PT + PH).toFixed(1)} L${cx(0).toFixed(1)},${(PT + PH).toFixed(1)} Z`;
 
   const yTicks = [0, 5, 10, 15, 20, 25];
@@ -215,7 +136,7 @@ function RevenueChart() {
               strokeLinecap="round" strokeLinejoin="round" />
 
         {/* Dots on current period */}
-        {chart.curr.map((v, i) => (
+        {chart.current.map((v, i) => (
           <circle key={i} cx={cx(i)} cy={cy(v)} r="3" fill="#0ea5e9" stroke="#fff" strokeWidth="2" />
         ))}
 
@@ -231,7 +152,7 @@ function RevenueChart() {
   );
 }
 
-function ChannelsCard() {
+function ChannelsCard({ channels }: { channels: ReportChannelRow[] }) {
   return (
     <article className="ops-chart-card ops-card-ch">
       <header>
@@ -254,7 +175,7 @@ function ChannelsCard() {
   );
 }
 
-function DonutCard() {
+function DonutCard({ listings }: { listings: ReportListingShare[] }) {
   return (
     <article className="ops-chart-card ops-card-donut">
       <header>
@@ -284,7 +205,7 @@ function DonutCard() {
   );
 }
 
-function HeatmapCard() {
+function HeatmapCard({ heatDays }: { heatDays: ReportHeatDay[] }) {
   return (
     <article className="ops-chart-card ops-card-heat">
       <header>
@@ -317,7 +238,7 @@ function HeatmapCard() {
   );
 }
 
-function StaysCard() {
+function StaysCard({ stays }: { stays: ReportStayRow[] }) {
   return (
     <article className="ops-chart-card ops-card-stays">
       <header>
@@ -360,7 +281,7 @@ function StaysCard() {
                 <td>{s.occ}</td>
                 <td>{s.adr}</td>
                 <td>{s.rating}</td>
-                <td><span className={s.delta === '—' ? 'td-flat' : s.delta.startsWith('-') ? 'td-down' : 'td-up'}>{s.delta}</span></td>
+                <td><span className={s.delta === '-' ? 'td-flat' : s.delta.startsWith('-') ? 'td-down' : 'td-up'}>{s.delta}</span></td>
               </tr>
             ))}
           </tbody>
@@ -380,7 +301,7 @@ function StaysCard() {
   );
 }
 
-function InsightsCard() {
+function InsightsCard({ insights }: { insights: ReportInsight[] }) {
   return (
     <article className="ops-chart-card ops-card-insights">
       <header>
@@ -388,7 +309,9 @@ function InsightsCard() {
         <span className="ops-beta">Beta</span>
       </header>
       <div className="ops-ins-list">
-        {insights.map(({ title, body, tone, Icon }) => (
+        {insights.map(({ title, body, tone, iconKey }) => {
+          const Icon = REPORT_INSIGHT_ICONS[iconKey];
+          return (
           <div key={title} className={`ops-ins ops-ins--${tone}`}>
             <span className="ops-ins__ico"><Icon size={14} /></span>
             <div>
@@ -396,7 +319,8 @@ function InsightsCard() {
               <p>{body}</p>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       <a href="/ops/reports/" className="ops-ins-more">View more insights</a>
       <div className="ops-ins-foot">
@@ -409,6 +333,23 @@ function InsightsCard() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function OpsReportsPage() {
+  const service = useMemo(() => ReportsFactory.create(), []);
+  const [workspace, setWorkspace] = useState<ReportWorkspace>(() => service.fallbackWorkspace());
+
+  useEffect(() => {
+    let active = true;
+    service.loadWorkspace()
+      .then((nextWorkspace) => {
+        if (active) setWorkspace(nextWorkspace);
+      })
+      .catch(() => {
+        if (active) setWorkspace(service.fallbackWorkspace());
+      });
+    return () => {
+      active = false;
+    };
+  }, [service]);
+
   return (
     <main className="dashboard-content ops-page ops-rpt">
 
@@ -429,21 +370,21 @@ export function OpsReportsPage() {
 
       {/* ── KPI row ── */}
       <div className="ops-kpis" aria-label="Summary metrics">
-        {metrics.map((m) => <MetricCard key={m.label} m={m} />)}
+        {workspace.metrics.map((m) => <MetricCard key={m.label} m={m} />)}
       </div>
 
       {/* ── Charts row ── */}
       <div className="ops-charts-row">
-        <RevenueChart />
-        <ChannelsCard />
-        <DonutCard />
+        <RevenueChart chart={workspace.revenueSeries} />
+        <ChannelsCard channels={workspace.channels} />
+        <DonutCard listings={workspace.listings} />
       </div>
 
       {/* ── Bottom row ── */}
       <div className="ops-bottom-row">
-        <HeatmapCard />
-        <StaysCard />
-        <InsightsCard />
+        <HeatmapCard heatDays={workspace.heatDays} />
+        <StaysCard stays={workspace.stays} />
+        <InsightsCard insights={workspace.insights} />
       </div>
 
     </main>

@@ -12,6 +12,9 @@ Use real database objects first. Use mock data only as fallback or filler for
 fields that do not exist yet. Never replace real objects with fake rows just to
 match a design mock.
 
+For the current left-nav object map, route decisions, and page-by-page alignment
+status, read `docs/architecture/ops-left-nav-object-audit.md`.
+
 ## Layers
 
 1. Domain object

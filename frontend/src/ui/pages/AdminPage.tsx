@@ -1,89 +1,45 @@
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Box, CalendarDays, CheckCircle2, ClipboardList, Clock3, Database, DollarSign, LayoutGrid, MessageCircle, Radio, Settings, ShieldCheck, Sparkles, TrendingUp, Users, Wrench, type LucideIcon } from 'lucide-react';
+import { AdminWorkspaceFactory } from '../../application/AdminWorkspaceFactory';
+import type { AdminWorkspace } from '../../domain/admin';
 import './admin-page.css';
 
 const ADMIN_HERO_IMAGE = `${import.meta.env.BASE_URL}admin-command-hero.png`;
 
-class AdminShortcut {
-  constructor(
-    public readonly label: string,
-    public readonly description: string,
-    public readonly href: string,
-    public readonly icon: LucideIcon,
-    public readonly action: string,
-    public readonly tone: 'blue' | 'violet' | 'teal' | 'amber' | 'rose' = 'blue',
-  ) {}
-}
-
-class AdminMetric {
-  constructor(
-    public readonly label: string,
-    public readonly value: string,
-    public readonly caption: string,
-    public readonly icon: typeof ShieldCheck,
-    public readonly tone: 'blue' | 'violet' | 'teal' | 'amber' | 'rose' = 'blue',
-  ) {}
-}
-
-class AdminFeedItem {
-  constructor(
-    public readonly time: string,
-    public readonly title: string,
-    public readonly detail: string,
-    public readonly icon: typeof ShieldCheck,
-    public readonly tone: 'blue' | 'green' | 'amber' | 'cyan',
-  ) {}
-}
-
-class AdminHealthCard {
-  constructor(
-    public readonly label: string,
-    public readonly value: string,
-    public readonly caption: string,
-    public readonly icon: typeof ShieldCheck,
-    public readonly tone: 'blue' | 'green' | 'teal' | 'slate',
-  ) {}
-}
-
-const shortcuts = [
-  new AdminShortcut('Records', 'Master data, settings, and system records.', '/ops/admin/', Database, 'Open', 'blue'),
-  new AdminShortcut('Reservations', 'Manage bookings, requests, and confirmations.', '/ops/reservations/', CalendarDays, 'Manage', 'teal'),
-  new AdminShortcut('Guests / Customers', 'Profiles, communications, and guest history.', '/ops/customers/', Users, 'View', 'violet'),
-  new AdminShortcut('Properties', 'Inventory, details, photos, and configurations.', '/ops/properties/', Box, 'Manage', 'blue'),
-  new AdminShortcut('Calendar', 'Availability, pricing, blocks, and overrides.', '/ops/calendar/', CalendarDays, 'Open', 'teal'),
-  new AdminShortcut('Maintenance', 'Issues, inspections, and preventive maintenance.', '/ops/maintenance/', Wrench, 'View', 'amber'),
-  new AdminShortcut('Work Orders', 'Track assignments, status, and completion.', '/ops/maintenance/', ClipboardList, 'Open', 'amber'),
-  new AdminShortcut('Payments', 'Transactions, refunds, and reconciliation.', '/ops/payments/', DollarSign, 'Open', 'blue'),
-  new AdminShortcut('Deposits', 'Holds, releases, and deposit management.', '/ops/deposits/', ShieldCheck, 'Open', 'rose'),
-  new AdminShortcut('Reports', 'Operational charts, KPIs, and exports.', '/ops/reports/', TrendingUp, 'View', 'blue'),
-  new AdminShortcut('Brand Settings', 'Logo, contacts, policies, and brand assets.', '/ops/settings/', Settings, 'Manage', 'violet'),
-  new AdminShortcut('Agent FAQ', 'Guest & agent training, answers, and resources.', '/ops/settings/', MessageCircle, 'Manage', 'rose'),
-  new AdminShortcut('Users', 'Team members, roles, and permissions.', '/ops/admin/', Users, 'Manage', 'violet'),
-  new AdminShortcut('OAuth / Integrations', 'API, webhooks, and connected services.', '/ops/settings/', Radio, 'Manage', 'teal'),
-];
-
-const metrics = [
-  new AdminMetric('Active stays', '128', '↑ 12% vs yesterday', Box, 'violet'),
-  new AdminMetric('Pending requests', '23', '↑ 5 new', Clock3, 'amber'),
-  new AdminMetric('Deposit holds', '$74,560', '12 holds', ShieldCheck, 'teal'),
-  new AdminMetric('Open tasks', '18', '↓ 3 completed', ClipboardList, 'blue'),
-];
-
-const feedItems = [
-  new AdminFeedItem('2m ago', 'New reservation created', '#R-58291 · Ocean View Villa · Aug 12 - 16', CalendarDays, 'blue'),
-  new AdminFeedItem('7m ago', 'Deposit captured', '$2,450.00 · #R-58288 · Beach House', ShieldCheck, 'green'),
-  new AdminFeedItem('16m ago', 'Maintenance issue reported', 'AC not cooling · Unit 3B · High priority', Wrench, 'amber'),
-  new AdminFeedItem('28m ago', 'Guest message received', 'Late check-in request · #R-58285', MessageCircle, 'cyan'),
-  new AdminFeedItem('35m ago', 'Payment refunded', '$125.00 · #R-58262 · Cancellation', DollarSign, 'green'),
-];
-
-const healthCards = [
-  new AdminHealthCard('Staff access', 'Staff only', 'Protected', Users, 'slate'),
-  new AdminHealthCard('Controlled edits', 'Enabled', 'Audit on', TrendingUp, 'green'),
-  new AdminHealthCard('Build status', 'Production', 'v2.4.17', ClipboardList, 'blue'),
-  new AdminHealthCard('Last backup', 'Today, 3:14 AM', 'Automated', Database, 'teal'),
-];
+const ADMIN_ICONS: Record<string, LucideIcon> = {
+  box: Box,
+  calendar: CalendarDays,
+  clipboard: ClipboardList,
+  clock: Clock3,
+  database: Database,
+  dollar: DollarSign,
+  message: MessageCircle,
+  radio: Radio,
+  settings: Settings,
+  shield: ShieldCheck,
+  trend: TrendingUp,
+  users: Users,
+  wrench: Wrench,
+};
 
 export function AdminPage() {
+  const service = useMemo(() => AdminWorkspaceFactory.create(), []);
+  const [workspace, setWorkspace] = useState<AdminWorkspace>(() => service.fallbackWorkspace());
+
+  useEffect(() => {
+    let active = true;
+    service.loadWorkspace()
+      .then((nextWorkspace) => {
+        if (active) setWorkspace(nextWorkspace);
+      })
+      .catch(() => {
+        if (active) setWorkspace(service.fallbackWorkspace());
+      });
+    return () => {
+      active = false;
+    };
+  }, [service]);
+
   return (
     <main className="dashboard-content admin-page">
       <section className="admin-hero">
@@ -108,8 +64,8 @@ export function AdminPage() {
       <section className="admin-body-grid">
         <div className="admin-main-stack">
           <section className="admin-metric-grid" aria-label="Admin metrics">
-            {metrics.map((metric) => {
-              const Icon = metric.icon;
+            {workspace.metrics.map((metric) => {
+              const Icon = ADMIN_ICONS[metric.iconKey] ?? ShieldCheck;
               return (
                 <article className={`admin-metric-card admin-metric-card--${metric.tone}`} key={metric.label}>
                   <span><Icon size={24} /></span>
@@ -136,8 +92,8 @@ export function AdminPage() {
             </header>
 
             <section className="admin-shortcut-grid">
-              {shortcuts.map((shortcut) => {
-                const Icon = shortcut.icon;
+              {workspace.shortcuts.map((shortcut) => {
+                const Icon = ADMIN_ICONS[shortcut.iconKey] ?? Box;
                 return (
                   <a className={`admin-shortcut admin-shortcut--${shortcut.tone}`} href={shortcut.href} key={shortcut.label}>
                     <span className="admin-shortcut__icon"><Icon size={23} /></span>
@@ -160,8 +116,8 @@ export function AdminPage() {
               <a href="/ops/reports/">View all</a>
             </header>
             <div>
-              {feedItems.map((item) => {
-                const Icon = item.icon;
+              {workspace.feedItems.map((item) => {
+                const Icon = ADMIN_ICONS[item.iconKey] ?? CalendarDays;
                 return (
                   <article className={`admin-feed-item admin-feed-item--${item.tone}`} key={`${item.time}-${item.title}`}>
                     <time>{item.time}</time>
@@ -183,8 +139,8 @@ export function AdminPage() {
               <a href="/ops/settings/">Details</a>
             </header>
             <div>
-              {healthCards.map((card) => {
-                const Icon = card.icon;
+              {workspace.healthCards.map((card) => {
+                const Icon = ADMIN_ICONS[card.iconKey] ?? ShieldCheck;
                 return (
                   <article className={`admin-health-tile admin-health-tile--${card.tone}`} key={card.label}>
                     <span><Icon size={18} /></span>

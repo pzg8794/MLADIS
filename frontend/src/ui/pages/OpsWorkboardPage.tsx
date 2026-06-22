@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   CalendarDays,
@@ -16,254 +15,19 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
+import { TasksFactory } from '../../application/TasksFactory';
+import type { Task, TaskColumn as TaskColumnObject, TaskDetail, TaskMetric, TaskWorkspace } from '../../domain/tasks';
 
-type TaskTone = 'danger' | 'warning' | 'primary' | 'success' | 'violet';
-type TaskStatus = 'progress' | 'waiting' | 'done';
-type TaskDueTone = 'today' | 'soon' | 'done';
+const TASK_METRIC_ICONS = {
+  overdue: AlertCircle,
+  today: CalendarDays,
+  week: ClipboardList,
+  completed: CheckCircle2,
+  total: ListTodo,
+};
 
-class TaskMetricModel {
-  constructor(
-    readonly label: string,
-    readonly value: string,
-    readonly caption: string,
-    readonly tone: TaskTone,
-    readonly icon: LucideIcon,
-  ) {}
-}
-
-class TaskCardModel {
-  constructor(
-    readonly id: string,
-    readonly title: string,
-    readonly meta: string[],
-    readonly due: string,
-    readonly dueTone: TaskDueTone,
-    readonly avatar: string,
-    readonly avatarTone: string,
-    readonly status: TaskStatus,
-  ) {}
-}
-
-class TaskColumnModel {
-  constructor(
-    readonly title: string,
-    readonly count: string,
-    readonly tone: TaskStatus,
-    readonly tasks: TaskCardModel[],
-  ) {}
-}
-
-class TaskDetailModel {
-  constructor(
-    readonly description: string,
-    readonly assignee: string,
-    readonly priority: string,
-    readonly due: string,
-    readonly links: Array<{ label: string; value: string }>,
-    readonly details: Array<{ label: string; value: string }>,
-    readonly note: string,
-    readonly activity: string,
-  ) {}
-}
-
-const TASK_METRICS = [
-  new TaskMetricModel('Overdue', '8', '+3 vs yesterday', 'danger', AlertCircle),
-  new TaskMetricModel('Due Today', '12', '+2 vs yesterday', 'warning', CalendarDays),
-  new TaskMetricModel('Due This Week', '24', '+6 vs yesterday', 'primary', ClipboardList),
-  new TaskMetricModel('Completed (7d)', '36', '+12 vs last 7 days', 'success', CheckCircle2),
-  new TaskMetricModel('Total', '68', 'Active tasks', 'violet', ListTodo),
-];
-
-const TASK_COLUMNS = [
-  new TaskColumnModel('In Progress', '6', 'progress', [
-    new TaskCardModel(
-      'self-checkin',
-      'Send self check-in instructions',
-      ['Reservation: R-1042', '3 Beds Apt, Vacation Home & Pool, G-101'],
-      'Today',
-      'today',
-      'MR',
-      'green',
-      'progress',
-    ),
-    new TaskCardModel(
-      'cleaning',
-      'Confirm cleaning completion',
-      ['Reservation: R-1035', '2 Beds Apt, Vacation Home & Pool'],
-      'Today',
-      'today',
-      'AS',
-      'lime',
-      'progress',
-    ),
-    new TaskCardModel(
-      'deposit-review',
-      'Review expiring deposit hold',
-      ['Deposit: D-1009', 'Guest: Maria Rodriguez'],
-      'Today',
-      'today',
-      'PG',
-      'blue',
-      'progress',
-    ),
-    new TaskCardModel(
-      'maintenance-bill',
-      'Generate maintenance bill',
-      ['Work Order: WO-2026-0104', 'AC not cooling - G-101'],
-      'Today',
-      'today',
-      'CM',
-      'purple',
-      'progress',
-    ),
-    new TaskCardModel(
-      'work-order',
-      'Approve pending work order',
-      ['Work Order: WO-2026-0107', 'Replace ceiling light - Meeting Room 1'],
-      'Tomorrow',
-      'soon',
-      'PG',
-      'blue',
-      'progress',
-    ),
-    new TaskCardModel(
-      'listing-photos',
-      'Update listing photos',
-      ['Listing: L-1003', '3 Beds Apt, Vacation Home & Pool, G-101'],
-      'Tomorrow',
-      'soon',
-      'DM',
-      'slate',
-      'progress',
-    ),
-  ]),
-  new TaskColumnModel('Waiting', '5', 'waiting', [
-    new TaskCardModel(
-      'late-checkin',
-      'Guest reply: late check-in request',
-      ['Reservation: R-1046', '2 Beds Apt, Vacation Home & Pool'],
-      'Due Jun 13',
-      'soon',
-      'JS',
-      'photo',
-      'waiting',
-    ),
-    new TaskCardModel(
-      'payout',
-      'Payout confirmation',
-      ['Payment: P-1021', 'Guest: John Smith'],
-      'Due Jun 13',
-      'soon',
-      'PG',
-      'blue',
-      'waiting',
-    ),
-    new TaskCardModel(
-      'vendor-quote',
-      'Vendor quote approval',
-      ['Work Order: WO-2026-0108', 'TV not turning on - G-101'],
-      'Due Jun 14',
-      'soon',
-      'TS',
-      'green',
-      'waiting',
-    ),
-    new TaskCardModel(
-      'proof-payment',
-      'Awaiting proof of payment',
-      ['Deposit: D-1011', 'Guest: Ana Lopez'],
-      'Due Jun 14',
-      'soon',
-      'PG',
-      'blue',
-      'waiting',
-    ),
-    new TaskCardModel(
-      'content-review',
-      'Content review',
-      ['Listing: L-1005', 'Meeting Room 1'],
-      'Due Jun 15',
-      'soon',
-      'DM',
-      'slate',
-      'waiting',
-    ),
-  ]),
-  new TaskColumnModel('Done', '17', 'done', [
-    new TaskCardModel(
-      'booking-confirmation',
-      'Send booking confirmation',
-      ['Reservation: R-1040'],
-      'Completed Jun 10, 9:15 AM',
-      'done',
-      'PG',
-      'green',
-      'done',
-    ),
-    new TaskCardModel(
-      'collect-deposit',
-      'Collect security deposit',
-      ['Deposit: D-1007'],
-      'Completed Jun 10, 10:02 AM',
-      'done',
-      'PG',
-      'green',
-      'done',
-    ),
-    new TaskCardModel(
-      'inspect-ac',
-      'Inspect AC repair',
-      ['Work Order: WO-2026-0102'],
-      'Completed Jun 9, 4:45 PM',
-      'done',
-      'CM',
-      'slate',
-      'done',
-    ),
-    new TaskCardModel(
-      'block-dates',
-      'Block dates for maintenance',
-      ['Property: Conference Room A'],
-      'Completed Jun 9, 11:12 AM',
-      'done',
-      'TS',
-      'green',
-      'done',
-    ),
-    new TaskCardModel(
-      'welcome-message',
-      'Welcome message sent',
-      ['Reservation: R-1038'],
-      'Completed Jun 9, 9:08 AM',
-      'done',
-      'AS',
-      'green',
-      'done',
-    ),
-  ]),
-];
-
-const DETAIL_MODEL = new TaskDetailModel(
-  'Send self check-in instructions and house guide to the guest 24 hours before arrival.',
-  'Maria Rodriguez',
-  'High',
-  'Today, Jun 12',
-  [
-    { label: 'Reservation', value: 'R-1042' },
-    { label: 'Listing', value: '3 Beds Apt, G-101' },
-    { label: 'Guest', value: 'John Smith' },
-  ],
-  [
-    { label: 'Check-in', value: 'Jun 13, 2026 (3:00 PM)' },
-    { label: 'Channel', value: 'Direct Website' },
-    { label: 'Nights', value: '3' },
-  ],
-  'Guest requested early check-in if possible. Include parking and Wi-Fi info.',
-  'Piter Garcia created this task',
-);
-
-function TaskMetricCard({ metric }: { metric: TaskMetricModel }) {
-  const Icon = metric.icon;
+function TaskMetricCard({ metric }: { metric: TaskMetric }) {
+  const Icon = TASK_METRIC_ICONS[metric.iconKey];
 
   return (
     <article className={`tasks-v4-metric tasks-v4-metric--${metric.tone}`}>
@@ -282,9 +46,9 @@ function TaskCard({
   selected,
   onSelect,
 }: {
-  task: TaskCardModel;
+  task: Task;
   selected: boolean;
-  onSelect: (task: TaskCardModel) => void;
+  onSelect: (task: Task) => void;
 }) {
   return (
     <button
@@ -309,9 +73,9 @@ function TaskColumn({
   selectedTaskId,
   onSelect,
 }: {
-  column: TaskColumnModel;
+  column: TaskColumnObject;
   selectedTaskId: string;
-  onSelect: (task: TaskCardModel) => void;
+  onSelect: (task: Task) => void;
 }) {
   return (
     <section className={`tasks-v4-column tasks-v4-column--${column.tone}`}>
@@ -328,7 +92,7 @@ function TaskColumn({
   );
 }
 
-function TaskDetailPanel({ task, detail }: { task: TaskCardModel; detail: TaskDetailModel }) {
+function TaskDetailPanel({ task, detail }: { task: Task; detail: TaskDetail }) {
   return (
     <aside className="tasks-v4-detail">
       <header>
@@ -403,9 +167,28 @@ function TaskDetailPanel({ task, detail }: { task: TaskCardModel; detail: TaskDe
 }
 
 export function OpsWorkboardPage() {
-  const [selectedTaskId, setSelectedTaskId] = useState(TASK_COLUMNS[0].tasks[0].id);
-  const allTasks = useMemo(() => TASK_COLUMNS.flatMap((column) => column.tasks), []);
-  const selectedTask = allTasks.find((task) => task.id === selectedTaskId) ?? allTasks[0];
+  const service = useMemo(() => TasksFactory.create(), []);
+  const [workspace, setWorkspace] = useState<TaskWorkspace>(() => service.fallbackWorkspace());
+  const [selectedTaskId, setSelectedTaskId] = useState(workspace.defaultTask()?.id ?? '');
+  const selectedTask = workspace.taskById(selectedTaskId) ?? workspace.defaultTask();
+
+  useEffect(() => {
+    let active = true;
+    service.loadWorkspace()
+      .then((nextWorkspace) => {
+        if (!active) return;
+        setWorkspace(nextWorkspace);
+        setSelectedTaskId((current) => nextWorkspace.taskById(current)?.id ?? nextWorkspace.defaultTask()?.id ?? '');
+      })
+      .catch(() => {
+        if (active) setWorkspace(service.fallbackWorkspace());
+      });
+    return () => {
+      active = false;
+    };
+  }, [service]);
+
+  if (!selectedTask) return null;
 
   return (
     <main className="dashboard-content tasks-v4-page">
@@ -426,7 +209,7 @@ export function OpsWorkboardPage() {
       <section className="tasks-v4-layout" aria-label="Tasks board">
         <div className="tasks-v4-board">
           <section className="tasks-v4-metrics" aria-label="Task summary">
-            {TASK_METRICS.map((metric) => (
+            {workspace.metrics.map((metric) => (
               <TaskMetricCard key={metric.label} metric={metric} />
             ))}
           </section>
@@ -435,7 +218,7 @@ export function OpsWorkboardPage() {
             <button type="button" aria-label="Next actions"><ChevronDown size={16} /></button>
           </div>
           <div className="tasks-v4-columns">
-            {TASK_COLUMNS.map((column) => (
+            {workspace.columns.map((column) => (
               <TaskColumn
                 key={column.title}
                 column={column}
@@ -445,7 +228,7 @@ export function OpsWorkboardPage() {
             ))}
           </div>
         </div>
-        <TaskDetailPanel task={selectedTask} detail={DETAIL_MODEL} />
+        <TaskDetailPanel task={selectedTask} detail={workspace.detailFor(selectedTask)} />
       </section>
     </main>
   );
