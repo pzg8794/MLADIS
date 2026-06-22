@@ -8,6 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -896,11 +897,13 @@ class CalendarOperationsService:
         },
     ]
 
-    def page_payload(self, *, request_path="", view_mode="month", focus_date_value="", selected_stay=""):
+    def page_payload(self, *, request_path="", view_mode="month", focus_date_value="", selected_stay="", status_filter="all"):
         focus_date = self._focus_date(focus_date_value)
-        month_start = focus_date.replace(day=1)
-        window_start = month_start - timedelta(days=1)
-        days = [window_start + timedelta(days=offset) for offset in range(self.WINDOW_DAYS)]
+        view_mode = self._view_mode(view_mode)
+        selected_stay = selected_stay if selected_stay and selected_stay != "all" else ""
+        status_filter = status_filter if status_filter in {"all", "available", "reservation", "blocked", "override"} else "all"
+        days = self._visible_days(focus_date, view_mode)
+        window_start = days[0]
         window_end = days[-1]
 
         stays = list(
@@ -909,39 +912,118 @@ class CalendarOperationsService:
             .order_by("name")[: len(self.MOCK_ROOMS)]
         )
         live = self._live_calendar_maps(stays, window_start, window_end)
-        rows = [
+        all_rows = [
             self._row_payload(index, stays[index] if index < len(stays) else None, days, focus_date, live)
             for index in range(len(self.MOCK_ROOMS))
         ]
+        rows = self._selected_rows(all_rows, selected_stay)
         reservation_count = live["reservation_count"] or 24
 
         return {
             "calendar_section": self._section_from_path(request_path),
-            "calendar_view": view_mode if view_mode in {"month", "week", "day"} else "month",
+            "calendar_view": view_mode,
+            "status_filter": status_filter,
+            "selected_stay": selected_stay or "all",
+            "focus_date_iso": focus_date.isoformat(),
             "month_label": focus_date.strftime("%B %Y"),
             "booking_count": reservation_count,
-            "day_columns": [self._day_payload(day, focus_date) for day in days],
+            "day_columns": [
+                self._day_payload(day, focus_date, view_mode, selected_stay, status_filter)
+                for day in days
+            ],
             "calendar_rows": rows,
             "room_chips": [
                 {
                     "label": row["unit"],
                     "count": row["count"],
                     "tone": row["tone"],
-                    "active": index == 0,
-                    "href": f"/ops/calendar/?stay={row['slug'] or row['unit']}",
+                    "active": bool(selected_stay) and selected_stay in {row["slug"], row["unit"]},
+                    "href": self._calendar_url(view_mode=view_mode, focus_date=focus_date, selected_stay=row["slug"] or row["unit"], status_filter=status_filter),
                 }
-                for index, row in enumerate(rows)
+                for row in all_rows
             ],
+            "all_properties_url": self._calendar_url(view_mode=view_mode, focus_date=focus_date, status_filter=status_filter),
             "property_options": self._property_options(stays, selected_stay),
-            "previous_url": f"/ops/calendar/?date={(focus_date - timedelta(days=30)).isoformat()}",
-            "next_url": f"/ops/calendar/?date={(focus_date + timedelta(days=30)).isoformat()}",
-            "today_url": f"/ops/calendar/?date={timezone.localdate().isoformat()}",
+            "view_tabs": [
+                {
+                    "label": label,
+                    "value": value,
+                    "active": view_mode == value,
+                    "href": self._calendar_url(view_mode=value, focus_date=focus_date, selected_stay=selected_stay, status_filter=status_filter),
+                }
+                for value, label in (("month", "Month"), ("week", "Week"), ("day", "Day"))
+            ],
+            "previous_url": self._calendar_url(
+                view_mode=view_mode,
+                focus_date=self._previous_date(focus_date, view_mode),
+                selected_stay=selected_stay,
+                status_filter=status_filter,
+            ),
+            "next_url": self._calendar_url(
+                view_mode=view_mode,
+                focus_date=self._next_date(focus_date, view_mode),
+                selected_stay=selected_stay,
+                status_filter=status_filter,
+            ),
+            "today_url": self._calendar_url(view_mode=view_mode, focus_date=timezone.localdate(), selected_stay=selected_stay, status_filter=status_filter),
             "new_booking_url": reverse("admin:bookings_bookinginquiry_add"),
             "settings_url": reverse("admin:bookings_calendarfeed_changelist"),
             "calendar_block_api_url": reverse("bookings:ops-calendar-blocks-api"),
             "calendar_price_api_url": reverse("bookings:ops-calendar-prices-api"),
             "generated_at": timezone.now(),
         }
+
+    @staticmethod
+    def _view_mode(value):
+        return value if value in {"month", "week", "day"} else "month"
+
+    def _visible_days(self, focus_date, view_mode):
+        if view_mode == "day":
+            return [focus_date]
+        if view_mode == "week":
+            sunday_offset = (focus_date.weekday() + 1) % 7
+            week_start = focus_date - timedelta(days=sunday_offset)
+            return [week_start + timedelta(days=offset) for offset in range(7)]
+        month_start = focus_date.replace(day=1)
+        window_start = month_start - timedelta(days=1)
+        return [window_start + timedelta(days=offset) for offset in range(self.WINDOW_DAYS)]
+
+    @staticmethod
+    def _selected_rows(rows, selected_stay):
+        if not selected_stay:
+            return rows
+        selected = [
+            row
+            for row in rows
+            if selected_stay in {row["slug"], row["unit"]}
+        ]
+        return selected or rows
+
+    def _previous_date(self, focus_date, view_mode):
+        if view_mode == "day":
+            return focus_date - timedelta(days=1)
+        if view_mode == "week":
+            return focus_date - timedelta(days=7)
+        return focus_date - timedelta(days=30)
+
+    def _next_date(self, focus_date, view_mode):
+        if view_mode == "day":
+            return focus_date + timedelta(days=1)
+        if view_mode == "week":
+            return focus_date + timedelta(days=7)
+        return focus_date + timedelta(days=30)
+
+    @staticmethod
+    def _calendar_url(*, view_mode, focus_date, selected_stay="", status_filter="all"):
+        params = {
+            "view": view_mode,
+            "date": focus_date.isoformat(),
+        }
+        if selected_stay:
+            params["stay"] = selected_stay
+        if status_filter and status_filter != "all":
+            params["status"] = status_filter
+        return f"/ops/calendar/?{urlencode(params)}"
 
     def _live_calendar_maps(self, stays, window_start, window_end):
         item_ids = [stay.pk for stay in stays if stay and stay.pk]
@@ -1126,14 +1208,14 @@ class CalendarOperationsService:
 
         return {"status": "available", "label": "Available", "meta": ""}
 
-    @staticmethod
-    def _day_payload(day, focus_date):
+    def _day_payload(self, day, focus_date, view_mode, selected_stay, status_filter):
         return {
             "date": day,
             "date_iso": day.isoformat(),
             "weekday": day.strftime("%a"),
             "day": day.day,
             "is_focus": day == focus_date,
+            "href": self._calendar_url(view_mode=view_mode, focus_date=day, selected_stay=selected_stay, status_filter=status_filter),
         }
 
     @staticmethod

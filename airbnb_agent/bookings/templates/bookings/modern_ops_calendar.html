@@ -51,15 +51,26 @@
       </div>
 
       <nav class="ops-cal-room-chips" aria-label="Property booking counts">
+        <a class="ops-cal-room-chip ops-cal-room-chip--all{% if selected_stay == 'all' %} is-active{% endif %}" href="{{ all_properties_url }}">
+          <span aria-hidden="true"></span>
+          All · {{ booking_count }}
+        </a>
         {% for chip in room_chips %}
           <a class="ops-cal-room-chip ops-cal-room-chip--{{ chip.tone }}{% if chip.active %} is-active{% endif %}" href="{{ chip.href }}">
             <span aria-hidden="true"></span>
             {{ chip.label }} · {{ chip.count }}
           </a>
         {% endfor %}
-        <button class="ops-cal-property-select" type="button">All Properties
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
+        <form class="ops-cal-property-form" method="get" action="/ops/calendar/">
+          <input type="hidden" name="view" value="{{ calendar_view }}">
+          <input type="hidden" name="date" value="{{ focus_date_iso }}">
+          {% if status_filter != 'all' %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+          <select class="ops-cal-property-select" name="stay" aria-label="Select property" onchange="this.form.submit()">
+            {% for option in property_options %}
+              <option value="{{ option.value }}"{% if option.active %} selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </form>
       </nav>
 
       <div class="ops-cal-actions">
@@ -70,24 +81,33 @@
         <a class="ops-cal-icon" href="{{ next_url }}" aria-label="Next period">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         </a>
-        <button class="ops-cal-filter" type="button">
+        <div class="ops-cal-filter-wrap">
+        <button class="ops-cal-filter" type="button" data-calendar-filter-toggle aria-expanded="false">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16"/><path d="M7 12h10"/><path d="M10 19h4"/></svg>
           Filter
         </button>
+        <section class="ops-cal-filter-menu" data-calendar-filter-menu hidden>
+          <button type="button" data-status-filter="all"{% if status_filter == 'all' %} class="is-active"{% endif %}>All records</button>
+          <button type="button" data-status-filter="available"{% if status_filter == 'available' %} class="is-active"{% endif %}>Available</button>
+          <button type="button" data-status-filter="reservation"{% if status_filter == 'reservation' %} class="is-active"{% endif %}>Reservations</button>
+          <button type="button" data-status-filter="blocked"{% if status_filter == 'blocked' %} class="is-active"{% endif %}>Blocked</button>
+          <button type="button" data-status-filter="override"{% if status_filter == 'override' %} class="is-active"{% endif %}>Price overrides</button>
+        </section>
+        </div>
       </div>
     </header>
 
     <div class="ops-cal-view-tabs" aria-label="Calendar view">
-      <a class="{% if calendar_view == 'month' %}is-active{% endif %}" href="/ops/calendar/?view=month">Month</a>
-      <a class="{% if calendar_view == 'week' %}is-active{% endif %}" href="/ops/calendar/?view=week">Week</a>
-      <a class="{% if calendar_view == 'day' %}is-active{% endif %}" href="/ops/calendar/?view=day">Day</a>
+      {% for tab in view_tabs %}
+        <a class="{% if tab.active %}is-active{% endif %}" href="{{ tab.href }}">{{ tab.label }}</a>
+      {% endfor %}
     </div>
 
     <section class="ops-cal-board" aria-label="Room booking calendar">
       <div class="ops-cal-grid" style="--day-count: {{ day_columns|length }};">
         <div class="ops-cal-room-date">Room / Date</div>
         {% for day in day_columns %}
-          <a class="ops-cal-day-head{% if day.is_focus %} is-focus{% endif %}" href="/ops/calendar/?date={{ day.date_iso }}">
+          <a class="ops-cal-day-head{% if day.is_focus %} is-focus{% endif %}" href="{{ day.href }}">
             <span>{{ day.weekday }}</span>
             <strong>{{ day.day }}</strong>
           </a>
@@ -195,6 +215,11 @@
           </button>
         </form>
       </div>
+      <div class="ops-cal-detail__record-actions">
+        <button id="ops-cal-delete-record" type="button" hidden>
+          Remove manual record
+        </button>
+      </div>
       <p class="ops-cal-detail__message" id="ops-cal-detail-message">These actions update the selected calendar object and refresh the board.</p>
     </section>
 
@@ -223,8 +248,12 @@
     const message = document.getElementById("ops-cal-detail-message");
     const blockForm = document.getElementById("ops-cal-block-form");
     const priceForm = document.getElementById("ops-cal-price-form");
+    const deleteButton = document.getElementById("ops-cal-delete-record");
     const closeButton = detail.querySelector("[data-calendar-detail-close]");
+    const filterToggle = document.querySelector("[data-calendar-filter-toggle]");
+    const filterMenu = document.querySelector("[data-calendar-filter-menu]");
     let selectedKey = "";
+    let selectedCellData = null;
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
     const setFieldValue = (form, name, value) => {
@@ -246,6 +275,7 @@
     const closeDetail = () => {
       detail.hidden = true;
       selectedKey = "";
+      selectedCellData = null;
       cells.forEach((cell) => cell.classList.remove("is-selected"));
     };
     const formatDate = (value) => {
@@ -274,6 +304,7 @@
         return;
       }
       selectedKey = data.key;
+      selectedCellData = data;
       cells.forEach((candidate) => candidate.classList.toggle("is-selected", candidate === cell));
       detail.hidden = false;
       dateLabel.textContent = `${data.unit} · ${formatDate(data.date)}`;
@@ -291,11 +322,18 @@
         recordLink.hidden = true;
         recordLink.removeAttribute("href");
       }
+      const canDelete = data.canEdit && data.recordId && (data.recordType === "block" || data.recordType === "price");
+      deleteButton.hidden = !canDelete;
+      deleteButton.textContent = data.recordType === "price" ? "Remove price override" : "Remove block";
       setFormValues(blockForm, data);
       setFormValues(priceForm, data);
       message.textContent = data.canEdit
         ? "These actions update the selected calendar object and refresh the board."
         : "Actions are disabled for mock-only rows. Add or connect a stay to save changes.";
+    };
+    const apiUrlForRecordType = (recordType) => {
+      if (recordType === "price") return detail.dataset.priceApiUrl;
+      return detail.dataset.blockApiUrl;
     };
     const submitAction = async (form, apiUrl) => {
       const payload = Object.fromEntries(new FormData(form).entries());
@@ -315,6 +353,33 @@
       }
       window.location.reload();
     };
+    const deleteSelectedRecord = async () => {
+      if (!selectedCellData || !selectedCellData.recordId || !["block", "price"].includes(selectedCellData.recordType)) return;
+      message.textContent = "Removing calendar record...";
+      const response = await fetch(apiUrlForRecordType(selectedCellData.recordType), {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify({ id: selectedCellData.recordId }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        message.textContent = body.error || "Could not remove this calendar record.";
+        return;
+      }
+      window.location.reload();
+    };
+    const applyStatusFilter = (status) => {
+      cells.forEach((cell) => {
+        const matches = status === "all" || cell.dataset.status === status;
+        cell.classList.toggle("is-filtered-out", !matches);
+      });
+      filterMenu?.querySelectorAll("[data-status-filter]").forEach((button) => {
+        button.classList.toggle("is-active", button.dataset.statusFilter === status);
+      });
+    };
 
     cells.forEach((cell) => {
       cell.addEventListener("click", (event) => {
@@ -323,6 +388,26 @@
       });
     });
     closeButton?.addEventListener("click", closeDetail);
+    deleteButton?.addEventListener("click", deleteSelectedRecord);
+    filterToggle?.addEventListener("click", () => {
+      const isOpen = filterMenu && !filterMenu.hidden;
+      if (filterMenu) filterMenu.hidden = isOpen;
+      filterToggle.setAttribute("aria-expanded", String(!isOpen));
+    });
+    filterMenu?.querySelectorAll("[data-status-filter]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const status = button.dataset.statusFilter || "all";
+        applyStatusFilter(status);
+        filterMenu.hidden = true;
+        filterToggle?.setAttribute("aria-expanded", "false");
+      });
+    });
+    document.addEventListener("click", (event) => {
+      if (!filterMenu || !filterToggle || filterMenu.hidden) return;
+      if (filterMenu.contains(event.target) || filterToggle.contains(event.target)) return;
+      filterMenu.hidden = true;
+      filterToggle.setAttribute("aria-expanded", "false");
+    });
     blockForm.addEventListener("submit", (event) => {
       event.preventDefault();
       if (!blockForm.querySelector('[name="item"]')?.value) return;
@@ -333,6 +418,7 @@
       if (!priceForm.querySelector('[name="item"]')?.value) return;
       submitAction(priceForm, detail.dataset.priceApiUrl);
     });
+    applyStatusFilter("{{ status_filter }}");
   })();
 </script>
 {% endblock %}

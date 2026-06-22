@@ -1342,6 +1342,7 @@ class ModernOpsCalendarView(TemplateView):
                 view_mode=self.request.GET.get("view", "month"),
                 focus_date_value=self.request.GET.get("date", ""),
                 selected_stay=self.request.GET.get("stay", ""),
+                status_filter=self.request.GET.get("status", "all"),
             )
         )
         return context

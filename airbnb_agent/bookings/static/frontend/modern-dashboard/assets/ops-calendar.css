@@ -161,6 +161,15 @@
   color: #5b32ce;
 }
 
+.ops-cal-room-chip--all {
+  border-color: #d7e0ee;
+  color: #07142f;
+}
+
+.ops-cal-room-chip--all span {
+  background: #0f172a;
+}
+
 .ops-cal-room-chip--purple span {
   background: #6b45d7;
 }
@@ -183,9 +192,15 @@
   background: #f97316;
 }
 
+.ops-cal-property-form {
+  margin: 0;
+}
+
 .ops-cal-property-select {
   min-width: 126px;
   padding: 0 12px;
+  appearance: none;
+  cursor: pointer;
 }
 
 .ops-cal-actions {
@@ -208,6 +223,46 @@
 
 .ops-cal-filter {
   min-width: 92px;
+}
+
+.ops-cal-filter-wrap {
+  position: relative;
+}
+
+.ops-cal-filter-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 190px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #d7e0ee;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, .14);
+}
+
+.ops-cal-filter-menu[hidden] {
+  display: none;
+}
+
+.ops-cal-filter-menu button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #17233e;
+  font-size: 12px;
+  font-weight: 850;
+  text-align: left;
+}
+
+.ops-cal-filter-menu button.is-active,
+.ops-cal-filter-menu button:hover {
+  background: #eff6ff;
+  color: #0b72d9;
 }
 
 .ops-cal-view-tabs {
@@ -376,6 +431,10 @@
   color: #0f172a;
   text-align: center;
   text-decoration: none;
+}
+
+.ops-cal-cell.is-filtered-out {
+  opacity: .22;
 }
 
 .ops-cal-cell.is-active-day {
@@ -592,6 +651,28 @@
 .ops-cal-detail__forms {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: 14px 18px 18px;
+}
+
+.ops-cal-detail__record-actions {
+  padding: 0 18px 14px;
+}
+
+.ops-cal-detail__record-actions button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #fff5f5;
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.ops-cal-detail__record-actions button[hidden] {
+  display: none;
 }
 
 .ops-cal-action-form {

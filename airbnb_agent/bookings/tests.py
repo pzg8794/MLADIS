@@ -4158,6 +4158,38 @@ class CalendarOpsTests(TestCase):
         self.assertContains(response, reverse("bookings:ops-calendar-prices-api"))
         self.assertContains(response, "Block day")
         self.assertContains(response, "Price day")
+        self.assertContains(response, 'class="ops-cal-property-form"')
+        self.assertContains(response, 'data-calendar-filter-toggle')
+        self.assertContains(response, 'id="ops-cal-delete-record"')
+
+    def test_calendar_ops_controls_preserve_view_filters_and_windows(self):
+        user = get_user_model().objects.create_user(
+            username="ops-calendar-controls",
+            password="secret",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_login(user)
+
+        week_response = self.client.get(
+            reverse("bookings:calendar-ops"),
+            {"view": "week", "date": "2026-06-17", "status": "blocked"},
+        )
+
+        self.assertEqual(week_response.status_code, 200)
+        self.assertEqual(week_response.context["calendar_view"], "week")
+        self.assertEqual(len(week_response.context["day_columns"]), 7)
+        self.assertContains(week_response, "view=week&amp;date=2026-06-17")
+        self.assertContains(week_response, 'data-status-filter="blocked"')
+
+        day_response = self.client.get(
+            reverse("bookings:calendar-ops"),
+            {"view": "day", "date": "2026-06-17"},
+        )
+
+        self.assertEqual(day_response.status_code, 200)
+        self.assertEqual(day_response.context["calendar_view"], "day")
+        self.assertEqual(len(day_response.context["day_columns"]), 1)
 
     def test_calendar_workspace_subroutes_load_for_staff(self):
         user = get_user_model().objects.create_user(
