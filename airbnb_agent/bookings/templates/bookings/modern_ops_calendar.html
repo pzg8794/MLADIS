@@ -4,7 +4,7 @@
 {% block title %}Booking Calendar · MLADIS{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-calendar.css' %}?v=ops-calendar-v1">
+<link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/ops-calendar.css' %}?v=ops-calendar-v2">
 {% endblock %}
 
 {% block content %}
@@ -105,13 +105,97 @@
             </small>
           </article>
           {% for cell in row.cells %}
-            <a class="ops-cal-cell ops-cal-cell--{{ cell.status }}{% if cell.is_active_day %} is-active-day{% endif %}" href="{{ cell.href }}" aria-label="{{ row.unit }} {{ cell.date|date:'M j' }} {{ cell.label }}">
+            <a
+              class="ops-cal-cell ops-cal-cell--{{ cell.status }}{% if cell.is_active_day %} is-active-day{% endif %}"
+              href="{{ cell.href }}"
+              aria-label="{{ row.unit }} {{ cell.date|date:'M j' }} {{ cell.label }}"
+              data-calendar-cell
+              data-item-id="{{ cell.item_id }}"
+              data-item-name="{{ row.title }}"
+              data-unit="{{ row.unit }}"
+              data-date="{{ cell.date_iso }}"
+              data-label="{{ cell.label }}"
+              data-status="{{ cell.status }}"
+              data-meta="{{ cell.meta }}"
+              data-record-type="{{ cell.record_type }}"
+              data-record-id="{{ cell.record_id }}"
+              data-admin-href="{{ cell.admin_href }}"
+              data-can-edit="{{ cell.can_edit|yesno:'true,false' }}"
+            >
               <span>{{ cell.label }}</span>
               {% if cell.meta %}<em>{{ cell.meta }}</em>{% endif %}
             </a>
           {% endfor %}
         {% endfor %}
       </div>
+    </section>
+
+    <section
+      class="ops-cal-detail"
+      id="ops-cal-detail"
+      aria-label="Calendar day actions"
+      data-block-api-url="{{ calendar_block_api_url }}"
+      data-price-api-url="{{ calendar_price_api_url }}"
+      hidden
+    >
+      <header class="ops-cal-detail__header">
+        <div>
+          <p id="ops-cal-detail-date">Select a date</p>
+          <h2 id="ops-cal-detail-title">Calendar actions</h2>
+          <small id="ops-cal-detail-subtitle">Choose a room/date to manage availability.</small>
+        </div>
+        <button class="ops-cal-detail__close" type="button" data-calendar-detail-close aria-label="Close day actions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </header>
+
+      <div class="ops-cal-detail__status">
+        <span id="ops-cal-detail-pill">Available</span>
+        <a id="ops-cal-detail-record" href="#" hidden>Open record</a>
+      </div>
+
+      <div class="ops-cal-detail__forms">
+        <form id="ops-cal-block-form" class="ops-cal-action-form">
+          <input type="hidden" name="item">
+          <input type="hidden" name="start_date">
+          <input type="hidden" name="end_date">
+          <label>
+            Reason
+            <input name="reason" type="text" value="Maintenance" autocomplete="off">
+          </label>
+          <label>
+            Notes
+            <textarea name="notes" rows="2" placeholder="Optional internal note"></textarea>
+          </label>
+          <button type="submit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><path d="M12 2v10"/></svg>
+            Block day
+          </button>
+        </form>
+
+        <form id="ops-cal-price-form" class="ops-cal-action-form">
+          <input type="hidden" name="item">
+          <input type="hidden" name="start_date">
+          <input type="hidden" name="end_date">
+          <label>
+            Nightly price
+            <input name="nightly_price" type="number" min="1" step="0.01" value="180.00">
+          </label>
+          <label>
+            Label
+            <input name="label" type="text" value="Manual override" autocomplete="off">
+          </label>
+          <label>
+            Notes
+            <textarea name="notes" rows="2" placeholder="Optional pricing note"></textarea>
+          </label>
+          <button type="submit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Price day
+          </button>
+        </form>
+      </div>
+      <p class="ops-cal-detail__message" id="ops-cal-detail-message">These actions update the selected calendar object and refresh the board.</p>
     </section>
 
     <footer class="ops-cal-footer">
@@ -125,4 +209,130 @@
     </footer>
   </section>
 </main>
+<script>
+  (() => {
+    const detail = document.getElementById("ops-cal-detail");
+    const cells = Array.from(document.querySelectorAll("[data-calendar-cell]"));
+    if (!detail || !cells.length) return;
+
+    const title = document.getElementById("ops-cal-detail-title");
+    const subtitle = document.getElementById("ops-cal-detail-subtitle");
+    const dateLabel = document.getElementById("ops-cal-detail-date");
+    const pill = document.getElementById("ops-cal-detail-pill");
+    const recordLink = document.getElementById("ops-cal-detail-record");
+    const message = document.getElementById("ops-cal-detail-message");
+    const blockForm = document.getElementById("ops-cal-block-form");
+    const priceForm = document.getElementById("ops-cal-price-form");
+    const closeButton = detail.querySelector("[data-calendar-detail-close]");
+    let selectedKey = "";
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+    const setFieldValue = (form, name, value) => {
+      const field = form.querySelector(`[name="${name}"]`);
+      if (field) field.value = value;
+    };
+    const setFormValues = (form, data) => {
+      setFieldValue(form, "item", data.itemId || "");
+      setFieldValue(form, "start_date", data.date || "");
+      setFieldValue(form, "end_date", data.date || "");
+      Array.from(form.querySelectorAll("input, textarea, button")).forEach((field) => {
+        if (field.name !== "notes" && field.name !== "reason" && field.name !== "label" && field.name !== "nightly_price") {
+          return;
+        }
+        field.disabled = !data.canEdit;
+      });
+      form.querySelector("button").disabled = !data.canEdit;
+    };
+    const closeDetail = () => {
+      detail.hidden = true;
+      selectedKey = "";
+      cells.forEach((cell) => cell.classList.remove("is-selected"));
+    };
+    const formatDate = (value) => {
+      const date = new Date(`${value}T12:00:00`);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    };
+    const collectCellData = (cell) => ({
+      key: `${cell.dataset.itemId || "mock"}:${cell.dataset.date}`,
+      itemId: cell.dataset.itemId,
+      itemName: cell.dataset.itemName,
+      unit: cell.dataset.unit,
+      date: cell.dataset.date,
+      label: cell.dataset.label,
+      status: cell.dataset.status,
+      meta: cell.dataset.meta,
+      recordType: cell.dataset.recordType,
+      recordId: cell.dataset.recordId,
+      adminHref: cell.dataset.adminHref,
+      canEdit: cell.dataset.canEdit === "true",
+    });
+    const showDetail = (cell) => {
+      const data = collectCellData(cell);
+      if (selectedKey === data.key && !detail.hidden) {
+        closeDetail();
+        return;
+      }
+      selectedKey = data.key;
+      cells.forEach((candidate) => candidate.classList.toggle("is-selected", candidate === cell));
+      detail.hidden = false;
+      dateLabel.textContent = `${data.unit} · ${formatDate(data.date)}`;
+      title.textContent = data.itemName || "Calendar day";
+      subtitle.textContent = data.canEdit
+        ? "Manage this room's availability, price, or linked record."
+        : "This mock row needs a real stay record before changes can be saved.";
+      pill.textContent = data.label || data.status || "Available";
+      pill.className = `ops-cal-detail-pill ops-cal-detail-pill--${data.status || "available"}`;
+      if (data.adminHref) {
+        recordLink.hidden = false;
+        recordLink.href = data.adminHref;
+        recordLink.textContent = data.recordType === "reservation" ? "Open reservation" : "Open record";
+      } else {
+        recordLink.hidden = true;
+        recordLink.removeAttribute("href");
+      }
+      setFormValues(blockForm, data);
+      setFormValues(priceForm, data);
+      message.textContent = data.canEdit
+        ? "These actions update the selected calendar object and refresh the board."
+        : "Actions are disabled for mock-only rows. Add or connect a stay to save changes.";
+    };
+    const submitAction = async (form, apiUrl) => {
+      const payload = Object.fromEntries(new FormData(form).entries());
+      message.textContent = "Saving calendar update...";
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(payload),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        message.textContent = body.error || "Could not save this calendar update.";
+        return;
+      }
+      window.location.reload();
+    };
+
+    cells.forEach((cell) => {
+      cell.addEventListener("click", (event) => {
+        event.preventDefault();
+        showDetail(cell);
+      });
+    });
+    closeButton?.addEventListener("click", closeDetail);
+    blockForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!blockForm.querySelector('[name="item"]')?.value) return;
+      submitAction(blockForm, detail.dataset.blockApiUrl);
+    });
+    priceForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!priceForm.querySelector('[name="item"]')?.value) return;
+      submitAction(priceForm, detail.dataset.priceApiUrl);
+    });
+  })();
+</script>
 {% endblock %}

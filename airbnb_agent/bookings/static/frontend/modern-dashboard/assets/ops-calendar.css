@@ -476,6 +476,189 @@
   margin: 0;
 }
 
+.ops-cal-detail {
+  margin-top: 14px;
+  border: 1px solid #d9e1ec;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, .06);
+  overflow: hidden;
+}
+
+.ops-cal-detail[hidden] {
+  display: none;
+}
+
+.ops-cal-detail__header,
+.ops-cal-detail__status,
+.ops-cal-detail__forms {
+  display: grid;
+  gap: 14px;
+}
+
+.ops-cal-detail__header {
+  grid-template-columns: minmax(0, 1fr) 38px;
+  align-items: start;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid #dbe3ee;
+}
+
+.ops-cal-detail__header p,
+.ops-cal-detail__header h2,
+.ops-cal-detail__header small,
+.ops-cal-detail__message {
+  margin: 0;
+}
+
+.ops-cal-detail__header p {
+  color: #0b72d9;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.ops-cal-detail__header h2 {
+  margin-top: 4px;
+  color: #07142f;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.ops-cal-detail__header small,
+.ops-cal-detail__message {
+  color: #52627c;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.ops-cal-detail__close {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid #d7e0ee;
+  border-radius: 999px;
+  color: #17233e;
+  background: #ffffff;
+}
+
+.ops-cal-detail__status {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  padding: 12px 18px 0;
+}
+
+.ops-cal-detail-pill,
+.ops-cal-detail__status span {
+  display: inline-flex;
+  width: max-content;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: #dff5e7;
+  color: #0a7f3d;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.ops-cal-detail-pill--reservation {
+  background: #ece6ff;
+  color: #5b32ce;
+}
+
+.ops-cal-detail-pill--blocked {
+  background: #e0efff;
+  color: #0b72d9;
+}
+
+.ops-cal-detail-pill--override {
+  background: #fff0df;
+  color: #d95600;
+}
+
+.ops-cal-detail__status a {
+  justify-self: end;
+  color: #0b72d9;
+  font-size: 12px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.ops-cal-detail__forms {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 14px 18px 18px;
+}
+
+.ops-cal-action-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  background: #fbfdff;
+}
+
+.ops-cal-action-form label {
+  display: grid;
+  gap: 6px;
+  color: #465875;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.ops-cal-action-form input,
+.ops-cal-action-form textarea {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #d7e0ee;
+  border-radius: 7px;
+  padding: 8px 10px;
+  color: #07142f;
+  background: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.ops-cal-action-form textarea {
+  resize: vertical;
+}
+
+.ops-cal-action-form button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0f9ab7, #04738b);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.ops-cal-action-form button:disabled,
+.ops-cal-action-form input:disabled,
+.ops-cal-action-form textarea:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+.ops-cal-detail__message {
+  padding: 0 18px 16px;
+}
+
+.ops-cal-cell.is-selected {
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 2px #3b82f6;
+}
+
 @media (max-width: 1180px) {
   .ops-cal-page {
     grid-template-columns: 1fr;
@@ -511,6 +694,10 @@
   .ops-cal-room-chips,
   .ops-cal-actions {
     justify-content: flex-start;
+  }
+
+  .ops-cal-detail__forms {
+    grid-template-columns: 1fr;
   }
 }
 

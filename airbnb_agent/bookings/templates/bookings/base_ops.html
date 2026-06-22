@@ -10,7 +10,7 @@
       <meta name="mladis-logo-url" content="{{ site_settings.logo_display_url }}">
     {% endif %}
     <link rel="icon" href="{% static 'frontend/modern-dashboard/favicon.svg' %}" type="image/svg+xml">
-    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}?v=gentelella-v4-preview-4">
+    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}?v=gentelella-v4-preview-5">
     {% block extra_css %}{% endblock %}
     <style>
       .v4-nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;line-height:1;margin-left:auto;}
@@ -24,7 +24,7 @@
   </head>
   <body>
     {{ ops_nav_public_items|json_script:"mladis-ops-nav-items" }}
-    <div class="dashboard-shell" data-theme-reference="gentelella-v4">
+    <div class="dashboard-shell" id="ops-dashboard-shell" data-theme-reference="gentelella-v4" data-sidebar-pinned="false">
 
       <aside class="modern-admin-sidebar v4-command-sidebar" id="main-sidebar">
         <a class="modern-admin-brand" href="/">
@@ -151,6 +151,8 @@
         </div>
       </aside>
 
+      <div class="v4-sidebar-hover-zone" id="v4-sidebar-hover-zone" aria-hidden="true"></div>
+
       <div class="dashboard-main">
 
         <header class="dashboard-topbar v4-commandbar">
@@ -158,7 +160,7 @@
             class="v4-icon-button"
             type="button"
             aria-label="Toggle menu"
-            onclick="this.closest('.dashboard-shell').classList.toggle('is-sidebar-expanded'); document.getElementById('main-sidebar').classList.toggle('is-expanded');"
+            onclick="window.mladisOpsSidebarToggle && window.mladisOpsSidebarToggle();"
           >
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
           </button>
@@ -195,5 +197,48 @@
 
       </div>
     </div>
+    <script>
+      (() => {
+        const shell = document.getElementById("ops-dashboard-shell");
+        const sidebar = document.getElementById("main-sidebar");
+        const hoverZone = document.getElementById("v4-sidebar-hover-zone");
+        if (!shell || !sidebar || !hoverZone) return;
+
+        const isPinned = () => shell.dataset.sidebarPinned === "true";
+        const setExpanded = (expanded) => {
+          shell.classList.toggle("is-sidebar-expanded", expanded);
+          shell.classList.toggle("is-sidebar-pinned", isPinned());
+          sidebar.classList.toggle("is-expanded", expanded);
+        };
+        const reveal = () => setExpanded(true);
+        const hideIfFloating = () => {
+          if (!isPinned()) setExpanded(false);
+        };
+
+        window.mladisOpsSidebarToggle = () => {
+          const nextPinned = !isPinned();
+          shell.dataset.sidebarPinned = String(nextPinned);
+          setExpanded(nextPinned);
+        };
+
+        hoverZone.addEventListener("pointerenter", reveal);
+        hoverZone.addEventListener("mouseenter", reveal);
+        sidebar.addEventListener("pointerenter", reveal);
+        sidebar.addEventListener("mouseenter", reveal);
+        sidebar.addEventListener("mouseleave", hideIfFloating);
+        sidebar.addEventListener("focusin", reveal);
+        sidebar.addEventListener("focusout", () => {
+          window.setTimeout(() => {
+            if (!sidebar.contains(document.activeElement)) hideIfFloating();
+          }, 0);
+        });
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            shell.dataset.sidebarPinned = "false";
+            setExpanded(false);
+          }
+        });
+      })();
+    </script>
   </body>
 </html>

@@ -4151,6 +4151,13 @@ class CalendarOpsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Booking Calendar")
         self.assertContains(response, "frontend/modern-dashboard/assets/ops-calendar.css")
+        self.assertContains(response, 'id="v4-sidebar-hover-zone"')
+        self.assertContains(response, "data-calendar-cell")
+        self.assertContains(response, 'id="ops-cal-detail"')
+        self.assertContains(response, reverse("bookings:ops-calendar-blocks-api"))
+        self.assertContains(response, reverse("bookings:ops-calendar-prices-api"))
+        self.assertContains(response, "Block day")
+        self.assertContains(response, "Price day")
 
     def test_calendar_workspace_subroutes_load_for_staff(self):
         user = get_user_model().objects.create_user(

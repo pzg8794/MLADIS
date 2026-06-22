@@ -938,6 +938,8 @@ class CalendarOperationsService:
             "today_url": f"/ops/calendar/?date={timezone.localdate().isoformat()}",
             "new_booking_url": reverse("admin:bookings_bookinginquiry_add"),
             "settings_url": reverse("admin:bookings_calendarfeed_changelist"),
+            "calendar_block_api_url": reverse("bookings:ops-calendar-blocks-api"),
+            "calendar_price_api_url": reverse("bookings:ops-calendar-prices-api"),
             "generated_at": timezone.now(),
         }
 
@@ -1011,6 +1013,7 @@ class CalendarOperationsService:
         return {
             "title": title,
             "slug": stay.slug if stay else "",
+            "item_id": stay.pk if stay else "",
             "unit": unit,
             "count": self._room_count(stay, index, live),
             "beds": self._bed_label(stay, mock),
@@ -1026,15 +1029,22 @@ class CalendarOperationsService:
             live_cell = self._live_cell(item_id, day, live)
             if live_cell:
                 live_cell["is_active_day"] = day == focus_date
+                live_cell["item_id"] = item_id
+                live_cell["can_edit"] = True
                 return live_cell
 
         cell = self._mock_cell(row_index, offset)
         cell.update(
             {
+                "item_id": item_id or "",
+                "record_id": "",
+                "record_type": "",
+                "can_edit": bool(item_id),
                 "date": day,
                 "date_iso": day.isoformat(),
                 "is_active_day": day == focus_date,
                 "href": f"/ops/calendar/?date={day.isoformat()}",
+                "admin_href": "",
             }
         )
         return cell
@@ -1050,7 +1060,10 @@ class CalendarOperationsService:
                 "meta": f"+{max(guests + 1, 2)}",
                 "date": day,
                 "date_iso": day.isoformat(),
+                "record_type": "reservation",
+                "record_id": reservation.pk,
                 "href": reverse("admin:bookings_bookinginquiry_change", args=[reservation.pk]),
+                "admin_href": reverse("admin:bookings_bookinginquiry_change", args=[reservation.pk]),
             }
 
         blocks = live["blocks"].get(item_id, {}).get(day, [])
@@ -1062,7 +1075,10 @@ class CalendarOperationsService:
                 "meta": "",
                 "date": day,
                 "date_iso": day.isoformat(),
+                "record_type": "block",
+                "record_id": block.pk,
                 "href": reverse("admin:bookings_availabilityblock_change", args=[block.pk]),
+                "admin_href": reverse("admin:bookings_availabilityblock_change", args=[block.pk]),
             }
 
         overrides = live["overrides"].get(item_id, {}).get(day, [])
@@ -1074,7 +1090,10 @@ class CalendarOperationsService:
                 "meta": "",
                 "date": day,
                 "date_iso": day.isoformat(),
+                "record_type": "price",
+                "record_id": override.pk,
                 "href": reverse("admin:bookings_dailypriceoverride_change", args=[override.pk]),
+                "admin_href": reverse("admin:bookings_dailypriceoverride_change", args=[override.pk]),
             }
         return None
 

@@ -11,7 +11,6 @@ import {
   ExternalLink,
   Home,
   MessageSquareText,
-  MoreHorizontal,
   RefreshCw,
   Wrench,
   BedDouble,
@@ -65,7 +64,6 @@ function V4MetricCard({ metric }: { metric: V4Metric }) {
     <article className={`v4-metric-card v4-tone-${metric.tone}`}>
       <div className="v4-metric-card__top">
         <span className="v4-metric-icon">{metric.icon}</span>
-        <button type="button" aria-label={`More ${metric.label} actions`}><MoreHorizontal size={16} /></button>
       </div>
       <p>{metric.label}</p>
       <strong>{metric.value}</strong>

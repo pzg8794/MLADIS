@@ -12462,9 +12462,9 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
 .v4-metric-card {
   display: grid;
-  gap: 6px;
-  min-height: 144px;
-  padding: 14px;
+  gap: 3px;
+  min-height: 100px;
+  padding: 10px;
   color: var(--v4-tone, #0891b2);
 }
 
@@ -12472,6 +12472,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 30px;
 }
 
 .v4-metric-card__top button {
@@ -12482,13 +12483,18 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
 .v4-metric-icon {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 30px;
+  height: 30px;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 8px;
   color: #ffffff;
   background: linear-gradient(135deg, var(--v4-tone), color-mix(in srgb, var(--v4-tone) 72%, #ffffff));
-  box-shadow: 0 12px 24px color-mix(in srgb, var(--v4-tone) 26%, transparent);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--v4-tone) 22%, transparent);
+}
+
+.v4-metric-icon svg {
+  width: 15px;
+  height: 15px;
 }
 
 .v4-metric-card p,
@@ -12497,16 +12503,23 @@ svg.modern-admin-rail-icon:not([stroke]) {
   color: #475569;
 }
 
+.v4-metric-card p {
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.12;
+}
+
 .v4-metric-card strong {
   color: #0f172a;
-  font-size: 1.78rem;
-  letter-spacing: -0.03em;
+  font-size: 1.24rem;
+  letter-spacing: 0;
   line-height: 1;
 }
 
 .v4-metric-card small {
-  font-size: 0.78rem;
+  font-size: 0.66rem;
   font-weight: 800;
+  line-height: 1.12;
 }
 
 .v4-metric-card small::first-letter {
@@ -12520,7 +12533,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
 .v4-sparkline {
   width: 100%;
-  height: 34px;
+  height: 20px;
   margin-top: auto;
 }
 
@@ -13108,7 +13121,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
   }
 
   .v4-metric-card {
-    min-height: 132px;
+    min-height: 100px;
   }
 
   .v4-command-strip__copy {
