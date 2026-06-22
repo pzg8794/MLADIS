@@ -4149,20 +4149,14 @@ class CalendarOpsTests(TestCase):
         response = self.client.get(reverse("bookings:calendar-ops"), follow=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Booking Calendar")
-        self.assertContains(response, "frontend/modern-dashboard/assets/ops-calendar.css")
-        self.assertContains(response, 'id="v4-sidebar-hover-zone"')
-        self.assertContains(response, "data-calendar-cell")
-        self.assertContains(response, 'id="ops-cal-detail"')
-        self.assertContains(response, reverse("bookings:ops-calendar-blocks-api"))
-        self.assertContains(response, reverse("bookings:ops-calendar-prices-api"))
-        self.assertContains(response, "Block day")
-        self.assertContains(response, "Price day")
-        self.assertContains(response, 'class="ops-cal-property-form"')
-        self.assertContains(response, 'data-calendar-filter-toggle')
-        self.assertContains(response, 'id="ops-cal-delete-record"')
+        self.assertTemplateUsed(response, "bookings/modern_dashboard.html")
+        self.assertContains(response, 'id="root"')
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+        self.assertContains(response, 'id="mladis-ops-nav-items"')
+        self.assertNotContains(response, "frontend/modern-dashboard/assets/ops-calendar.css")
+        self.assertNotContains(response, "data-calendar-cell")
 
-    def test_calendar_ops_controls_preserve_view_filters_and_windows(self):
+    def test_calendar_ops_route_uses_react_shell_with_query_controls(self):
         user = get_user_model().objects.create_user(
             username="ops-calendar-controls",
             password="secret",
@@ -4177,10 +4171,8 @@ class CalendarOpsTests(TestCase):
         )
 
         self.assertEqual(week_response.status_code, 200)
-        self.assertEqual(week_response.context["calendar_view"], "week")
-        self.assertEqual(len(week_response.context["day_columns"]), 7)
-        self.assertContains(week_response, "view=week&amp;date=2026-06-17")
-        self.assertContains(week_response, 'data-status-filter="blocked"')
+        self.assertTemplateUsed(week_response, "bookings/modern_dashboard.html")
+        self.assertContains(week_response, "frontend/modern-dashboard/assets/app.js")
 
         day_response = self.client.get(
             reverse("bookings:calendar-ops"),
@@ -4188,8 +4180,7 @@ class CalendarOpsTests(TestCase):
         )
 
         self.assertEqual(day_response.status_code, 200)
-        self.assertEqual(day_response.context["calendar_view"], "day")
-        self.assertEqual(len(day_response.context["day_columns"]), 1)
+        self.assertTemplateUsed(day_response, "bookings/modern_dashboard.html")
 
     def test_calendar_workspace_subroutes_load_for_staff(self):
         user = get_user_model().objects.create_user(
@@ -4205,8 +4196,8 @@ class CalendarOpsTests(TestCase):
                 response = self.client.get(reverse(f"bookings:{route_name}"))
 
                 self.assertEqual(response.status_code, 200)
-                self.assertContains(response, "Booking Calendar")
-                self.assertContains(response, "frontend/modern-dashboard/assets/ops-calendar.css")
+                self.assertTemplateUsed(response, "bookings/modern_dashboard.html")
+                self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
     def test_calendar_ops_api_returns_snapshot_and_mutates_manual_records(self):
         user = get_user_model().objects.create_user(

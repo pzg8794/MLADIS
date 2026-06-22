@@ -68,7 +68,6 @@ from .services import (
     AgentAccessContext,
     AgentIntelligenceOperationsService,
     BookingCalendarService,
-    CalendarOperationsService,
     CustomersCRMService,
     MaintenanceOperationsService,
     MaintenanceService,
@@ -1331,21 +1330,7 @@ class CalendarOpsView(TemplateView):
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsCalendarView(TemplateView):
-    template_name = "bookings/modern_ops_calendar.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        service = CalendarOperationsService()
-        context.update(
-            service.page_payload(
-                request_path=self.request.path,
-                view_mode=self.request.GET.get("view", "month"),
-                focus_date_value=self.request.GET.get("date", ""),
-                selected_stay=self.request.GET.get("stay", ""),
-                status_filter=self.request.GET.get("status", "all"),
-            )
-        )
-        return context
+    template_name = "bookings/modern_dashboard.html"
 
 
 @method_decorator(ops_staff_required, name="dispatch")
