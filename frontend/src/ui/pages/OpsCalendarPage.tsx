@@ -11,11 +11,9 @@ import {
   ChevronRight,
   Clock3,
   DollarSign,
-  ExternalLink,
   Filter,
   Home,
   LayoutList,
-  LockKeyhole,
   Moon,
   MapPin,
   Monitor,
@@ -24,16 +22,14 @@ import {
   Search,
   Settings,
   Shield,
-  Sparkles,
   Square,
   Sun,
-  Trash2,
   User,
   Users,
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { OpsWorkspaceFactory } from '../../application/OpsWorkspaceFactory';
+import { CalendarWorkspaceFactory } from '../../application/CalendarWorkspaceFactory';
 import {
   OpsCalendarDay,
   OpsCalendarEvent,
@@ -105,12 +101,12 @@ const viewLabels: Record<OpsCalendarViewMode, string> = {
 };
 
 const roomPalette = [
-  { color: '#6750a4', bgColor: '#eaddff', textColor: '#21005d' },
-  { color: '#0072b8', bgColor: '#d5ebff', textColor: '#003257' },
-  { color: '#c25100', bgColor: '#ffdac6', textColor: '#4b1900' },
-  { color: '#087927', bgColor: '#c7f3d1', textColor: '#00390f' },
-  { color: '#7d5260', bgColor: '#ffd8e4', textColor: '#31111d' },
-  { color: '#546524', bgColor: '#dceac0', textColor: '#202900' },
+  { color: '#0d7fa1', bgColor: '#e5f6fb', textColor: '#073042' },
+  { color: '#2563eb', bgColor: '#eaf2ff', textColor: '#172554' },
+  { color: '#ea580c', bgColor: '#fff1e7', textColor: '#431407' },
+  { color: '#16a34a', bgColor: '#e9f9ef', textColor: '#052e16' },
+  { color: '#7c3aed', bgColor: '#f3ecff', textColor: '#2e1065' },
+  { color: '#475569', bgColor: '#f1f5f9', textColor: '#0f172a' },
 ];
 
 const timeSlots = [
@@ -165,10 +161,6 @@ function fullDate(value: string) {
     day: 'numeric',
     year: 'numeric',
   }).format(dateFromIso(value));
-}
-
-function isoMonth(value: string) {
-  return value.slice(0, 7);
 }
 
 function sortedRange(first: string, second: string): RangeState {
@@ -302,7 +294,7 @@ function visualMetaForRow(row: OpsCalendarStayRow, index: number): StayVisualMet
 }
 
 export function OpsCalendarPage() {
-  const service = useMemo(() => OpsWorkspaceFactory.create(), []);
+  const service = useMemo(() => CalendarWorkspaceFactory.create(), []);
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const currentSection = useMemo<CalendarWorkspaceSection>(() => {
     const path = window.location.pathname;
@@ -356,9 +348,9 @@ export function OpsCalendarPage() {
 
   const loadSnapshot = useCallback(() => {
     service
-      .loadCalendar({ itemId: null, view, date: focusDate })
-      .then((data) => {
-        setSnapshot(data);
+      .loadWorkspace({ itemId: null, view, date: focusDate })
+      .then((workspace) => {
+        setSnapshot(workspace.snapshot);
         setError('');
       })
       .catch((caught: unknown) => {
@@ -594,18 +586,6 @@ export function OpsCalendarPage() {
     setDragStart(null);
     setDragEnd(null);
     setActionMessage('Booking hold created.');
-    loadSnapshot();
-    window.setTimeout(() => setActionMessage(''), 2400);
-  }
-
-  async function deleteEvent(event: OpsCalendarEvent) {
-    setActionMessage(`Removing ${event.title}...`);
-    if (event.type === 'block') {
-      await service.deleteCalendarBlock(event.recordId);
-    } else if (event.type === 'price') {
-      await service.deleteCalendarPrice(event.recordId);
-    }
-    setActionMessage('Calendar record removed.');
     loadSnapshot();
     window.setTimeout(() => setActionMessage(''), 2400);
   }
@@ -1642,41 +1622,6 @@ function CalendarSelectionModal({
           </footer>
         </form>
       </section>
-    </div>
-  );
-}
-
-function EventList({ events, onDelete }: { events: OpsCalendarEvent[]; onDelete: (event: OpsCalendarEvent) => void }) {
-  if (events.length === 0) {
-    return (
-      <article className="ops-calendar-empty">
-        <Sparkles size={24} />
-        <h3>No matching calendar records.</h3>
-        <p>Adjust search, switch date range, or create a new booking hold.</p>
-      </article>
-    );
-  }
-
-  return (
-    <div className="ops-calendar-list">
-      {events.map((event) => (
-        <article className={`ops-calendar-list-row ops-calendar-list-row--${eventTone(event)}`} key={event.id}>
-          <div>
-            <span>{event.subtitle}</span>
-            <strong>{event.title}</strong>
-            <p>{event.itemName ? lockedStayIdentity(event.itemName, '', 0).displayName : 'Calendar record'} · {event.rangeLabel} {event.guestLabel ? `· ${event.guestLabel}` : ''}</p>
-          </div>
-          <div>
-            {event.amount && <strong>{event.amount}</strong>}
-            <a href={event.adminUrl}>Record <ExternalLink size={13} /></a>
-            {event.type !== 'reservation' && (
-              <button type="button" onClick={() => onDelete(event)}>
-                <Trash2 size={14} /> Delete
-              </button>
-            )}
-          </div>
-        </article>
-      ))}
     </div>
   );
 }
