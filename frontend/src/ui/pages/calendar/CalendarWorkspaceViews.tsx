@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, ReactNode, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Building2,
@@ -7,30 +7,36 @@ import {
   ChevronDown,
   Clock3,
   DollarSign,
-  Home,
-  MapPin,
   Search,
   Sparkles,
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { OpsCalendarDay, OpsCalendarEvent, OpsCalendarStayRow, OpsCalendarViewMode } from '../../../domain/models';
+import {
+  CalendarStayVisualMeta,
+  CalendarWorkspaceRowProjection,
+  calendarTodayIso,
+  cleanCalendarSubtitle,
+  compactDate,
+  dateFromIso,
+  eventCoversDay,
+  eventMatchesQuery,
+  eventOverlapsDates,
+  fallbackVisibleDays,
+  fullDate,
+  isFutureOrToday,
+  isPast,
+  listEntryDate,
+  periodLabel,
+  periodTitle,
+  stayMeta,
+  uniqueEvents,
+} from '../../../domain/calendar';
+import { OpsCalendarDay, OpsCalendarEvent, OpsCalendarViewMode } from '../../../domain/models';
 
-type StayVisualMeta = {
-  index: number;
-  color: string;
-  bgColor: string;
-  textColor: string;
-  shortLabel: string;
-  displayName: string;
-  unitLabel: string;
-  capacityLabel: string;
-};
+type StayVisualMeta = CalendarStayVisualMeta;
 
-type StayRowWithMeta = {
-  row: OpsCalendarStayRow;
-  meta: StayVisualMeta;
-};
+type StayRowWithMeta = CalendarWorkspaceRowProjection;
 
 type CalendarEventKind = 'all' | 'reservation' | 'block' | 'price';
 type TimeFilter = 'all' | 'today' | 'upcoming' | 'past';
@@ -47,135 +53,10 @@ const timeSlots = [
   '17:00 - 18:00',
 ];
 
-function isoToday() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function dateFromIso(value: string) {
-  return new Date(`${value}T00:00:00`);
-}
-
-function compactDate(value: string) {
-  if (!value) return '';
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(dateFromIso(value));
-}
-
-function fullDate(value: string) {
-  if (!value) return '';
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(dateFromIso(value));
-}
-
-function monthKey(value: string) {
-  return value.slice(0, 7);
-}
-
-function monthLabel(value: string) {
-  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(dateFromIso(`${monthKey(value)}-01`));
-}
-
-function shortPeriodDate(value: string) {
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(dateFromIso(value));
-}
-
-function eventCoversDay(event: OpsCalendarEvent, date: string) {
-  if (event.type === 'reservation') {
-    return event.start <= date && date < event.end;
-  }
-  return event.start <= date && date <= event.end;
-}
-
 function eventTone(event: OpsCalendarEvent) {
   if (event.type === 'reservation') return 'reservation';
   if (event.type === 'block') return 'block';
   return 'price';
-}
-
-function uniqueEvents(rows: StayRowWithMeta[]) {
-  const seen = new Map<string, OpsCalendarEvent>();
-  rows.forEach(({ row }) => row.events.forEach((event) => seen.set(event.id, event)));
-  return Array.from(seen.values()).sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title));
-}
-
-function eventMatchesQuery(event: OpsCalendarEvent, query: string, meta?: StayVisualMeta) {
-  if (!query) return true;
-  return [
-    event.title,
-    event.subtitle,
-    event.itemName,
-    event.guestLabel,
-    event.rangeLabel,
-    event.status,
-    meta?.shortLabel || '',
-    meta?.displayName || '',
-    meta?.unitLabel || '',
-  ].some((value) => value.toLowerCase().includes(query));
-}
-
-function isFutureOrToday(value: string) {
-  return value >= isoToday();
-}
-
-function isPast(value: string) {
-  return value < isoToday();
-}
-
-function firstMonthDays(rows: StayRowWithMeta[]) {
-  const days = rows[0]?.row.weeks.flat() || [];
-  const seen = new Map<string, OpsCalendarDay>();
-  days.filter((day) => day.inMonth).forEach((day) => seen.set(day.date, day));
-  return Array.from(seen.values());
-}
-
-function fallbackVisibleDays(rows: StayRowWithMeta[], view: OpsCalendarViewMode, focusDate: string, visibleDays: OpsCalendarDay[]) {
-  const firstRow = rows[0]?.row;
-  if (!firstRow) return [];
-  if (view === 'month') return firstMonthDays(rows);
-  if (visibleDays.length > 0) return visibleDays;
-  if (view === 'week') return firstRow.weekDays;
-  return firstRow.weeks.flat().filter((day) => day.date === focusDate);
-}
-
-function periodLabel(view: OpsCalendarViewMode, focusDate: string, days: OpsCalendarDay[]) {
-  if (view === 'month') return monthLabel(focusDate);
-  if (days.length === 0) return fullDate(focusDate);
-  if (view === 'list') return fullDate(days[0].date);
-  return `${shortPeriodDate(days[0].date)} - ${shortPeriodDate(days[days.length - 1].date)}, ${dateFromIso(days[days.length - 1].date).getFullYear()}`;
-}
-
-function cleanCalendarSubtitle(value?: string) {
-  return (value || 'Direct booking calendar')
-    .replace(/^MLADIS\s*[-–—]\s*/i, '')
-    .replace(/\bBedrooms?\b/gi, 'Beds')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function periodTitle(view: OpsCalendarViewMode) {
-  if (view === 'month') return 'This Month';
-  if (view === 'week') return 'This Week';
-  return 'Selected Day';
-}
-
-function eventOverlapsDates(event: OpsCalendarEvent, dates: string[]) {
-  return dates.some((date) => eventCoversDay(event, date));
-}
-
-function listEntryDate(event: OpsCalendarEvent, dates: string[]) {
-  if (dates.includes(event.start)) return event.start;
-  return dates.find((date) => eventCoversDay(event, date)) || event.start;
-}
-
-function stayMeta(rows: StayRowWithMeta[], itemId: number) {
-  return rows.find(({ row }) => row.stay.id === itemId)?.meta;
-}
-
-function stayEvents(rows: StayRowWithMeta[], itemId: number) {
-  return rows.find(({ row }) => row.stay.id === itemId)?.row.events || [];
 }
 
 export function CalendarListView({
@@ -195,13 +76,10 @@ export function CalendarListView({
   const [stayFilter, setStayFilter] = useState<number | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<CalendarEventKind>('all');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
-  const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const periodDays = useMemo(() => fallbackVisibleDays(rows, view, focusDate, visibleDays), [focusDate, rows, view, visibleDays]);
   const periodDates = useMemo(() => periodDays.map((day) => day.date), [periodDays]);
-
-  useEffect(() => {
-    setExpandedDate(null);
-  }, [focusDate, view]);
+  const [expandedDateState, setExpandedDate] = useState<string | null>(null);
+  const expandedDate = expandedDateState && periodDates.includes(expandedDateState) ? expandedDateState : null;
 
   const filteredEvents = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -212,7 +90,7 @@ export function CalendarListView({
       const matchesType = typeFilter === 'all' || event.type === typeFilter;
       const matchesPeriod = eventOverlapsDates(event, periodDates);
       const matchesTime = timeFilter === 'all'
-        || (timeFilter === 'today' && event.start <= isoToday() && event.end >= isoToday())
+        || (timeFilter === 'today' && event.start <= calendarTodayIso() && event.end >= calendarTodayIso())
         || (timeFilter === 'upcoming' && isFutureOrToday(event.start))
         || (timeFilter === 'past' && isPast(event.end));
       return matchesStay && matchesType && matchesPeriod && matchesTime && eventMatchesQuery(event, query, meta) && eventMatchesQuery(event, globalQuery, meta);
@@ -271,13 +149,13 @@ export function CalendarListView({
             .filter(Boolean) as StayVisualMeta[];
           return (
             <article className="calendar-list-date-group" key={date}>
-              <button type="button" onClick={() => setExpandedDate(isOpen ? '' : date)}>
-                <span className={date === isoToday() ? 'is-today' : ''}>
+              <button type="button" onClick={() => setExpandedDate(isOpen ? null : date)}>
+                <span className={date === calendarTodayIso() ? 'is-today' : ''}>
                   <b>{new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(dateFromIso(date))}</b>
                   <strong>{dateFromIso(date).getDate()}</strong>
                 </span>
                 <div>
-                  <strong>{date === isoToday() ? 'Today · ' : ''}{fullDate(date)}</strong>
+                  <strong>{date === calendarTodayIso() ? 'Today · ' : ''}{fullDate(date)}</strong>
                   <small>
                     {events.length} record{events.length === 1 ? '' : 's'}
                     <span className="calendar-list-date-dots">
@@ -332,7 +210,10 @@ export function CalendarRoomsView({
       || row.events.some((event) => eventMatchesQuery(event, globalQuery, meta))
     ));
   }, [globalQuery, rows]);
-  const [selectedStay, setSelectedStay] = useState(rows[0]?.row.stay.id || 0);
+  const [selectedStayId, setSelectedStay] = useState(rows[0]?.row.stay.id || 0);
+  const selectedStay = displayRows.some(({ row }) => row.stay.id === selectedStayId)
+    ? selectedStayId
+    : displayRows[0]?.row.stay.id || 0;
   const active = displayRows.find(({ row }) => row.stay.id === selectedStay) || displayRows[0];
   const periodDays = useMemo(() => fallbackVisibleDays(rows, view, focusDate, visibleDays), [focusDate, rows, view, visibleDays]);
   const periodDates = useMemo(() => periodDays.map((day) => day.date), [periodDays]);
@@ -341,12 +222,6 @@ export function CalendarRoomsView({
   const reservations = periodEvents.filter((event) => event.type === 'reservation');
   const blocks = periodEvents.filter((event) => event.type === 'block');
   const prices = periodEvents.filter((event) => event.type === 'price');
-
-  useEffect(() => {
-    if (displayRows.length > 0 && !displayRows.some(({ row }) => row.stay.id === selectedStay)) {
-      setSelectedStay(displayRows[0].row.stay.id);
-    }
-  }, [displayRows, selectedStay]);
 
   if (!active) return <EmptyCalendarState title="No stays match" body="Change search or reset filters to view stay details." />;
 

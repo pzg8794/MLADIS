@@ -31,55 +31,48 @@ import {
 } from 'lucide-react';
 import { CalendarWorkspaceFactory } from '../../application/CalendarWorkspaceFactory';
 import {
-  OpsCalendarDay,
-  OpsCalendarEvent,
-  OpsCalendarSnapshot,
-  OpsCalendarStayRow,
-  OpsCalendarViewMode,
-} from '../../domain/models';
+  CalendarGridCellPosition,
+  CalendarRange,
+  CalendarSelectionProjection,
+  CalendarStayFilterId,
+  CalendarStayVisualMeta,
+  CalendarWorkspace,
+  CalendarWorkspaceRowProjection,
+  calendarEventTone,
+  calendarRowDays,
+  calendarTodayIso,
+  dateRangeLabel,
+  daysForWeekendPreference,
+  emptyRange,
+  eventCoversDay,
+  eventLabel,
+  fullDate,
+  rangeLabel,
+  selectedGridCoversCell,
+  sortedRange,
+} from '../../domain/calendar';
+import { OpsCalendarDay, OpsCalendarEvent, OpsCalendarViewMode } from '../../domain/models';
 import { CalendarAnalyticsView, CalendarListView, CalendarRoomsView } from './calendar/CalendarWorkspaceViews';
 
-type RangeState = {
-  start: string;
-  end: string;
-};
+type RangeState = CalendarRange;
 
 type BlockFormState = {
   reason: string;
   notes: string;
 };
 
-type GridCellPosition = {
-  rowIndex: number;
-  colIndex: number;
-};
+type GridCellPosition = CalendarGridCellPosition;
 
-type StayRowWithMeta = {
-  row: OpsCalendarStayRow;
-  meta: StayVisualMeta;
-};
+type StayRowWithMeta = CalendarWorkspaceRowProjection;
 
-type StayVisualMeta = {
-  index: number;
-  color: string;
-  bgColor: string;
-  textColor: string;
-  shortLabel: string;
-  displayName: string;
-  unitLabel: string;
-  capacityLabel: string;
-  isDemo: boolean;
-};
+type StayVisualMeta = CalendarStayVisualMeta;
 
 type DayModalState = {
   day: OpsCalendarDay;
   row: StayRowWithMeta;
 };
 
-type SelectionModalState = {
-  rows: StayRowWithMeta[];
-  dates: OpsCalendarDay[];
-};
+type SelectionModalState = CalendarSelectionProjection;
 
 type BookingDraftFormState = {
   title: string;
@@ -90,7 +83,7 @@ type BookingDraftFormState = {
 };
 
 type CalendarWorkspaceSection = 'calendar' | 'list' | 'rooms' | 'analytics';
-type StayFilterId = 'all' | number;
+type StayFilterId = CalendarStayFilterId;
 type CalendarSettingsSection = 'profile' | 'notifications' | 'appearance' | 'booking' | 'rooms' | 'security';
 
 const viewModes: OpsCalendarViewMode[] = ['month', 'week', 'list'];
@@ -99,15 +92,6 @@ const viewLabels: Record<OpsCalendarViewMode, string> = {
   week: 'Week',
   list: 'Day',
 };
-
-const roomPalette = [
-  { color: '#0d7fa1', bgColor: '#e5f6fb', textColor: '#073042' },
-  { color: '#2563eb', bgColor: '#eaf2ff', textColor: '#172554' },
-  { color: '#ea580c', bgColor: '#fff1e7', textColor: '#431407' },
-  { color: '#16a34a', bgColor: '#e9f9ef', textColor: '#052e16' },
-  { color: '#7c3aed', bgColor: '#f3ecff', textColor: '#2e1065' },
-  { color: '#475569', bgColor: '#f1f5f9', textColor: '#0f172a' },
-];
 
 const timeSlots = [
   '09:00 - 10:00',
@@ -135,164 +119,6 @@ const calendarSettingsSections: {
   { id: 'security', label: 'Security', desc: 'Access and sessions', icon: Shield },
 ];
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function dateFromIso(value: string) {
-  return new Date(`${value}T00:00:00`);
-}
-
-function compactDate(value: string) {
-  if (!value) return '';
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(dateFromIso(value));
-}
-
-function longDate(value: string) {
-  if (!value) return '';
-  return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(dateFromIso(value));
-}
-
-function fullDate(value: string) {
-  if (!value) return '';
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(dateFromIso(value));
-}
-
-function sortedRange(first: string, second: string): RangeState {
-  return first <= second ? { start: first, end: second } : { start: second, end: first };
-}
-
-function eventCoversDay(event: OpsCalendarEvent, date: string) {
-  if (event.type === 'reservation') {
-    return event.start <= date && date < event.end;
-  }
-  return event.start <= date && date <= event.end;
-}
-
-function eventTone(event: OpsCalendarEvent) {
-  if (event.type === 'reservation') return 'booking';
-  if (event.type === 'block') return 'block';
-  return 'price';
-}
-
-function eventLabel(event: OpsCalendarEvent) {
-  if (event.type === 'reservation') return event.guestLabel || 'Reservation';
-  if (event.type === 'block') return 'Blocked';
-  return event.amount || 'Price';
-}
-
-function rangeLabel(range: RangeState) {
-  if (!range.start) return 'Select dates on the calendar';
-  if (!range.end || range.start === range.end) return longDate(range.start);
-  return `${compactDate(range.start)} - ${compactDate(range.end)}`;
-}
-
-function dateRangeLabel(days: OpsCalendarDay[]) {
-  if (days.length === 0) return '';
-  if (days.length === 1) return fullDate(days[0].date);
-  return `${compactDate(days[0].date)} - ${compactDate(days[days.length - 1].date)}, ${dateFromIso(days[days.length - 1].date).getFullYear()} (${days.length} days)`;
-}
-
-function getRowDays(row: OpsCalendarStayRow, mode: OpsCalendarViewMode, focusDate: string) {
-  if (mode === 'month') return row.weeks.flat();
-  if (mode === 'week') return row.weekDays;
-  const allDays = row.weeks.flat();
-  return allDays.filter((day) => day.date === focusDate);
-}
-
-function isWeekendIso(value: string) {
-  const day = dateFromIso(value).getDay();
-  return day === 0 || day === 6;
-}
-
-function daysForWeekendPreference(days: OpsCalendarDay[], showWeekends: boolean) {
-  return showWeekends ? days : days.filter((day) => !isWeekendIso(day.date));
-}
-
-function selectedGridCoversCell(start: GridCellPosition | null, end: GridCellPosition | null, rowIndex: number, colIndex: number) {
-  if (!start || !end) return false;
-  const rowStart = Math.min(start.rowIndex, end.rowIndex);
-  const rowEnd = Math.max(start.rowIndex, end.rowIndex);
-  const colStart = Math.min(start.colIndex, end.colIndex);
-  const colEnd = Math.max(start.colIndex, end.colIndex);
-  return rowIndex >= rowStart && rowIndex <= rowEnd && colIndex >= colStart && colIndex <= colEnd;
-}
-
-function selectionFromCells(rows: StayRowWithMeta[], mode: OpsCalendarViewMode, focusDate: string, showWeekends: boolean, start: GridCellPosition, end: GridCellPosition): SelectionModalState {
-  const rowStart = Math.min(start.rowIndex, end.rowIndex);
-  const rowEnd = Math.max(start.rowIndex, end.rowIndex);
-  const colStart = Math.min(start.colIndex, end.colIndex);
-  const colEnd = Math.max(start.colIndex, end.colIndex);
-  const selectedRows = rows.slice(rowStart, rowEnd + 1);
-  const firstRow = rows[0]?.row;
-  const days = firstRow ? daysForWeekendPreference(getRowDays(firstRow, mode, focusDate), showWeekends).slice(colStart, colEnd + 1) : [];
-  return { rows: selectedRows, dates: days };
-}
-
-function emptyRange(focusDate: string): RangeState {
-  return { start: focusDate, end: focusDate };
-}
-
-function lockedStayIdentity(name: string, subtitle: string, fallback: number) {
-  const cleaned = name
-    .replace(/^MLADIS\s*[-–—]\s*/i, '')
-    .replace(/\bBedrooms?\b/gi, 'Beds')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const isDemoStay = /\bdemo\b|browser walkthrough/i.test(`${cleaned} ${subtitle}`);
-  const unitMatch = cleaned.match(/\b([A-Z])[-\s]?(\d{3})\b/i);
-  const bedCount = cleaned.match(/(\d+)\s*(?:bedrooms?|beds?)\b/i)?.[1];
-  const isCombinedStay = !unitMatch && bedCount === '6';
-  const block = (unitMatch?.[1] || 'G').toUpperCase();
-  const number = unitMatch?.[2] || (isCombinedStay ? 'All' : String(101 + (fallback % 2)));
-  const unitLabel = `${block}-${number}`;
-  const propertyType = isCombinedStay || number === 'All' ? 'Apts' : 'Apt';
-  const shortLabel = number === 'All' ? `APTs-${unitLabel}` : `APT-${unitLabel}`;
-  const bedsLabel = bedCount ? `${bedCount} Bed${bedCount === '1' ? '' : 's'}` : 'Stay';
-  const capacityLabel = bedCount ? bedsLabel : (subtitle || 'Stay calendar');
-  const title = cleaned
-    .replace(/\b[A-Z][-\s]?\d{3}\b/gi, '')
-    .replace(/\(?\bapartments?\b\)?/gi, '')
-    .replace(/\b\d+\s*(?:bedrooms?|beds?)\b/gi, '')
-    .replace(/^MLADIS\s*[-–—]\s*/i, '')
-    .replace(/\s*[-–—]\s*/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim() || 'Vacation Home & Pool';
-
-  if (isDemoStay && !unitMatch && !isCombinedStay) {
-    return {
-      unitLabel: 'Demo',
-      shortLabel: 'Demo',
-      displayName: `Demo Stay - ${title}`,
-      capacityLabel: subtitle || 'Demo stay',
-      isDemo: true,
-    };
-  }
-
-  return {
-    unitLabel,
-    shortLabel,
-    displayName: `${bedsLabel} ${propertyType} - ${title} - ${unitLabel}`,
-    capacityLabel,
-    isDemo: false,
-  };
-}
-
-function visualMetaForRow(row: OpsCalendarStayRow, index: number): StayVisualMeta {
-  const tone = roomPalette[index % roomPalette.length];
-  const identity = lockedStayIdentity(row.stay.name, row.stay.subtitle, index);
-  return {
-    ...tone,
-    index,
-    ...identity,
-  };
-}
-
 export function OpsCalendarPage() {
   const service = useMemo(() => CalendarWorkspaceFactory.create(), []);
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
@@ -303,7 +129,7 @@ export function OpsCalendarPage() {
     if (path.includes('/ops/calendar/analytics')) return 'analytics';
     return 'calendar';
   }, []);
-  const [snapshot, setSnapshot] = useState<OpsCalendarSnapshot | null>(null);
+  const [workspace, setWorkspace] = useState<CalendarWorkspace | null>(null);
   const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<number | null>(() => {
@@ -322,7 +148,7 @@ export function OpsCalendarPage() {
     const value = params.get('view') as OpsCalendarViewMode | null;
     return value && viewModes.includes(value) ? value : 'month';
   });
-  const [focusDate, setFocusDate] = useState(params.get('date') || todayIso());
+  const [focusDate, setFocusDate] = useState(params.get('date') || calendarTodayIso());
   const [search, setSearch] = useState('');
   const [toolbarSearchOpen, setToolbarSearchOpen] = useState(false);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
@@ -330,7 +156,7 @@ export function OpsCalendarPage() {
   const [settingsOpen, setSettingsOpen] = useState(() => params.get('panel') === 'settings');
   const [showWeekends, setShowWeekends] = useState(true);
   const [railExpanded, setRailExpanded] = useState(false);
-  const [selectedRange, setSelectedRange] = useState<RangeState>(() => emptyRange(params.get('date') || todayIso()));
+  const [selectedRange, setSelectedRange] = useState<RangeState>(() => emptyRange(params.get('date') || calendarTodayIso()));
   const [blockForm] = useState<BlockFormState>({ reason: 'Direct booking hold', notes: '' });
   const [dragStart, setDragStart] = useState<GridCellPosition | null>(null);
   const [dragEnd, setDragEnd] = useState<GridCellPosition | null>(null);
@@ -343,14 +169,15 @@ export function OpsCalendarPage() {
   const viewRef = useRef<OpsCalendarViewMode>(view);
   const focusDateRef = useRef(focusDate);
   const showWeekendsRef = useRef(showWeekends);
+  const workspaceRef = useRef<CalendarWorkspace | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const filterRef = useRef<HTMLDivElement | null>(null);
 
   const loadSnapshot = useCallback(() => {
     service
       .loadWorkspace({ itemId: null, view, date: focusDate })
-      .then((workspace) => {
-        setSnapshot(workspace.snapshot);
+      .then((nextWorkspace) => {
+        setWorkspace(nextWorkspace);
         setError('');
       })
       .catch((caught: unknown) => {
@@ -362,34 +189,19 @@ export function OpsCalendarPage() {
     loadSnapshot();
   }, [loadSnapshot]);
 
+  useEffect(() => {
+    workspaceRef.current = workspace;
+  }, [workspace]);
+
+  const snapshot = workspace?.snapshot || null;
+
   const rowsWithMeta = useMemo<StayRowWithMeta[]>(() => (
-    snapshot?.stayRows
-      .map((row, index) => ({ row, meta: visualMetaForRow(row, index) }))
-      .filter(({ meta }) => !meta.isDemo) || []
-  ), [snapshot]);
+    workspace?.rowProjections() || []
+  ), [workspace]);
 
   const visibleRows = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return rowsWithMeta.filter(({ row, meta }) => {
-      const matchesActiveFilter = activeStayFilters.has('all') || activeStayFilters.has(row.stay.id);
-      if (!matchesActiveFilter) return false;
-      if (!query) return true;
-      return [
-        row.stay.name,
-        row.stay.subtitle,
-        meta.shortLabel,
-        meta.displayName,
-        meta.unitLabel,
-        ...row.events.flatMap((event) => [
-          event.title,
-          event.subtitle,
-          event.itemName,
-          event.guestLabel,
-          event.rangeLabel,
-        ]),
-      ].some((value) => value.toLowerCase().includes(query));
-    });
-  }, [activeStayFilters, rowsWithMeta, search]);
+    return workspace?.visibleRows({ activeStayFilters, search }) || [];
+  }, [activeStayFilters, search, workspace]);
 
   useEffect(() => {
     visibleRowsRef.current = visibleRows;
@@ -399,37 +211,20 @@ export function OpsCalendarPage() {
   }, [focusDate, showWeekends, view, visibleRows]);
 
   const selectedStay = useMemo(() => {
-    if (!snapshot) return null;
+    if (!workspace) return null;
     const id = activeStayFilter === 'all' ? selectedItemId : activeStayFilter;
     return rowsWithMeta.find(({ row }) => row.stay.id === id) || rowsWithMeta[0] || null;
-  }, [activeStayFilter, rowsWithMeta, selectedItemId, snapshot]);
+  }, [activeStayFilter, rowsWithMeta, selectedItemId, workspace]);
 
   const filteredEvents = useMemo(() => {
-    const events = rowsWithMeta.flatMap(({ row }) => row.events);
-    const seen = new Map<string, OpsCalendarEvent>();
-    events.forEach((event) => seen.set(event.id, event));
-    const query = search.trim().toLowerCase();
-    return Array.from(seen.values()).filter((event) => {
-      const inFilter = activeStayFilters.has('all') || activeStayFilters.has(event.itemId);
-      if (!inFilter) return false;
-      if (!query) return true;
-      return [
-        event.title,
-        event.subtitle,
-        event.itemName,
-        event.guestLabel,
-        event.rangeLabel,
-        rowsWithMeta.find(({ row }) => row.stay.id === event.itemId)?.meta.displayName || '',
-        rowsWithMeta.find(({ row }) => row.stay.id === event.itemId)?.meta.shortLabel || '',
-      ].some((value) => value.toLowerCase().includes(query));
-    });
-  }, [activeStayFilters, rowsWithMeta, search]);
+    return workspace?.filteredEvents({ activeStayFilters, search }) || [];
+  }, [activeStayFilters, search, workspace]);
 
   const reservationCount = useMemo(() => (
-    filteredEvents.filter((event) => event.type === 'reservation').length
-  ), [filteredEvents]);
+    workspace?.reservationCount({ activeStayFilters, search }) || 0
+  ), [activeStayFilters, search, workspace]);
 
-  const visibleDays = visibleRows[0] ? daysForWeekendPreference(getRowDays(visibleRows[0].row, view, focusDate), showWeekends) : [];
+  const visibleDays = workspace?.periodDays(view, focusDate, showWeekends, visibleRows[0]?.row) || [];
   const selectedVisualRows = selectionModal?.rows || [];
   const selectedVisualDates = selectionModal?.dates || [];
   const hiddenFilterCount = activeStayFilters.has('all') ? 0 : Math.max(rowsWithMeta.length - activeStayFilters.size, 0);
@@ -521,7 +316,7 @@ export function OpsCalendarPage() {
       if (!start || !end) return;
 
       const rows = visibleRowsRef.current;
-      const selection = selectionFromCells(rows, viewRef.current, focusDateRef.current, showWeekendsRef.current, start, end);
+      const selection = workspaceRef.current?.selectionFromCells(rows, viewRef.current, focusDateRef.current, showWeekendsRef.current, start, end) || { rows: [], dates: [] };
       const sameCell = start.rowIndex === end.rowIndex && start.colIndex === end.colIndex;
       if (sameCell) {
         const row = selection.rows[0];
@@ -675,7 +470,7 @@ export function OpsCalendarPage() {
 
           <div className="calendar-product-header__actions">
             <button type="button" aria-label="Previous period" onClick={() => selectPeriod(snapshot.previousDate)}><ChevronLeft /></button>
-            <button className="calendar-product-today" type="button" onClick={() => selectPeriod(todayIso())}>Today</button>
+            <button className="calendar-product-today" type="button" onClick={() => selectPeriod(calendarTodayIso())}>Today</button>
             <button type="button" aria-label="Next period" onClick={() => selectPeriod(snapshot.nextDate)}><ChevronRight /></button>
             <div className={`calendar-product-header-search ${toolbarSearchOpen || search ? 'is-open' : ''}`}>
               {toolbarSearchOpen || search ? (
@@ -1296,7 +1091,7 @@ function CalendarMatrix({
       ))}
 
       {rows.map(({ row, meta }, rowIndex) => {
-        const days = daysForWeekendPreference(getRowDays(row, mode, focusDate), showWeekends);
+        const days = daysForWeekendPreference(calendarRowDays(row, mode, focusDate), showWeekends);
         return (
           <div className="calendar-booking-grid__row" key={row.stay.id} style={{ display: 'contents' }}>
             <article
@@ -1378,7 +1173,7 @@ function CalendarMatrixCell({
         day.isToday ? 'is-today' : '',
         selected ? 'is-selected' : '',
         day.inMonth ? '' : 'is-muted',
-        primaryEvent ? `has-${eventTone(primaryEvent)}` : '',
+        primaryEvent ? `has-${calendarEventTone(primaryEvent)}` : '',
       ].filter(Boolean).join(' ')}
       type="button"
       onMouseDown={(event) => onMouseDown(event, rowIndex, colIndex)}
@@ -1390,7 +1185,7 @@ function CalendarMatrixCell({
     >
       <strong className="calendar-booking-grid__mobile-date">{day.label}</strong>
       {primaryEvent ? (
-        <span className={`calendar-booking-event calendar-booking-event--${eventTone(primaryEvent)}`}>
+        <span className={`calendar-booking-event calendar-booking-event--${calendarEventTone(primaryEvent)}`}>
           {eventLabel(primaryEvent)}
         </span>
       ) : (
