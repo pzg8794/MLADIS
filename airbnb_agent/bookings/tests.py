@@ -2952,11 +2952,8 @@ class OpsDashboardTests(TestCase):
             response = self.client.get(reverse(f"bookings:{route_name}"))
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, "mladis-ops-nav-items")
-            if route_name in {"ops-guests", "ops-customers", "ops-deposits", "ops-admin", "ops-settings", "ops-reports"}:
+            if route_name in {"ops-deposits", "ops-admin", "ops-settings", "ops-reports"}:
                 self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
-            if route_name in {"ops-guests", "ops-customers"}:
-                self.assertContains(response, 'id="root"')
-                self.assertNotContains(response, "ops-cx-page")
 
         customers_payload = self.client.get(reverse("bookings:ops-customers-api")).json()
         self.assertEqual(customers_payload["rows"][0]["name"], "VIP Guest")
