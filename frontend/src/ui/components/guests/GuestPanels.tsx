@@ -12,6 +12,8 @@ const detailTabs: Array<{ id: GuestDetailTab; label: string; icon: ComponentType
 
 export function GuestProfileCard({ guest }: { guest: Guest }) {
   const profile = guest.profileProjection();
+  const tags = guest.tagProjection();
+  const preferences = guest.preferenceProjection();
   return (
     <article className="guests-profile-card">
       <div className="guests-profile-card__head">
@@ -46,10 +48,19 @@ export function GuestProfileCard({ guest }: { guest: Guest }) {
         </div>
       </dl>
       <div className="guests-profile-tags">
-        {guest.tags.map((tag) => (
+        {tags.map((tag) => (
           <span className={`guests-tag guests-tag--${tag.tone}`} key={tag.slug}>
             <Tag size={12} />
             {tag.label}
+          </span>
+        ))}
+      </div>
+      <div className="guests-preferences">
+        <strong>Preferences</strong>
+        {preferences.slice(0, 4).map((preference) => (
+          <span key={preference.key}>
+            <small>{preference.label}</small>
+            {preference.value}
           </span>
         ))}
       </div>

@@ -2948,7 +2948,7 @@ class OpsDashboardTests(TestCase):
         site_settings.property_rules_body = "Registered guests only.\nNo smoking indoors."
         site_settings.save(update_fields=["request_notifications_email", "property_rules_body", "updated_at"])
 
-        for route_name in ["ops-customers", "ops-deposits", "ops-agent", "ops-admin", "ops-settings", "ops-reports"]:
+        for route_name in ["ops-guests", "ops-customers", "ops-deposits", "ops-agent", "ops-admin", "ops-settings", "ops-reports"]:
             response = self.client.get(reverse(f"bookings:{route_name}"))
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, "mladis-ops-nav-items")
@@ -2963,6 +2963,12 @@ class OpsDashboardTests(TestCase):
         self.assertEqual(guests_payload["rows"][0]["identity"]["name"], "VIP Guest")
         self.assertEqual(guests_payload["rows"][0]["segment"]["value"], "vip")
         self.assertEqual(guests_payload["rows"][0]["stays"][0]["reservation_key"], inquiry.request_key)
+        self.assertEqual(guests_payload["filter_options"]["statuses"][0]["value"], "active")
+        self.assertEqual(guests_payload["filter_options"]["sources"][0]["value"], ContactSource.DIRECT)
+        guests_search_payload = self.client.get(reverse("bookings:ops-guests-api"), {"search": "VIP"}).json()
+        self.assertEqual(len(guests_search_payload["rows"]), 1)
+        guests_blocked_payload = self.client.get(reverse("bookings:ops-guests-api"), {"status": "blocked"}).json()
+        self.assertEqual(guests_blocked_payload["rows"], [])
         draft_response = self.client.post(
             reverse("bookings:ops-guest-messages-api", args=[profile.pk]),
             data=json.dumps({"body": "Draft arrival note", "confirmed": False}),

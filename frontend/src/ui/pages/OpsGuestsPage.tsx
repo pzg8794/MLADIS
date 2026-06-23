@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ChevronLeft, ChevronRight, Download, Filter, Search, UserPlus, UsersRound } from 'lucide-react';
 import { GuestFactory } from '../../application/GuestFactory';
-import { Guest, GuestDetailTab, GuestWorkspace } from '../../domain/guests';
+import { Guest, GuestDetailTab, GuestWorkspace, GuestWorkspaceFilters } from '../../domain/guests';
 import {
   GuestDetailPanel,
   GuestLinkedStaysPanel,
@@ -16,21 +16,29 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState('all');
+  const [source, setSource] = useState('');
+  const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
   const [selectedGuestId, setSelectedGuestId] = useState('');
   const [activeTab, setActiveTab] = useState<GuestDetailTab>('messages');
   const [messageDraft, setMessageDraft] = useState('');
   const [messageConfirmed, setMessageConfirmed] = useState(false);
   const [notice, setNotice] = useState('');
+  const pageSize = 10;
 
   useEffect(() => {
     let mounted = true;
     service
-      .loadWorkspace({ segment: new URLSearchParams(window.location.search).get('segment') || 'all' })
+      .loadWorkspace()
       .then((data) => {
         if (!mounted) return;
+        const query = new URLSearchParams(window.location.search);
         setWorkspace(data);
-        setSegment(data.filters.segment || 'all');
-        setSelectedGuestId(new URLSearchParams(window.location.search).get('guest') || data.guests[0]?.id || '');
+        setSearch(query.get('search') || data.filters.search || '');
+        setSegment(query.get('segment') || data.filters.segment || 'all');
+        setSource(query.get('source') || data.filters.source || '');
+        setStatus(query.get('status') || data.filters.status || '');
+        setSelectedGuestId(query.get('guest') || data.guests[0]?.id || '');
       })
       .catch((caught: unknown) => {
         if (mounted) setError(caught instanceof Error ? caught.message : 'Could not load guests.');
@@ -40,22 +48,54 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
     };
   }, [service]);
 
+  const filters = useMemo<GuestWorkspaceFilters>(() => ({
+    query: search,
+    segment,
+    source,
+    status,
+  }), [search, segment, source, status]);
+
   const visibleGuests = useMemo(() => {
     if (!workspace) return [];
-    return service.filterGuests(workspace, { query: search, segment });
-  }, [search, segment, service, workspace]);
+    return workspace.paginationProjection(page, pageSize, filters).guests;
+  }, [filters, page, workspace]);
+
+  const filteredGuests = useMemo(() => {
+    if (!workspace) return [];
+    return service.filterGuests(workspace, filters);
+  }, [filters, service, workspace]);
+
+  const pagination = useMemo(() => {
+    if (!workspace) return null;
+    return workspace.paginationProjection(page, pageSize, filters);
+  }, [filters, page, workspace]);
+
+  const filterOptions = useMemo(() => workspace?.filterOptions(), [workspace]);
 
   const selectedGuest = useMemo(() => {
     if (!workspace) return null;
-    const scopedGuest = visibleGuests.find((guest) => guest.id === selectedGuestId);
-    return scopedGuest ?? service.selectGuest(workspace, selectedGuestId) ?? visibleGuests[0] ?? null;
-  }, [selectedGuestId, service, visibleGuests, workspace]);
+    if (!filteredGuests.length) return null;
+    const scopedGuest = filteredGuests.find((guest) => guest.id === selectedGuestId || guest.key === selectedGuestId);
+    return scopedGuest ?? filteredGuests[0] ?? service.selectGuest(workspace, selectedGuestId) ?? null;
+  }, [filteredGuests, selectedGuestId, service, workspace]);
 
   useEffect(() => {
     if (selectedGuest && selectedGuest.id !== selectedGuestId) {
       setSelectedGuestId(selectedGuest.id);
     }
   }, [selectedGuest, selectedGuestId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, segment, source, status]);
+
+  const pageNumbers = useMemo(() => {
+    if (!pagination) return [];
+    const candidates = new Set([1, pagination.pageCount, pagination.page - 1, pagination.page, pagination.page + 1]);
+    return Array.from(candidates)
+      .filter((pageNumber) => pageNumber >= 1 && pageNumber <= pagination.pageCount)
+      .sort((left, right) => left - right);
+  }, [pagination]);
 
   async function sendMessage() {
     if (!selectedGuest || !messageDraft.trim()) return;
@@ -72,7 +112,7 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
 
   function exportVisibleGuests() {
     const header = ['Name', 'Email', 'Phone', 'Country', 'Source', 'Past stays', 'Total spend', 'Segment', 'Last contact'];
-    const rows = visibleGuests.map((guest) => {
+    const rows = filteredGuests.map((guest) => {
       const row = guest.rowProjection();
       return [
         row.name,
@@ -95,6 +135,13 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
     link.download = 'mladis-guests.csv';
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  function clearFilters() {
+    setSearch('');
+    setSegment('all');
+    setSource('');
+    setStatus('');
   }
 
   if (error) {
@@ -150,10 +197,26 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
               <Search size={16} />
               <input onChange={(event) => setSearch(event.target.value)} placeholder="Search guests by name, email, phone, or reservation..." value={search} />
             </label>
-            <button type="button">
+            <label className="guests-filter-select">
               <Filter size={15} />
-              Filters
-            </button>
+              <select aria-label="Filter guests by source" onChange={(event) => setSource(event.target.value)} value={source}>
+                <option value="">All channels</option>
+                {filterOptions?.sources.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label} ({option.count})</option>
+                ))}
+              </select>
+            </label>
+            <label className="guests-filter-select">
+              <select aria-label="Filter guests by status" onChange={(event) => setStatus(event.target.value)} value={status}>
+                <option value="">All statuses</option>
+                {filterOptions?.statuses.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label} ({option.count})</option>
+                ))}
+              </select>
+            </label>
+            {(search || segment !== 'all' || source || status) && (
+              <button onClick={clearFilters} type="button">Clear</button>
+            )}
           </div>
           <GuestTable
             guests={visibleGuests}
@@ -164,13 +227,21 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
             selectedGuestId={selectedGuest?.id || ''}
           />
           <div className="guests-pagination">
-            <span>Showing 1 to {Math.min(visibleGuests.length, 10)} of {visibleGuests.length} guests</span>
+            <span>
+              Showing {pagination?.start ?? 0} to {pagination?.end ?? 0} of {pagination?.total ?? 0} guests
+            </span>
             <div>
-              <button aria-label="Previous page" type="button"><ChevronLeft size={15} /></button>
-              <button className="is-active" type="button">1</button>
-              <button type="button">2</button>
-              <button type="button">3</button>
-              <button aria-label="Next page" type="button"><ChevronRight size={15} /></button>
+              <button aria-label="Previous page" disabled={!pagination || pagination.page <= 1} onClick={() => setPage((value) => Math.max(value - 1, 1))} type="button">
+                <ChevronLeft size={15} />
+              </button>
+              {pageNumbers.map((pageNumber) => (
+                <button className={pagination?.page === pageNumber ? 'is-active' : ''} key={pageNumber} onClick={() => setPage(pageNumber)} type="button">
+                  {pageNumber}
+                </button>
+              ))}
+              <button aria-label="Next page" disabled={!pagination || pagination.page >= pagination.pageCount} onClick={() => setPage((value) => value + 1)} type="button">
+                <ChevronRight size={15} />
+              </button>
             </div>
           </div>
         </div>

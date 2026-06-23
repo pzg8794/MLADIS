@@ -186,10 +186,22 @@ export interface GuestSegmentTabPayload {
   count: number;
 }
 
+export interface GuestFilterOptionPayload {
+  value: string;
+  label: string;
+  count: number;
+}
+
+export interface GuestFilterOptionsPayload {
+  sources?: GuestFilterOptionPayload[];
+  statuses?: GuestFilterOptionPayload[];
+}
+
 export interface GuestWorkspaceSnapshot {
   metrics: GuestMetricPayload[];
   summary_cards?: GuestMetricPayload[];
   segment_options: GuestSegmentTabPayload[];
+  filter_options?: GuestFilterOptionsPayload;
   filters: Record<string, string>;
   rows: GuestPayload[];
   admin_url: string;
@@ -205,6 +217,16 @@ export interface GuestWorkspaceFilters {
   segment?: string;
   source?: string;
   status?: string;
+}
+
+export interface GuestPaginationProjection {
+  page: number;
+  pageSize: number;
+  total: number;
+  pageCount: number;
+  start: number;
+  end: number;
+  guests: Guest[];
 }
 
 export class GuestMoney {
@@ -469,6 +491,14 @@ export class Guest {
     return this.stays;
   }
 
+  tagProjection(): GuestTag[] {
+    return this.tags;
+  }
+
+  preferenceProjection(): GuestPreference[] {
+    return this.preferences;
+  }
+
   matches(query: string): boolean {
     const needle = query.trim().toLowerCase();
     if (!needle) return true;
@@ -480,6 +510,9 @@ export class Guest {
       this.identity.sourceLabel,
       this.segment.label,
       this.profile.notes,
+      ...this.stays.map((stay) => `${stay.reservation_key} ${stay.listing_name} ${stay.date_range}`),
+      ...this.payments.items.map((payment) => `${payment.label} ${payment.status}`),
+      ...this.deposits.items.map((deposit) => `${deposit.label} ${deposit.status}`),
       ...this.tags.map((tag) => tag.label),
     ].some((value) => value.toLowerCase().includes(needle));
   }
@@ -504,6 +537,7 @@ export class GuestWorkspace {
     public readonly metrics: GuestMetric[],
     public readonly tabs: GuestSegmentTabPayload[],
     public readonly filters: Record<string, string>,
+    private readonly filterOptionsPayload: GuestFilterOptionsPayload,
     public readonly adminUrl: string,
     public readonly legacyUrl: string,
     public readonly generatedAt: string,
@@ -516,6 +550,7 @@ export class GuestWorkspace {
       (payload.metrics || payload.summary_cards || []).map(GuestMetric.fromPayload),
       payload.segment_options || [],
       payload.filters || {},
+      payload.filter_options || {},
       payload.admin_url,
       payload.legacy_url,
       payload.generated_at,
@@ -555,5 +590,50 @@ export class GuestWorkspace {
   selectedGuest(id?: string): Guest | null {
     if (!id) return this.guests[0] ?? null;
     return this.guests.find((guest) => guest.id === id || guest.key === id) ?? this.guests[0] ?? null;
+  }
+
+  statusCounts(): Record<string, number> {
+    return this.guests.reduce<Record<string, number>>((counts, guest) => {
+      counts[guest.status.value] = (counts[guest.status.value] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  filterOptions(): Required<GuestFilterOptionsPayload> {
+    const buildOptions = (field: 'source' | 'status'): GuestFilterOptionPayload[] => {
+      const options = new Map<string, GuestFilterOptionPayload>();
+      this.guests.forEach((guest) => {
+        const value = field === 'source' ? guest.identity.source : guest.status.value;
+        const label = field === 'source' ? guest.identity.sourceLabel : guest.status.label;
+        if (!options.has(value)) {
+          options.set(value, { value, label, count: 0 });
+        }
+        options.get(value)!.count += 1;
+      });
+      return Array.from(options.values()).sort((left, right) => left.label.localeCompare(right.label));
+    };
+
+    return {
+      sources: this.filterOptionsPayload.sources?.length ? this.filterOptionsPayload.sources : buildOptions('source'),
+      statuses: this.filterOptionsPayload.statuses?.length ? this.filterOptionsPayload.statuses : buildOptions('status'),
+    };
+  }
+
+  paginationProjection(page = 1, pageSize = 10, filters: GuestWorkspaceFilters = {}): GuestPaginationProjection {
+    const guests = this.filteredGuests(filters);
+    const normalizedPageSize = Math.max(pageSize, 1);
+    const pageCount = Math.max(Math.ceil(guests.length / normalizedPageSize), 1);
+    const normalizedPage = Math.min(Math.max(page, 1), pageCount);
+    const startIndex = (normalizedPage - 1) * normalizedPageSize;
+    const visibleGuests = guests.slice(startIndex, startIndex + normalizedPageSize);
+    return {
+      page: normalizedPage,
+      pageSize: normalizedPageSize,
+      total: guests.length,
+      pageCount,
+      start: guests.length ? startIndex + 1 : 0,
+      end: startIndex + visibleGuests.length,
+      guests: visibleGuests,
+    };
   }
 }

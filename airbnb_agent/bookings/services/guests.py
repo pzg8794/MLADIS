@@ -570,6 +570,117 @@ class GuestDataLakeService:
             return
 
 
+class GuestQueryService:
+    """Loads and filters CustomerProfile records for the Guest aggregate."""
+
+    def queryset(self):
+        return (
+            CustomerProfile.objects.annotate(
+                direct_reservations=Count("booking_inquiries", distinct=True),
+                airbnb_reservations=Count("airbnb_guest_records", distinct=True),
+                feedback_total=Count("feedback_entries", distinct=True),
+                invoice_total=Count("invoices", distinct=True),
+                total_spend_cents=Coalesce(Sum("invoices__total_cents"), 0),
+            )
+            .prefetch_related("booking_inquiries__item", "airbnb_guest_records__item", "feedback_entries", "invoices")
+            .order_by("-updated_at", "name", "email")
+        )
+
+    def filtered_queryset(self, filters: dict[str, str] | None = None):
+        filters = filters or {}
+        qs = self.queryset()
+        query = (filters.get("search") or filters.get("query") or "").strip()
+        if query:
+            qs = qs.filter(
+                Q(name__icontains=query)
+                | Q(email__icontains=query)
+                | Q(phone__icontains=query)
+                | Q(booking_inquiries__guest_name__icontains=query)
+                | Q(booking_inquiries__email__icontains=query)
+                | Q(booking_inquiries__item__name__icontains=query)
+                | Q(airbnb_guest_records__guest_name__icontains=query)
+                | Q(airbnb_guest_records__listing_title__icontains=query)
+            ).distinct()
+        source = (filters.get("source") or "").strip()
+        if source:
+            qs = qs.filter(source=source)
+        status = (filters.get("status") or "").strip()
+        if status == "blocked":
+            qs = qs.filter(segment=ClientSegment.BLACKLISTED)
+        elif status == "active":
+            qs = qs.exclude(segment=ClientSegment.BLACKLISTED)
+        return qs
+
+    def guests(self, request=None, filters: dict[str, str] | None = None) -> list[Guest]:
+        return [Guest(profile, request=request) for profile in self.filtered_queryset(filters)]
+
+
+class GuestProjectionService:
+    """Converts Guest objects into stable Guests workspace API payloads."""
+
+    def __init__(self, analytics_service: GuestAnalyticsService | None = None):
+        self.analytics_service = analytics_service or GuestAnalyticsService()
+
+    def workspace_payload(
+        self,
+        guests: list[Guest],
+        all_guests: list[Guest],
+        request=None,
+        filters: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        filters = filters or {}
+        segment = filters.get("segment") or filters.get("tab") or "all"
+        rows = [guest.to_payload() for guest in guests]
+        return {
+            "metrics": self.analytics_service.workspace_metrics(all_guests),
+            "summary_cards": self.analytics_service.workspace_metrics(all_guests),
+            "segment_options": self.analytics_service.segment_tabs(all_guests),
+            "filter_options": self.filter_options(all_guests),
+            "filters": {
+                "search": (filters.get("search") or filters.get("query") or "").strip(),
+                "segment": segment,
+                "source": filters.get("source", ""),
+                "country": filters.get("country", ""),
+                "tags": filters.get("tags", ""),
+                "status": filters.get("status", ""),
+            },
+            "rows": rows,
+            "admin_url": reverse("admin:bookings_customerprofile_changelist"),
+            "legacy_url": reverse("bookings:ops-customers"),
+            "generated_at": timezone.now().isoformat(),
+            "source": "api",
+            "missing_fields": sorted({field for row in rows for field in row["missing_fields"]}),
+            "is_complete": all(row["is_complete"] for row in rows),
+        }
+
+    def filter_options(self, guests: list[Guest]) -> dict[str, list[dict[str, Any]]]:
+        sources: dict[str, dict[str, Any]] = {}
+        statuses = {
+            "active": {"value": "active", "label": "Active", "count": 0},
+            "blocked": {"value": "blocked", "label": "Blocked", "count": 0},
+        }
+        for guest in guests:
+            sources.setdefault(
+                guest.profile.source,
+                {"value": guest.profile.source, "label": guest.profile.get_source_display(), "count": 0},
+            )
+            sources[guest.profile.source]["count"] += 1
+            statuses[guest.status_value()]["count"] += 1
+        return {
+            "sources": sorted(sources.values(), key=lambda item: item["label"]),
+            "statuses": list(statuses.values()),
+        }
+
+    def filter_by_segment(self, guests: list[Guest], segment: str = "all") -> list[Guest]:
+        if segment in {"", "all"}:
+            return guests
+        if segment == "repeat":
+            return [guest for guest in guests if guest.past_stay_count() >= 2]
+        if segment == "blocked":
+            return [guest for guest in guests if guest.profile.is_blacklisted]
+        return [guest for guest in guests if guest.segment_value() == segment]
+
+
 class GuestMessageService:
     def __init__(self, timeline_service: GuestTimelineService | None = None, data_lake_service: GuestDataLakeService | None = None):
         self.timeline_service = timeline_service or GuestTimelineService()
@@ -602,69 +713,34 @@ class GuestMessageService:
 class GuestService:
     def __init__(
         self,
+        query_service: GuestQueryService | None = None,
+        projection_service: GuestProjectionService | None = None,
         analytics_service: GuestAnalyticsService | None = None,
         message_service: GuestMessageService | None = None,
         timeline_service: GuestTimelineService | None = None,
         data_lake_service: GuestDataLakeService | None = None,
     ):
         self.analytics_service = analytics_service or GuestAnalyticsService()
+        self.query_service = query_service or GuestQueryService()
+        self.projection_service = projection_service or GuestProjectionService(self.analytics_service)
         self.timeline_service = timeline_service or GuestTimelineService()
         self.data_lake_service = data_lake_service or GuestDataLakeService()
         self.message_service = message_service or GuestMessageService(self.timeline_service, self.data_lake_service)
 
     def queryset(self):
-        return (
-            CustomerProfile.objects.annotate(
-                direct_reservations=Count("booking_inquiries", distinct=True),
-                airbnb_reservations=Count("airbnb_guest_records", distinct=True),
-                feedback_total=Count("feedback_entries", distinct=True),
-                invoice_total=Count("invoices", distinct=True),
-                total_spend_cents=Coalesce(Sum("invoices__total_cents"), 0),
-            )
-            .prefetch_related("booking_inquiries__item", "airbnb_guest_records__item", "feedback_entries", "invoices")
-            .order_by("-updated_at", "name", "email")
-        )
+        return self.query_service.queryset()
 
     def workspace_payload(self, request=None, filters: dict[str, str] | None = None) -> dict[str, Any]:
         filters = filters or {}
-        qs = self.queryset()
-        query = (filters.get("search") or "").strip()
-        if query:
-            qs = qs.filter(Q(name__icontains=query) | Q(email__icontains=query) | Q(phone__icontains=query))
-        guests = [Guest(profile, request=request) for profile in qs]
+        all_guests = [Guest(profile, request=request) for profile in self.queryset()]
+        guests = self.query_service.guests(request=request, filters=filters)
         segment = filters.get("segment") or filters.get("tab") or "all"
-        filtered = self.filtered_guests(guests, segment=segment)
-        rows = [guest.to_payload() for guest in filtered]
-        return {
-            "metrics": self.analytics_service.workspace_metrics(guests),
-            "summary_cards": self.analytics_service.workspace_metrics(guests),
-            "segment_options": self.analytics_service.segment_tabs(guests),
-            "filters": {
-                "search": query,
-                "segment": segment,
-                "source": filters.get("source", ""),
-                "country": filters.get("country", ""),
-                "tags": filters.get("tags", ""),
-                "status": filters.get("status", ""),
-            },
-            "rows": rows,
-            "admin_url": reverse("admin:bookings_customerprofile_changelist"),
-            "legacy_url": reverse("bookings:ops-customers"),
-            "generated_at": timezone.now().isoformat(),
-            "source": "api",
-            "missing_fields": sorted({field for row in rows for field in row["missing_fields"]}),
-            "is_complete": all(row["is_complete"] for row in rows),
-        }
+        filtered = self.projection_service.filter_by_segment(guests, segment=segment)
+        return self.projection_service.workspace_payload(filtered, all_guests, request=request, filters=filters)
 
     @staticmethod
     def filtered_guests(guests: list[Guest], segment: str = "all") -> list[Guest]:
-        if segment in {"", "all"}:
-            return guests
-        if segment == "repeat":
-            return [guest for guest in guests if guest.past_stay_count() >= 2]
-        if segment == "blocked":
-            return [guest for guest in guests if guest.profile.is_blacklisted]
-        return [guest for guest in guests if guest.segment_value() == segment]
+        return GuestProjectionService().filter_by_segment(guests, segment=segment)
 
     def get_guest(self, guest_id: int, request=None) -> Guest:
         return Guest(CustomerProfile.objects.get(pk=guest_id), request=request)
