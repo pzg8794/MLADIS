@@ -170,25 +170,19 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
           <p>Manage guest relationships, profiles, travel details, and communication history.</p>
         </div>
         <div className="guests-header-actions">
-          <a href="/admin/bookings/customerprofile/add/">
-            <UserPlus size={16} />
-            New guest
-          </a>
+          <button type="button">
+            <Filter size={16} />
+            Filters
+          </button>
           <button onClick={exportVisibleGuests} type="button">
             <Download size={16} />
             Export
           </button>
+          <a href="/admin/bookings/customerprofile/add/">
+            <UserPlus size={16} />
+            Add guest
+          </a>
         </div>
-      </section>
-
-      <section className="guests-metric-grid">
-        {workspace.metricsProjection().map((metric) => (
-          <article className={`guests-metric-card guests-metric-card--${metric.tone}`} key={metric.label}>
-            <span>{metric.label}</span>
-            <strong>{metric.value}</strong>
-            <p>{metric.caption}</p>
-          </article>
-        ))}
       </section>
 
       <section className="guests-tabs" aria-label="Guest segments">
@@ -200,7 +194,7 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
         ))}
       </section>
 
-      <section className="guests-workspace-grid">
+      <section className="guests-main-stack">
         <div className="guests-list-card">
           <div className="guests-filter-row">
             <label>
@@ -259,10 +253,11 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
           </div>
         </div>
 
-        <aside className="guests-side-column">
-          {selectedGuest ? (
-            <>
-              <GuestProfileCard guest={selectedGuest} />
+        {selectedGuest ? (
+          <section className="guests-bottom-grid" aria-label="Selected guest details">
+            <GuestProfileCard guest={selectedGuest} />
+            <div className="guests-detail-stack">
+              <GuestDetailPanel activeTab={activeTab} guest={selectedGuest} onTabChange={setActiveTab} />
               <GuestMessageComposer
                 confirmed={messageConfirmed}
                 disabled={!selectedGuest.canMessage}
@@ -272,23 +267,16 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
                 onDraftChange={setMessageDraft}
                 onSend={sendMessage}
               />
-            </>
-          ) : (
-            <article className="guests-empty-selection">
-              <UsersRound size={24} />
-              <h3>Select a guest</h3>
-              <p>Choose a guest to inspect profile, reservations, payments, deposits, and activity.</p>
-            </article>
-          )}
-        </aside>
+            </div>
+            <GuestLinkedStaysPanel guest={selectedGuest} />
+          </section>
+        ) : (
+          <article className="guests-empty-selection">
+            <UsersRound size={20} />
+            <p>Select a guest to view profile, messages, stays, payments, deposits, and activity.</p>
+          </article>
+        )}
       </section>
-
-      {selectedGuest && (
-        <section className="guests-bottom-grid">
-          <GuestDetailPanel activeTab={activeTab} guest={selectedGuest} onTabChange={setActiveTab} />
-          <GuestLinkedStaysPanel guest={selectedGuest} />
-        </section>
-      )}
     </main>
   );
 }
