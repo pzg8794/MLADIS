@@ -166,6 +166,9 @@ class OpsNavigationContractTests(TestCase):
     def test_ops_guests_routes(self):
         self._assert_route("/ops/customers/", "bookings:ops-customers")
 
+    def test_ops_guests_alias_route(self):
+        self._assert_route("/ops/guests/", "bookings:ops-guests")
+
     def test_ops_maintenance_routes(self):
         self._assert_route("/ops/maintenance/", "bookings:ops-maintenance")
 
@@ -284,6 +287,7 @@ class OpsRoutePermissionRegressionTests(TestCase):
         "/ops/dashboard/",
         "/ops/reservations/",
         "/ops/reports/",
+        "/ops/guests/",
         "/ops/customers/",
         "/ops/deposits/",
         "/ops/agent/",
@@ -299,6 +303,7 @@ class OpsRoutePermissionRegressionTests(TestCase):
         "/api/ops/summary/",
         "/api/ops/reports/",
         "/api/ops/reservations/",
+        "/api/ops/guests/",
         "/api/ops/customers/",
         "/api/ops/deposits/",
         "/api/ops/agent/",
@@ -2953,6 +2958,25 @@ class OpsDashboardTests(TestCase):
         customers_payload = self.client.get(reverse("bookings:ops-customers-api")).json()
         self.assertEqual(customers_payload["rows"][0]["name"], "VIP Guest")
         self.assertEqual(customers_payload["rows"][0]["segment"], "VIP")
+
+        guests_payload = self.client.get(reverse("bookings:ops-guests-api")).json()
+        self.assertEqual(guests_payload["rows"][0]["identity"]["name"], "VIP Guest")
+        self.assertEqual(guests_payload["rows"][0]["segment"]["value"], "vip")
+        self.assertEqual(guests_payload["rows"][0]["stays"][0]["reservation_key"], inquiry.request_key)
+        draft_response = self.client.post(
+            reverse("bookings:ops-guest-messages-api", args=[profile.pk]),
+            data=json.dumps({"body": "Draft arrival note", "confirmed": False}),
+            content_type="application/json",
+        )
+        self.assertEqual(draft_response.status_code, 200)
+        self.assertEqual(draft_response.json()["message"]["status"], "drafted")
+        sent_response = self.client.post(
+            reverse("bookings:ops-guest-messages-api", args=[profile.pk]),
+            data=json.dumps({"body": "Confirmed arrival note", "confirmed": True}),
+            content_type="application/json",
+        )
+        self.assertEqual(sent_response.status_code, 200)
+        self.assertEqual(sent_response.json()["message"]["status"], "sent")
 
         deposits_payload = self.client.get(reverse("bookings:ops-deposits-api")).json()
         self.assertEqual(deposits_payload["rows"][0]["guest_name"], "VIP Guest")

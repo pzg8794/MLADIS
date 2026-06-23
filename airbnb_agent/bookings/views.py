@@ -64,6 +64,7 @@ from .models import (
     SiteSettings,
 )
 from .ops_finance import DepositHoldOperationsService, PaymentsTransactionsService
+from .guest_services import GuestService
 from .services import (
     AgentAccessContext,
     AgentIntelligenceOperationsService,
@@ -2739,6 +2740,181 @@ class OpsCustomersAPIView(View):
             return {"label": "No stay linked yet", "sort": ""}
         sort_date, label = max(candidates, key=lambda item: item[0])
         return {"label": label, "sort": sort_date.isoformat() if sort_date else ""}
+
+
+def _guest_json_payload(request):
+    try:
+        return json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError as error:
+        raise ValidationError("Invalid JSON payload.") from error
+
+
+def _guest_validation_response(error, status=400):
+    return JsonResponse({"ok": False, "errors": OpsMaintenanceAPIView._validation_errors(error)}, status=status)
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestsAPIView(View):
+    service_class = GuestService
+
+    def get(self, request):
+        return JsonResponse(self.service_class().workspace_payload(request=request, filters=request.GET))
+
+    def post(self, request):
+        try:
+            guest = self.service_class().create_guest(_guest_json_payload(request), actor=request.user, request=request)
+        except ValidationError as error:
+            return _guest_validation_response(error)
+        return JsonResponse({"ok": True, "guest": guest.to_payload()}, status=201)
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestDetailAPIView(View):
+    service_class = GuestService
+
+    def get(self, request, pk):
+        get_object_or_404(CustomerProfile, pk=pk)
+        guest = self.service_class().get_guest(pk, request=request)
+        return JsonResponse({"ok": True, "guest": guest.to_payload()})
+
+    def patch(self, request, pk):
+        profile = get_object_or_404(CustomerProfile, pk=pk)
+        try:
+            guest = self.service_class().update_guest(profile, _guest_json_payload(request), actor=request.user, request=request)
+        except ValidationError as error:
+            return _guest_validation_response(error)
+        return JsonResponse({"ok": True, "guest": guest.to_payload()})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestMergeAPIView(View):
+    service_class = GuestService
+
+    def post(self, request, pk):
+        primary = get_object_or_404(CustomerProfile, pk=pk)
+        try:
+            payload = _guest_json_payload(request)
+            duplicate = get_object_or_404(CustomerProfile, pk=payload.get("duplicate_guest_id") or payload.get("source_guest_id"))
+            guest = self.service_class().merge_guests(primary, duplicate, actor=request.user, request=request)
+        except ValidationError as error:
+            return _guest_validation_response(error)
+        return JsonResponse({"ok": True, "guest": guest.to_payload()})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestTagsAPIView(View):
+    service_class = GuestService
+
+    def post(self, request, pk):
+        profile = get_object_or_404(CustomerProfile, pk=pk)
+        try:
+            payload = _guest_json_payload(request)
+            guest = self.service_class().add_tag(profile, payload.get("tag") or payload.get("label") or "", actor=request.user, request=request)
+        except ValidationError as error:
+            return _guest_validation_response(error)
+        return JsonResponse({"ok": True, "guest": guest.to_payload()})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestTagDetailAPIView(View):
+    service_class = GuestService
+
+    def delete(self, request, pk, slug):
+        profile = get_object_or_404(CustomerProfile, pk=pk)
+        guest = self.service_class().remove_tag(profile, slug, actor=request.user, request=request)
+        return JsonResponse({"ok": True, "guest": guest.to_payload()})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestPreferencesAPIView(View):
+    service_class = GuestService
+
+    def post(self, request, pk):
+        profile = get_object_or_404(CustomerProfile, pk=pk)
+        try:
+            preference = self.service_class().record_preference(profile, _guest_json_payload(request), actor=request.user, request=request)
+        except ValidationError as error:
+            return _guest_validation_response(error)
+        return JsonResponse({"ok": True, "preference": preference})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestMessagesAPIView(View):
+    service_class = GuestService
+
+    def post(self, request, pk):
+        profile = get_object_or_404(CustomerProfile, pk=pk)
+        try:
+            message = self.service_class().message_service.send_message(profile, _guest_json_payload(request), actor=request.user, request=request)
+        except ValidationError as error:
+            return _guest_validation_response(error)
+        return JsonResponse({"ok": True, "message": message})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestMarketingConsentRequestAPIView(View):
+    service_class = GuestService
+
+    def post(self, request, pk):
+        profile = get_object_or_404(CustomerProfile, pk=pk)
+        guest = self.service_class().request_marketing_consent(profile, actor=request.user, request=request)
+        return JsonResponse({"ok": True, "guest": guest.to_payload()})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestMarketingConsentUpdateAPIView(View):
+    service_class = GuestService
+
+    def post(self, request, pk):
+        profile = get_object_or_404(CustomerProfile, pk=pk)
+        try:
+            payload = _guest_json_payload(request)
+            guest = self.service_class().update_marketing_consent(
+                profile,
+                payload.get("status") or "",
+                source=payload.get("source") or "staff",
+                actor=request.user,
+                request=request,
+            )
+        except ValidationError as error:
+            return _guest_validation_response(error)
+        return JsonResponse({"ok": True, "guest": guest.to_payload()})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestReservationsAPIView(View):
+    service_class = GuestService
+
+    def get(self, request, pk):
+        guest = self.service_class().get_guest(pk, request=request)
+        return JsonResponse({"ok": True, "reservations": guest.stays_projection()})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestPaymentsAPIView(View):
+    service_class = GuestService
+
+    def get(self, request, pk):
+        guest = self.service_class().get_guest(pk, request=request)
+        return JsonResponse({"ok": True, "payments": guest.payments_projection()})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestDepositsAPIView(View):
+    service_class = GuestService
+
+    def get(self, request, pk):
+        guest = self.service_class().get_guest(pk, request=request)
+        return JsonResponse({"ok": True, "deposits": guest.deposits_projection()})
+
+
+@method_decorator(ops_staff_required, name="dispatch")
+class OpsGuestTimelineAPIView(View):
+    service_class = GuestService
+
+    def get(self, request, pk):
+        guest = self.service_class().get_guest(pk, request=request)
+        return JsonResponse({"ok": True, "timeline": guest.activity_projection()})
 
 
 @method_decorator(ops_staff_required, name="dispatch")
