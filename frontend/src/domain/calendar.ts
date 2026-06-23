@@ -55,6 +55,119 @@ export type CalendarPeriodAnalytics = {
   priceOverrides: OpsCalendarEvent[];
 };
 
+export type CalendarEventKind = 'all' | 'reservation' | 'block' | 'price';
+
+export type CalendarTimeFilter = 'all' | 'today' | 'upcoming' | 'past';
+
+export type CalendarListProjectionFilters = {
+  search?: string;
+  globalSearch?: string;
+  stayFilter?: CalendarStayFilterId;
+  typeFilter?: CalendarEventKind;
+  timeFilter?: CalendarTimeFilter;
+};
+
+export type CalendarListDateGroupProjection = {
+  date: string;
+  events: Array<{
+    event: OpsCalendarEvent;
+    meta?: CalendarStayVisualMeta;
+  }>;
+  roomDots: CalendarStayVisualMeta[];
+};
+
+export type CalendarListProjection = {
+  periodDays: OpsCalendarDay[];
+  periodDates: string[];
+  filteredEvents: OpsCalendarEvent[];
+  grouped: CalendarListDateGroupProjection[];
+};
+
+export type CalendarRoomRowSummaryProjection = {
+  projection: CalendarWorkspaceRowProjection;
+  roomReservations: number;
+  roomBlocks: number;
+  occupiedPercent: number;
+};
+
+export type CalendarRoomScheduleSlotProjection = {
+  slot: string;
+  event: OpsCalendarEvent | null;
+  isAvailable: boolean;
+};
+
+export type CalendarRoomProjection = {
+  displayRows: CalendarWorkspaceRowProjection[];
+  active: CalendarWorkspaceRowProjection | null;
+  selectedStayId: number;
+  periodDays: OpsCalendarDay[];
+  periodDates: string[];
+  focusEvents: OpsCalendarEvent[];
+  periodEvents: OpsCalendarEvent[];
+  reservations: OpsCalendarEvent[];
+  blocks: OpsCalendarEvent[];
+  prices: OpsCalendarEvent[];
+  rowSummaries: CalendarRoomRowSummaryProjection[];
+  scheduleSlots: CalendarRoomScheduleSlotProjection[];
+};
+
+export type CalendarStayCountProjection = {
+  id: number;
+  name: string;
+  shortLabel: string;
+  color: string;
+  bgColor: string;
+  count: number;
+};
+
+export type CalendarDailyCountProjection = {
+  day: OpsCalendarDay;
+  count: number;
+};
+
+export type CalendarTopGuestProjection = {
+  name: string;
+  count: number;
+};
+
+export type CalendarAnalyticsProjection = {
+  events: OpsCalendarEvent[];
+  periodDays: OpsCalendarDay[];
+  periodDates: string[];
+  periodEvents: OpsCalendarEvent[];
+  reservationEvents: OpsCalendarEvent[];
+  monthDays: OpsCalendarDay[];
+  weekDays: OpsCalendarDay[];
+  selectedDay: OpsCalendarDay[];
+  monthReservationCount: number;
+  weekReservationCount: number;
+  selectedDayReservationCount: number;
+  stayCounts: CalendarStayCountProjection[];
+  maxStayCount: number;
+  dailyCounts: CalendarDailyCountProjection[];
+  maxDailyCount: number;
+  topGuests: CalendarTopGuestProjection[];
+  mostBooked: CalendarStayCountProjection | null;
+  hasMostBooked: boolean;
+  recordMix: {
+    reservations: number;
+    blocks: number;
+    prices: number;
+  };
+};
+
+export const calendarDefaultTimeSlots = [
+  '09:00 - 10:00',
+  '10:00 - 11:00',
+  '11:00 - 12:00',
+  '12:00 - 13:00',
+  '13:00 - 14:00',
+  '14:00 - 15:00',
+  '15:00 - 16:00',
+  '16:00 - 17:00',
+  '17:00 - 18:00',
+];
+
 const roomPalette = [
   { color: '#0d7fa1', bgColor: '#e5f6fb', textColor: '#073042' },
   { color: '#2563eb', bgColor: '#eaf2ff', textColor: '#172554' },
@@ -325,6 +438,18 @@ function rowMatchesSearch({ row, meta }: CalendarWorkspaceRowProjection, query: 
   ].some((value) => value.toLowerCase().includes(query));
 }
 
+function matchesCalendarTimeFilter(event: OpsCalendarEvent, filter: CalendarTimeFilter) {
+  if (filter === 'all') return true;
+  if (filter === 'today') return event.start <= calendarTodayIso() && event.end >= calendarTodayIso();
+  if (filter === 'upcoming') return isFutureOrToday(event.start);
+  return isPast(event.end);
+}
+
+function countReservationsForDays(events: OpsCalendarEvent[], days: OpsCalendarDay[]) {
+  const dates = days.map((day) => day.date);
+  return events.filter((event) => event.type === 'reservation' && eventOverlapsDates(event, dates)).length;
+}
+
 export class CalendarWorkspace {
   constructor(
     public readonly snapshot: OpsCalendarSnapshot,
@@ -384,6 +509,189 @@ export class CalendarWorkspace {
       ? daysForWeekendPreference(calendarRowDays(firstRow, view, focusDate), showWeekends).slice(colStart, colEnd + 1)
       : [];
     return { rows: selectedRows, dates: days };
+  }
+
+  listProjection(
+    rows: CalendarWorkspaceRowProjection[],
+    view: OpsCalendarViewMode,
+    focusDate: string,
+    visibleDays: OpsCalendarDay[],
+    filters: CalendarListProjectionFilters = {},
+  ): CalendarListProjection {
+    const periodDays = fallbackVisibleDays(rows, view, focusDate, visibleDays);
+    const periodDates = periodDays.map((day) => day.date);
+    const query = (filters.search || '').trim().toLowerCase();
+    const globalQuery = (filters.globalSearch || '').trim().toLowerCase();
+    const stayFilter = filters.stayFilter ?? 'all';
+    const typeFilter = filters.typeFilter ?? 'all';
+    const timeFilter = filters.timeFilter ?? 'all';
+
+    const filteredEvents = uniqueEvents(rows).filter((event) => {
+      const meta = stayMeta(rows, event.itemId);
+      const matchesStay = stayFilter === 'all' || event.itemId === stayFilter;
+      const matchesType = typeFilter === 'all' || event.type === typeFilter;
+      const matchesPeriod = eventOverlapsDates(event, periodDates);
+      return (
+        matchesStay
+        && matchesType
+        && matchesPeriod
+        && matchesCalendarTimeFilter(event, timeFilter)
+        && eventMatchesQuery(event, query, meta)
+        && eventMatchesQuery(event, globalQuery, meta)
+      );
+    });
+
+    const map = new Map<string, OpsCalendarEvent[]>();
+    filteredEvents.forEach((event) => {
+      const date = listEntryDate(event, periodDates);
+      if (!map.has(date)) map.set(date, []);
+      map.get(date)?.push(event);
+    });
+
+    const grouped = Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, events]) => ({
+        date,
+        events: events.map((event) => ({ event, meta: stayMeta(rows, event.itemId) })),
+        roomDots: Array.from(new Set(events.map((event) => event.itemId)))
+          .map((itemId) => stayMeta(rows, itemId))
+          .filter(Boolean) as CalendarStayVisualMeta[],
+      }));
+
+    return { periodDays, periodDates, filteredEvents, grouped };
+  }
+
+  roomsProjection(
+    rows: CalendarWorkspaceRowProjection[],
+    view: OpsCalendarViewMode,
+    focusDate: string,
+    visibleDays: OpsCalendarDay[],
+    globalSearch = '',
+    requestedStayId = 0,
+  ): CalendarRoomProjection {
+    const globalQuery = globalSearch.trim().toLowerCase();
+    const displayRows = globalQuery
+      ? rows.filter(({ row, meta }) => (
+          [meta.shortLabel, meta.displayName, meta.unitLabel, row.stay.subtitle].some((value) => value.toLowerCase().includes(globalQuery))
+          || row.events.some((event) => eventMatchesQuery(event, globalQuery, meta))
+        ))
+      : rows;
+    const selectedStayId = displayRows.some(({ row }) => row.stay.id === requestedStayId)
+      ? requestedStayId
+      : displayRows[0]?.row.stay.id || 0;
+    const active = displayRows.find(({ row }) => row.stay.id === selectedStayId) || displayRows[0] || null;
+    const periodDays = fallbackVisibleDays(rows, view, focusDate, visibleDays);
+    const periodDates = periodDays.map((day) => day.date);
+    const focusEvents = active ? active.row.events.filter((event) => eventCoversDay(event, focusDate)) : [];
+    const periodEvents = active ? active.row.events.filter((event) => eventOverlapsDates(event, periodDates)) : [];
+    const reservations = periodEvents.filter((event) => event.type === 'reservation');
+    const blocks = periodEvents.filter((event) => event.type === 'block');
+    const prices = periodEvents.filter((event) => event.type === 'price');
+    const totalDays = Math.max(periodDates.length, 1);
+    const rowSummaries = displayRows.map((projection) => {
+      const roomPeriodEvents = projection.row.events.filter((event) => eventOverlapsDates(event, periodDates));
+      const roomReservations = roomPeriodEvents.filter((event) => event.type === 'reservation').length;
+      const roomBlocks = roomPeriodEvents.filter((event) => event.type === 'block').length;
+      return {
+        projection,
+        roomReservations,
+        roomBlocks,
+        occupiedPercent: Math.round(Math.min(((roomReservations + roomBlocks) / totalDays) * 100, 100)),
+      };
+    });
+    const scheduleSlots = calendarDefaultTimeSlots.map((slot) => {
+      const event = focusEvents[0] || null;
+      return { slot, event, isAvailable: !event };
+    });
+
+    return {
+      displayRows,
+      active,
+      selectedStayId,
+      periodDays,
+      periodDates,
+      focusEvents,
+      periodEvents,
+      reservations,
+      blocks,
+      prices,
+      rowSummaries,
+      scheduleSlots,
+    };
+  }
+
+  analyticsProjection(
+    rows: CalendarWorkspaceRowProjection[],
+    focusDate: string,
+    view: OpsCalendarViewMode,
+    visibleDays: OpsCalendarDay[],
+    globalSearch = '',
+  ): CalendarAnalyticsProjection {
+    const globalQuery = globalSearch.trim().toLowerCase();
+    const events = uniqueEvents(rows).filter((event) => eventMatchesQuery(event, globalQuery, stayMeta(rows, event.itemId)));
+    const periodDays = fallbackVisibleDays(rows, view, focusDate, visibleDays);
+    const periodDates = periodDays.map((day) => day.date);
+    const periodEvents = events.filter((event) => eventOverlapsDates(event, periodDates));
+    const reservationEvents = periodEvents.filter((event) => event.type === 'reservation');
+    const monthDays = fallbackVisibleDays(rows, 'month', focusDate, []);
+    const weekDays = fallbackVisibleDays(rows, 'week', focusDate, []);
+    const selectedDay = fallbackVisibleDays(rows, 'list', focusDate, []);
+    const stayCounts = rows.map(({ row, meta }) => ({
+      id: row.stay.id,
+      name: meta.displayName,
+      shortLabel: meta.shortLabel,
+      color: meta.color,
+      bgColor: meta.bgColor,
+      count: row.events.filter((event) => (
+        event.type === 'reservation'
+        && eventOverlapsDates(event, periodDates)
+        && eventMatchesQuery(event, globalQuery, meta)
+      )).length,
+    }));
+    const maxStayCount = Math.max(...stayCounts.map((stay) => stay.count), 1);
+    const dailyCounts = periodDays.map((day) => ({
+      day,
+      count: reservationEvents.filter((event) => listEntryDate(event, periodDates) === day.date).length,
+    }));
+    const maxDailyCount = Math.max(...dailyCounts.map((day) => day.count), 1);
+    const topGuests = Object.entries(reservationEvents.reduce<Record<string, number>>((acc, event) => {
+      const name = event.title || 'Guest reservation';
+      acc[name] = (acc[name] || 0) + 1;
+      return acc;
+    }, {}))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }));
+    const mostBooked = stayCounts.reduce<CalendarStayCountProjection | null>((winner, stay) => {
+      if (!winner || stay.count > winner.count) return stay;
+      return winner;
+    }, null);
+
+    return {
+      events,
+      periodDays,
+      periodDates,
+      periodEvents,
+      reservationEvents,
+      monthDays,
+      weekDays,
+      selectedDay,
+      monthReservationCount: countReservationsForDays(events, monthDays),
+      weekReservationCount: countReservationsForDays(events, weekDays),
+      selectedDayReservationCount: countReservationsForDays(events, selectedDay),
+      stayCounts,
+      maxStayCount,
+      dailyCounts,
+      maxDailyCount,
+      topGuests,
+      mostBooked,
+      hasMostBooked: Boolean(mostBooked?.count),
+      recordMix: {
+        reservations: reservationEvents.length,
+        blocks: periodEvents.filter((event) => event.type === 'block').length,
+        prices: periodEvents.filter((event) => event.type === 'price').length,
+      },
+    };
   }
 
   analyticsForPeriod(view: OpsCalendarViewMode, focusDate: string, showWeekends = true, filters: CalendarWorkspaceFilters = {}): CalendarPeriodAnalytics {

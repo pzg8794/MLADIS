@@ -402,7 +402,7 @@ export function OpsCalendarPage() {
     return <section className="dashboard-error"><AlertCircle /> {error}</section>;
   }
 
-  if (!snapshot) {
+  if (!workspace || !snapshot) {
     return <main className="calendar-product-shell"><section className="calendar-product-loading" /></main>;
   }
 
@@ -414,15 +414,15 @@ export function OpsCalendarPage() {
         onMouseLeave={() => setRailExpanded(false)}
       >
         <a className="calendar-product-brand" href="/">
-          <span><CalendarDays size={26} /></span>
+          <span><CalendarDays size={20} /></span>
           <strong>Booking Calendar</strong>
         </a>
 
         <nav className="calendar-product-nav" aria-label="Calendar workspace">
-          <a className={currentSection === 'calendar' ? 'is-active' : ''} href="/ops/calendar/"><CalendarDays size={26} /><span>Calendar</span></a>
-          <a className={currentSection === 'list' ? 'is-active' : ''} href="/ops/calendar/list/"><LayoutList size={26} /><span>List View</span></a>
-          <a className={currentSection === 'rooms' ? 'is-active' : ''} href="/ops/calendar/rooms/"><Building2 size={26} /><span>Rooms</span></a>
-          <a className={currentSection === 'analytics' ? 'is-active' : ''} href="/ops/calendar/analytics/"><BarChart3 size={26} /><span>Analytics</span></a>
+          <a className={currentSection === 'calendar' ? 'is-active' : ''} href="/ops/calendar/"><CalendarDays size={18} /><span>Calendar</span></a>
+          <a className={currentSection === 'list' ? 'is-active' : ''} href="/ops/calendar/list/"><LayoutList size={18} /><span>List View</span></a>
+          <a className={currentSection === 'rooms' ? 'is-active' : ''} href="/ops/calendar/rooms/"><Building2 size={18} /><span>Rooms</span></a>
+          <a className={currentSection === 'analytics' ? 'is-active' : ''} href="/ops/calendar/analytics/"><BarChart3 size={18} /><span>Analytics</span></a>
         </nav>
 
         <div className="calendar-product-rail__bottom">
@@ -436,10 +436,10 @@ export function OpsCalendarPage() {
               setNotificationsOpen(false);
             }}
           >
-            <Settings size={26} /><span>Settings</span>
+            <Settings size={18} /><span>Settings</span>
           </button>
           <button type="button" className="calendar-product-new-booking" onClick={openQuickBooking}>
-            <Plus size={26} /><span>New Booking</span>
+            <Plus size={18} /><span>New Booking</span>
           </button>
         </div>
       </aside>
@@ -638,9 +638,9 @@ export function OpsCalendarPage() {
           </>
         )}
 
-        {currentSection === 'list' && <CalendarListView focusDate={focusDate} globalSearch={search} rows={visibleRows} view={view} visibleDays={visibleDays} />}
-        {currentSection === 'rooms' && <CalendarRoomsView focusDate={focusDate} globalSearch={search} rows={visibleRows} view={view} visibleDays={visibleDays} />}
-        {currentSection === 'analytics' && <CalendarAnalyticsView focusDate={focusDate} globalSearch={search} rows={visibleRows} view={view} visibleDays={visibleDays} />}
+        {currentSection === 'list' && <CalendarListView focusDate={focusDate} globalSearch={search} rows={visibleRows} view={view} visibleDays={visibleDays} workspace={workspace} />}
+        {currentSection === 'rooms' && <CalendarRoomsView focusDate={focusDate} globalSearch={search} rows={visibleRows} view={view} visibleDays={visibleDays} workspace={workspace} />}
+        {currentSection === 'analytics' && <CalendarAnalyticsView focusDate={focusDate} globalSearch={search} rows={visibleRows} view={view} visibleDays={visibleDays} workspace={workspace} />}
       </section>
 
       {dayModal && (

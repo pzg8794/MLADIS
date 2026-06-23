@@ -13,45 +13,21 @@ import {
   Users,
 } from 'lucide-react';
 import {
-  CalendarStayVisualMeta,
+  CalendarEventKind,
+  CalendarTimeFilter,
+  CalendarWorkspace,
   CalendarWorkspaceRowProjection,
   calendarTodayIso,
   cleanCalendarSubtitle,
   compactDate,
   dateFromIso,
-  eventCoversDay,
-  eventMatchesQuery,
-  eventOverlapsDates,
-  fallbackVisibleDays,
   fullDate,
-  isFutureOrToday,
-  isPast,
-  listEntryDate,
   periodLabel,
   periodTitle,
-  stayMeta,
-  uniqueEvents,
 } from '../../../domain/calendar';
 import { OpsCalendarDay, OpsCalendarEvent, OpsCalendarViewMode } from '../../../domain/models';
 
-type StayVisualMeta = CalendarStayVisualMeta;
-
 type StayRowWithMeta = CalendarWorkspaceRowProjection;
-
-type CalendarEventKind = 'all' | 'reservation' | 'block' | 'price';
-type TimeFilter = 'all' | 'today' | 'upcoming' | 'past';
-
-const timeSlots = [
-  '09:00 - 10:00',
-  '10:00 - 11:00',
-  '11:00 - 12:00',
-  '12:00 - 13:00',
-  '13:00 - 14:00',
-  '14:00 - 15:00',
-  '15:00 - 16:00',
-  '16:00 - 17:00',
-  '17:00 - 18:00',
-];
 
 function eventTone(event: OpsCalendarEvent) {
   if (event.type === 'reservation') return 'reservation';
@@ -60,12 +36,14 @@ function eventTone(event: OpsCalendarEvent) {
 }
 
 export function CalendarListView({
+  workspace,
   rows,
   view,
   focusDate,
   globalSearch,
   visibleDays,
 }: {
+  workspace: CalendarWorkspace;
   rows: StayRowWithMeta[];
   view: OpsCalendarViewMode;
   focusDate: string;
@@ -75,37 +53,17 @@ export function CalendarListView({
   const [search, setSearch] = useState('');
   const [stayFilter, setStayFilter] = useState<number | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<CalendarEventKind>('all');
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
-  const periodDays = useMemo(() => fallbackVisibleDays(rows, view, focusDate, visibleDays), [focusDate, rows, view, visibleDays]);
-  const periodDates = useMemo(() => periodDays.map((day) => day.date), [periodDays]);
+  const [timeFilter, setTimeFilter] = useState<CalendarTimeFilter>('all');
+  const projection = useMemo(() => workspace.listProjection(rows, view, focusDate, visibleDays, {
+    search,
+    globalSearch,
+    stayFilter,
+    typeFilter,
+    timeFilter,
+  }), [focusDate, globalSearch, rows, search, stayFilter, timeFilter, typeFilter, view, visibleDays, workspace]);
+  const { periodDays, periodDates, filteredEvents, grouped } = projection;
   const [expandedDateState, setExpandedDate] = useState<string | null>(null);
   const expandedDate = expandedDateState && periodDates.includes(expandedDateState) ? expandedDateState : null;
-
-  const filteredEvents = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const globalQuery = globalSearch.trim().toLowerCase();
-    return uniqueEvents(rows).filter((event) => {
-      const meta = stayMeta(rows, event.itemId);
-      const matchesStay = stayFilter === 'all' || event.itemId === stayFilter;
-      const matchesType = typeFilter === 'all' || event.type === typeFilter;
-      const matchesPeriod = eventOverlapsDates(event, periodDates);
-      const matchesTime = timeFilter === 'all'
-        || (timeFilter === 'today' && event.start <= calendarTodayIso() && event.end >= calendarTodayIso())
-        || (timeFilter === 'upcoming' && isFutureOrToday(event.start))
-        || (timeFilter === 'past' && isPast(event.end));
-      return matchesStay && matchesType && matchesPeriod && matchesTime && eventMatchesQuery(event, query, meta) && eventMatchesQuery(event, globalQuery, meta);
-    });
-  }, [globalSearch, periodDates, rows, search, stayFilter, timeFilter, typeFilter]);
-
-  const grouped = useMemo(() => {
-    const map = new Map<string, OpsCalendarEvent[]>();
-    filteredEvents.forEach((event) => {
-      const date = listEntryDate(event, periodDates);
-      if (!map.has(date)) map.set(date, []);
-      map.get(date)?.push(event);
-    });
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [filteredEvents, periodDates]);
 
   return (
     <section className="calendar-subview calendar-list-view">
@@ -130,7 +88,7 @@ export function CalendarListView({
           ))}
         </div>
         <div className="calendar-filter-toggles">
-          {(['all', 'today', 'upcoming', 'past'] as TimeFilter[]).map((kind) => (
+          {(['all', 'today', 'upcoming', 'past'] as CalendarTimeFilter[]).map((kind) => (
             <button className={timeFilter === kind ? 'is-active' : ''} key={kind} type="button" onClick={() => setTimeFilter(kind)}>
               {kind}
             </button>
@@ -142,11 +100,8 @@ export function CalendarListView({
       <div className="calendar-list-body">
         {grouped.length === 0 ? (
           <EmptyCalendarState title="No bookings found" body="Change the search or filters to widen the list." />
-        ) : grouped.map(([date, events]) => {
+        ) : grouped.map(({ date, events, roomDots }) => {
           const isOpen = expandedDate === date;
-          const roomDots = Array.from(new Set(events.map((event) => event.itemId)))
-            .map((itemId) => stayMeta(rows, itemId))
-            .filter(Boolean) as StayVisualMeta[];
           return (
             <article className="calendar-list-date-group" key={date}>
               <button type="button" onClick={() => setExpandedDate(isOpen ? null : date)}>
@@ -167,8 +122,7 @@ export function CalendarListView({
               </button>
               {isOpen && (
                 <div className="calendar-list-records">
-                  {events.map((event) => {
-                    const meta = stayMeta(rows, event.itemId);
+                  {events.map(({ event, meta }) => {
                     return (
                       <a className={`calendar-list-record calendar-list-record--${eventTone(event)}`} href={event.adminUrl} key={event.id} style={{ '--room-color': meta?.color || '#6750a4', '--room-bg': meta?.bgColor || '#eaddff' } as CSSProperties}>
                         <i />
@@ -190,38 +144,26 @@ export function CalendarListView({
 }
 
 export function CalendarRoomsView({
+  workspace,
   rows,
   view,
   focusDate,
   globalSearch,
   visibleDays,
 }: {
+  workspace: CalendarWorkspace;
   rows: StayRowWithMeta[];
   view: OpsCalendarViewMode;
   focusDate: string;
   globalSearch: string;
   visibleDays: OpsCalendarDay[];
 }) {
-  const globalQuery = globalSearch.trim().toLowerCase();
-  const displayRows = useMemo(() => {
-    if (!globalQuery) return rows;
-    return rows.filter(({ row, meta }) => (
-      [meta.shortLabel, meta.displayName, meta.unitLabel, row.stay.subtitle].some((value) => value.toLowerCase().includes(globalQuery))
-      || row.events.some((event) => eventMatchesQuery(event, globalQuery, meta))
-    ));
-  }, [globalQuery, rows]);
   const [selectedStayId, setSelectedStay] = useState(rows[0]?.row.stay.id || 0);
-  const selectedStay = displayRows.some(({ row }) => row.stay.id === selectedStayId)
-    ? selectedStayId
-    : displayRows[0]?.row.stay.id || 0;
-  const active = displayRows.find(({ row }) => row.stay.id === selectedStay) || displayRows[0];
-  const periodDays = useMemo(() => fallbackVisibleDays(rows, view, focusDate, visibleDays), [focusDate, rows, view, visibleDays]);
-  const periodDates = useMemo(() => periodDays.map((day) => day.date), [periodDays]);
-  const focusEvents = active ? active.row.events.filter((event) => eventCoversDay(event, focusDate)) : [];
-  const periodEvents = active ? active.row.events.filter((event) => eventOverlapsDates(event, periodDates)) : [];
-  const reservations = periodEvents.filter((event) => event.type === 'reservation');
-  const blocks = periodEvents.filter((event) => event.type === 'block');
-  const prices = periodEvents.filter((event) => event.type === 'price');
+  const projection = useMemo(
+    () => workspace.roomsProjection(rows, view, focusDate, visibleDays, globalSearch, selectedStayId),
+    [focusDate, globalSearch, rows, selectedStayId, view, visibleDays, workspace],
+  );
+  const { active, periodDays, reservations, blocks, prices, rowSummaries, scheduleSlots } = projection;
 
   if (!active) return <EmptyCalendarState title="No stays match" body="Change search or reset filters to view stay details." />;
 
@@ -232,11 +174,7 @@ export function CalendarRoomsView({
           <strong>Stays</strong>
           <button type="button" aria-label="Add stay"><Sparkles size={18} /></button>
         </div>
-        {displayRows.map(({ row, meta }) => {
-          const roomPeriodEvents = row.events.filter((event) => eventOverlapsDates(event, periodDates));
-          const roomReservations = roomPeriodEvents.filter((event) => event.type === 'reservation').length;
-          const roomBlocks = roomPeriodEvents.filter((event) => event.type === 'block').length;
-          const total = Math.max(periodDates.length, 1);
+        {rowSummaries.map(({ projection: { row, meta }, roomReservations, occupiedPercent }) => {
           return (
             <button
               className={active.row.stay.id === row.stay.id ? 'is-active' : ''}
@@ -249,9 +187,9 @@ export function CalendarRoomsView({
               <div>
                 <strong>{meta.displayName}</strong>
                 <small>{meta.capacityLabel} · {roomReservations} bookings</small>
-                <i><b style={{ width: `${Math.min(((roomReservations + roomBlocks) / total) * 100, 100)}%` }} /></i>
+                <i><b style={{ width: `${occupiedPercent}%` }} /></i>
               </div>
-              <em>{Math.round(Math.min(((roomReservations + roomBlocks) / total) * 100, 100))}%</em>
+              <em>{occupiedPercent}%</em>
             </button>
           );
         })}
@@ -289,8 +227,7 @@ export function CalendarRoomsView({
 
         <section className="calendar-room-schedule">
           <h3>{view === 'list' ? 'Day Schedule' : `${periodTitle(view)} Schedule`} <span>{periodLabel(view, focusDate, periodDays)}</span></h3>
-          {timeSlots.map((slot) => {
-            const unavailable = focusEvents[0];
+          {scheduleSlots.map(({ slot, event: unavailable }) => {
             return (
               <article className={unavailable ? 'is-booked' : 'is-free'} key={slot}>
                 <Clock3 size={17} />
@@ -318,61 +255,52 @@ export function CalendarRoomsView({
 }
 
 export function CalendarAnalyticsView({
+  workspace,
   rows,
   focusDate,
   view,
   globalSearch,
   visibleDays,
 }: {
+  workspace: CalendarWorkspace;
   rows: StayRowWithMeta[];
   focusDate: string;
   view: OpsCalendarViewMode;
   globalSearch: string;
   visibleDays: OpsCalendarDay[];
 }) {
-  const globalQuery = globalSearch.trim().toLowerCase();
-  const events = useMemo(() => uniqueEvents(rows).filter((event) => eventMatchesQuery(event, globalQuery, stayMeta(rows, event.itemId))), [globalQuery, rows]);
-  const periodDays = useMemo(() => fallbackVisibleDays(rows, view, focusDate, visibleDays), [focusDate, rows, view, visibleDays]);
-  const periodDates = useMemo(() => periodDays.map((day) => day.date), [periodDays]);
-  const periodEvents = events.filter((event) => eventOverlapsDates(event, periodDates));
-  const reservationEvents = periodEvents.filter((event) => event.type === 'reservation');
-  const monthDays = useMemo(() => fallbackVisibleDays(rows, 'month', focusDate, []), [focusDate, rows]);
-  const weekDays = useMemo(() => fallbackVisibleDays(rows, 'week', focusDate, []), [focusDate, rows]);
-  const selectedDay = useMemo(() => fallbackVisibleDays(rows, 'list', focusDate, []), [focusDate, rows]);
-  const reservationCountFor = (days: OpsCalendarDay[]) => {
-    const dates = days.map((day) => day.date);
-    return events.filter((event) => event.type === 'reservation' && eventOverlapsDates(event, dates)).length;
-  };
-  const stayCounts = rows.map(({ row, meta }) => ({
-    id: row.stay.id,
-    name: meta.displayName,
-    shortLabel: meta.shortLabel,
-    color: meta.color,
-    bgColor: meta.bgColor,
-    count: row.events.filter((event) => event.type === 'reservation' && eventOverlapsDates(event, periodDates) && eventMatchesQuery(event, globalQuery, meta)).length,
-  }));
-  const maxStayCount = Math.max(...stayCounts.map((stay) => stay.count), 1);
-  const dailyCounts = periodDays.map((day) => ({
-    day,
-    count: reservationEvents.filter((event) => listEntryDate(event, periodDates) === day.date).length,
-  }));
-  const maxDailyCount = Math.max(...dailyCounts.map((day) => day.count), 1);
-  const topGuests = Object.entries(reservationEvents.reduce<Record<string, number>>((acc, event) => {
-    const name = event.title || 'Guest reservation';
-    acc[name] = (acc[name] || 0) + 1;
-    return acc;
-  }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const mostBooked = stayCounts.reduce((winner, stay) => (stay.count > winner.count ? stay : winner), stayCounts[0] || { shortLabel: '-', count: 0 });
-  const hasMostBooked = Boolean(mostBooked?.count);
+  const projection = useMemo(
+    () => workspace.analyticsProjection(rows, focusDate, view, visibleDays, globalSearch),
+    [focusDate, globalSearch, rows, view, visibleDays, workspace],
+  );
+  const {
+    events,
+    periodDays,
+    periodEvents,
+    monthDays,
+    weekDays,
+    selectedDay,
+    monthReservationCount,
+    weekReservationCount,
+    selectedDayReservationCount,
+    stayCounts,
+    maxStayCount,
+    dailyCounts,
+    maxDailyCount,
+    topGuests,
+    mostBooked,
+    hasMostBooked,
+    recordMix,
+  } = projection;
 
   return (
     <section className="calendar-subview calendar-analytics-view">
       <div className="calendar-analytics-kpis">
-        <MetricTile color="#6750a4" icon={<CalendarDays size={22} />} label="This Month" value={reservationCountFor(monthDays)} caption={periodLabel('month', focusDate, monthDays)} />
-        <MetricTile color="#0072b8" icon={<TrendingUp size={22} />} label="This Week" value={reservationCountFor(weekDays)} caption={periodLabel('week', focusDate, weekDays)} />
-        <MetricTile color="#7d5260" icon={<Clock3 size={22} />} label="Selected Day" value={reservationCountFor(selectedDay)} caption={periodLabel('list', focusDate, selectedDay)} />
-        <MetricTile color="#c25100" icon={<Building2 size={22} />} label="Most Booked" value={hasMostBooked ? mostBooked.shortLabel : '-'} caption={hasMostBooked ? `${mostBooked.count} bookings` : 'No bookings'} />
-        <MetricTile color="#087927" icon={<Users size={22} />} label="Total Stays" value={rows.length} caption={`${events.length} calendar records`} />
+        <MetricTile color="#0d7fa1" icon={<CalendarDays size={18} />} label="This Month" value={monthReservationCount} caption={periodLabel('month', focusDate, monthDays)} />
+        <MetricTile color="#2563eb" icon={<TrendingUp size={18} />} label="This Week" value={weekReservationCount} caption={periodLabel('week', focusDate, weekDays)} />
+        <MetricTile color="#475569" icon={<Clock3 size={18} />} label="Selected Day" value={selectedDayReservationCount} caption={periodLabel('list', focusDate, selectedDay)} />
+        <MetricTile color="#ea580c" icon={<Building2 size={18} />} label="Most Booked" value={hasMostBooked && mostBooked ? mostBooked.shortLabel : '-'} caption={hasMostBooked && mostBooked ? `${mostBooked.count} bookings` : 'No bookings'} />
+        <MetricTile color="#16a34a" icon={<Users size={18} />} label="Total Stays" value={rows.length} caption={`${events.length} calendar records`} />
       </div>
 
       <div className="calendar-analytics-grid">
@@ -395,9 +323,9 @@ export function CalendarAnalyticsView({
             <span>records</span>
           </div>
           <div className="calendar-donut-legend">
-            <span><i className="is-booked" /> {reservationEvents.length} reservations</span>
-            <span><i className="is-blocked" /> {periodEvents.filter((event) => event.type === 'block').length} blocks</span>
-            <span><i className="is-priced" /> {periodEvents.filter((event) => event.type === 'price').length} prices</span>
+            <span><i className="is-booked" /> {recordMix.reservations} reservations</span>
+            <span><i className="is-blocked" /> {recordMix.blocks} blocks</span>
+            <span><i className="is-priced" /> {recordMix.prices} prices</span>
           </div>
         </article>
 
@@ -418,7 +346,7 @@ export function CalendarAnalyticsView({
           <h3>Top Guests</h3>
           {topGuests.length === 0 ? <p>No guest reservations in this period.</p> : (
             <div className="calendar-top-guests">
-              {topGuests.map(([name, count], index) => (
+              {topGuests.map(({ name, count }, index) => (
                 <div key={name}>
                   <span>{index + 1}</span>
                   <strong>{name}</strong>
