@@ -38,7 +38,11 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
         setSegment(query.get('segment') || data.filters.segment || 'all');
         setSource(query.get('source') || data.filters.source || '');
         setStatus(query.get('status') || data.filters.status || '');
-        setSelectedGuestId(query.get('guest') || data.guests[0]?.id || '');
+        const requestedGuestId = query.get('guest') || '';
+        const validGuest = requestedGuestId
+          ? data.guests.find((guest) => guest.id === requestedGuestId || guest.key === requestedGuestId)
+          : null;
+        setSelectedGuestId(validGuest ? validGuest.id : '');
       })
       .catch((caught: unknown) => {
         if (mounted) setError(caught instanceof Error ? caught.message : 'Could not load guests.');
@@ -73,17 +77,23 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
   const filterOptions = useMemo(() => workspace?.filterOptions(), [workspace]);
 
   const selectedGuest = useMemo(() => {
-    if (!workspace) return null;
-    if (!filteredGuests.length) return null;
-    const scopedGuest = filteredGuests.find((guest) => guest.id === selectedGuestId || guest.key === selectedGuestId);
-    return scopedGuest ?? filteredGuests[0] ?? service.selectGuest(workspace, selectedGuestId) ?? null;
-  }, [filteredGuests, selectedGuestId, service, workspace]);
+    if (!selectedGuestId) return null;
+    return filteredGuests.find((guest) => guest.id === selectedGuestId || guest.key === selectedGuestId) ?? null;
+  }, [filteredGuests, selectedGuestId]);
 
   useEffect(() => {
-    if (selectedGuest && selectedGuest.id !== selectedGuestId) {
-      setSelectedGuestId(selectedGuest.id);
+    if (!selectedGuestId) return;
+    const stillVisible = filteredGuests.some(
+      (guest) => guest.id === selectedGuestId || guest.key === selectedGuestId,
+    );
+    if (!stillVisible) {
+      setSelectedGuestId('');
+      setActiveTab('messages');
+      setMessageDraft('');
+      setMessageConfirmed(false);
+      setNotice('');
     }
-  }, [selectedGuest, selectedGuestId]);
+  }, [filteredGuests, selectedGuestId]);
 
   useEffect(() => {
     setPage(1);
@@ -160,25 +170,19 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
           <p>Manage guest relationships, profiles, travel details, and communication history.</p>
         </div>
         <div className="guests-header-actions">
-          <a href="/admin/bookings/customerprofile/add/">
-            <UserPlus size={16} />
-            New guest
-          </a>
+          <button type="button">
+            <Filter size={16} />
+            Filters
+          </button>
           <button onClick={exportVisibleGuests} type="button">
             <Download size={16} />
             Export
           </button>
+          <a href="/admin/bookings/customerprofile/add/">
+            <UserPlus size={16} />
+            Add guest
+          </a>
         </div>
-      </section>
-
-      <section className="guests-metric-grid">
-        {workspace.metricsProjection().map((metric) => (
-          <article className={`guests-metric-card guests-metric-card--${metric.tone}`} key={metric.label}>
-            <span>{metric.label}</span>
-            <strong>{metric.value}</strong>
-            <p>{metric.caption}</p>
-          </article>
-        ))}
       </section>
 
       <section className="guests-tabs" aria-label="Guest segments">
@@ -190,7 +194,7 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
         ))}
       </section>
 
-      <section className="guests-workspace-grid">
+      <section className="guests-main-stack">
         <div className="guests-list-card">
           <div className="guests-filter-row">
             <label>
@@ -221,8 +225,11 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
           <GuestTable
             guests={visibleGuests}
             onSelect={(guest) => {
-              setSelectedGuestId(guest.id);
+              setSelectedGuestId((current) => (current === guest.id ? '' : guest.id));
               setActiveTab('messages');
+              setMessageDraft('');
+              setMessageConfirmed(false);
+              setNotice('');
             }}
             selectedGuestId={selectedGuest?.id || ''}
           />
@@ -246,10 +253,11 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
           </div>
         </div>
 
-        <aside className="guests-side-column">
-          {selectedGuest ? (
-            <>
-              <GuestProfileCard guest={selectedGuest} />
+        {selectedGuest ? (
+          <section className="guests-bottom-grid" aria-label="Selected guest details">
+            <GuestProfileCard guest={selectedGuest} />
+            <div className="guests-detail-stack">
+              <GuestDetailPanel activeTab={activeTab} guest={selectedGuest} onTabChange={setActiveTab} />
               <GuestMessageComposer
                 confirmed={messageConfirmed}
                 disabled={!selectedGuest.canMessage}
@@ -259,23 +267,16 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
                 onDraftChange={setMessageDraft}
                 onSend={sendMessage}
               />
-            </>
-          ) : (
-            <article className="guests-empty-selection">
-              <UsersRound size={24} />
-              <h3>Select a guest</h3>
-              <p>Choose a guest to inspect profile, reservations, payments, deposits, and activity.</p>
-            </article>
-          )}
-        </aside>
+            </div>
+            <GuestLinkedStaysPanel guest={selectedGuest} />
+          </section>
+        ) : (
+          <article className="guests-empty-selection">
+            <UsersRound size={20} />
+            <p>Select a guest to view profile, messages, stays, payments, deposits, and activity.</p>
+          </article>
+        )}
       </section>
-
-      {selectedGuest && (
-        <section className="guests-bottom-grid">
-          <GuestDetailPanel activeTab={activeTab} guest={selectedGuest} onTabChange={setActiveTab} />
-          <GuestLinkedStaysPanel guest={selectedGuest} />
-        </section>
-      )}
     </main>
   );
 }
