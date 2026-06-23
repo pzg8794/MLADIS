@@ -86,6 +86,18 @@ type CalendarWorkspaceSection = 'calendar' | 'list' | 'rooms' | 'analytics';
 type StayFilterId = CalendarStayFilterId;
 type CalendarSettingsSection = 'profile' | 'notifications' | 'appearance' | 'booking' | 'rooms' | 'security';
 
+const calendarWorkspaceLinks: {
+  id: CalendarWorkspaceSection;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+}[] = [
+  { id: 'calendar', label: 'Calendar', href: '/ops/calendar/', icon: CalendarDays },
+  { id: 'list', label: 'List View', href: '/ops/calendar/list/', icon: LayoutList },
+  { id: 'rooms', label: 'Rooms', href: '/ops/calendar/rooms/', icon: Building2 },
+  { id: 'analytics', label: 'Analytics', href: '/ops/calendar/analytics/', icon: BarChart3 },
+];
+
 const viewModes: OpsCalendarViewMode[] = ['month', 'week', 'list'];
 const viewLabels: Record<OpsCalendarViewMode, string> = {
   month: 'Month',
@@ -155,7 +167,6 @@ export function OpsCalendarPage() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(() => params.get('panel') === 'settings');
   const [showWeekends, setShowWeekends] = useState(true);
-  const [railExpanded, setRailExpanded] = useState(false);
   const [selectedRange, setSelectedRange] = useState<RangeState>(() => emptyRange(params.get('date') || calendarTodayIso()));
   const [blockForm] = useState<BlockFormState>({ reason: 'Direct booking hold', notes: '' });
   const [dragStart, setDragStart] = useState<GridCellPosition | null>(null);
@@ -407,43 +418,7 @@ export function OpsCalendarPage() {
   }
 
   return (
-    <main className={`calendar-product-shell ${railExpanded ? 'is-rail-expanded' : 'is-rail-compact'}`}>
-      <aside
-        className="calendar-product-rail"
-        onMouseEnter={() => setRailExpanded(true)}
-        onMouseLeave={() => setRailExpanded(false)}
-      >
-        <a className="calendar-product-brand" href="/">
-          <span><CalendarDays size={20} /></span>
-          <strong>Booking Calendar</strong>
-        </a>
-
-        <nav className="calendar-product-nav" aria-label="Calendar workspace">
-          <a className={currentSection === 'calendar' ? 'is-active' : ''} href="/ops/calendar/"><CalendarDays size={18} /><span>Calendar</span></a>
-          <a className={currentSection === 'list' ? 'is-active' : ''} href="/ops/calendar/list/"><LayoutList size={18} /><span>List View</span></a>
-          <a className={currentSection === 'rooms' ? 'is-active' : ''} href="/ops/calendar/rooms/"><Building2 size={18} /><span>Rooms</span></a>
-          <a className={currentSection === 'analytics' ? 'is-active' : ''} href="/ops/calendar/analytics/"><BarChart3 size={18} /><span>Analytics</span></a>
-        </nav>
-
-        <div className="calendar-product-rail__bottom">
-          <button
-            type="button"
-            className={settingsOpen ? 'is-active' : ''}
-            aria-label="Calendar settings"
-            aria-expanded={settingsOpen}
-            onClick={() => {
-              setSettingsOpen((current) => !current);
-              setNotificationsOpen(false);
-            }}
-          >
-            <Settings size={18} /><span>Settings</span>
-          </button>
-          <button type="button" className="calendar-product-new-booking" onClick={openQuickBooking}>
-            <Plus size={18} /><span>New Booking</span>
-          </button>
-        </div>
-      </aside>
-
+    <main className="calendar-product-shell calendar-product-shell--right-context">
       <section className="calendar-product-main">
         <header className="calendar-product-header">
           <div className="calendar-product-title">
@@ -642,6 +617,45 @@ export function OpsCalendarPage() {
         {currentSection === 'rooms' && <CalendarRoomsView focusDate={focusDate} globalSearch={search} rows={visibleRows} view={view} visibleDays={visibleDays} workspace={workspace} />}
         {currentSection === 'analytics' && <CalendarAnalyticsView focusDate={focusDate} globalSearch={search} rows={visibleRows} view={view} visibleDays={visibleDays} workspace={workspace} />}
       </section>
+
+      <aside className="calendar-product-context" aria-label="Calendar workspace controls">
+        <div className="calendar-product-context__head">
+          <span><CalendarDays size={18} /></span>
+          <div>
+            <strong>Calendar</strong>
+            <small>Workspace tools</small>
+          </div>
+        </div>
+
+        <nav className="calendar-product-context-nav" aria-label="Calendar workspace">
+          {calendarWorkspaceLinks.map(({ href, icon: Icon, id, label }) => (
+            <a className={currentSection === id ? 'is-active' : ''} href={href} key={id}>
+              <Icon size={16} />
+              <span>{label}</span>
+            </a>
+          ))}
+        </nav>
+
+        <div className="calendar-product-context__actions">
+          <button
+            type="button"
+            className={settingsOpen ? 'is-active' : ''}
+            aria-label="Calendar settings"
+            aria-expanded={settingsOpen}
+            onClick={() => {
+              setSettingsOpen((current) => !current);
+              setNotificationsOpen(false);
+            }}
+          >
+            <Settings size={16} />
+            <span>Settings</span>
+          </button>
+          <button type="button" className="calendar-product-context-booking" onClick={openQuickBooking}>
+            <Plus size={16} />
+            <span>New Booking</span>
+          </button>
+        </div>
+      </aside>
 
       {dayModal && (
         <CalendarDayDetailsModal
