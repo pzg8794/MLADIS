@@ -2777,6 +2777,80 @@ class OpsFinanceObjectTests(TestCase):
         self.assertEqual(payload["selected_transaction_id"], "")
         self.assertIsNone(payload["detail"])
 
+    def test_payments_api_opens_transaction_detail_when_selected(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(
+            reverse("bookings:ops-payments-api"),
+            {"transaction": f"invoice-{self.invoice.pk}"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["selected_transaction_id"], f"invoice-{self.invoice.pk}")
+        self.assertEqual(payload["detail"]["id"], f"invoice-{self.invoice.pk}")
+
+    def test_payments_api_search_filters_rows(self):
+        Invoice.objects.create(
+            recipient_name="John Smith",
+            recipient_email="john@example.com",
+            status=InvoiceStatus.PAID,
+            subtotal_cents=18000,
+            total_cents=18000,
+        )
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("bookings:ops-payments-api"), {"search": "John"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["total_results"], 1)
+        self.assertEqual(payload["rows"][0]["guest"], "John Smith")
+
+    def test_payments_api_status_channel_and_method_filters_rows(self):
+        Invoice.objects.create(
+            recipient_name="John Smith",
+            recipient_email="john@example.com",
+            status=InvoiceStatus.PAID,
+            subtotal_cents=18000,
+            total_cents=18000,
+        )
+        self.client.force_login(self.staff)
+
+        response = self.client.get(
+            reverse("bookings:ops-payments-api"),
+            {"status": "Pending", "channel": "Direct Website", "method": "Card hold"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["total_results"], 1)
+        self.assertEqual(payload["rows"][0]["id"], f"invoice-{self.invoice.pk}")
+        self.assertIn("statuses", payload["filter_options"])
+        self.assertIn("channels", payload["filter_options"])
+        self.assertIn("methods", payload["filter_options"])
+
+    def test_payments_api_pagination_returns_requested_page(self):
+        other = Invoice.objects.create(
+            recipient_name="Ana Lopez",
+            recipient_email="ana@example.com",
+            status=InvoiceStatus.PAID,
+            subtotal_cents=18000,
+            total_cents=18000,
+            issue_date=timezone.localdate() + timedelta(days=1),
+        )
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("bookings:ops-payments-api"), {"page": 2, "page_size": 1})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["pagination"]["page"], 2)
+        self.assertEqual(payload["pagination"]["page_size"], 1)
+        self.assertEqual(payload["pagination"]["total_pages"], 2)
+        self.assertEqual(payload["rows"][0]["id"], f"invoice-{self.invoice.pk}")
+        self.assertNotEqual(payload["rows"][0]["id"], f"invoice-{other.pk}")
+
     def test_payment_action_mark_paid_updates_invoice_object(self):
         self.client.force_login(self.staff)
 
@@ -2790,6 +2864,31 @@ class OpsFinanceObjectTests(TestCase):
         self.assertEqual(self.invoice.status, InvoiceStatus.PAID)
         self.assertEqual(self.invoice.email_status, EmailDeliveryStatus.SENT)
         self.assertEqual(response.json()["transaction"]["status"], InvoiceStatus.PAID)
+
+    def test_payment_action_send_invoice_updates_invoice_sent_state(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("bookings:ops-payment-action-api", args=[f"invoice-{self.invoice.pk}", "send-invoice"]),
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.status, InvoiceStatus.SENT)
+        self.assertEqual(self.invoice.email_status, EmailDeliveryStatus.SENT)
+        self.assertIsNotNone(self.invoice.sent_at)
+
+    def test_payment_action_unsupported_returns_400(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("bookings:ops-payment-action-api", args=[f"invoice-{self.invoice.pk}", "capture-now"]),
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
 
     def test_deposits_api_exposes_deposit_hold_objects(self):
         self.client.force_login(self.staff)

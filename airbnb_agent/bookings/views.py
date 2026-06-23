@@ -2321,7 +2321,11 @@ class ModernOpsPaymentsView(TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         payload = PaymentsTransactionsService().page_payload(
-            selected_id=self.request.GET.get("transaction", "").strip()
+            selected_id=self.request.GET.get("transaction", "").strip(),
+            filters=self.request.GET,
+            page=self.request.GET.get("page", 1),
+            page_size=self.request.GET.get("page_size", 10),
+            request=self.request,
         )
         ctx.update(payload)
         ctx["site_settings"] = SiteSettings.current()
@@ -2332,7 +2336,10 @@ class ModernOpsPaymentsView(TemplateView):
 class OpsPaymentsAPIView(View):
     def get(self, request):
         payload = PaymentsTransactionsService().page_payload(
-            selected_id=request.GET.get("transaction", "").strip()
+            selected_id=request.GET.get("transaction", "").strip(),
+            filters=request.GET,
+            page=request.GET.get("page", 1),
+            page_size=request.GET.get("page_size", 10),
         )
         return JsonResponse(
             {
@@ -2343,6 +2350,11 @@ class OpsPaymentsAPIView(View):
                 "selected_transaction_id": payload["selected_transaction_id"],
                 "total_results": payload["total_results"],
                 "generated_at": payload["generated_at"].isoformat(),
+                "date_range_label": payload["date_range_label"],
+                "filters": payload["filters"],
+                "filter_options": payload["filter_options"],
+                "pagination": payload["pagination"],
+                "source": payload["source"],
             }
         )
 

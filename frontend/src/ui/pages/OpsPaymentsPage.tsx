@@ -1,24 +1,30 @@
-import { useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CreditCard,
-  Download,
+  ExternalLink,
   FileText,
-  Filter,
-  MoreVertical,
   ReceiptText,
   Search,
   X,
 } from 'lucide-react';
 import { PaymentsFactory } from '../../application/PaymentsFactory';
-import type { PaymentDetail, PaymentTransaction, PaymentsWorkspace } from '../../domain/payments';
+import type {
+  PaymentDetail,
+  PaymentFilterOptionPayload,
+  PaymentQuickActionPayload,
+  PaymentTransaction,
+  PaymentsWorkspace,
+  PaymentsWorkspaceFilters,
+} from '../../domain/payments';
 import './ops-payments-page.css';
 
 function PaymentMetricCard({ card }: { card: PaymentsWorkspace['summaryCards'][number] }) {
   return (
     <article className={`payments-object-metric payments-object-metric--${card.tone}`}>
-      <span><CreditCard size={18} /></span>
+      <span><CreditCard size={16} /></span>
       <p>{card.label}</p>
       <strong>{card.value}</strong>
       <small>{card.trend}</small>
@@ -29,27 +35,113 @@ function PaymentMetricCard({ card }: { card: PaymentsWorkspace['summaryCards'][n
   );
 }
 
-function PaymentTable({
-  transactions,
-  selectedId,
-  onToggle,
+function FilterSelect({
+  label,
+  value,
+  options,
+  onChange,
 }: {
-  transactions: PaymentTransaction[];
-  selectedId: string;
-  onToggle: (transaction: PaymentTransaction) => void;
+  label: string;
+  value: string;
+  options: PaymentFilterOptionPayload[];
+  onChange: (value: string) => void;
 }) {
   return (
+    <label className="payments-object-select">
+      <span className="sr-only">{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} aria-label={label}>
+        <option value="">{label}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label} ({option.count})
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function PaymentTable({
+  workspace,
+  selectedId,
+  filters,
+  onFiltersChange,
+  onToggle,
+}: {
+  workspace: PaymentsWorkspace;
+  selectedId: string;
+  filters: PaymentsWorkspaceFilters;
+  onFiltersChange: (filters: PaymentsWorkspaceFilters) => void;
+  onToggle: (transaction: PaymentTransaction) => void;
+}) {
+  const [searchDraft, setSearchDraft] = useState(filters.searchText || '');
+  const options = workspace.filterOptions();
+  const pagination = workspace.paginationProjection();
+
+  useEffect(() => {
+    setSearchDraft(filters.searchText || '');
+  }, [filters.searchText]);
+
+  const submitSearch = (event: FormEvent) => {
+    event.preventDefault();
+    onFiltersChange({ ...filters, searchText: searchDraft.trim(), page: 1 });
+  };
+
+  const updateFilter = (patch: PaymentsWorkspaceFilters) => {
+    onFiltersChange({ ...filters, ...patch, page: 1 });
+  };
+
+  return (
     <section className="payments-object-table-card">
-      <header className="payments-object-filters">
-        <button type="button">All Channels <ChevronDown size={14} /></button>
-        <button type="button">All Statuses <ChevronDown size={14} /></button>
-        <button type="button"><CalendarDays size={14} /> Jun 6, 2026 - Jun 12, 2026</button>
-        <button type="button">All Methods <ChevronDown size={14} /></button>
-        <label>
-          <Search size={14} />
-          <input aria-label="Search transactions" placeholder="Search transactions..." readOnly />
+      <form className="payments-object-filters" onSubmit={submitSearch}>
+        <FilterSelect
+          label="All Channels"
+          value={filters.channel || ''}
+          options={options.channels}
+          onChange={(value) => updateFilter({ channel: value })}
+        />
+        <FilterSelect
+          label="All Statuses"
+          value={filters.status || ''}
+          options={options.statuses}
+          onChange={(value) => updateFilter({ status: value })}
+        />
+        <label className="payments-object-date">
+          <span>From</span>
+          <input
+            type="date"
+            value={filters.dateFrom || ''}
+            onChange={(event) => updateFilter({ dateFrom: event.target.value })}
+          />
         </label>
-      </header>
+        <label className="payments-object-date">
+          <span>To</span>
+          <input
+            type="date"
+            value={filters.dateTo || ''}
+            onChange={(event) => updateFilter({ dateTo: event.target.value })}
+          />
+        </label>
+        <FilterSelect
+          label="All Methods"
+          value={filters.method || ''}
+          options={options.methods}
+          onChange={(value) => updateFilter({ method: value })}
+        />
+        <button className="payments-object-clear" type="button" onClick={() => onFiltersChange({ page: 1, pageSize: filters.pageSize })}>
+          Clear filters
+        </button>
+        <label className="payments-object-search">
+          <Search size={14} />
+          <input
+            aria-label="Search transactions"
+            placeholder="Search transactions..."
+            value={searchDraft}
+            onChange={(event) => setSearchDraft(event.target.value)}
+          />
+        </label>
+        <button type="submit">Search</button>
+      </form>
       <table>
         <thead>
           <tr>
@@ -67,54 +159,139 @@ function PaymentTable({
           </tr>
         </thead>
         <tbody>
-          {transactions.map((transaction) => (
-            <tr
-              key={transaction.id}
-              className={transaction.id === selectedId ? 'is-selected' : ''}
-              onClick={() => onToggle(transaction)}
-            >
-              <td><span className="payments-object-check" /></td>
-              <td><strong>{transaction.transactionId}</strong></td>
-              <td>{transaction.guest}</td>
-              <td>{transaction.reservation}</td>
-              <td>{transaction.listing}</td>
-              <td>{transaction.channel}</td>
-              <td>{transaction.method}</td>
-              <td><span>{transaction.dateLabel}</span><small>{transaction.timeLabel}</small></td>
-              <td><strong>{transaction.amount}</strong></td>
-              <td><span className={`payments-object-status payments-object-status--${transaction.statusTone}`}>{transaction.status}</span></td>
-              <td><FileText size={16} /></td>
+          {workspace.transactions.length ? (
+            workspace.transactions.map((transaction) => {
+              const row = transaction.rowProjection();
+              return (
+                <tr
+                  key={row.id}
+                  className={row.id === selectedId ? 'is-selected' : ''}
+                  onClick={() => onToggle(transaction)}
+                >
+                  <td><span className="payments-object-check" /></td>
+                  <td><strong>{row.transactionId}</strong></td>
+                  <td>{row.guest}</td>
+                  <td>{row.reservation}</td>
+                  <td>{row.listing}</td>
+                  <td>{row.channel}</td>
+                  <td>{row.method}</td>
+                  <td><span>{row.dateLabel}</span><small>{row.timeLabel}</small></td>
+                  <td><strong>{row.amount}</strong></td>
+                  <td><span className={`payments-object-status payments-object-status--${row.status.tone}`}>{row.status.label}</span></td>
+                  <td>
+                    <a
+                      href={row.invoiceUrl}
+                      onClick={(event) => event.stopPropagation()}
+                      aria-label={`Open invoice ${row.transactionId}`}
+                    >
+                      <FileText size={16} />
+                    </a>
+                  </td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td colSpan={11} className="payments-object-empty-cell">No payment transactions match the current filters.</td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
+      <footer className="payments-object-table-footer">
+        <span>Showing {pagination.start} to {pagination.end} of {pagination.total_results} results</span>
+        {pagination.total_pages > 1 && (
+          <nav aria-label="Payments pagination">
+            <button
+              type="button"
+              disabled={!pagination.has_previous}
+              onClick={() => onFiltersChange({ ...filters, page: pagination.previous_page || 1 })}
+            >
+              <ChevronLeft size={15} />
+            </button>
+            {(pagination.pages || []).map((page) => (
+              <button
+                type="button"
+                key={page.number}
+                className={page.is_current ? 'is-active' : ''}
+                onClick={() => onFiltersChange({ ...filters, page: page.number })}
+              >
+                {page.number}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={!pagination.has_next}
+              onClick={() => onFiltersChange({ ...filters, page: pagination.next_page || pagination.page })}
+            >
+              <ChevronRight size={15} />
+            </button>
+          </nav>
+        )}
+      </footer>
     </section>
   );
 }
 
-function PaymentDetailPanel({ detail, onClose }: { detail: PaymentDetail; onClose: () => void }) {
-  const data = detail.payload;
+function PaymentActionButton({
+  action,
+  onAction,
+}: {
+  action: PaymentQuickActionPayload;
+  onAction: (action: PaymentQuickActionPayload) => void;
+}) {
+  if (action.kind === 'link') {
+    return (
+      <a className={`payments-object-action payments-object-action--${action.tone || 'blue'}`} href={action.url || '#'}>
+        {action.label}
+      </a>
+    );
+  }
+  return (
+    <button
+      className={`payments-object-action payments-object-action--${action.tone || 'blue'}`}
+      type="button"
+      disabled={action.kind === 'disabled'}
+      title={action.disabled_reason}
+      onClick={() => onAction(action)}
+    >
+      {action.label}
+    </button>
+  );
+}
+
+function PaymentDetailPanel({
+  detail,
+  onClose,
+  onAction,
+}: {
+  detail: PaymentDetail;
+  onClose: () => void;
+  onAction: (action: PaymentQuickActionPayload) => void;
+}) {
+  const invoice = detail.invoiceProjection();
+  const status = detail.statusBadgeProjection();
+  const reservation = detail.linkedReservationProjection();
 
   return (
     <aside className="payments-object-detail">
       <header>
         <div>
           <h2>Transaction Details</h2>
-          <strong>{data.transaction_id}</strong>
-          <small>{data.date_label} at {data.time_label}</small>
+          <strong>{invoice.transactionNumber}</strong>
+          <small>{invoice.dateLabel} at {invoice.timeLabel}</small>
         </div>
         <button type="button" aria-label="Close payment details" onClick={onClose}><X size={18} /></button>
       </header>
 
       <section className="payments-object-total">
-        <strong>{data.amount} <span>USD</span></strong>
+        <strong>{invoice.amount}</strong>
         <small>Total Paid</small>
-        <span className={`payments-object-status payments-object-status--${data.status_cls}`}>{data.status}</span>
+        <span className={`payments-object-status payments-object-status--${status.tone}`}>{status.label}</span>
       </section>
 
       <section className="payments-object-invoice">
         <div className="payments-object-invoice-card">
-          <ReceiptText size={26} />
+          <ReceiptText size={24} />
           <strong>MLADIS</strong>
           <span>INVOICE</span>
           <i />
@@ -122,47 +299,50 @@ function PaymentDetailPanel({ detail, onClose }: { detail: PaymentDetail; onClos
           <i />
         </div>
         <div>
-          <strong>{data.invoice_number}</strong>
-          <span>Issue date {data.issue_date}</span>
-          <span>Due date {data.due_date}</span>
-          <span>Amount due {data.amount_due}</span>
+          <strong>{invoice.invoiceNumber}</strong>
+          <span>Issue date {invoice.issueDate}</span>
+          <span>Due date {invoice.dueDate}</span>
+          <span>Amount due {invoice.amountDue}</span>
+          <a href={invoice.invoiceUrl}>View full invoice <ExternalLink size={12} /></a>
         </div>
       </section>
 
       <section className="payments-object-linked">
         <h3>Linked Reservation</h3>
-        <a href={data.linked_reservation.url}>{data.linked_reservation.request_key}</a>
-        <p>{data.linked_reservation.listing}</p>
-        <small>{data.linked_reservation.date_range} - Guest: {data.linked_reservation.guest}</small>
+        <a href={reservation.url}>{reservation.request_key}</a>
+        <p>{reservation.listing}</p>
+        <small>{reservation.date_range} - Guest: {reservation.guest}</small>
       </section>
 
       <section className="payments-object-two">
         <div>
           <h3>Deposit History</h3>
-          {data.deposit_history.map((item) => (
-            <p key={item.label}><strong>{item.label}</strong><span>{item.amount}</span><small>{item.meta}</small></p>
+          {detail.depositHistoryProjection().map((item) => (
+            <p key={`${item.label}-${item.meta}`}>
+              <strong>{item.label}</strong>
+              <span>{item.amount}</span>
+              <small>{item.meta} · {item.status}</small>
+            </p>
           ))}
         </div>
         <div>
           <h3>Quick Actions</h3>
-          {data.quick_actions.map((action) => (
-            <button type="button" disabled={action.kind === 'disabled'} key={action.label}>
-              {action.label}
-            </button>
+          {detail.quickActionsProjection().map((action) => (
+            <PaymentActionButton key={action.label} action={action} onAction={onAction} />
           ))}
         </div>
       </section>
 
       <section className="payments-object-timeline">
         <h3>Payment Timeline</h3>
-        {data.timeline.map((item) => (
-          <p key={item.label}><strong>{item.label}</strong><span>{item.meta}</span></p>
+        {detail.timelineProjection().map((item) => (
+          <p key={`${item.label}-${item.meta}`}><strong>{item.label}</strong><span>{item.meta}</span></p>
         ))}
       </section>
 
       <footer>
         <h3>Notes</h3>
-        <p>{data.notes}</p>
+        <p>{detail.notesProjection()}</p>
       </footer>
     </aside>
   );
@@ -172,72 +352,102 @@ export function OpsPaymentsPage() {
   const service = useMemo(() => PaymentsFactory.create(), []);
   const [workspace, setWorkspace] = useState<PaymentsWorkspace | null>(null);
   const [selectedId, setSelectedId] = useState('');
-  const [detail, setDetail] = useState<PaymentDetail | null>(null);
+  const [filters, setFilters] = useState<PaymentsWorkspaceFilters>({ page: 1, pageSize: 10 });
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
-    service.loadWorkspace()
+    service.loadWorkspace(selectedId, filters)
       .then((nextWorkspace) => {
         if (!active) return;
         setWorkspace(nextWorkspace);
+        setError('');
       })
-      .catch(() => {
-        if (active) setWorkspace(null);
+      .catch((nextError) => {
+        if (!active) return;
+        setWorkspace(null);
+        setError(nextError instanceof Error ? nextError.message : 'Could not load payments workspace.');
       });
     return () => {
       active = false;
     };
-  }, [service]);
+  }, [service, selectedId, filters.searchText, filters.status, filters.channel, filters.method, filters.dateFrom, filters.dateTo, filters.page, filters.pageSize]);
+
+  const applyFilters = (nextFilters: PaymentsWorkspaceFilters) => {
+    setFilters(nextFilters);
+    setSelectedId('');
+    setMessage('');
+  };
 
   const toggleTransaction = (transaction: PaymentTransaction) => {
-    if (selectedId === transaction.id) {
-      setSelectedId('');
-      setDetail(null);
+    setSelectedId((current) => (current === transaction.id ? '' : transaction.id));
+    setMessage('');
+  };
+
+  const runQuickAction = async (action: PaymentQuickActionPayload) => {
+    if (action.kind === 'disabled') {
+      setError(action.disabled_reason || 'This action is not currently available.');
       return;
     }
-
-    setSelectedId(transaction.id);
-    service.loadWorkspace(transaction.id)
-      .then((nextWorkspace) => {
-        setWorkspace(nextWorkspace);
-        setDetail(nextWorkspace.selectedDetail);
-      })
-      .catch(() => setDetail(null));
+    if (action.kind !== 'post' || !action.action || !selectedId) return;
+    try {
+      await service.runAction(selectedId, action.action);
+      const nextWorkspace = await service.loadWorkspace(selectedId, filters);
+      setWorkspace(nextWorkspace);
+      setMessage(`${action.label} completed.`);
+      setError('');
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : `${action.label} failed.`);
+    }
   };
 
   if (!workspace) {
     return (
       <main className="dashboard-content payments-object-page">
-        <p className="payments-object-empty">Loading payments workspace...</p>
+        <p className="payments-object-empty">{error || 'Loading payments workspace...'}</p>
       </main>
     );
   }
 
   return (
-    <main className={`dashboard-content payments-object-page${detail ? ' has-detail' : ''}`}>
+    <main className={`dashboard-content payments-object-page${workspace.selectedDetail ? ' has-detail' : ''}`}>
       <section className="payments-object-titlebar">
         <div>
           <h1>Payments &amp; Transactions</h1>
           <p>Track guest payments, direct-booking invoices, refunds, and reconciled transaction flows.</p>
         </div>
         <div>
-          <button type="button"><CalendarDays size={16} /> Jun 6 - Jun 12, 2026 <ChevronDown size={15} /></button>
-          <button type="button"><Filter size={16} /> Filters</button>
-          <button type="button"><Download size={16} /> Export</button>
-          <button type="button" aria-label="More payment actions"><MoreVertical size={17} /></button>
+          <span className="payments-object-date-label"><CalendarDays size={15} /> {workspace.dateRangeLabel()}</span>
         </div>
       </section>
+
+      {(message || error) && (
+        <p className={`payments-object-banner${error ? ' is-error' : ''}`}>{error || message}</p>
+      )}
 
       <section className="payments-object-grid">
         <div className="payments-object-main">
           <section className="payments-object-metrics" aria-label="Payment summary">
-            {workspace.summaryCards.map((card) => (
+            {workspace.metricsProjection().map((card) => (
               <PaymentMetricCard key={card.label} card={card} />
             ))}
           </section>
-          <PaymentTable transactions={workspace.transactions} selectedId={selectedId} onToggle={toggleTransaction} />
+          <PaymentTable
+            workspace={workspace}
+            selectedId={selectedId}
+            filters={filters}
+            onFiltersChange={applyFilters}
+            onToggle={toggleTransaction}
+          />
         </div>
-        {detail && <PaymentDetailPanel detail={detail} onClose={() => { setSelectedId(''); setDetail(null); }} />}
+        {workspace.selectedDetail && (
+          <PaymentDetailPanel
+            detail={workspace.selectedDetail}
+            onClose={() => setSelectedId('')}
+            onAction={runQuickAction}
+          />
+        )}
       </section>
     </main>
   );
