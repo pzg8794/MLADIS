@@ -99,7 +99,7 @@
         </thead>
         <tbody>
           {% for row in rows %}
-            <tr class="ops-cx-row{% if row.id|stringformat:'s' == selected_customer_id %} is-selected{% endif %}{% if row.is_mock %} is-mock{% endif %}"{% if not row.is_mock %} onclick="window.location='?tab={{ tab }}&customer={{ row.id }}{% if search %}&search={{ search|urlencode }}{% endif %}'"{% endif %}>
+            <tr class="ops-cx-row{% if row.id|stringformat:'s' == selected_customer_id %} is-selected{% endif %}{% if row.is_mock %} is-mock{% endif %}" onclick="window.location='?tab={{ tab }}{% if row.id|stringformat:'s' != selected_customer_id %}&customer={{ row.id }}{% endif %}{% if search %}&search={{ search|urlencode }}{% endif %}'">
               <td class="ops-cx-td-check"><input type="checkbox" class="ops-cx-check" aria-label="Select {{ row.name }}"></td>
               <td>
                 <div class="ops-cx-guest">
@@ -309,7 +309,7 @@
       <div class="ops-cx-agent-body">
         <h4>Suggested Reply</h4>
         <div class="ops-cx-agent-note">
-          Hi Maria! Early check-in is available for your upcoming stay on Jun 20. Your apartment will be ready by 1:00 PM. Let us know if you need transport or local recommendations!
+          Hi {{ detail.first_name }}! Early check-in is available for your upcoming stay on Jun 20. Your apartment will be ready by 1:00 PM. Let us know if you need transport or local recommendations!
         </div>
       </div>
 

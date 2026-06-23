@@ -2200,12 +2200,14 @@ class ModernOpsCustomersView(TemplateView):
             return detail
 
         payload = dict(detail)
+        display_name = payload.get("display_name") or "Guest"
         country_code = (payload.get("country_code") or "").upper()
         preferred_language = (payload.get("preferred_language") or "").upper()
 
         payload["country_flag"] = cls.COUNTRY_FLAGS.get(country_code, "🌍")
         payload["preferred_language_display"] = cls.LANGUAGE_LABELS.get(preferred_language, preferred_language or "English")
         payload["email"] = payload.get("email") or "maria.rodriguez@email.com"
+        payload["first_name"] = display_name.split()[0] if display_name else "Guest"
 
         missing_labels = ["Request ID", "Ask guest", "Request"]
         missing_tones = ["warning", "danger", "danger"]
@@ -2260,20 +2262,56 @@ class ModernOpsCustomersView(TemplateView):
 
         return payload
 
+    @classmethod
+    def _mock_detail_for_row(cls, service, row):
+        if not row:
+            return None
+
+        payload = dict(service.mock_detail_payload())
+        display_name = row.get("name") or "Guest"
+        payload.update(
+            {
+                "display_name": display_name,
+                "avatar": row.get("avatar") or "".join(part[0] for part in display_name.split()[:2]).upper(),
+                "status_label": f"{row.get('status')} Guest" if row.get("status") == "VIP" else row.get("status", "Guest"),
+                "status_cls": row.get("status_cls", "active"),
+                "country": row.get("country", ""),
+                "country_code": row.get("country_code", ""),
+                "email": row.get("email", ""),
+                "phone": row.get("phone") or "-",
+                "messages": [
+                    {
+                        "author": display_name,
+                        "time": row.get("last_contact_label", ""),
+                        "body": "Thanks for keeping us updated about the stay.",
+                        "is_agent": False,
+                    },
+                    {
+                        "author": "You",
+                        "time": row.get("last_contact_label", ""),
+                        "body": f"Hi {display_name.split()[0] if display_name else 'there'}! We have your guest profile open and can help with your reservation details.",
+                        "is_agent": True,
+                    },
+                ],
+            }
+        )
+        return payload
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         service = CustomersCRMService()
 
         tab = self.request.GET.get("tab", "all")
         search = self.request.GET.get("search", "").strip()
-        selected_id = self.request.GET.get("customer", "").strip()
+        selected_id = (self.request.GET.get("customer") or self.request.GET.get("guest") or "").strip()
 
         use_mock_dataset = tab == "all" and not search
         if use_mock_dataset:
             rows = service.mock_table_rows()
             tab_counts = service.mock_tab_counts()
-            detail = service.mock_detail_payload()
-            selected_customer_id = "mock-maria-rodriguez"
+            selected_row = next((row for row in rows if str(row["id"]) == selected_id), None)
+            detail = self._mock_detail_for_row(service, selected_row) if selected_row else None
+            selected_customer_id = str(selected_row["id"]) if selected_row else ""
             total_results = tab_counts["all"]
             page_count = 257
         else:
@@ -2284,8 +2322,6 @@ class ModernOpsCustomersView(TemplateView):
             selected_profile = None
             if selected_id.isdigit():
                 selected_profile = next((profile for profile in profiles if profile.pk == int(selected_id)), None)
-            if selected_profile is None and profiles:
-                selected_profile = profiles[0]
 
             detail = service.detail_payload(selected_profile) if selected_profile else None
             selected_customer_id = str(selected_profile.pk) if selected_profile else ""
