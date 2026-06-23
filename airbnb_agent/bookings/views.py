@@ -2165,7 +2165,7 @@ class OpsReservationStatusAPIView(View):
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsCustomersView(TemplateView):
-    template_name = "bookings/modern_ops_customers.html"
+    template_name = "bookings/modern_dashboard.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
