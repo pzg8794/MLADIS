@@ -60,8 +60,7 @@
 .ops-pay-btn,
 .ops-pay-select,
 .ops-pay-action,
-.ops-pay-pagination a,
-.ops-pay-pagination span {
+.ops-pay-pagination button {
   border: 1px solid #dbe4ee;
   background: #fff;
   color: #334155;
@@ -75,33 +74,6 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-.ops-pay-date-label {
-  cursor: default;
-}
-
-.ops-pay-date-field {
-  min-height: 36px;
-  border: 1px solid #dbe4ee;
-  border-radius: 8px;
-  background: #fff;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 10px;
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.ops-pay-date-field input {
-  min-width: 118px;
-  border: 0;
-  outline: 0;
-  color: #334155;
-  font: inherit;
 }
 
 .ops-pay-btn--primary {
@@ -737,15 +709,6 @@
   background: #fff;
 }
 
-.ops-pay-select {
-  appearance: none;
-  padding-right: 28px;
-  background-image: linear-gradient(45deg, transparent 50%, #64748b 50%), linear-gradient(135deg, #64748b 50%, transparent 50%);
-  background-position: calc(100% - 14px) 13px, calc(100% - 9px) 13px;
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
-}
-
 .ops-pay-summary {
   gap: 12px;
 }
@@ -1044,34 +1007,17 @@
   gap: 10px;
 }
 
-.ops-pay-pagination a,
-.ops-pay-pagination span {
+.ops-pay-pagination button {
   min-width: 28px;
   height: 28px;
   padding: 0 8px;
   border-radius: 7px;
   font-size: 11px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
 }
 
 .ops-pay-pagination .is-active {
   background: linear-gradient(180deg, #0ea5e9, #047c96);
   border-color: #047c96;
-}
-
-.ops-pay-pagination .is-disabled {
-  color: #cbd5e1;
-  cursor: not-allowed;
-  background: #f8fafc;
-}
-
-.ops-pay-empty-cell {
-  text-align: center !important;
-  color: #64748b !important;
-  padding: 28px 12px !important;
 }
 
 .ops-pay-detail {

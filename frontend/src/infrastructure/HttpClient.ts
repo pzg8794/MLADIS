@@ -32,14 +32,7 @@ export class HttpClient {
     });
 
     if (!response.ok) {
-      let message = `POST ${path} failed with ${response.status}`;
-      try {
-        const payload = await response.json();
-        message = typeof payload === 'object' && payload !== null ? JSON.stringify(payload) : message;
-      } catch {
-        // Keep the default status message when the server returns non-JSON.
-      }
-      throw new Error(message);
+      throw new Error(`POST ${path} failed with ${response.status}`);
     }
 
     return (await response.json()) as T;

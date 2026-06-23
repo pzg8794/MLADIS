@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
-from math import ceil
-from urllib.parse import urlencode
+from datetime import timedelta
 
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
@@ -11,7 +9,6 @@ from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.dateparse import parse_date
 
 from .models import (
     BookingInquiry,
@@ -442,60 +439,6 @@ class PaymentTransactionProjection:
             "is_mock": False,
         }
 
-    @property
-    def inquiry_id(self):
-        return self.invoice.inquiry_id
-
-    def quick_actions(self, row):
-        invoice_open = self.invoice.status in {InvoiceStatus.DRAFT, InvoiceStatus.SENT}
-        invoice_paid = self.invoice.status == InvoiceStatus.PAID
-        has_reservation = bool(self.inquiry_id)
-
-        return [
-            _payment_quick_action(
-                "Send invoice",
-                "post" if invoice_open else "disabled",
-                reverse("bookings:ops-payment-action-api", args=[self.key, "send-invoice"]) if invoice_open else "",
-                action="send-invoice" if invoice_open else "",
-                icon="invoice",
-                tone="blue",
-                disabled_reason="" if invoice_open else "Only draft or sent invoices can be sent.",
-            ),
-            _payment_quick_action(
-                "Mark as paid",
-                "post" if invoice_open else "disabled",
-                reverse("bookings:ops-payment-action-api", args=[self.key, "mark-paid"]) if invoice_open else "",
-                action="mark-paid" if invoice_open else "",
-                icon="paid",
-                tone="green",
-                disabled_reason="" if invoice_open else "Only draft or sent invoices can be marked paid.",
-            ),
-            _payment_quick_action(
-                "Download receipt",
-                "link" if invoice_paid else "disabled",
-                row["invoice_url"] if invoice_paid else "",
-                icon="receipt",
-                tone="slate",
-                disabled_reason="" if invoice_paid else "A receipt is available after payment is marked paid.",
-            ),
-            _payment_quick_action(
-                "Issue refund",
-                "link" if invoice_paid else "disabled",
-                reverse("bookings:ops-deposits") if invoice_paid else "",
-                icon="refund",
-                tone="cyan",
-                disabled_reason="" if invoice_paid else "Refunds can only be started for paid transactions.",
-            ),
-            _payment_quick_action(
-                "Open reservation",
-                "link" if has_reservation else "disabled",
-                reverse("bookings:ops-reservations") if has_reservation else "",
-                icon="reservation",
-                tone="blue",
-                disabled_reason="" if has_reservation else "This transaction is not linked to a reservation.",
-            ),
-        ]
-
     def detail_payload(self):
         row = self.to_row_payload()
         inquiry = self.inquiry
@@ -576,7 +519,27 @@ class PaymentTransactionProjection:
             "timeline": timeline,
             "notes": self.invoice.notes
             or "Invoice, stay-payment hold, and deposit-hold records remain linked across Payments and Deposits.",
-            "quick_actions": self.quick_actions(row),
+            "quick_actions": [
+                _payment_quick_action(
+                    "Send invoice",
+                    "post",
+                    reverse("bookings:ops-payment-action-api", args=[self.key, "send-invoice"]),
+                    action="send-invoice",
+                    icon="invoice",
+                    tone="blue",
+                ),
+                _payment_quick_action(
+                    "Mark as paid",
+                    "post",
+                    reverse("bookings:ops-payment-action-api", args=[self.key, "mark-paid"]),
+                    action="mark-paid",
+                    icon="paid",
+                    tone="green",
+                ),
+                _payment_quick_action("Download receipt", "link", row["invoice_url"], icon="receipt", tone="slate"),
+                _payment_quick_action("Issue refund", "link", reverse("bookings:ops-deposits"), icon="refund", tone="cyan"),
+                _payment_quick_action("Open reservation", "link", reverse("bookings:ops-reservations"), icon="reservation", tone="blue"),
+            ],
         }
 
     def to_payload(self):
@@ -599,231 +562,39 @@ class PaymentTransactionProjection:
         }
 
 
-@dataclass(frozen=True)
-class PaymentTransactionFilters:
-    search: str = ""
-    status: str = ""
-    channel: str = ""
-    method: str = ""
-    date_from: date | None = None
-    date_to: date | None = None
-    payment_type: str = ""
-
-    @classmethod
-    def from_params(cls, params):
-        if isinstance(params, PaymentTransactionFilters):
-            return params
-
-        def value(name):
-            raw = params.get(name, "") if params is not None else ""
-            if isinstance(raw, (list, tuple)):
-                raw = raw[0] if raw else ""
-            return str(raw or "").strip()
-
-        return cls(
-            search=value("search"),
-            status=value("status"),
-            channel=value("channel"),
-            method=value("method"),
-            date_from=parse_date(value("date_from")) if value("date_from") else None,
-            date_to=parse_date(value("date_to")) if value("date_to") else None,
-            payment_type=value("payment_type") or value("type"),
-        )
-
-    def to_payload(self):
-        return {
-            "search": self.search,
-            "status": self.status,
-            "channel": self.channel,
-            "method": self.method,
-            "date_from": self.date_from.isoformat() if self.date_from else "",
-            "date_to": self.date_to.isoformat() if self.date_to else "",
-            "payment_type": self.payment_type,
-        }
-
-
-class PaymentTransactionQueryService:
-    def filter_transactions(self, transactions, filters: PaymentTransactionFilters):
-        return [transaction for transaction in transactions if self._transaction_matches(transaction, filters)]
-
-    def filter_rows(self, rows, filters: PaymentTransactionFilters):
-        return [row for row in rows if self._row_matches(row, filters)]
-
-    def _transaction_matches(self, transaction: PaymentTransactionProjection, filters: PaymentTransactionFilters):
-        if not self._row_matches(transaction.to_row_payload(), filters):
-            return False
-        issue_date = transaction.invoice.issue_date
-        if filters.date_from and issue_date and issue_date < filters.date_from:
-            return False
-        if filters.date_to and issue_date and issue_date > filters.date_to:
-            return False
-        return True
-
-    def _row_matches(self, row, filters: PaymentTransactionFilters):
-        haystack = " ".join(
-            str(row.get(key, ""))
-            for key in (
-                "id",
-                "transaction_id",
-                "guest",
-                "reservation",
-                "listing",
-                "channel",
-                "method",
-                "status",
-                "type",
-            )
-        ).lower()
-        if filters.search and filters.search.lower() not in haystack:
-            return False
-        if filters.status and row.get("status", "").lower() != filters.status.lower():
-            return False
-        if filters.channel and row.get("channel", "").lower() != filters.channel.lower():
-            return False
-        if filters.method and row.get("method", "").lower() != filters.method.lower():
-            return False
-        if filters.payment_type and row.get("type", "").lower() != filters.payment_type.lower():
-            return False
-        row_date = self._row_date(row)
-        if filters.date_from and row_date and row_date < filters.date_from:
-            return False
-        if filters.date_to and row_date and row_date > filters.date_to:
-            return False
-        return True
-
-    @staticmethod
-    def _row_date(row):
-        value = row.get("date_label")
-        if not value or value == "-":
-            return None
-        try:
-            return datetime.strptime(value, "%b %d, %Y").date()
-        except ValueError:
-            return None
-
-
-class PaymentTransactionSummaryService:
-    def filter_options(self, rows):
-        return {
-            "statuses": self._option_group(rows, "status"),
-            "channels": self._option_group(rows, "channel"),
-            "methods": self._option_group(rows, "method"),
-            "payment_types": self._option_group(rows, "type"),
-        }
-
-    def date_range_label(self, filters: PaymentTransactionFilters, rows, using_mock=False):
-        if filters.date_from or filters.date_to:
-            start = filters.date_from.strftime("%b %-d, %Y") if filters.date_from else "Start"
-            end = filters.date_to.strftime("%b %-d, %Y") if filters.date_to else "Today"
-            return f"{start} - {end}"
-        dates = [
-            PaymentTransactionQueryService._row_date(row)
-            for row in rows
-            if PaymentTransactionQueryService._row_date(row)
-        ]
-        if dates:
-            start = min(dates)
-            end = max(dates)
-            if start == end:
-                return start.strftime("%b %-d, %Y")
-            if start.year == end.year:
-                return f"{start:%b %-d} - {end:%b %-d, %Y}"
-            return f"{start:%b %-d, %Y} - {end:%b %-d, %Y}"
-        return "Sample ledger" if using_mock else "Live ledger"
-
-    @staticmethod
-    def _option_group(rows, key):
-        counts = {}
-        for row in rows:
-            value = str(row.get(key, "") or "").strip()
-            if value:
-                counts[value] = counts.get(value, 0) + 1
-        return [
-            {"value": value, "label": value.replace("_", " ").title() if key == "type" else value, "count": count}
-            for value, count in sorted(counts.items(), key=lambda item: item[0].lower())
-        ]
-
-
-class PaymentTransactionActionService:
-    def run(self, transaction_key, action):
-        if not transaction_key.startswith("invoice-"):
-            raise ValidationError("Only invoice-backed payment transactions can be updated from this workspace.")
-        invoice = get_object_or_404(Invoice, pk=transaction_key.replace("invoice-", "", 1))
-        if action == "mark-paid":
-            if invoice.status not in {InvoiceStatus.DRAFT, InvoiceStatus.SENT}:
-                raise ValidationError("Only draft or sent invoices can be marked paid.")
-            invoice.status = InvoiceStatus.PAID
-            invoice.email_status = EmailDeliveryStatus.SENT
-            invoice.save(update_fields=["status", "email_status", "updated_at"])
-        elif action == "send-invoice":
-            if invoice.status not in {InvoiceStatus.DRAFT, InvoiceStatus.SENT}:
-                raise ValidationError("Only draft or sent invoices can be sent.")
-            invoice.status = InvoiceStatus.SENT
-            invoice.sent_at = timezone.now()
-            invoice.email_status = EmailDeliveryStatus.SENT
-            invoice.save(update_fields=["status", "sent_at", "email_status", "updated_at"])
-        else:
-            raise ValidationError("Unsupported payment transaction action.")
-        return invoice
-
-
 class PaymentsTransactionsService:
     """PaymentTransaction aggregate service for the operations payments page."""
 
-    def page_payload(self, selected_id="", filters=None, page=1, page_size=10, request=None):
-        parsed_filters = PaymentTransactionFilters.from_params(filters)
-        query_service = PaymentTransactionQueryService()
-        summary_service = PaymentTransactionSummaryService()
+    def page_payload(self, selected_id=""):
         transactions = self.live_transactions()
         using_mock = not transactions
         if using_mock:
-            all_rows = self.mock_rows()
-            filtered_rows = query_service.filter_rows(all_rows, parsed_filters)
-            selected = next((row for row in filtered_rows if row["id"] == selected_id), None) if selected_id else None
+            rows = self.mock_rows()
+            selected = next((row for row in rows if row["id"] == selected_id), None) if selected_id else None
             detail = self._mock_detail_payload(selected) if selected else None
             selected_key = selected["id"] if selected else ""
-            payment_transactions = []
         else:
-            all_rows = [transaction.to_row_payload() for transaction in transactions]
-            filtered_transactions = query_service.filter_transactions(transactions, parsed_filters)
-            filtered_rows = [transaction.to_row_payload() for transaction in filtered_transactions]
-            selected = next((item for item in filtered_transactions if item.key == selected_id), None) if selected_id else None
+            rows = [transaction.to_row_payload() for transaction in transactions]
+            selected = next((item for item in transactions if item.key == selected_id), None) if selected_id else None
             detail = selected.detail_payload() if selected else None
             selected_key = selected.key if selected else ""
-            payment_transactions = [transaction.to_payload() for transaction in filtered_transactions]
-
-        page = self._positive_int(page, 1)
-        page_size = min(self._positive_int(page_size, 10), 100)
-        total_results = len(filtered_rows)
-        total_pages = max(ceil(total_results / page_size), 1)
-        page = min(page, total_pages)
-        start_index = (page - 1) * page_size
-        end_index = start_index + page_size
-        rows = filtered_rows[start_index:end_index]
-        pagination = self._pagination_payload(page, page_size, total_results, request, parsed_filters, selected_key)
-        if request:
-            rows = [self._with_toggle_url(row, request, parsed_filters, page, selected_key) for row in rows]
 
         return {
             "summary_cards": self.summary_cards(using_mock=using_mock),
             "rows": rows,
             "detail": detail,
             "selected_transaction_id": selected_key,
-            "total_results": total_results,
-            "total_results_display": f"{total_results:,}",
+            "total_results": len(rows),
+            "total_results_display": "126" if using_mock else f"{len(rows):,}",
             "generated_at": timezone.now(),
-            "date_range_label": summary_service.date_range_label(parsed_filters, filtered_rows or all_rows, using_mock),
-            "filters": parsed_filters.to_payload(),
-            "filter_options": summary_service.filter_options(all_rows),
-            "pagination": pagination,
-            "payment_transactions": payment_transactions,
-            "source": "fallback" if using_mock else "api",
+            "date_range_label": "Jun 6 - Jun 12, 2026" if using_mock else "Live ledger",
+            "payment_transactions": [transaction.to_payload() for transaction in transactions],
         }
 
     def live_transactions(self):
         invoices = list(
             Invoice.objects.select_related("inquiry__item", "customer_profile")
-            .order_by("-issue_date", "-created_at")
+            .order_by("-issue_date", "-created_at")[:25]
         )
         if not invoices:
             return []
@@ -873,72 +644,21 @@ class PaymentsTransactionsService:
         ]
 
     def action(self, transaction_key, action):
-        PaymentTransactionActionService().run(transaction_key, action)
+        if not transaction_key.startswith("invoice-"):
+            raise ValidationError("Only invoice-backed payment transactions can be updated from this workspace.")
+        invoice = get_object_or_404(Invoice, pk=transaction_key.replace("invoice-", "", 1))
+        if action == "mark-paid":
+            invoice.status = InvoiceStatus.PAID
+            invoice.email_status = EmailDeliveryStatus.SENT
+            invoice.save(update_fields=["status", "email_status", "updated_at"])
+        elif action == "send-invoice":
+            invoice.status = InvoiceStatus.SENT if invoice.status == InvoiceStatus.DRAFT else invoice.status
+            invoice.sent_at = timezone.now()
+            invoice.email_status = EmailDeliveryStatus.SENT
+            invoice.save(update_fields=["status", "sent_at", "email_status", "updated_at"])
+        else:
+            raise ValidationError("Unsupported payment transaction action.")
         return next((item for item in self.live_transactions() if item.key == transaction_key), None)
-
-    def _with_toggle_url(self, row, request, filters, page, selected_key):
-        params = filters.to_payload()
-        params["page"] = page
-        if row["id"] != selected_key:
-            params["transaction"] = row["id"]
-        params = {key: value for key, value in params.items() if value}
-        row = {**row}
-        query = urlencode(params)
-        row["toggle_url"] = f"{reverse('bookings:ops-payments')}?{query}" if query else reverse("bookings:ops-payments")
-        return row
-
-    def _pagination_payload(self, page, page_size, total_results, request, filters, selected_key):
-        total_pages = max(ceil(total_results / page_size), 1)
-        start = ((page - 1) * page_size) + 1 if total_results else 0
-        end = min(page * page_size, total_results)
-
-        def page_url(number):
-            if not request:
-                return ""
-            params = filters.to_payload()
-            params["page"] = number
-            if selected_key:
-                params["transaction"] = selected_key
-            params = {key: value for key, value in params.items() if value}
-            query = urlencode(params)
-            return f"{reverse('bookings:ops-payments')}?{query}" if query else reverse("bookings:ops-payments")
-
-        return {
-            "page": page,
-            "page_size": page_size,
-            "total_pages": total_pages,
-            "total_results": total_results,
-            "total_results_display": f"{total_results:,}",
-            "start": start,
-            "end": end,
-            "has_previous": page > 1,
-            "has_next": page < total_pages,
-            "previous_page": page - 1 if page > 1 else None,
-            "next_page": page + 1 if page < total_pages else None,
-            "previous_url": page_url(page - 1) if page > 1 else "",
-            "next_url": page_url(page + 1) if page < total_pages else "",
-            "pages": [
-                {"number": number, "is_current": number == page, "url": page_url(number)}
-                for number in self._page_window(page, total_pages)
-            ],
-        }
-
-    @staticmethod
-    def _page_window(page, total_pages):
-        if total_pages <= 5:
-            return range(1, total_pages + 1)
-        start = max(page - 2, 1)
-        end = min(start + 4, total_pages)
-        start = max(end - 4, 1)
-        return range(start, end + 1)
-
-    @staticmethod
-    def _positive_int(value, fallback):
-        try:
-            number = int(value)
-        except (TypeError, ValueError):
-            return fallback
-        return number if number > 0 else fallback
 
     @staticmethod
     def _money(cents):
@@ -980,7 +700,6 @@ class PaymentsTransactionsService:
 
     def _mock_detail_payload(self, row):
         return {
-            **row,
             "transaction_id": row["transaction_id"],
             "status": row["status"],
             "status_cls": row["status_cls"],
