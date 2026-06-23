@@ -19961,8 +19961,10 @@ svg.modern-admin-rail-icon:not([stroke]) {
 /* Calendar right-side contextual navigation polish. */
 .calendar-product-shell.calendar-product-shell--right-context,
 .dashboard-main .calendar-product-shell.calendar-product-shell--right-context {
+  --calendar-context-collapsed: 62px;
+  --calendar-context-expanded: 204px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 188px;
+  grid-template-columns: minmax(0, 1fr) var(--calendar-context-collapsed);
   min-height: calc(100vh - 24px);
   max-height: calc(100vh - 24px);
   overflow: hidden;
@@ -19970,6 +19972,14 @@ svg.modern-admin-rail-icon:not([stroke]) {
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+  transition: grid-template-columns 180ms ease;
+}
+
+.calendar-product-shell.calendar-product-shell--right-context:has(.calendar-product-context:hover),
+.calendar-product-shell.calendar-product-shell--right-context:has(.calendar-product-context:focus-within),
+.dashboard-main .calendar-product-shell.calendar-product-shell--right-context:has(.calendar-product-context:hover),
+.dashboard-main .calendar-product-shell.calendar-product-shell--right-context:has(.calendar-product-context:focus-within) {
+  grid-template-columns: minmax(0, 1fr) var(--calendar-context-expanded);
 }
 
 .calendar-product-shell--right-context .calendar-product-main,
@@ -19988,19 +19998,35 @@ svg.modern-admin-rail-icon:not([stroke]) {
   gap: 12px;
   min-width: 0;
   max-height: calc(100vh - 24px);
-  overflow: auto;
+  overflow: hidden;
   border-left: 1px solid #dbe5f0;
   border-radius: 0 8px 8px 0;
-  padding: 12px 10px;
+  padding: 12px 8px;
   background: linear-gradient(180deg, #fbfdff 0%, #f6fafc 100%);
+  transition: padding 180ms ease;
+}
+
+.calendar-product-shell--right-context:has(.calendar-product-context:hover) .calendar-product-context,
+.calendar-product-shell--right-context:has(.calendar-product-context:focus-within) .calendar-product-context {
+  overflow: auto;
+  padding-inline: 10px;
 }
 
 .calendar-product-context__head {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 2px 2px 10px;
+  justify-content: center;
+  gap: 0;
+  padding: 2px 0 10px;
   border-bottom: 1px solid #e5edf5;
+  transition: gap 180ms ease, justify-content 180ms ease;
+}
+
+.calendar-product-shell--right-context:has(.calendar-product-context:hover) .calendar-product-context__head,
+.calendar-product-shell--right-context:has(.calendar-product-context:focus-within) .calendar-product-context__head {
+  justify-content: flex-start;
+  gap: 9px;
+  padding-inline: 2px;
 }
 
 .calendar-product-context__head > span {
@@ -20048,11 +20074,13 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .calendar-product-context__actions button {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 36px;
+  justify-content: center;
+  gap: 0;
+  min-height: 38px;
+  width: 44px;
   border: 1px solid transparent;
   border-radius: 8px;
-  padding: 0 10px;
+  padding: 0;
   background: transparent;
   color: #516179;
   font: inherit;
@@ -20061,6 +20089,45 @@ svg.modern-admin-rail-icon:not([stroke]) {
   text-align: left;
   text-decoration: none;
   cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, width 180ms ease, gap 180ms ease, padding 180ms ease;
+}
+
+.calendar-product-shell--right-context:has(.calendar-product-context:hover) .calendar-product-context-nav a,
+.calendar-product-shell--right-context:has(.calendar-product-context:focus-within) .calendar-product-context-nav a,
+.calendar-product-shell--right-context:has(.calendar-product-context:hover) .calendar-product-context__actions button,
+.calendar-product-shell--right-context:has(.calendar-product-context:focus-within) .calendar-product-context__actions button {
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding-inline: 10px;
+}
+
+.calendar-product-context__head div,
+.calendar-product-context-nav a span,
+.calendar-product-context__actions button span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.calendar-product-shell--right-context:has(.calendar-product-context:hover) .calendar-product-context__head div,
+.calendar-product-shell--right-context:has(.calendar-product-context:focus-within) .calendar-product-context__head div,
+.calendar-product-shell--right-context:has(.calendar-product-context:hover) .calendar-product-context-nav a span,
+.calendar-product-shell--right-context:has(.calendar-product-context:focus-within) .calendar-product-context-nav a span,
+.calendar-product-shell--right-context:has(.calendar-product-context:hover) .calendar-product-context__actions button span,
+.calendar-product-shell--right-context:has(.calendar-product-context:focus-within) .calendar-product-context__actions button span {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
 }
 
 .calendar-product-context-nav a svg,
@@ -20070,11 +20137,14 @@ svg.modern-admin-rail-icon:not([stroke]) {
 
 .calendar-product-context-nav a:hover,
 .calendar-product-context__actions button:hover,
+.calendar-product-context-nav a:focus-visible,
+.calendar-product-context__actions button:focus-visible,
 .calendar-product-context-nav a.is-active,
 .calendar-product-context__actions button.is-active {
   border-color: #b8dce8;
   background: #e8f7fb;
   color: #05758e;
+  outline: 0;
 }
 
 .calendar-product-context-booking {
@@ -20121,10 +20191,24 @@ svg.modern-admin-rail-icon:not([stroke]) {
   }
 
   .calendar-product-context__head {
+    justify-content: flex-start;
+    gap: 9px;
     min-width: max-content;
     padding: 0 8px 0 0;
     border-right: 1px solid #e5edf5;
     border-bottom: 0;
+  }
+
+  .calendar-product-context__head div,
+  .calendar-product-context-nav a span,
+  .calendar-product-context__actions button span {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
   }
 
   .calendar-product-context-nav,
@@ -20147,6 +20231,9 @@ svg.modern-admin-rail-icon:not([stroke]) {
   .calendar-product-context-nav a,
   .calendar-product-context__actions button {
     flex: 0 0 auto;
+    justify-content: flex-start;
+    gap: 8px;
+    width: auto;
     min-height: 34px;
     padding-inline: 9px;
     white-space: nowrap;

@@ -629,7 +629,7 @@ export function OpsCalendarPage() {
 
         <nav className="calendar-product-context-nav" aria-label="Calendar workspace">
           {calendarWorkspaceLinks.map(({ href, icon: Icon, id, label }) => (
-            <a className={currentSection === id ? 'is-active' : ''} href={href} key={id}>
+            <a aria-label={label} className={currentSection === id ? 'is-active' : ''} href={href} key={id}>
               <Icon size={16} />
               <span>{label}</span>
             </a>
@@ -650,7 +650,7 @@ export function OpsCalendarPage() {
             <Settings size={16} />
             <span>Settings</span>
           </button>
-          <button type="button" className="calendar-product-context-booking" onClick={openQuickBooking}>
+          <button type="button" className="calendar-product-context-booking" aria-label="New Booking" onClick={openQuickBooking}>
             <Plus size={16} />
             <span>New Booking</span>
           </button>
