@@ -33,12 +33,29 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
       .then((data) => {
         if (!mounted) return;
         const query = new URLSearchParams(window.location.search);
+        const initialSearch = query.get('search') || data.filters.search || '';
+        const initialSegment = query.get('segment') || data.filters.segment || 'all';
+        const initialSource = query.get('source') || data.filters.source || '';
+        const initialStatus = query.get('status') || data.filters.status || '';
+        const initialFilters = {
+          query: initialSearch,
+          segment: initialSegment,
+          source: initialSource,
+          status: initialStatus,
+        };
+        const requestedGuestId = query.get('guest') || '';
+        const requestedGuest = requestedGuestId
+          ? data.guests.find((guest) => guest.id === requestedGuestId || guest.key === requestedGuestId)
+          : null;
+        const requestedGuestIsVisible = requestedGuest
+          ? service.filterGuests(data, initialFilters).some((guest) => guest.id === requestedGuest.id)
+          : false;
         setWorkspace(data);
-        setSearch(query.get('search') || data.filters.search || '');
-        setSegment(query.get('segment') || data.filters.segment || 'all');
-        setSource(query.get('source') || data.filters.source || '');
-        setStatus(query.get('status') || data.filters.status || '');
-        setSelectedGuestId(query.get('guest') || data.guests[0]?.id || '');
+        setSearch(initialSearch);
+        setSegment(initialSegment);
+        setSource(initialSource);
+        setStatus(initialStatus);
+        setSelectedGuestId(requestedGuestIsVisible && requestedGuest ? requestedGuest.id : '');
       })
       .catch((caught: unknown) => {
         if (mounted) setError(caught instanceof Error ? caught.message : 'Could not load guests.');
@@ -73,21 +90,9 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
   const filterOptions = useMemo(() => workspace?.filterOptions(), [workspace]);
 
   const selectedGuest = useMemo(() => {
-    if (!workspace) return null;
-    if (!filteredGuests.length) return null;
-    const scopedGuest = filteredGuests.find((guest) => guest.id === selectedGuestId || guest.key === selectedGuestId);
-    return scopedGuest ?? filteredGuests[0] ?? service.selectGuest(workspace, selectedGuestId) ?? null;
-  }, [filteredGuests, selectedGuestId, service, workspace]);
-
-  useEffect(() => {
-    if (selectedGuest && selectedGuest.id !== selectedGuestId) {
-      setSelectedGuestId(selectedGuest.id);
-    }
-  }, [selectedGuest, selectedGuestId]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, segment, source, status]);
+    if (!selectedGuestId) return null;
+    return filteredGuests.find((guest) => guest.id === selectedGuestId || guest.key === selectedGuestId) ?? null;
+  }, [filteredGuests, selectedGuestId]);
 
   const pageNumbers = useMemo(() => {
     if (!pagination) return [];
@@ -138,10 +143,70 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
   }
 
   function clearFilters() {
-    setSearch('');
-    setSegment('all');
-    setSource('');
-    setStatus('');
+    const nextFilters = { query: '', segment: 'all', source: '', status: '' };
+    setSearch(nextFilters.query);
+    setSegment(nextFilters.segment);
+    setSource(nextFilters.source);
+    setStatus(nextFilters.status);
+    setPage(1);
+    clearSelectionIfFilteredOut(nextFilters);
+  }
+
+  function clearGuestSelection() {
+    setSelectedGuestId('');
+    setActiveTab('messages');
+    setMessageDraft('');
+    setMessageConfirmed(false);
+    setNotice('');
+  }
+
+  function toggleGuestSelection(guest: Guest) {
+    if (selectedGuestId === guest.id) {
+      clearGuestSelection();
+      return;
+    }
+
+    setSelectedGuestId(guest.id);
+    setActiveTab('messages');
+    setMessageDraft('');
+    setMessageConfirmed(false);
+    setNotice('');
+  }
+
+  function clearSelectionIfFilteredOut(nextFilters: GuestWorkspaceFilters) {
+    if (!workspace || !selectedGuestId) return;
+    const stillVisible = service
+      .filterGuests(workspace, nextFilters)
+      .some((guest) => guest.id === selectedGuestId || guest.key === selectedGuestId);
+    if (!stillVisible) clearGuestSelection();
+  }
+
+  function updateSearch(nextSearch: string) {
+    const nextFilters = { query: nextSearch, segment, source, status };
+    setSearch(nextSearch);
+    setPage(1);
+    clearSelectionIfFilteredOut(nextFilters);
+  }
+
+  function updateSegment(nextSegment: string) {
+    const nextFilters = { query: search, segment: nextSegment, source, status };
+    setSegment(nextSegment);
+    setPage(1);
+    clearSelectionIfFilteredOut(nextFilters);
+  }
+
+  function updateSource(nextSource: string) {
+    const nextFilters = { query: search, segment, source: nextSource, status };
+    setSource(nextSource);
+    setPage(1);
+    clearSelectionIfFilteredOut(nextFilters);
+  }
+
+  function updateStatus(nextStatus: string) {
+    const nextFilters = { query: search, segment, source, status: nextStatus };
+    setStatus(nextStatus);
+    setPage(1);
+    clearSelectionIfFilteredOut(nextFilters);
   }
 
   if (error) {
@@ -183,7 +248,7 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
 
       <section className="guests-tabs" aria-label="Guest segments">
         {workspace.segmentTabs().map((tab) => (
-          <button className={segment === tab.value ? 'is-active' : ''} key={tab.value} onClick={() => setSegment(tab.value)} type="button">
+          <button className={segment === tab.value ? 'is-active' : ''} key={tab.value} onClick={() => updateSegment(tab.value)} type="button">
             {tab.label}
             <span>{tab.count}</span>
           </button>
@@ -195,11 +260,11 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
           <div className="guests-filter-row">
             <label>
               <Search size={16} />
-              <input onChange={(event) => setSearch(event.target.value)} placeholder="Search guests by name, email, phone, or reservation..." value={search} />
+              <input onChange={(event) => updateSearch(event.target.value)} placeholder="Search guests by name, email, phone, or reservation..." value={search} />
             </label>
             <label className="guests-filter-select">
               <Filter size={15} />
-              <select aria-label="Filter guests by source" onChange={(event) => setSource(event.target.value)} value={source}>
+              <select aria-label="Filter guests by source" onChange={(event) => updateSource(event.target.value)} value={source}>
                 <option value="">All channels</option>
                 {filterOptions?.sources.map((option) => (
                   <option key={option.value} value={option.value}>{option.label} ({option.count})</option>
@@ -207,7 +272,7 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
               </select>
             </label>
             <label className="guests-filter-select">
-              <select aria-label="Filter guests by status" onChange={(event) => setStatus(event.target.value)} value={status}>
+              <select aria-label="Filter guests by status" onChange={(event) => updateStatus(event.target.value)} value={status}>
                 <option value="">All statuses</option>
                 {filterOptions?.statuses.map((option) => (
                   <option key={option.value} value={option.value}>{option.label} ({option.count})</option>
@@ -220,10 +285,7 @@ export function OpsGuestsPage({ compatibilityRoute = 'guests' }: { compatibility
           </div>
           <GuestTable
             guests={visibleGuests}
-            onSelect={(guest) => {
-              setSelectedGuestId(guest.id);
-              setActiveTab('messages');
-            }}
+            onSelect={toggleGuestSelection}
             selectedGuestId={selectedGuest?.id || ''}
           />
           <div className="guests-pagination">
