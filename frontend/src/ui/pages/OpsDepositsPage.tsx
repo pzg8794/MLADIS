@@ -6,7 +6,6 @@ import {
   CalendarClock,
   CalendarDays,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -23,6 +22,7 @@ import {
   DepositHold,
   DepositHoldsSnapshot,
   DepositMetric,
+  DepositStatusOption,
   ExpiringDepositHold,
   type DepositHoldAction,
   type DepositHoldTone,
@@ -88,16 +88,34 @@ function DepositsTable({
   onSelect,
   rows,
   totalRows,
+  page,
+  totalPages,
+  pageStart,
+  pageEnd,
+  status,
+  statusOptions,
   query,
   onQueryChange,
+  onStatusChange,
+  onPageChange,
 }: {
   selectedId: string;
   onSelect: (id: string) => void;
   rows: DepositHold[];
   totalRows: number;
+  page: number;
+  totalPages: number;
+  pageStart: number;
+  pageEnd: number;
+  status: string;
+  statusOptions: DepositStatusOption[];
   query: string;
   onQueryChange: (query: string) => void;
+  onStatusChange: (status: string) => void;
+  onPageChange: (page: number) => void;
 }) {
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+
   return (
     <section className="deposit-v4-table-card">
       <div className="deposit-v4-table-toolbar">
@@ -111,7 +129,21 @@ function DepositsTable({
           />
           <kbd>⌘ F</kbd>
         </label>
-        <button className="deposit-v4-filter-button" type="button"><SlidersHorizontal size={15} /> More filters</button>
+        <label className="deposit-v4-status-filter">
+          <SlidersHorizontal size={15} />
+          <select
+            id="deposit-status-filter"
+            aria-label="Filter deposits by status"
+            onChange={(event) => onStatusChange(event.target.value)}
+            value={status}
+          >
+            {statusOptions.map((option) => (
+              <option key={option.value || 'all'} value={option.value}>
+                {option.label} ({option.count})
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="deposit-v4-table-scroll">
@@ -168,15 +200,37 @@ function DepositsTable({
       </div>
 
       <footer className="deposit-v4-table-footer">
-        <span>Showing {rows.length ? 1 : 0} to {rows.length} of {totalRows} results</span>
-        <nav aria-label="Deposit pagination">
-          <button type="button" aria-label="Previous page"><ChevronLeft size={16} /></button>
-          <button className="is-active" type="button">1</button>
-          <button type="button">2</button>
-          <button type="button">3</button>
-          <button type="button">4</button>
-          <button type="button" aria-label="Next page"><ChevronRight size={16} /></button>
-        </nav>
+        <span>Showing {pageStart} to {pageEnd} of {totalRows} results</span>
+        {totalPages > 1 && (
+          <nav aria-label="Deposit pagination">
+            <button
+              type="button"
+              aria-label="Previous page"
+              disabled={page === 1}
+              onClick={() => onPageChange(page - 1)}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            {pageNumbers.map((pageNumber) => (
+              <button
+                className={pageNumber === page ? 'is-active' : ''}
+                key={pageNumber}
+                type="button"
+                onClick={() => onPageChange(pageNumber)}
+              >
+                {pageNumber}
+              </button>
+            ))}
+            <button
+              type="button"
+              aria-label="Next page"
+              disabled={page === totalPages}
+              onClick={() => onPageChange(page + 1)}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </nav>
+        )}
       </footer>
     </section>
   );
@@ -215,6 +269,7 @@ function SelectedDepositPanel({
   busyAction: DepositHoldAction | '';
 }) {
   const firstAttempt = selected.paymentAttempts[0];
+  const actionDisabledReason = `This action is unavailable while the hold is ${selected.statusLabel.toLowerCase()}.`;
   return (
     <aside className="deposit-v4-detail">
       <section className="deposit-v4-person-card">
@@ -269,7 +324,11 @@ function SelectedDepositPanel({
         <section className="deposit-v4-payment">
           <header>
             <h3>Linked Payment Attempts</h3>
-            <a href="/ops/payments/">View all</a>
+            {firstAttempt && (
+              <a href={firstAttempt.paymentUrl}>
+                {firstAttempt.canOpenPayment ? 'View payment' : 'View payments workspace'}
+              </a>
+            )}
           </header>
           {firstAttempt ? (
             <article>
@@ -293,19 +352,43 @@ function SelectedDepositPanel({
             className="deposit-v4-primary"
             disabled={!selected.canApprove || busyAction === 'approve'}
             onClick={() => onAction('approve')}
+            title={!selected.canApprove ? actionDisabledReason : ''}
             type="button"
           >
             {busyAction === 'approve' ? 'Approving...' : 'Approve hold'}
           </button>
           <div>
-            <button disabled={!selected.canRelease || busyAction === 'release'} onClick={() => onAction('release')} type="button">
+            <button
+              disabled={!selected.canRelease || busyAction === 'release'}
+              onClick={() => onAction('release')}
+              title={!selected.canRelease ? actionDisabledReason : ''}
+              type="button"
+            >
               {busyAction === 'release' ? 'Releasing...' : 'Release hold'}
             </button>
-            <button disabled={!selected.canRequestGuestAction || busyAction === 'request-guest-action'} onClick={() => onAction('request-guest-action')} type="button">
+            <button
+              disabled={!selected.canRequestGuestAction || busyAction === 'request-guest-action'}
+              onClick={() => onAction('request-guest-action')}
+              title={!selected.canRequestGuestAction ? actionDisabledReason : ''}
+              type="button"
+            >
               Request guest action
             </button>
           </div>
-          <a className="deposit-v4-action-link" href={selected.adminUrl}><FileText size={14} /> Generate receipt</a>
+          {selected.receipt.canGenerate && selected.receipt.viewUrl ? (
+            <a className="deposit-v4-action-link" href={selected.receipt.viewUrl}>
+              <FileText size={14} /> Generate receipt
+            </a>
+          ) : (
+            <button
+              className="deposit-v4-action-link"
+              disabled
+              title={selected.receipt.disabledReason}
+              type="button"
+            >
+              <FileText size={14} /> Generate receipt
+            </button>
+          )}
         </section>
       </section>
     </aside>
@@ -317,6 +400,8 @@ export function OpsDepositsPage() {
   const [snapshot, setSnapshot] = useState<DepositHoldsSnapshot | null>(null);
   const [selectedId, setSelectedId] = useState('');
   const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busyAction, setBusyAction] = useState<DepositHoldAction | ''>('');
@@ -331,20 +416,47 @@ export function OpsDepositsPage() {
   }, [service]);
 
   const visibleRows = useMemo(() => (
-    snapshot ? service.filterDeposits(snapshot.rows, query) : []
-  ), [query, service, snapshot]);
-  const pagedRows = useMemo(() => visibleRows.slice(0, 8), [visibleRows]);
+    snapshot ? service.filterDeposits(snapshot.rows, query, status) : []
+  ), [query, service, snapshot, status]);
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(visibleRows.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = visibleRows.length ? ((safePage - 1) * pageSize) + 1 : 0;
+  const pageEnd = Math.min(safePage * pageSize, visibleRows.length);
+  const pagedRows = useMemo(
+    () => visibleRows.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [safePage, visibleRows],
+  );
 
   useEffect(() => {
-    if (!snapshot) return;
-    if (selectedId && snapshot.rows.some((row) => row.id === selectedId)) return;
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
+
+  useEffect(() => {
+    if (selectedId && pagedRows.some((row) => row.id === selectedId)) return;
     if (selectedId) setSelectedId('');
-  }, [selectedId, snapshot]);
+  }, [pagedRows, selectedId]);
 
   const selected = snapshot?.rows.find((row) => row.id === selectedId) || null;
 
   function toggleSelected(id: string) {
     setSelectedId((current) => (current === id ? '' : id));
+  }
+
+  function selectVisibleHold(id: string) {
+    const index = visibleRows.findIndex((row) => row.id === id);
+    if (index >= 0) setPage(Math.floor(index / pageSize) + 1);
+    toggleSelected(id);
+  }
+
+  function updateQuery(nextQuery: string) {
+    setQuery(nextQuery);
+    setPage(1);
+  }
+
+  function updateStatus(nextStatus: string) {
+    setStatus(nextStatus);
+    setPage(1);
   }
 
   async function applyAction(action: DepositHoldAction) {
@@ -388,9 +500,26 @@ export function OpsDepositsPage() {
           <p>Manage security deposits, authorization holds, releases, and exceptions.</p>
         </div>
         <div className="deposit-v4-title-actions">
-          <button type="button"><CalendarDays size={16} /> Jun 6 – Jun 12, 2026 <ChevronDown size={15} /></button>
-          <button type="button"><SlidersHorizontal size={16} /> Filters</button>
-          <button type="button"><Download size={16} /> Export</button>
+          <button
+            disabled
+            title="Date filtering will be implemented in a dedicated deposits filter pass."
+            type="button"
+          >
+            <CalendarDays size={16} /> Date range
+          </button>
+          <button
+            onClick={() => document.getElementById('deposit-status-filter')?.focus()}
+            type="button"
+          >
+            <SlidersHorizontal size={16} /> Filters
+          </button>
+          <button
+            disabled
+            title="Export will be implemented in a dedicated deposits reporting pass."
+            type="button"
+          >
+            <Download size={16} /> Export
+          </button>
         </div>
       </section>
 
@@ -401,7 +530,7 @@ export function OpsDepositsPage() {
         <div className="deposit-v4-metric-grid">
           {snapshot.summaryCards.map((metric) => <DepositMetricCard metric={metric} key={metric.label} />)}
         </div>
-        <ExpiringSoonPanel holds={snapshot.expiringHolds} onSelect={toggleSelected} />
+        <ExpiringSoonPanel holds={snapshot.expiringHolds} onSelect={selectVisibleHold} />
       </section>
 
       <section className={`deposit-v4-workspace ${selected ? 'deposit-v4-workspace--detail-open' : 'deposit-v4-workspace--no-detail'}`}>
@@ -410,8 +539,16 @@ export function OpsDepositsPage() {
           onSelect={toggleSelected}
           rows={pagedRows}
           totalRows={visibleRows.length}
+          page={safePage}
+          totalPages={totalPages}
+          pageStart={pageStart}
+          pageEnd={pageEnd}
+          status={status}
+          statusOptions={snapshot.statusOptions}
           query={query}
-          onQueryChange={setQuery}
+          onQueryChange={updateQuery}
+          onStatusChange={updateStatus}
+          onPageChange={setPage}
         />
         {selected && (
           <SelectedDepositPanel

@@ -12,8 +12,11 @@ export class OpsDepositHoldsService {
     return this.repository.getSnapshot();
   }
 
-  filterDeposits(rows: DepositHold[], query: string): DepositHold[] {
-    return rows.filter((row) => row.matches(query));
+  filterDeposits(rows: DepositHold[], query: string, status = ''): DepositHold[] {
+    return rows.filter((row) => (
+      row.matches(query)
+      && (!status || row.status === status)
+    ));
   }
 
   async applyAction(hold: DepositHold, action: DepositHoldAction): Promise<DepositHoldsSnapshot> {

@@ -155,8 +155,18 @@ class DepositHoldProjection:
         return self.record.inquiry
 
     @property
+    def profile(self):
+        return self.inquiry.customer_profile if self.inquiry else None
+
+    @property
     def item(self):
         return self.record.item or (self.inquiry.item if self.inquiry else None)
+
+    @property
+    def linked_invoice(self):
+        if not self.inquiry:
+            return None
+        return next(iter(self.inquiry.invoices.all()), None)
 
     @property
     def expires_at(self):
@@ -265,6 +275,7 @@ class DepositHoldProjection:
 
     def payment_attempts(self):
         provider = self.record.get_payment_provider_display()
+        linked_invoice = self.linked_invoice
         auth_id = (
             getattr(self.record, "stripe_payment_intent_id", "")
             or getattr(self.record, "paypal_authorization_id", "")
@@ -282,8 +293,46 @@ class DepositHoldProjection:
                 "auth_id": auth_id,
                 "amount": self.money.to_payload(),
                 "timestamp": _datetime_label(self.record.updated_at),
+                "payment_url": (
+                    f"{reverse('bookings:ops-payments')}?"
+                    f"{urlencode({'transaction': f'invoice-{linked_invoice.pk}'})}"
+                    if linked_invoice
+                    else reverse("bookings:ops-payments")
+                ),
+                "can_open_payment": bool(linked_invoice),
+                "disabled_reason": (
+                    ""
+                    if linked_invoice
+                    else "No specific payment transaction is linked to this hold."
+                ),
             }
         ]
+
+    def guest_projection(self):
+        profile = self.profile
+        return {
+            "id": profile.pk if profile else None,
+            "name": self.record.guest_name,
+            "email": self.record.email,
+            "phone": getattr(self.inquiry, "phone", "") if self.inquiry else "",
+            "repeat_guest": bool(profile),
+            "view_url": (
+                reverse("admin:bookings_customerprofile_change", args=[profile.pk])
+                if profile
+                else ""
+            ),
+        }
+
+    def receipt_projection(self):
+        return {
+            "view_url": "",
+            "download_url": "",
+            "can_generate": False,
+            "disabled_reason": (
+                "Deposit receipt generation will be implemented in a dedicated "
+                "receipt-document pass."
+            ),
+        }
 
     def to_row_payload(self, request):
         risk = _risk_for_hold(self.record)
@@ -316,16 +365,25 @@ class DepositHoldProjection:
             "initials": _guest_initials(self.record.guest_name),
             "phone": getattr(inquiry, "phone", "") if inquiry else "",
             "repeat_guest": bool(getattr(inquiry, "customer_profile_id", None)),
+            "guest": self.guest_projection(),
             "stay_name": stay_name,
             "listing": stay_name,
             "reservation": {
+                "id": inquiry.pk if inquiry else None,
                 "key": reservation_key,
+                "request_key": reservation_key,
                 "number": f"#{self.record.pk}",
                 "listing": stay_name,
                 "date_range": _reservation_date_range(inquiry),
                 "nights": _reservation_nights(inquiry),
                 "guests": inquiry.guests if inquiry else 0,
                 "admin_url": inquiry_admin_url,
+                "selectable_url": (
+                    f"{reverse('bookings:ops-reservations')}?"
+                    f"{urlencode({'reservation': inquiry.pk})}"
+                    if inquiry
+                    else ""
+                ),
                 "image_url": _item_image_url(item),
             },
             "amount": self.money.with_currency,
@@ -360,6 +418,7 @@ class DepositHoldProjection:
             "updated_at": self.record.updated_at.isoformat(),
             "timeline": self.timeline(),
             "payment_attempts": self.payment_attempts(),
+            "receipt": self.receipt_projection(),
             "actions": {
                 "can_approve": self.can_approve,
                 "can_release": self.can_release,
@@ -1218,11 +1277,19 @@ class DepositHoldOperationsService:
     def projections(self):
         damage = [
             DepositHoldProjection(record=record, source="damage")
-            for record in DamageDeposit.objects.select_related("item", "inquiry__item", "inquiry__customer_profile").order_by("-created_at")
+            for record in DamageDeposit.objects.select_related(
+                "item",
+                "inquiry__item",
+                "inquiry__customer_profile",
+            ).prefetch_related("inquiry__invoices").order_by("-created_at")
         ]
         stay = [
             DepositHoldProjection(record=record, source="stay")
-            for record in ReservationPaymentHold.objects.select_related("item", "inquiry__item", "inquiry__customer_profile").order_by("-created_at")
+            for record in ReservationPaymentHold.objects.select_related(
+                "item",
+                "inquiry__item",
+                "inquiry__customer_profile",
+            ).prefetch_related("inquiry__invoices").order_by("-created_at")
         ]
         return sorted([*damage, *stay], key=lambda item: item.record.created_at, reverse=True)
 
@@ -1296,7 +1363,11 @@ class DepositHoldOperationsService:
         if source == "damage":
             return DepositHoldProjection(
                 record=get_object_or_404(
-                    DamageDeposit.objects.select_related("item", "inquiry__item", "inquiry__customer_profile"),
+                    DamageDeposit.objects.select_related(
+                        "item",
+                        "inquiry__item",
+                        "inquiry__customer_profile",
+                    ).prefetch_related("inquiry__invoices"),
                     pk=raw_id,
                 ),
                 source="damage",
@@ -1304,7 +1375,11 @@ class DepositHoldOperationsService:
         if source == "stay":
             return DepositHoldProjection(
                 record=get_object_or_404(
-                    ReservationPaymentHold.objects.select_related("item", "inquiry__item", "inquiry__customer_profile"),
+                    ReservationPaymentHold.objects.select_related(
+                        "item",
+                        "inquiry__item",
+                        "inquiry__customer_profile",
+                    ).prefetch_related("inquiry__invoices"),
                     pk=raw_id,
                 ),
                 source="stay",

@@ -90,7 +90,12 @@
 }
 
 .deposit-v4-title-actions button:first-child {
-  min-width: 194px;
+  min-width: 126px;
+}
+
+.deposit-v4-title-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .deposit-v4-alert {
@@ -420,6 +425,28 @@
   box-shadow: none;
 }
 
+.deposit-v4-status-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  border: 1px solid #d7e2ee;
+  border-radius: 7px;
+  padding: 0 10px;
+  color: #52627d;
+  background: #ffffff;
+}
+
+.deposit-v4-status-filter select {
+  min-width: 132px;
+  border: 0;
+  outline: 0;
+  color: var(--deposit-ink);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 750;
+}
+
 .deposit-v4-table-scroll {
   width: 100%;
   overflow-x: auto;
@@ -631,6 +658,11 @@
   color: #ffffff;
   border-color: #047c96;
   background: linear-gradient(180deg, #0ea5e9, #047c96);
+}
+
+.deposit-v4-table-footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .deposit-v4-detail {
@@ -1003,6 +1035,10 @@
   opacity: 0.52;
 }
 
+.deposit-v4-actions .deposit-v4-action-link:disabled {
+  width: 100%;
+}
+
 .deposit-v4-actions > div {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1057,6 +1093,14 @@
 
   .deposit-v4-search {
     max-width: none;
+    width: 100%;
+  }
+
+  .deposit-v4-status-filter {
+    width: 100%;
+  }
+
+  .deposit-v4-status-filter select {
     width: 100%;
   }
 

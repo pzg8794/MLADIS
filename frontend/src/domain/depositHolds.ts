@@ -20,14 +20,26 @@ export interface DepositMetricPayload {
 }
 
 export interface DepositReservationPayload {
+  id: number | null;
   key: string;
+  request_key: string;
   number: string;
   listing: string;
   date_range: string;
   nights: number;
   guests: number;
   admin_url: string;
+  selectable_url: string;
   image_url: string;
+}
+
+export interface DepositGuestPayload {
+  id: number | null;
+  name: string;
+  email: string;
+  phone: string;
+  repeat_guest: boolean;
+  view_url: string;
 }
 
 export interface DepositTimelinePayload {
@@ -46,6 +58,16 @@ export interface DepositPaymentAttemptPayload {
   auth_id: string;
   amount: DepositMoneyPayload;
   timestamp: string;
+  payment_url: string;
+  can_open_payment: boolean;
+  disabled_reason: string;
+}
+
+export interface DepositReceiptPayload {
+  view_url: string;
+  download_url: string;
+  can_generate: boolean;
+  disabled_reason: string;
 }
 
 export interface DepositHoldActionsPayload {
@@ -66,6 +88,7 @@ export interface DepositHoldPayload {
   initials: string;
   phone: string;
   repeat_guest: boolean;
+  guest: DepositGuestPayload;
   stay_name: string;
   listing: string;
   reservation: DepositReservationPayload;
@@ -92,6 +115,7 @@ export interface DepositHoldPayload {
   updated_at: string;
   timeline: DepositTimelinePayload[];
   payment_attempts: DepositPaymentAttemptPayload[];
+  receipt: DepositReceiptPayload;
   actions: DepositHoldActionsPayload;
 }
 
@@ -163,25 +187,31 @@ export class DepositReservation {
   ];
 
   constructor(
+    public readonly id: number | null,
     public readonly key: string,
+    public readonly requestKey: string,
     public readonly number: string,
     public readonly listing: string,
     public readonly dateRange: string,
     public readonly nights: number,
     public readonly guests: number,
     public readonly adminUrl: string,
+    public readonly selectableUrl: string,
     public readonly imageUrl: string,
   ) {}
 
   static fromPayload(payload: DepositReservationPayload): DepositReservation {
     return new DepositReservation(
+      payload.id,
       payload.key,
+      payload.request_key,
       payload.number,
       payload.listing,
       payload.date_range,
       payload.nights,
       payload.guests,
       payload.admin_url,
+      payload.selectable_url,
       payload.image_url,
     );
   }
@@ -199,6 +229,28 @@ export class DepositReservation {
 
   get displayImageUrl(): string {
     return this.imageUrl || this.imageFallbackUrl;
+  }
+}
+
+export class DepositGuest {
+  constructor(
+    public readonly id: number | null,
+    public readonly name: string,
+    public readonly email: string,
+    public readonly phone: string,
+    public readonly repeatGuest: boolean,
+    public readonly viewUrl: string,
+  ) {}
+
+  static fromPayload(payload: DepositGuestPayload): DepositGuest {
+    return new DepositGuest(
+      payload.id,
+      payload.name,
+      payload.email,
+      payload.phone,
+      payload.repeat_guest,
+      payload.view_url,
+    );
   }
 }
 
@@ -225,6 +277,9 @@ export class DepositPaymentAttempt {
     public readonly authId: string,
     public readonly amount: DepositMoney,
     public readonly timestamp: string,
+    public readonly paymentUrl: string,
+    public readonly canOpenPayment: boolean,
+    public readonly disabledReason: string,
   ) {}
 
   static fromPayload(payload: DepositPaymentAttemptPayload): DepositPaymentAttempt {
@@ -237,6 +292,27 @@ export class DepositPaymentAttempt {
       payload.auth_id,
       DepositMoney.fromPayload(payload.amount),
       payload.timestamp,
+      payload.payment_url,
+      payload.can_open_payment,
+      payload.disabled_reason,
+    );
+  }
+}
+
+export class DepositReceipt {
+  constructor(
+    public readonly viewUrl: string,
+    public readonly downloadUrl: string,
+    public readonly canGenerate: boolean,
+    public readonly disabledReason: string,
+  ) {}
+
+  static fromPayload(payload: DepositReceiptPayload): DepositReceipt {
+    return new DepositReceipt(
+      payload.view_url,
+      payload.download_url,
+      payload.can_generate,
+      payload.disabled_reason,
     );
   }
 }
@@ -254,6 +330,7 @@ export class DepositHold {
     public readonly initials: string,
     public readonly phone: string,
     public readonly repeatGuest: boolean,
+    public readonly guest: DepositGuest,
     public readonly reservation: DepositReservation,
     public readonly money: DepositMoney,
     public readonly provider: string,
@@ -274,6 +351,7 @@ export class DepositHold {
     public readonly hasWarning: boolean,
     public readonly timeline: DepositTimelineItem[],
     public readonly paymentAttempts: DepositPaymentAttempt[],
+    public readonly receipt: DepositReceipt,
     public readonly canApprove: boolean,
     public readonly canRelease: boolean,
     public readonly canRequestGuestAction: boolean,
@@ -292,6 +370,7 @@ export class DepositHold {
       payload.initials,
       payload.phone,
       payload.repeat_guest,
+      DepositGuest.fromPayload(payload.guest),
       DepositReservation.fromPayload(payload.reservation),
       DepositMoney.fromPayload(payload.money),
       payload.provider,
@@ -312,6 +391,7 @@ export class DepositHold {
       payload.has_warning,
       payload.timeline.map(DepositTimelineItem.fromPayload),
       payload.payment_attempts.map(DepositPaymentAttempt.fromPayload),
+      DepositReceipt.fromPayload(payload.receipt),
       payload.actions.can_approve,
       payload.actions.can_release,
       payload.actions.can_request_guest_action,

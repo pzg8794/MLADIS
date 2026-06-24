@@ -2978,6 +2978,36 @@ class OpsFinanceObjectTests(TestCase):
         self.assertTrue(selected["payment_attempts"])
         self.assertTrue(selected["actions"]["can_approve"])
 
+    def test_deposits_api_exposes_structured_relationships_and_honest_receipt_state(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("bookings:ops-deposits-api"))
+
+        self.assertEqual(response.status_code, 200)
+        selected = next(
+            row
+            for row in response.json()["rows"]
+            if row["id"] == f"damage-{self.deposit.pk}"
+        )
+        self.assertEqual(selected["reservation"]["id"], self.inquiry.pk)
+        self.assertEqual(selected["reservation"]["request_key"], self.inquiry.request_key)
+        self.assertIn(
+            f"reservation={self.inquiry.pk}",
+            selected["reservation"]["selectable_url"],
+        )
+        self.assertEqual(selected["guest"]["name"], "Maria Rodriguez")
+        payment_attempt = selected["payment_attempts"][0]
+        self.assertTrue(payment_attempt["can_open_payment"])
+        self.assertIn(
+            f"transaction=invoice-{self.invoice.pk}",
+            payment_attempt["payment_url"],
+        )
+        self.assertFalse(selected["receipt"]["can_generate"])
+        self.assertEqual(
+            selected["receipt"]["disabled_reason"],
+            "Deposit receipt generation will be implemented in a dedicated receipt-document pass.",
+        )
+
     def test_deposit_action_approve_updates_selected_hold(self):
         self.client.force_login(self.staff)
 
@@ -2990,6 +3020,38 @@ class OpsFinanceObjectTests(TestCase):
         self.assertEqual(self.deposit.status, DepositStatus.REQUIRES_CAPTURE)
         self.assertEqual(response.json()["hold"]["id"], f"damage-{self.deposit.pk}")
         self.assertEqual(response.json()["hold"]["status"], DepositStatus.REQUIRES_CAPTURE)
+
+    def test_deposit_action_release_updates_selected_hold_without_money_capture(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse(
+                "bookings:ops-deposit-hold-action-api",
+                args=[f"stay-{self.hold.pk}", "release"],
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.hold.refresh_from_db()
+        self.assertEqual(self.hold.status, DepositStatus.CANCELED)
+        self.assertEqual(response.json()["hold"]["status"], DepositStatus.CANCELED)
+
+    def test_deposit_action_request_guest_action_records_note(self):
+        self.deposit.status = DepositStatus.NEW
+        self.deposit.save(update_fields=["status", "updated_at"])
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse(
+                "bookings:ops-deposit-hold-action-api",
+                args=[f"damage-{self.deposit.pk}", "request-guest-action"],
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.deposit.refresh_from_db()
+        self.assertEqual(self.deposit.status, DepositStatus.REQUIRES_CONFIGURATION)
+        self.assertIn("Guest action requested by finance-ops", self.deposit.notes)
 
 
 @override_settings(STORAGES=TEST_STORAGES)
