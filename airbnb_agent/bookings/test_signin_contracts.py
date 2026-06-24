@@ -24,7 +24,7 @@ TEST_STORAGES = {
 
 
 SIGNIN_ENV = {
-    "SITE_DOMAIN": "local.mladis.com",
+    "SITE_DOMAIN": "127.0.0.1:8000",
     "SITE_NAME": "MLADIS Local",
     "GOOGLE_OAUTH_CLIENT_ID": "google-client",
     "GOOGLE_OAUTH_CLIENT_SECRET": "google-secret",
@@ -41,8 +41,8 @@ SIGNIN_SETTINGS = {
     "ACCOUNT_DEFAULT_HTTP_PROTOCOL": "http",
     "SOCIAL_AUTH_CANONICAL_ORIGIN": "",
     "SOCIAL_AUTH_PROVIDER_ORIGINS": {
-        "google": "https://local.mladis.com",
-        "github": "https://local.mladis.com",
+        "google": "http://127.0.0.1:8000",
+        "github": "http://127.0.0.1:8000",
         "facebook": "https://local.mladis.com",
         "microsoft": "",
     },
@@ -73,14 +73,14 @@ class SignInContractTests(TestCase):
     def setUp(self):
         Site.objects.update_or_create(
             pk=settings.SITE_ID,
-            defaults={"domain": "local.mladis.com", "name": "MLADIS Local"},
+            defaults={"domain": "127.0.0.1:8000", "name": "MLADIS Local"},
         )
 
     def _sync_env_apps(self):
         with patch.dict(os.environ, SIGNIN_ENV, clear=False):
             sync_social_apps_from_env()
 
-    def _oauth_redirect_query(self, provider_url_name, host="local.mladis.com", secure=True):
+    def _oauth_redirect_query(self, provider_url_name, host="127.0.0.1:8000", secure=False):
         self._sync_env_apps()
         with patch.dict(os.environ, SIGNIN_ENV, clear=False):
             response = self.client.post(
@@ -96,22 +96,21 @@ class SignInContractTests(TestCase):
         )
         return parse_qs(urlparse(location).query)
 
-    def test_login_page_uses_named_tunnel_same_origin_posts(self):
+    def test_login_page_uses_direct_local_posts_and_facebook_https_bridge(self):
         with patch.dict(os.environ, SIGNIN_ENV, clear=False):
             response = self.client.get(
                 f"{reverse('bookings:login')}?next=/accounts/",
-                HTTP_HOST="local.mladis.com",
-                secure=True,
+                HTTP_HOST="127.0.0.1:8000",
             )
 
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
         self.assertIn('action="/oauth/google/login/?next=%2Faccounts%2F"', html)
         self.assertIn('action="/oauth/github/login/?next=%2Faccounts%2F"', html)
-        self.assertIn('action="/oauth/facebook/login/?next=%2Faccounts%2F"', html)
-        self.assertNotIn('href="/accounts/social/google/', html)
+        self.assertIn('href="/accounts/social/facebook/?next=%2Faccounts%2F"', html)
         self.assertNotIn('href="/accounts/social/github/', html)
-        self.assertNotIn('href="/accounts/social/facebook/', html)
+        self.assertIn("Continue with Microsoft", html)
+        self.assertIn("modern-social-button--microsoft is-disabled", html)
 
     @override_settings(ROOT_URLCONF=__name__)
     def test_login_page_omits_queued_booking_messages(self):
@@ -123,30 +122,30 @@ class SignInContractTests(TestCase):
         self.assertNotIn(QUEUED_BOOKING_MESSAGE, html)
         self.assertNotIn(QUEUED_PAYMENT_MESSAGE, html)
 
-    def test_google_oauth_uses_named_local_https_callback_and_provider_account_picker(self):
+    def test_google_oauth_keeps_local_callback_and_provider_account_picker(self):
         query = self._oauth_redirect_query("google_login")
 
-        self.assertEqual(query["redirect_uri"], ["https://local.mladis.com/oauth/google/login/callback/"])
+        self.assertEqual(query["redirect_uri"], ["http://127.0.0.1:8000/oauth/google/login/callback/"])
         self.assertEqual(query["prompt"], ["select_account"])
 
-    def test_github_oauth_uses_named_local_https_callback_and_provider_account_picker(self):
+    def test_github_oauth_keeps_local_callback_and_provider_account_picker(self):
         query = self._oauth_redirect_query("github_login")
 
-        self.assertEqual(query["redirect_uri"], ["https://local.mladis.com/oauth/github/login/callback/"])
+        self.assertEqual(query["redirect_uri"], ["http://127.0.0.1:8000/oauth/github/login/callback/"])
         self.assertEqual(query["prompt"], ["select_account"])
 
-    def test_local_launch_redirects_to_named_https_provider_origin(self):
+    def test_facebook_local_launch_redirects_to_https_provider_origin(self):
         self._sync_env_apps()
         with patch.dict(os.environ, SIGNIN_ENV, clear=False):
             response = self.client.get(
-                f"{reverse('bookings:social-provider-launch', kwargs={'provider_id': 'google'})}?next=/accounts/",
+                f"{reverse('bookings:social-provider-launch', kwargs={'provider_id': 'facebook'})}?next=/accounts/",
                 HTTP_HOST="127.0.0.1:8000",
             )
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(
             response["Location"],
-            "https://local.mladis.com/accounts/social/google/?next=%2Faccounts%2F",
+            "https://local.mladis.com/accounts/social/facebook/?next=%2Faccounts%2F",
         )
 
     def test_facebook_stable_local_oauth_uses_https_callback(self):
@@ -192,8 +191,8 @@ class SignInContractTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "bookings/oauth_diagnostics.html")
-        self.assertContains(response, "https://local.mladis.com/oauth/google/login/callback/")
-        self.assertContains(response, "https://local.mladis.com/oauth/github/login/callback/")
+        self.assertContains(response, "http://127.0.0.1:8000/oauth/google/login/callback/")
+        self.assertContains(response, "http://127.0.0.1:8000/oauth/github/login/callback/")
         self.assertContains(response, "https://local.mladis.com/oauth/facebook/login/callback/")
 
     @override_settings(
