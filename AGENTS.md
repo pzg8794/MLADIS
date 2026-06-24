@@ -1,5 +1,17 @@
 # MLADIS Agent Notes
 
+> **AI/Codex warning:** AI/Codex agents must use the canonical MLADIS environment, work on exactly one object per task, avoid unrelated files, and leave the repository clean. No task is complete with lingering worktrees, dirty state, stashes, or cross-object edits. Read `docs/dev/codex-environment-contract.md`, `docs/dev/object-scope-rules.md`, and `docs/dev/agent-repository-hygiene.md` before editing.
+
+## Codex Environment Contract
+
+- The environment name is `MLADIS Stable Dev Environment`.
+- The canonical repository is `pzg8794/MLADIS`.
+- AI work starts from current `main` but is performed on `codex/dev`. Never edit or push directly to `main`.
+- Worktrees are forbidden unless Piter explicitly approves one for the current task.
+- Every task must declare its active object, allowed files, forbidden files, required tests, and stop condition before editing.
+- Auth is sealed during every non-auth task. Do not touch auth, allauth, OAuth, login, signup, middleware, callback/origin, launcher, or sign-in-contract files unless the active object is explicitly `auth`.
+- Run the preflight and completion checks in `docs/dev/agent-repository-hygiene.md`. Stop on the wrong branch, dirty state, an unexpected worktree, an unexpected stash, or unexplained untracked source files.
+
 ## Change Discipline
 
 - Update repository documentation for any operator-facing workflow change.
