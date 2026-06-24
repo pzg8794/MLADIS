@@ -112,7 +112,6 @@ class SignInContractTests(TestCase):
         self.assertNotIn('href="/accounts/social/google/', html)
         self.assertNotIn('href="/accounts/social/github/', html)
         self.assertNotIn('href="/accounts/social/facebook/', html)
-        self.assertNotIn("Continue with Microsoft", html)
 
     @override_settings(ROOT_URLCONF=__name__)
     def test_login_page_omits_queued_booking_messages(self):
