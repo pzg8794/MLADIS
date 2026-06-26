@@ -15,8 +15,8 @@
       <p>{{ page_subtitle|default:'Manage guest relationships, profiles, travel details, and communication history.' }}</p>
     </div>
     <div class="ops-cx-header-actions">
-      <button class="ops-cx-btn" type="button">Filters</button>
-      <button class="ops-cx-btn" type="button">Export</button>
+      <a class="ops-cx-btn" href="{{ filters_url }}">Filters</a>
+      <a class="ops-cx-btn" href="{{ export_url }}">Export</a>
       <a class="ops-cx-btn ops-cx-btn--primary" href="/admin/bookings/customerprofile/add/">+ Add Guest</a>
     </div>
   </header>
@@ -29,11 +29,8 @@
     <a class="ops-cx-tab{% if tab == 'blocked' %} is-active{% endif %}" href="?tab=blocked{% if search %}&search={{ search|urlencode }}{% endif %}">Blocked <span class="ops-cx-tab-badge">{{ tab_counts_display.blocked }}</span></a>
   </nav>
 
-  <form class="ops-cx-filters" method="get" action="">
+  <form id="guest-filters" class="ops-cx-filters" method="get" action="">
     <input type="hidden" name="tab" value="{{ tab }}">
-    {% if selected_customer_id %}
-      <input type="hidden" name="customer" value="{{ selected_customer_id }}">
-    {% endif %}
     <label class="ops-cx-search" aria-label="Search guests">
       <span>⌕</span>
       <input type="text" name="search" value="{{ search }}" placeholder="Search guests by name, email, phone, or reservation...">
@@ -41,33 +38,26 @@
     </label>
     <div class="ops-cx-filter-group">
       <span class="ops-cx-filter-label">Source / Channel</span>
-      <select class="ops-cx-select" name="channel" aria-label="Source or channel">
+      <select class="ops-cx-select" name="source" aria-label="Source or channel">
         <option value="">All channels</option>
-        <option>Direct booking</option>
-        <option>Airbnb</option>
-        <option>Social login</option>
-        <option>Manual entry</option>
+        {% for option in filter_options.sources %}
+          <option value="{{ option.value }}"{% if option.value == source %} selected{% endif %}>{{ option.label }} ({{ option.count }})</option>
+        {% endfor %}
       </select>
     </div>
     <div class="ops-cx-filter-group">
-      <span class="ops-cx-filter-label">Country</span>
-      <select class="ops-cx-select" name="country" aria-label="Country">
-        <option value="">All countries</option>
-        <option>Dominican Republic</option>
-        <option>United States</option>
-        <option>Canada</option>
+      <span class="ops-cx-filter-label">Status</span>
+      <select class="ops-cx-select" name="status" aria-label="Status">
+        <option value="">All statuses</option>
+        {% for option in filter_options.statuses %}
+          <option value="{{ option.value }}"{% if option.value == status %} selected{% endif %}>{{ option.label }} ({{ option.count }})</option>
+        {% endfor %}
       </select>
     </div>
-    <div class="ops-cx-filter-group">
-      <span class="ops-cx-filter-label">Tags</span>
-      <select class="ops-cx-select" name="tags" aria-label="Tags">
-        <option value="">All tags</option>
-        <option>VIP</option>
-        <option>Repeat</option>
-        <option>Needs review</option>
-      </select>
-    </div>
-    <button class="ops-cx-btn" type="submit">More filters</button>
+    <button class="ops-cx-btn" type="submit">Apply filters</button>
+    {% if search or source or status %}
+      <a class="ops-cx-btn" href="?tab={{ tab }}">Clear filters</a>
+    {% endif %}
   </form>
 
   <section class="ops-cx-layout" aria-label="Customers CRM content">
@@ -99,7 +89,7 @@
         </thead>
         <tbody>
           {% for row in rows %}
-            <tr class="ops-cx-row{% if row.id|stringformat:'s' == selected_customer_id %} is-selected{% endif %}{% if row.is_mock %} is-mock{% endif %}" onclick="window.location='?tab={{ tab }}{% if row.id|stringformat:'s' != selected_customer_id %}&customer={{ row.id }}{% endif %}{% if search %}&search={{ search|urlencode }}{% endif %}'">
+            <tr class="ops-cx-row{% if row.id|stringformat:'s' == selected_customer_id %} is-selected{% endif %}" onclick="window.location='{{ row.toggle_url }}'">
               <td class="ops-cx-td-check"><input type="checkbox" class="ops-cx-check" aria-label="Select {{ row.name }}"></td>
               <td>
                 <div class="ops-cx-guest">
@@ -136,16 +126,30 @@
           {% endfor %}
         </tbody>
       </table>
-      <footer class="ops-cx-footer">Showing 1 to {{ rows|length }} of {{ total_results_display }} result{{ total_results|pluralize }}.</footer>
-      <div class="ops-cx-pagination" aria-label="Pagination">
-        <button type="button" class="ops-cx-page-btn" aria-label="Previous page">&lsaquo;</button>
-        <button type="button" class="ops-cx-page-btn is-active">1</button>
-        <button type="button" class="ops-cx-page-btn">2</button>
-        <button type="button" class="ops-cx-page-btn">3</button>
-        <span class="ops-cx-page-ellipsis">...</span>
-        <button type="button" class="ops-cx-page-btn">{{ page_count_display }}</button>
-        <button type="button" class="ops-cx-page-btn" aria-label="Next page">&rsaquo;</button>
-      </div>
+      <footer class="ops-cx-footer">Showing {{ pagination.start }} to {{ pagination.end }} of {{ total_results_display }} real guest{{ total_results|pluralize }}.</footer>
+      {% if pagination.total_pages > 1 %}
+        <nav class="ops-cx-pagination" aria-label="Pagination">
+          {% if pagination.has_previous %}
+            <a class="ops-cx-page-btn" aria-label="Previous page" href="{{ pagination.previous_url }}">&lsaquo;</a>
+          {% else %}
+            <span class="ops-cx-page-btn is-disabled" aria-label="Previous page">&lsaquo;</span>
+          {% endif %}
+          {% for page_item in pagination.pages %}
+            {% if page_item.ellipsis %}
+              <span class="ops-cx-page-ellipsis">...</span>
+            {% elif page_item.is_current %}
+              <span class="ops-cx-page-btn is-active">{{ page_item.number }}</span>
+            {% else %}
+              <a class="ops-cx-page-btn" href="{{ page_item.url }}">{{ page_item.number }}</a>
+            {% endif %}
+          {% endfor %}
+          {% if pagination.has_next %}
+            <a class="ops-cx-page-btn" aria-label="Next page" href="{{ pagination.next_url }}">&rsaquo;</a>
+          {% else %}
+            <span class="ops-cx-page-btn is-disabled" aria-label="Next page">&rsaquo;</span>
+          {% endif %}
+        </nav>
+      {% endif %}
         </div>
       </section>
 
@@ -165,7 +169,11 @@
 
         <p class="ops-cx-profile-country"><span>{{ detail.country_flag }}</span> {{ detail.country }}</p>
 
-        <a class="ops-cx-profile-link" href="#">↗ View full profile</a>
+        {% if detail.profile_url %}
+          <a class="ops-cx-profile-link" href="{{ detail.profile_url }}">↗ View full profile</a>
+        {% else %}
+          <span class="ops-cx-profile-link">Profile is projected from reservation records</span>
+        {% endif %}
 
         <div class="ops-cx-profile-meta ops-cx-profile-meta--compact">
           <div class="ops-cx-meta-row"><span>Preferred language</span><strong>{{ detail.preferred_language_display }}</strong></div>
@@ -288,7 +296,7 @@
               <p>No linked reservations.</p>
             {% endfor %}
           </div>
-          <a href="#" class="ops-cx-inline-link">View all reservations &#8599;</a>
+          <a href="{{ detail.all_reservations_url }}" class="ops-cx-inline-link">View all reservations &#8599;</a>
         </details>
       </article>
       </section>
@@ -309,7 +317,7 @@
       <div class="ops-cx-agent-body">
         <h4>Suggested Reply</h4>
         <div class="ops-cx-agent-note">
-          Hi {{ detail.first_name }}! Early check-in is available for your upcoming stay on Jun 20. Your apartment will be ready by 1:00 PM. Let us know if you need transport or local recommendations!
+          {{ detail.suggested_reply }}
         </div>
       </div>
 

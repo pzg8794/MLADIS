@@ -97,7 +97,7 @@ class GuestTagProjection:
 
 
 class Guest:
-    """Guest aggregate wrapper around the existing CustomerProfile model."""
+    """Guest aggregate wrapper around real profile and reservation records."""
 
     COUNTRY_POOL = (
         ("Dominican Republic", "DO"),
@@ -109,14 +109,27 @@ class Guest:
         ("Colombia", "CO"),
     )
 
-    def __init__(self, profile: CustomerProfile, request=None, aliases: list[CustomerProfile] | None = None):
+    def __init__(
+        self,
+        profile: CustomerProfile,
+        request=None,
+        aliases: list[CustomerProfile] | None = None,
+        reservation_aliases: list[BookingInquiry] | None = None,
+        virtual_id: str = "",
+    ):
         self.profile = profile
         self.request = request
+        self._virtual_id = virtual_id
         by_id: dict[int, CustomerProfile] = {}
         for candidate in [profile, *(aliases or [])]:
             if candidate and candidate.pk:
                 by_id[candidate.pk] = candidate
         self._profiles = tuple(by_id.values()) or (profile,)
+        reservation_by_id: dict[int, BookingInquiry] = {}
+        for booking in reservation_aliases or []:
+            if booking and booking.pk:
+                reservation_by_id[booking.pk] = booking
+        self._reservation_aliases = tuple(reservation_by_id.values())
 
     @property
     def profiles(self) -> tuple[CustomerProfile, ...]:
@@ -127,12 +140,19 @@ class Guest:
         return [profile.pk for profile in self.profiles if profile.pk]
 
     @property
+    def reservation_aliases(self) -> tuple[BookingInquiry, ...]:
+        return self._reservation_aliases
+
+    @property
     def id(self) -> str:
-        return str(self.profile.pk)
+        if self.profile.pk:
+            return str(self.profile.pk)
+        first_booking = self._primary_reservation()
+        return self._virtual_id or (f"reservation-guest-{first_booking.pk}" if first_booking else "reservation-guest")
 
     @property
     def key(self) -> str:
-        return f"guest-{self.profile.pk}"
+        return f"guest-{self.id}"
 
     @property
     def display_name(self) -> str:
@@ -142,7 +162,10 @@ class Guest:
         for profile in self.profiles:
             if profile.email:
                 return profile.email
-        return f"Guest {self.profile.pk}"
+        booking = self._primary_reservation()
+        if booking and booking.guest_name:
+            return booking.guest_name
+        return f"Guest {self.id}"
 
     def initials(self) -> str:
         parts = [part for part in self.display_name.replace("@", " ").replace(".", " ").split() if part]
@@ -156,30 +179,22 @@ class Guest:
         return "Not captured", ""
 
     def past_stay_count(self) -> int:
-        direct = getattr(self.profile, "direct_reservations", None)
-        airbnb = getattr(self.profile, "airbnb_reservations", None)
-        if len(self.profiles) == 1 and (direct is not None or airbnb is not None):
-            return int(direct or 0) + int(airbnb or 0)
-        return (
-            BookingInquiry.objects.filter(customer_profile__in=self.profiles).count()
-            + AirbnbGuestRecord.objects.filter(customer_profile__in=self.profiles).count()
-        )
+        return len(self._booking_inquiries()) + AirbnbGuestRecord.objects.filter(customer_profile_id__in=self.profile_ids).count()
 
     def total_spend_cents(self) -> int:
-        annotated = getattr(self.profile, "total_spend_cents", None)
-        if len(self.profiles) == 1 and annotated:
-            return int(annotated)
-        invoice_total = Invoice.objects.filter(customer_profile__in=self.profiles).aggregate(total=Coalesce(Sum("total_cents"), 0))["total"] or 0
-        booking_total = BookingInquiry.objects.filter(customer_profile__in=self.profiles).aggregate(total=Coalesce(Sum("total_cents"), 0))["total"] or 0
+        invoice_total = Invoice.objects.filter(customer_profile_id__in=self.profile_ids).aggregate(total=Coalesce(Sum("total_cents"), 0))["total"] or 0
+        booking_total = sum(int(booking.total_cents or 0) for booking in self._booking_inquiries())
         return int(invoice_total or booking_total or 0)
 
     def last_contact_at(self):
         timestamps = [profile.updated_at for profile in self.profiles if profile.updated_at]
-        latest_booking = BookingInquiry.objects.filter(customer_profile__in=self.profiles).order_by("-updated_at").first()
-        latest_airbnb = AirbnbGuestRecord.objects.filter(customer_profile__in=self.profiles).order_by("-updated_at").first()
-        latest_feedback = CustomerFeedback.objects.filter(customer_profile__in=self.profiles).order_by("-updated_at").first()
-        latest_invoice = Invoice.objects.filter(customer_profile__in=self.profiles).order_by("-updated_at").first()
-        for item in (latest_booking, latest_airbnb, latest_feedback, latest_invoice):
+        for booking in self._booking_inquiries():
+            if booking.updated_at:
+                timestamps.append(booking.updated_at)
+        latest_airbnb = AirbnbGuestRecord.objects.filter(customer_profile_id__in=self.profile_ids).order_by("-updated_at").first()
+        latest_feedback = CustomerFeedback.objects.filter(customer_profile_id__in=self.profile_ids).order_by("-updated_at").first()
+        latest_invoice = Invoice.objects.filter(customer_profile_id__in=self.profile_ids).order_by("-updated_at").first()
+        for item in (latest_airbnb, latest_feedback, latest_invoice):
             if item and getattr(item, "updated_at", None):
                 timestamps.append(item.updated_at)
         return max(timestamps) if timestamps else self.profile.updated_at
@@ -203,7 +218,7 @@ class Guest:
             return "New"
         if value == "blacklisted":
             return "Blocked"
-        return self.profile.get_segment_display()
+        return dict(ClientSegment.choices).get(self.profile.segment, self.profile.segment.title())
 
     def status_value(self) -> str:
         return "blocked" if any(profile.is_blacklisted for profile in self.profiles) else "active"
@@ -211,20 +226,22 @@ class Guest:
     def tags(self) -> list[GuestTagProjection]:
         tags = [
             GuestTagProjection(self.segment_label(), slugify(self.segment_label()), self._tag_tone(self.segment_value())),
-            GuestTagProjection(self.profile.get_source_display(), slugify(self.profile.get_source_display()), "info"),
+            GuestTagProjection(self._source_label(), slugify(self._source_label()), "info"),
         ]
         if self.past_stay_count() >= 2:
             tags.append(GuestTagProjection("Repeat", "repeat", "success"))
-        if self.profile.can_receive_promotions:
+        if self._can_receive_promotions():
             tags.append(GuestTagProjection("Marketing OK", "marketing-ok", "success"))
-        if len(self.profiles) > 1:
-            tags.append(GuestTagProjection(f"{len(self.profiles)} source records", "source-records", "neutral"))
+        if len(self.profile_ids) > 1:
+            tags.append(GuestTagProjection(f"{len(self.profile_ids)} source records", "source-records", "neutral"))
+        if self.reservation_aliases:
+            tags.append(GuestTagProjection(f"{len(self.reservation_aliases)} reservation source", "reservation-source", "info"))
         return tags
 
     def preferences(self) -> list[dict[str, str]]:
         return [
             {"key": "preferred_language", "label": "Preferred language", "value": (self.profile.preferred_language or "en").upper(), "source": "profile"},
-            {"key": "source", "label": "Source", "value": self.profile.get_source_display(), "source": "profile"},
+            {"key": "source", "label": "Source", "value": self._source_label(), "source": "profile"},
             {"key": "travel_style", "label": "Travel style", "value": self._travel_style(), "source": "derived"},
         ]
 
@@ -239,16 +256,16 @@ class Guest:
             "phone": self._contact_phone(),
             "country": country,
             "country_code": country_code,
-            "source": self.profile.get_source_display(),
-            "source_value": self.profile.source,
+            "source": self._source_label(),
+            "source_value": self._source_value(),
             "past_stays": self.past_stay_count(),
             "total_spend": _money_payload(self.total_spend_cents()),
             "status": _status_payload(self.status_value(), "Blocked" if self.status_value() == "blocked" else "Active"),
             "segment": _status_payload(self.segment_value(), self.segment_label()),
-            "marketing_consent": self.profile.get_marketing_consent_status_display(),
+            "marketing_consent": self._marketing_consent_label(),
             "last_contact_at": self.last_contact_at().isoformat() if self.last_contact_at() else "",
             "last_contact_label": _date_label(self.last_contact_at()),
-            "source_profile_count": len(self.profiles),
+            "source_profile_count": len(self.profile_ids),
             "source_profile_ids": self.profile_ids,
         }
 
@@ -256,14 +273,14 @@ class Guest:
         return {
             "birthday": self._birthday(),
             "travel_style": self._travel_style(),
-            "guest_since": _date_label(min(profile.created_at for profile in self.profiles if profile.created_at)),
+            "guest_since": _date_label(self._first_seen_at()),
             "notes": self._profile_notes(),
             "admin_url": self._absolute_admin_url(),
-            "full_profile_url": f"/ops/guests/?guest={self.profile.pk}",
+            "full_profile_url": f"/ops/guests/?guest={self.id}",
         }
 
     def message_projection(self) -> dict[str, Any]:
-        feedback = list(CustomerFeedback.objects.filter(customer_profile__in=self.profiles).order_by("-created_at")[:2])
+        feedback = list(CustomerFeedback.objects.filter(customer_profile_id__in=self.profile_ids).order_by("-created_at")[:2])
         messages: list[dict[str, Any]] = []
         for item in feedback:
             messages.append(
@@ -276,7 +293,7 @@ class Guest:
                     "from_staff": False,
                 }
             )
-        latest_booking = BookingInquiry.objects.filter(customer_profile__in=self.profiles).order_by("-created_at").first()
+        latest_booking = next(iter(sorted(self._booking_inquiries(), key=lambda booking: booking.created_at or timezone.now(), reverse=True)), None)
         if latest_booking and latest_booking.message:
             messages.append(
                 {
@@ -291,26 +308,30 @@ class Guest:
         return {"draft": "", "items": sorted(messages, key=lambda item: item["timestamp"], reverse=True)}
 
     def documents_projection(self) -> list[dict[str, Any]]:
-        documents = [
-            {
-                "id": f"profile-{self.profile.pk}",
-                "title": "Guest profile record",
-                "type": "profile",
-                "status": "available",
-                "url": self._absolute_admin_url(),
-                "created_at": _date_label(self.profile.created_at),
-            },
-            {
-                "id": f"marketing-{self.profile.pk}",
-                "title": "Marketing consent",
-                "type": "consent",
-                "status": self.profile.get_marketing_consent_status_display(),
-                "url": self._absolute_admin_url(),
-                "created_at": _date_label(self.profile.marketing_consent_at or self.profile.marketing_consent_requested_at),
-            },
-        ]
+        documents = []
+        if self.profile.pk:
+            documents.extend(
+                [
+                    {
+                        "id": f"profile-{self.profile.pk}",
+                        "title": "Guest profile record",
+                        "type": "profile",
+                        "status": "available",
+                        "url": self._absolute_admin_url(),
+                        "created_at": _date_label(self.profile.created_at),
+                    },
+                    {
+                        "id": f"marketing-{self.profile.pk}",
+                        "title": "Marketing consent",
+                        "type": "consent",
+                        "status": self._marketing_consent_label(),
+                        "url": self._absolute_admin_url(),
+                        "created_at": _date_label(self.profile.marketing_consent_at or self.profile.marketing_consent_requested_at),
+                    },
+                ]
+            )
         for alias in self.profiles:
-            if alias.pk == self.profile.pk:
+            if alias.pk == self.profile.pk or not alias.pk:
                 continue
             documents.append(
                 {
@@ -322,7 +343,18 @@ class Guest:
                     "created_at": _date_label(alias.created_at),
                 }
             )
-        for record in AirbnbGuestRecord.objects.filter(customer_profile__in=self.profiles).order_by("-created_at")[:3]:
+        for booking in self._booking_inquiries()[:6]:
+            documents.append(
+                {
+                    "id": f"reservation-{booking.pk}",
+                    "title": f"Reservation request {booking.request_key}",
+                    "type": "reservation",
+                    "status": booking.get_status_display(),
+                    "url": self._absolute_url(reverse("admin:bookings_bookinginquiry_change", args=[booking.pk])),
+                    "created_at": _date_label(booking.created_at),
+                }
+            )
+        for record in AirbnbGuestRecord.objects.filter(customer_profile_id__in=self.profile_ids).order_by("-created_at")[:3]:
             documents.append(
                 {
                     "id": f"airbnb-{record.pk}",
@@ -337,7 +369,7 @@ class Guest:
 
     def stays_projection(self) -> list[dict[str, Any]]:
         stays = []
-        for booking in BookingInquiry.objects.filter(customer_profile__in=self.profiles).select_related("item").order_by("-check_in", "-updated_at")[:8]:
+        for booking in self._booking_inquiries()[:8]:
             listing = booking.item.business_display_name if booking.item else "Flexible MLADIS stay"
             stays.append(
                 {
@@ -352,7 +384,7 @@ class Guest:
                     "guests": booking.guests,
                 }
             )
-        for record in AirbnbGuestRecord.objects.filter(customer_profile__in=self.profiles).select_related("item").order_by("-check_in", "-updated_at")[:4]:
+        for record in AirbnbGuestRecord.objects.filter(customer_profile_id__in=self.profile_ids).select_related("item").order_by("-check_in", "-updated_at")[:4]:
             listing = record.listing_title or (record.item.business_display_name if record.item else "Airbnb stay")
             stays.append(
                 {
@@ -370,7 +402,7 @@ class Guest:
         return sorted(stays, key=lambda stay: stay["date_range"], reverse=True)
 
     def payments_projection(self) -> dict[str, Any]:
-        invoices = list(Invoice.objects.filter(customer_profile__in=self.profiles).order_by("-issue_date", "-created_at")[:8])
+        invoices = list(Invoice.objects.filter(customer_profile_id__in=self.profile_ids).order_by("-issue_date", "-created_at")[:8])
         items = [
             {
                 "id": f"invoice-{invoice.pk}",
@@ -383,10 +415,19 @@ class Guest:
             }
             for invoice in invoices
         ]
-        hold_query = Q(inquiry__customer_profile__in=self.profiles)
+        hold_query = Q()
+        if self.profile_ids:
+            hold_query |= Q(inquiry__customer_profile_id__in=self.profile_ids)
+        booking_ids = [booking.pk for booking in self._booking_inquiries()]
+        if booking_ids:
+            hold_query |= Q(inquiry_id__in=booking_ids)
         for email in self._contact_emails():
             hold_query |= Q(email__iexact=email)
-        holds = ReservationPaymentHold.objects.filter(hold_query).select_related("inquiry").distinct().order_by("-created_at")[:4]
+        holds = (
+            ReservationPaymentHold.objects.filter(hold_query).select_related("inquiry").distinct().order_by("-created_at")[:4]
+            if hold_query.children
+            else []
+        )
         for hold in holds:
             items.append(
                 {
@@ -407,14 +448,23 @@ class Guest:
         }
 
     def deposits_projection(self) -> dict[str, Any]:
-        deposit_query = Q(inquiry__customer_profile__in=self.profiles)
+        deposit_query = Q()
+        if self.profile_ids:
+            deposit_query |= Q(inquiry__customer_profile_id__in=self.profile_ids)
+        booking_ids = [booking.pk for booking in self._booking_inquiries()]
+        if booking_ids:
+            deposit_query |= Q(inquiry_id__in=booking_ids)
         for email in self._contact_emails():
             deposit_query |= Q(email__iexact=email)
-        deposits = list(
-            DamageDeposit.objects.filter(deposit_query)
-            .select_related("inquiry", "item")
-            .distinct()
-            .order_by("-created_at")[:8]
+        deposits = (
+            list(
+                DamageDeposit.objects.filter(deposit_query)
+                .select_related("inquiry", "item")
+                .distinct()
+                .order_by("-created_at")[:8]
+            )
+            if deposit_query.children
+            else []
         )
         active_values = {"new", "checkout_created", "requires_capture", "requires_configuration"}
         released_values = {"canceled"}
@@ -443,12 +493,12 @@ class Guest:
                 "type": "guest_created",
                 "label": "Guest profile created",
                 "actor": "MLADIS",
-                "timestamp": _datetime_label(self.profile.created_at),
-                "note": self.profile.get_source_display(),
+                "timestamp": _datetime_label(self._first_seen_at()),
+                "note": self._source_label(),
             }
         ]
         for alias in self.profiles:
-            if alias.pk == self.profile.pk:
+            if alias.pk == self.profile.pk or not alias.pk:
                 continue
             events.append(
                 {
@@ -459,7 +509,7 @@ class Guest:
                     "note": alias.name or alias.email or "Additional real guest record",
                 }
             )
-        for booking in BookingInquiry.objects.filter(customer_profile__in=self.profiles).order_by("-created_at")[:4]:
+        for booking in self._booking_inquiries()[:4]:
             events.append(
                 {
                     "type": "reservation_linked",
@@ -469,7 +519,7 @@ class Guest:
                     "note": booking.get_status_display(),
                 }
             )
-        for feedback in CustomerFeedback.objects.filter(customer_profile__in=self.profiles).order_by("-created_at")[:3]:
+        for feedback in CustomerFeedback.objects.filter(customer_profile_id__in=self.profile_ids).order_by("-created_at")[:3]:
             events.append(
                 {
                     "type": "feedback_recorded",
@@ -492,8 +542,8 @@ class Guest:
                 "country": country,
                 "country_code": country_code,
                 "preferred_language": self.profile.preferred_language or "en",
-                "source": self.profile.source,
-                "source_label": self.profile.get_source_display(),
+                "source": self._source_value(),
+                "source_label": self._source_label(),
             },
             "contact": {
                 "email": self._contact_email(),
@@ -501,17 +551,17 @@ class Guest:
                 "last_contact_at": self.last_contact_at().isoformat() if self.last_contact_at() else "",
                 "last_contact_label": _date_label(self.last_contact_at()),
                 "profile_admin_url": self._absolute_admin_url(),
-                "full_profile_url": f"/ops/guests/?guest={self.profile.pk}",
+                "full_profile_url": f"/ops/guests/?guest={self.id}",
             },
             "profile": self.profile_projection(),
             "status": _status_payload(self.status_value(), "Blocked" if self.status_value() == "blocked" else "Active"),
             "segment": _status_payload(self.segment_value(), self.segment_label()),
             "marketing": {
                 "consent_status": self.profile.marketing_consent_status,
-                "consent_label": self.profile.get_marketing_consent_status_display(),
+                "consent_label": self._marketing_consent_label(),
                 "requested_at": self.profile.marketing_consent_requested_at.isoformat() if self.profile.marketing_consent_requested_at else "",
                 "consent_at": self.profile.marketing_consent_at.isoformat() if self.profile.marketing_consent_at else "",
-                "can_receive_promotions": self.profile.can_receive_promotions,
+                "can_receive_promotions": self._can_receive_promotions(),
             },
             "tags": [tag.to_payload() for tag in self.tags()],
             "preferences": self.preferences(),
@@ -523,7 +573,7 @@ class Guest:
             "timeline": self.activity_projection(),
             "row": self.row_projection(),
             "source": "api",
-            "source_profile_count": len(self.profiles),
+            "source_profile_count": len(self.profile_ids),
             "source_profile_ids": self.profile_ids,
             "missing_fields": self._missing_fields(),
             "is_complete": not self._missing_fields(),
@@ -535,6 +585,8 @@ class Guest:
         return self.request.build_absolute_uri(path) if self.request else path
 
     def _absolute_admin_url(self) -> str:
+        if not self.profile.pk:
+            return ""
         return self._absolute_url(reverse("admin:bookings_customerprofile_change", args=[self.profile.pk]))
 
     @staticmethod
@@ -553,6 +605,51 @@ class Guest:
             return f"{booking.check_in:%b %-d} - {booking.check_out:%b %-d, %Y}"
         return "Dates pending"
 
+    def _primary_reservation(self) -> BookingInquiry | None:
+        bookings = self._booking_inquiries()
+        return bookings[0] if bookings else None
+
+    def _booking_inquiries(self) -> list[BookingInquiry]:
+        booking_by_id: dict[int, BookingInquiry] = {}
+        if self.profile_ids:
+            for booking in (
+                BookingInquiry.objects.filter(customer_profile_id__in=self.profile_ids)
+                .select_related("item")
+                .order_by("-check_in", "-updated_at")
+            ):
+                booking_by_id[booking.pk] = booking
+        for booking in self.reservation_aliases:
+            booking_by_id[booking.pk] = booking
+        return sorted(
+            booking_by_id.values(),
+            key=lambda booking: (
+                booking.check_in or date.min,
+                booking.updated_at or timezone.now(),
+                booking.pk or 0,
+            ),
+            reverse=True,
+        )
+
+    def _first_seen_at(self):
+        values = [profile.created_at for profile in self.profiles if profile.created_at]
+        values.extend(booking.created_at for booking in self._booking_inquiries() if booking.created_at)
+        return min(values) if values else timezone.now()
+
+    def _source_value(self) -> str:
+        return self.profile.source or ContactSource.DIRECT
+
+    def _source_label(self) -> str:
+        return dict(ContactSource.choices).get(self._source_value(), self._source_value().replace("_", " ").title())
+
+    def _marketing_consent_label(self) -> str:
+        return dict(MarketingConsentStatus.choices).get(
+            self.profile.marketing_consent_status,
+            self.profile.marketing_consent_status.replace("_", " ").title(),
+        )
+
+    def _can_receive_promotions(self) -> bool:
+        return self.profile.marketing_consent_status == MarketingConsentStatus.OPTED_IN and bool(self._contact_email())
+
     def _birthday(self) -> str:
         return ""
 
@@ -560,7 +657,10 @@ class Guest:
         return "Not captured"
 
     def _contact_email(self) -> str:
-        return next((profile.email for profile in self.profiles if profile.email), "")
+        return next((profile.email for profile in self.profiles if profile.email), "") or next(
+            (booking.email for booking in self.reservation_aliases if booking.email),
+            "",
+        )
 
     def _contact_emails(self) -> list[str]:
         emails: list[str] = []
@@ -570,15 +670,28 @@ class Guest:
             if normalized and normalized not in seen:
                 emails.append(normalized)
                 seen.add(normalized)
+        for booking in self.reservation_aliases:
+            normalized = _normalized_email(booking.email)
+            if normalized and normalized not in seen:
+                emails.append(normalized)
+                seen.add(normalized)
         return emails
 
     def _contact_phone(self) -> str:
-        return next((profile.phone for profile in self.profiles if profile.phone), "")
+        return next((profile.phone for profile in self.profiles if profile.phone), "") or next(
+            (booking.phone for booking in self.reservation_aliases if booking.phone),
+            "",
+        )
 
     def _profile_notes(self) -> str:
         for profile in self.profiles:
             if profile.notes:
                 return profile.notes
+        for booking in self.reservation_aliases:
+            if booking.admin_notes:
+                return booking.admin_notes
+            if booking.message:
+                return booking.message
         return "No notes captured yet."
 
     def _search_terms(self) -> list[str]:
@@ -591,7 +704,7 @@ class Guest:
                     profile.phone,
                 ]
             )
-        for booking in BookingInquiry.objects.filter(customer_profile__in=self.profiles).select_related("item")[:20]:
+        for booking in self._booking_inquiries()[:20]:
             terms.extend(
                 [
                     booking.guest_name,
@@ -601,7 +714,7 @@ class Guest:
                     booking.item.business_display_name if booking.item else "",
                 ]
             )
-        for record in AirbnbGuestRecord.objects.filter(customer_profile__in=self.profiles).select_related("item")[:20]:
+        for record in AirbnbGuestRecord.objects.filter(customer_profile_id__in=self.profile_ids).select_related("item")[:20]:
             terms.extend(
                 [
                     record.guest_name,
@@ -636,7 +749,7 @@ class GuestAnalyticsService:
         repeat = sum(1 for guest in guests if guest.past_stay_count() >= 2)
         vip = sum(1 for guest in guests if guest.segment_value() == "vip")
         blocked = sum(1 for guest in guests if guest.status_value() == "blocked")
-        promo = sum(1 for guest in guests if guest.profile.can_receive_promotions)
+        promo = sum(1 for guest in guests if guest._can_receive_promotions())
         spend = sum(guest.total_spend_cents() for guest in guests)
         return [
             {"label": "Guests", "value": total, "caption": "Relationship profiles", "tone": "blue"},
@@ -725,12 +838,24 @@ class GuestQueryService:
         return [guest for guest in guests if self._matches_filters(guest, filters or {})]
 
     def unique_guests(self, request=None) -> list[Guest]:
-        return self._profiles_to_guests(list(self.queryset()), request=request)
+        unlinked_reservations = list(
+            BookingInquiry.objects.filter(customer_profile__isnull=True)
+            .select_related("item")
+            .order_by("-updated_at", "-created_at")
+        )
+        return self._profiles_to_guests(list(self.queryset()), reservations=unlinked_reservations, request=request)
 
-    def _profiles_to_guests(self, profiles: list[CustomerProfile], request=None) -> list[Guest]:
+    def _profiles_to_guests(
+        self,
+        profiles: list[CustomerProfile],
+        reservations: list[BookingInquiry] | None = None,
+        request=None,
+    ) -> list[Guest]:
         grouped: dict[str, list[CustomerProfile]] = defaultdict(list)
+        grouped_reservations: dict[str, list[BookingInquiry]] = defaultdict(list)
         parent: dict[str, str] = {}
         profile_roots: dict[int, str] = {}
+        reservation_roots: dict[int, str] = {}
 
         def find(key: str) -> str:
             parent.setdefault(key, key)
@@ -750,14 +875,39 @@ class GuestQueryService:
                 union(keys[0], key)
             profile_roots[profile.pk] = keys[0]
 
+        for reservation in reservations or []:
+            keys = self._reservation_identity_keys(reservation)
+            for key in keys:
+                parent.setdefault(key, key)
+            for key in keys[1:]:
+                union(keys[0], key)
+            reservation_roots[reservation.pk] = keys[0]
+
         for profile in profiles:
             grouped[find(profile_roots[profile.pk])].append(profile)
+        for reservation in reservations or []:
+            grouped_reservations[find(reservation_roots[reservation.pk])].append(reservation)
 
         guests: list[Guest] = []
-        for profile_group in grouped.values():
+        all_roots = set(grouped) | set(grouped_reservations)
+        for root in all_roots:
+            profile_group = grouped.get(root, [])
+            reservation_group = grouped_reservations.get(root, [])
+            if not profile_group and reservation_group:
+                canonical_reservation = self._canonical_reservation(reservation_group)
+                virtual_profile = self._reservation_profile(canonical_reservation)
+                guests.append(
+                    Guest(
+                        virtual_profile,
+                        request=request,
+                        reservation_aliases=reservation_group,
+                        virtual_id=f"reservation-guest-{canonical_reservation.pk}",
+                    )
+                )
+                continue
             canonical = self._canonical_profile(profile_group)
             aliases = [profile for profile in profile_group if profile.pk != canonical.pk]
-            guests.append(Guest(canonical, request=request, aliases=aliases))
+            guests.append(Guest(canonical, request=request, aliases=aliases, reservation_aliases=reservation_group))
         return sorted(guests, key=lambda guest: (guest.last_contact_at() or timezone.now(), guest.display_name.lower()), reverse=True)
 
     @staticmethod
@@ -770,6 +920,45 @@ class GuestQueryService:
         if phone:
             keys.append(f"phone:{phone}")
         return keys or [f"profile:{profile.pk}"]
+
+    @staticmethod
+    def _reservation_identity_keys(reservation: BookingInquiry) -> list[str]:
+        keys = []
+        email = _normalized_email(reservation.email)
+        phone = _normalized_phone(reservation.phone)
+        if email:
+            keys.append(f"email:{email}")
+        if phone:
+            keys.append(f"phone:{phone}")
+        return keys or [f"reservation:{reservation.pk}"]
+
+    @staticmethod
+    def _canonical_reservation(reservations: list[BookingInquiry]) -> BookingInquiry:
+        return max(
+            reservations,
+            key=lambda booking: (
+                bool(booking.email),
+                bool(booking.phone),
+                booking.updated_at or timezone.now(),
+                booking.pk or 0,
+            ),
+        )
+
+    @staticmethod
+    def _reservation_profile(reservation: BookingInquiry) -> CustomerProfile:
+        profile = CustomerProfile(
+            name=reservation.guest_name,
+            email=_normalized_email(reservation.email),
+            phone=reservation.phone,
+            segment=ClientSegment.AVERAGE,
+            source=ContactSource.DIRECT,
+            preferred_language="en",
+            notes=reservation.admin_notes or reservation.message,
+            marketing_consent_status=MarketingConsentStatus.UNKNOWN,
+        )
+        profile.created_at = reservation.created_at
+        profile.updated_at = reservation.updated_at
+        return profile
 
     @staticmethod
     def _canonical_profile(profiles: list[CustomerProfile]) -> CustomerProfile:
@@ -798,7 +987,7 @@ class GuestQueryService:
         if query and query not in " ".join(guest._search_terms()).lower():
             return False
         source = (filters.get("source") or "").strip()
-        if source and not any(profile.source == source for profile in guest.profiles):
+        if source and guest._source_value() != source:
             return False
         status = (filters.get("status") or "").strip()
         if status == "blocked" and guest.status_value() != "blocked":
@@ -853,11 +1042,13 @@ class GuestProjectionService:
             "blocked": {"value": "blocked", "label": "Blocked", "count": 0},
         }
         for guest in guests:
+            source_value = guest._source_value()
+            source_label = guest._source_label()
             sources.setdefault(
-                guest.profile.source,
-                {"value": guest.profile.source, "label": guest.profile.get_source_display(), "count": 0},
+                source_value,
+                {"value": source_value, "label": source_label, "count": 0},
             )
-            sources[guest.profile.source]["count"] += 1
+            sources[source_value]["count"] += 1
             statuses[guest.status_value()]["count"] += 1
         return {
             "sources": sorted(sources.values(), key=lambda item: item["label"]),

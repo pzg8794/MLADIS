@@ -3296,6 +3296,66 @@ class OpsDashboardTests(TestCase):
         compatibility_guest = next(row for row in customers_api_payload["rows"] if set(row["source_profile_ids"]) == {first_profile.pk, duplicate_profile.pk})
         self.assertEqual(compatibility_guest["source_profile_ids"], api_guest["source_profile_ids"])
 
+    def test_guest_workspace_includes_unlinked_real_reservation_guests(self):
+        staff = get_user_model().objects.create_user("reservation-guest-ops", "reservation-guest-ops@example.com", "secret", is_staff=True)
+        self.client.force_login(staff)
+        item = BookableItem.objects.create(
+            name="G-102",
+            slug="g-102-reservation-guests",
+            category=BookingCategory.STAY,
+            short_description="Reservation-backed guest test stay.",
+        )
+        inquiry = BookingInquiry.objects.create(
+            customer_profile=None,
+            item=item,
+            guest_name="Reservation Only Guest",
+            email="reservation.only@example.com",
+            phone="(809) 555-0188",
+            check_in=timezone.localdate() + timedelta(days=6),
+            check_out=timezone.localdate() + timedelta(days=8),
+            guests=2,
+            total_cents=42000,
+        )
+
+        workspace = GuestService().workspace_payload()
+        guest_payload = next(row for row in workspace["rows"] if row["identity"]["name"] == "Reservation Only Guest")
+
+        self.assertEqual(guest_payload["source_profile_ids"], [])
+        self.assertEqual(guest_payload["source_profile_count"], 0)
+        self.assertEqual(guest_payload["row"]["past_stays"], 1)
+        self.assertEqual(guest_payload["row"]["total_spend"]["amount_cents"], 42000)
+        self.assertEqual(guest_payload["stays"][0]["reservation_key"], inquiry.request_key)
+
+        response = self.client.get(reverse("bookings:ops-guests"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Reservation Only Guest")
+        self.assertNotContains(response, "257")
+
+    def test_modern_guests_page_uses_real_filters_pagination_and_export(self):
+        staff = get_user_model().objects.create_user("guest-page-ops", "guest-page-ops@example.com", "secret", is_staff=True)
+        self.client.force_login(staff)
+        CustomerProfile.objects.create(name="Alpha Guest", email="alpha@example.com", source=ContactSource.DIRECT)
+        CustomerProfile.objects.create(name="Beta Guest", email="beta@example.com", source=ContactSource.AIRBNB)
+        CustomerProfile.objects.create(name="Blocked Guest", email="blocked@example.com", segment=ClientSegment.BLACKLISTED, source=ContactSource.MANUAL)
+
+        page_two = self.client.get(reverse("bookings:ops-guests"), {"page": "2", "page_size": "2"})
+        self.assertEqual(page_two.status_code, 200)
+        self.assertContains(page_two, "Showing 3 to 4 of")
+        self.assertContains(page_two, "real guests")
+
+        filtered = self.client.get(reverse("bookings:ops-guests"), {"source": ContactSource.AIRBNB})
+        self.assertContains(filtered, "Beta Guest")
+        self.assertNotContains(filtered, "Alpha Guest")
+
+        blocked = self.client.get(reverse("bookings:ops-guests"), {"status": "blocked"})
+        self.assertContains(blocked, "Blocked Guest")
+        self.assertNotContains(blocked, "Beta Guest")
+
+        exported = self.client.get(reverse("bookings:ops-guests"), {"export": "csv"})
+        self.assertEqual(exported.status_code, 200)
+        self.assertEqual(exported["Content-Type"], "text/csv")
+        self.assertIn("Alpha Guest", exported.content.decode())
+
     @override_settings(SOCIAL_AUTH_CANONICAL_ORIGIN="https://mladis.com", SOCIAL_AUTH_PROVIDER_ORIGINS={})
     def test_oauth_diagnostics_displays_callback_urls(self):
         staff = get_user_model().objects.create_user("oauth", "oauth@example.com", "secret", is_staff=True)

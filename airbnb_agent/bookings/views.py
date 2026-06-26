@@ -2167,17 +2167,6 @@ class OpsReservationStatusAPIView(View):
 class ModernOpsCustomersView(TemplateView):
     template_name = "bookings/modern_ops_customers.html"
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx.update(
-            {
-                "page_title": "Guests",
-                "page_heading": "Guests",
-                "page_subtitle": "Manage guest relationships, profiles, travel details, and communication history.",
-            }
-        )
-        return ctx
-
     COUNTRY_FLAGS = {
         "DO": "🇩🇴",
         "US": "🇺🇸",
@@ -2194,147 +2183,43 @@ class ModernOpsCustomersView(TemplateView):
         "FR": "French",
     }
 
-    @classmethod
-    def _decorate_detail(cls, detail):
-        if not detail:
-            return detail
-
-        payload = dict(detail)
-        display_name = payload.get("display_name") or "Guest"
-        country_code = (payload.get("country_code") or "").upper()
-        preferred_language = (payload.get("preferred_language") or "").upper()
-
-        payload["country_flag"] = cls.COUNTRY_FLAGS.get(country_code, "🌍")
-        payload["preferred_language_display"] = cls.LANGUAGE_LABELS.get(preferred_language, preferred_language or "English")
-        payload["email"] = payload.get("email") or "maria.rodriguez@email.com"
-        payload["first_name"] = display_name.split()[0] if display_name else "Guest"
-
-        missing_labels = ["Request ID", "Ask guest", "Request"]
-        missing_tones = ["warning", "danger", "danger"]
-        payload["missing_information_rows"] = [
-            {
-                "label": item,
-                "button": missing_labels[index] if index < len(missing_labels) else "Request",
-                "tone": missing_tones[index] if index < len(missing_tones) else "danger",
-            }
-            for index, item in enumerate(payload.get("missing_information", []))
-        ]
-
-        payload["risk_badge"] = "Low Risk"
-        payload["risk_rows"] = [
-            {"label": label.replace("Payment history (5 stays)", "Payment history: Good (5 stays)"), "level": level}
-            for label, level in payload.get("risk_assessment", [])
-        ]
-
-        action_icons = ["✉", "⊞", "◫"]
-        payload["recommended_action_rows"] = [
-            {"label": action, "icon": action_icons[index] if index < len(action_icons) else "✉"}
-            for index, action in enumerate(payload.get("recommended_actions", []))
-        ]
-
-        payload["messages"] = [
-            {
-                **message,
-                "avatar": "PC" if message.get("is_agent") else "MR",
-                "read_state": "Read" if message.get("is_agent") else "",
-            }
-            for message in payload.get("messages", [])
-        ]
-
-        payload["last_stays"] = [
-            {**s, "status_cls": s.get("status_cls", "completed")}
-            for s in payload.get("last_stays", [])
-        ]
-
-        if payload.get("upcoming_stay"):
-            payload["upcoming_stay"] = {
-                **payload["upcoming_stay"],
-                "status_cls": "confirmed",
-            }
-
-        payload["linked_reservations"] = [
-            {
-                **reservation,
-                "status_cls": "completed" if reservation.get("status") == "Completed" else "confirmed",
-            }
-            for reservation in payload.get("linked_reservations", [])
-        ]
-
-        return payload
-
-    @classmethod
-    def _mock_detail_for_row(cls, service, row):
-        if not row:
-            return None
-
-        payload = dict(service.mock_detail_payload())
-        display_name = row.get("name") or "Guest"
-        payload.update(
-            {
-                "display_name": display_name,
-                "avatar": row.get("avatar") or "".join(part[0] for part in display_name.split()[:2]).upper(),
-                "status_label": f"{row.get('status')} Guest" if row.get("status") == "VIP" else row.get("status", "Guest"),
-                "status_cls": row.get("status_cls", "active"),
-                "country": row.get("country", ""),
-                "country_code": row.get("country_code", ""),
-                "email": row.get("email", ""),
-                "phone": row.get("phone") or "-",
-                "messages": [
-                    {
-                        "author": display_name,
-                        "time": row.get("last_contact_label", ""),
-                        "body": "Thanks for keeping us updated about the stay.",
-                        "is_agent": False,
-                    },
-                    {
-                        "author": "You",
-                        "time": row.get("last_contact_label", ""),
-                        "body": f"Hi {display_name.split()[0] if display_name else 'there'}! We have your guest profile open and can help with your reservation details.",
-                        "is_agent": True,
-                    },
-                ],
-            }
-        )
-        return payload
+    def get(self, request, *args, **kwargs):
+        if request.GET.get("export") == "csv":
+            return self._export_csv(request)
+        return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        service = CustomersCRMService()
-
+        payload = GuestService().workspace_payload(request=self.request, filters=self.request.GET)
         tab = self.request.GET.get("tab", "all")
         search = self.request.GET.get("search", "").strip()
+        source = self.request.GET.get("source", "").strip()
+        status = self.request.GET.get("status", "").strip()
         selected_id = (self.request.GET.get("customer") or self.request.GET.get("guest") or "").strip()
-
-        use_mock_dataset = tab == "all" and not search
-        if use_mock_dataset:
-            rows = service.mock_table_rows()
-            tab_counts = service.mock_tab_counts()
-            selected_row = next((row for row in rows if str(row["id"]) == selected_id), None)
-            detail = self._mock_detail_for_row(service, selected_row) if selected_row else None
-            selected_customer_id = str(selected_row["id"]) if selected_row else ""
-            total_results = tab_counts["all"]
-            page_count = 257
-        else:
-            profiles = service.get_profiles(tab=tab, search=search)
-            rows = [service.table_row_payload(profile) for profile in profiles[:5]]
-            tab_counts = service.get_tab_counts()
-
-            selected_profile = None
-            if selected_id.isdigit():
-                selected_profile = next((profile for profile in profiles if profile.pk == int(selected_id)), None)
-
-            detail = service.detail_payload(selected_profile) if selected_profile else None
-            selected_customer_id = str(selected_profile.pk) if selected_profile else ""
-            total_results = len(profiles)
-            page_count = max((total_results + len(rows) - 1) // max(len(rows), 1), 1) if total_results else 1
-
-        detail = self._decorate_detail(detail)
+        page_size = self._positive_int(self.request.GET.get("page_size"), default=10, minimum=1, maximum=50)
+        requested_page = self._positive_int(self.request.GET.get("page"), default=1, minimum=1, maximum=9999)
+        total_results = len(payload["rows"])
+        page_count = max((total_results + page_size - 1) // page_size, 1)
+        page = min(requested_page, page_count)
+        start_index = (page - 1) * page_size
+        visible_payloads = payload["rows"][start_index : start_index + page_size]
+        visible_ids = {str(row["id"]) for row in visible_payloads}
+        selected_payload = next((row for row in visible_payloads if str(row["id"]) == selected_id), None) if selected_id in visible_ids else None
+        selected_customer_id = str(selected_payload["id"]) if selected_payload else ""
+        rows = [self._table_row(row, page=page, selected_id=selected_customer_id) for row in visible_payloads]
+        detail = self._detail_payload(selected_payload) if selected_payload else None
+        tab_counts = {option["value"]: option["count"] for option in payload["segment_options"]}
         tab_counts_display = {key: f"{value:,}" for key, value in tab_counts.items()}
-
+        pagination = self._pagination(page, page_size, total_results, selected_id="")
         ctx.update(
             {
+                "page_title": "Guests",
+                "page_heading": "Guests",
+                "page_subtitle": "Manage guest relationships, profiles, travel details, and communication history.",
                 "tab": tab,
                 "search": search,
+                "source": source,
+                "status": status,
                 "rows": rows,
                 "tab_counts": tab_counts,
                 "tab_counts_display": tab_counts_display,
@@ -2344,10 +2229,199 @@ class ModernOpsCustomersView(TemplateView):
                 "total_results_display": f"{total_results:,}",
                 "page_count": page_count,
                 "page_count_display": f"{page_count:,}",
+                "pagination": pagination,
+                "filter_options": payload["filter_options"],
+                "export_url": self._url_with(export="csv", page=""),
+                "filters_url": "#guest-filters",
                 "site_settings": SiteSettings.current(),
             }
         )
         return ctx
+
+    def _export_csv(self, request):
+        payload = GuestService().workspace_payload(request=request, filters=request.GET)
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="mladis-guests.csv"'
+        writer = csv.writer(response)
+        writer.writerow(["Guest", "Email", "Phone", "Source", "Past stays", "Total spend", "Status", "Last contact"])
+        for guest in payload["rows"]:
+            row = guest["row"]
+            writer.writerow(
+                [
+                    row["name"],
+                    row["email"],
+                    row["phone"],
+                    row["source"],
+                    row["past_stays"],
+                    row["total_spend"]["with_currency"],
+                    row["segment"]["label"],
+                    row["last_contact_label"],
+                ]
+            )
+        return response
+
+    def _table_row(self, guest_payload, page: int, selected_id: str) -> dict:
+        row = guest_payload["row"]
+        country_code = (row.get("country_code") or "").upper()
+        status = row["segment"]
+        row_id = str(guest_payload["id"])
+        return {
+            "id": row_id,
+            "name": row["name"],
+            "email": row["email"],
+            "phone": row["phone"],
+            "avatar": row["initials"],
+            "avatar_cls": status["value"],
+            "country": row["country"],
+            "country_flag": self.COUNTRY_FLAGS.get(country_code, ""),
+            "channel": row["source"],
+            "channel_cls": row["source_value"],
+            "past_stays": row["past_stays"],
+            "total_spend": row["total_spend"]["display"],
+            "status": status["label"],
+            "status_cls": status["value"],
+            "last_contact_label": row["last_contact_label"],
+            "contact_icon": "✉" if row["email"] else "☎" if row["phone"] else "",
+            "toggle_url": self._url_with(customer="" if row_id == selected_id else row_id, guest="", page=page),
+        }
+
+    def _detail_payload(self, guest_payload) -> dict:
+        identity = guest_payload["identity"]
+        contact = guest_payload["contact"]
+        row = guest_payload["row"]
+        profile = guest_payload["profile"]
+        country_code = (identity.get("country_code") or "").upper()
+        messages_payload = guest_payload["messages"]["items"]
+        stays = guest_payload["stays"]
+        linked_reservations = [self._stay_detail_payload(stay) for stay in stays]
+        upcoming = next((item for item in linked_reservations if item["status_cls"] in {"new", "reviewing", "quoted", "confirmed"}), None)
+        missing_rows = [
+            {"label": self._missing_label(field), "button": "Review", "tone": "warning"}
+            for field in guest_payload["missing_fields"]
+        ]
+        first_name = identity["name"].split()[0] if identity.get("name") else "Guest"
+        return {
+            "id": guest_payload["id"],
+            "display_name": identity["name"],
+            "first_name": first_name,
+            "avatar": identity["initials"],
+            "status_label": guest_payload["segment"]["label"],
+            "status_cls": guest_payload["segment"]["value"],
+            "country": identity["country"],
+            "country_code": country_code,
+            "country_flag": self.COUNTRY_FLAGS.get(country_code, ""),
+            "email": contact["email"] or "No email captured",
+            "phone": contact["phone"] or "No phone captured",
+            "preferred_language_display": self.LANGUAGE_LABELS.get((identity.get("preferred_language") or "").upper(), (identity.get("preferred_language") or "en").upper()),
+            "birthday": profile["birthday"] or "Not captured",
+            "travel_style": profile["travel_style"] or "Not captured",
+            "guest_since": profile["guest_since"] or "Not captured",
+            "tags": [tag["label"] for tag in guest_payload["tags"]],
+            "notes": profile["notes"],
+            "profile_url": contact.get("profile_admin_url") or contact.get("full_profile_url") or "",
+            "all_reservations_url": f"{reverse('bookings:ops-reservations')}?search={row['email'] or row['phone'] or row['name']}",
+            "messages": [self._message_detail_payload(message, identity["initials"]) for message in messages_payload],
+            "last_stays": linked_reservations,
+            "upcoming_stay": upcoming,
+            "linked_reservations": linked_reservations,
+            "missing_information_rows": missing_rows,
+            "risk_badge": "Review" if missing_rows else "Complete",
+            "risk_rows": [
+                {"label": "Real guest source records only", "level": "success"},
+                {"label": f"{row['past_stays']} linked reservation/stay record(s)", "level": "success"},
+                {"label": "No synthetic guest rows in this workspace", "level": "success"},
+            ],
+            "recommended_action_rows": [
+                {"label": "Review linked reservations", "icon": "▣"},
+                {"label": "Confirm contact details", "icon": "✉"},
+            ],
+            "suggested_reply": self._suggested_reply(first_name, upcoming),
+        }
+
+    @staticmethod
+    def _message_detail_payload(message, initials: str) -> dict:
+        return {
+            "author": message.get("sender_label") or "Guest",
+            "time": message.get("timestamp") or "",
+            "body": message.get("body") or "",
+            "is_agent": bool(message.get("from_staff")),
+            "avatar": "ML" if message.get("from_staff") else initials,
+            "read_state": message.get("status", "").title() if message.get("from_staff") else "",
+        }
+
+    @staticmethod
+    def _stay_detail_payload(stay: dict) -> dict:
+        status_value = stay.get("status_value") or "confirmed"
+        return {
+            "request_key": stay["reservation_key"],
+            "label": stay["listing_name"],
+            "date_range": stay["date_range"],
+            "amount": stay["total"]["with_currency"],
+            "status": stay["status"],
+            "status_cls": status_value,
+            "url": stay.get("reservation_url") or "",
+        }
+
+    @staticmethod
+    def _suggested_reply(first_name: str, upcoming: dict | None) -> str:
+        if upcoming:
+            return f"Hi {first_name}, we have your reservation for {upcoming['label']} on {upcoming['date_range']} on file. Let us know if you need any arrival support."
+        return f"Hi {first_name}, we have your guest profile open and can help with your reservation details."
+
+    @staticmethod
+    def _missing_label(field: str) -> str:
+        return {
+            "contact.email": "Email missing",
+            "contact.phone": "Phone missing",
+            "marketing.consent_status": "Marketing consent not captured",
+        }.get(field, field.replace(".", " ").title())
+
+    @staticmethod
+    def _positive_int(value, default: int, minimum: int, maximum: int) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            parsed = default
+        return max(minimum, min(parsed, maximum))
+
+    def _pagination(self, page: int, page_size: int, total_results: int, selected_id: str = "") -> dict:
+        page_count = max((total_results + page_size - 1) // page_size, 1)
+        start = ((page - 1) * page_size) + 1 if total_results else 0
+        end = min(page * page_size, total_results)
+        pages = []
+        if page_count <= 7:
+            page_numbers = list(range(1, page_count + 1))
+        else:
+            page_numbers = sorted({1, page_count, page - 1, page, page + 1} & set(range(1, page_count + 1)))
+        previous = None
+        for number in page_numbers:
+            if previous is not None and number - previous > 1:
+                pages.append({"ellipsis": True})
+            pages.append({"number": number, "is_current": number == page, "url": self._url_with(page=number, customer=selected_id)})
+            previous = number
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total_pages": page_count,
+            "total_results": total_results,
+            "start": start,
+            "end": end,
+            "has_previous": page > 1,
+            "has_next": page < page_count,
+            "previous_url": self._url_with(page=page - 1, customer=selected_id) if page > 1 else "",
+            "next_url": self._url_with(page=page + 1, customer=selected_id) if page < page_count else "",
+            "pages": pages,
+        }
+
+    def _url_with(self, **overrides) -> str:
+        params = self.request.GET.copy()
+        for key, value in overrides.items():
+            if value in ("", None):
+                params.pop(key, None)
+            else:
+                params[key] = str(value)
+        encoded = params.urlencode()
+        return f"?{encoded}" if encoded else "?"
 
 
 @method_decorator(ops_staff_required, name="dispatch")
