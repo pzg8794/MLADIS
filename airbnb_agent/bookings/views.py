@@ -2701,49 +2701,7 @@ class OpsMaintenanceDraftAIDescriptionAPIView(View):
 @method_decorator(ops_staff_required, name="dispatch")
 class OpsCustomersAPIView(View):
     def get(self, request):
-        profiles = CustomerProfile.objects.annotate(
-            direct_reservations=Count("booking_inquiries", distinct=True),
-            airbnb_reservations=Count("airbnb_guest_records", distinct=True),
-            feedback_total=Count("feedback_entries", distinct=True),
-            invoice_total=Count("invoices", distinct=True),
-        ).order_by("-updated_at", "name", "email")
-        rows = [self._customer_payload(request, profile) for profile in profiles]
-        segment_counts = {
-            value: CustomerProfile.objects.filter(segment=value).count()
-            for value, _label in ClientSegment.choices
-        }
-        with_contact = profiles.filter(Q(email__gt="") | Q(phone__gt="")).count()
-        promotion_ready = profiles.filter(
-            marketing_consent_status=MarketingConsentStatus.OPTED_IN,
-        ).exclude(email="").count()
-        return JsonResponse(
-            {
-                "summary_cards": [
-                    self._metric("Customers", profiles.count(), "Guest profiles."),
-                    self._metric("Promo-ready", promotion_ready, "Email + opt-in."),
-                    self._metric("VIP/Favorite", segment_counts.get(ClientSegment.VIP, 0) + segment_counts.get(ClientSegment.FAVORITE, 0), "High-touch."),
-                    self._metric("Blacklisted", segment_counts.get(ClientSegment.BLACKLISTED, 0), "Review first."),
-                    self._metric("Contact", with_contact, "Email or phone."),
-                    self._metric("Feedback", sum(1 for row in rows if row["feedback_count"]), "Reviews + notes."),
-                ],
-                "segment_options": [
-                    {"value": "", "label": "All", "count": profiles.count(), "url": reverse("bookings:ops-customers")},
-                    *[
-                        {
-                            "value": value,
-                            "label": label,
-                            "count": segment_counts.get(value, 0),
-                            "url": f"{reverse('bookings:ops-customers')}?segment={value}",
-                        }
-                        for value, label in ClientSegment.choices
-                    ],
-                ],
-                "rows": rows,
-                "admin_url": reverse("admin:bookings_customerprofile_changelist"),
-                "legacy_url": reverse("admin:bookings_customerprofile_changelist"),
-                "generated_at": timezone.now().isoformat(),
-            }
-        )
+        return JsonResponse(GuestService().workspace_payload(request=request, filters=request.GET))
 
     @staticmethod
     def _metric(label, value, caption):

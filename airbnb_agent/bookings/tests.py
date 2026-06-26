@@ -33,6 +33,7 @@ from .admin import DamageDepositAdmin
 from .airbnb_import import AirbnbGuestEmailParser, AirbnbGuestImportService
 from .data_lake import MLADISDataLakeExporter
 from .forms import BookingInquiryForm
+from .guest_services import GuestService
 from .models import (
     AdminAccess,
     AgentFAQ,
@@ -3188,8 +3189,8 @@ class OpsDashboardTests(TestCase):
                 self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         customers_payload = self.client.get(reverse("bookings:ops-customers-api")).json()
-        self.assertEqual(customers_payload["rows"][0]["name"], "VIP Guest")
-        self.assertEqual(customers_payload["rows"][0]["segment"], "VIP")
+        self.assertEqual(customers_payload["rows"][0]["identity"]["name"], "VIP Guest")
+        self.assertEqual(customers_payload["rows"][0]["segment"]["value"], "vip")
 
         guests_payload = self.client.get(reverse("bookings:ops-guests-api")).json()
         self.assertEqual(guests_payload["rows"][0]["identity"]["name"], "VIP Guest")
@@ -3235,6 +3236,65 @@ class OpsDashboardTests(TestCase):
         self.assertIn("documents", section_ids)
         self.assertIn("providers", section_ids)
         self.assertIn("site_settings", settings_payload["admin_urls"])
+
+    def test_guest_workspace_collapses_duplicate_profiles_into_unique_real_guests(self):
+        staff = get_user_model().objects.create_user("guest-ops", "guest-ops@example.com", "secret", is_staff=True)
+        self.client.force_login(staff)
+        item = BookableItem.objects.create(
+            name="G-101",
+            slug="g-101-unique-guests",
+            category=BookingCategory.STAY,
+            short_description="Unique guest test stay.",
+        )
+        first_profile = CustomerProfile.objects.create(
+            name="Primary Guest",
+            email="primary.unique@example.com",
+            phone="(201) 555-0123",
+            source=ContactSource.DIRECT,
+        )
+        duplicate_profile = CustomerProfile.objects.create(
+            name="Imported Guest",
+            email="imported.unique@example.com",
+            phone="201-555-0123",
+            source=ContactSource.AIRBNB,
+        )
+        first_inquiry = BookingInquiry.objects.create(
+            customer_profile=first_profile,
+            item=item,
+            guest_name="Primary Guest",
+            email=first_profile.email,
+            phone=first_profile.phone,
+            check_in=timezone.localdate() + timedelta(days=3),
+            check_out=timezone.localdate() + timedelta(days=5),
+            guests=2,
+        )
+        duplicate_inquiry = BookingInquiry.objects.create(
+            customer_profile=duplicate_profile,
+            item=item,
+            guest_name="Imported Guest",
+            email=duplicate_profile.email,
+            phone=duplicate_profile.phone,
+            check_in=timezone.localdate() + timedelta(days=8),
+            check_out=timezone.localdate() + timedelta(days=10),
+            guests=2,
+        )
+
+        workspace = GuestService().workspace_payload()
+        guest_payload = next(row for row in workspace["rows"] if set(row["source_profile_ids"]) == {first_profile.pk, duplicate_profile.pk})
+        self.assertEqual(guest_payload["source_profile_count"], 2)
+        self.assertCountEqual(guest_payload["source_profile_ids"], [first_profile.pk, duplicate_profile.pk])
+        self.assertEqual(guest_payload["row"]["past_stays"], 2)
+        self.assertCountEqual(
+            [stay["reservation_key"] for stay in guest_payload["stays"]],
+            [first_inquiry.request_key, duplicate_inquiry.request_key],
+        )
+        self.assertEqual(guest_payload["messages"]["items"], [])
+
+        guests_api_payload = self.client.get(reverse("bookings:ops-guests-api")).json()
+        customers_api_payload = self.client.get(reverse("bookings:ops-customers-api")).json()
+        api_guest = next(row for row in guests_api_payload["rows"] if set(row["source_profile_ids"]) == {first_profile.pk, duplicate_profile.pk})
+        compatibility_guest = next(row for row in customers_api_payload["rows"] if set(row["source_profile_ids"]) == {first_profile.pk, duplicate_profile.pk})
+        self.assertEqual(compatibility_guest["source_profile_ids"], api_guest["source_profile_ids"])
 
     @override_settings(SOCIAL_AUTH_CANONICAL_ORIGIN="https://mladis.com", SOCIAL_AUTH_PROVIDER_ORIGINS={})
     def test_oauth_diagnostics_displays_callback_urls(self):
