@@ -22,6 +22,11 @@
 
 - OOP and MVC are mandatory for MLADIS. Treat them as the system bible, not as optional style.
 - MLADIS is the umbrella intelligence platform, not only the current booking/vacation-rental product. Read `docs/architecture/0001-mladis-universe-neuron-model.md` before creating or reshaping Finance, Booking, Research, Education, Fitness, Portfolio, Pyramid, FairAgent, data-store, or cross-domain features.
+- Read `docs/architecture/transactions/README.md` before changing Guests, Reservations, Payments, DepositHolds, Invoices, booking checkout, or financial/admin transaction views. The simple transaction spine is: `Guest -> Transaction -> Reservation / Payment / DepositHold -> Invoice`.
+- Do not model Reservations, Payments, DepositHolds, Guests, and Invoices as disconnected dashboard cards. They are one transaction graph with object projections.
+- The platform must use real records only in production and normal local app behavior: no fake rows, fake payment objects, fake deposit objects, fake guests, fake reservations, fake invoices, fake pagination, dead links, or `href="#"`. Fallback/sample data belongs only in tests or explicitly marked fixtures.
+- DepositHold is the only deposit object. Do not introduce Refund or Adjustment objects unless Piter explicitly approves a future financial lifecycle expansion; release, capture, failure, expiration, and guest-action states belong inside the DepositHold lifecycle.
+- Before implementing the transaction refactor, create and push a v3.1 release tag from the current stable commit. Do not begin the model/service/UI transaction refactor without a rollback tag.
 - Treat the neuron pattern as the system architecture rule: `Neuron [uses: OtherNeuron] -> Neuron.SubNeuron -> Neuron.SubNeuron.Object -> Neuron.SubNeuron.Object.Specialization`.
 - Use composition with `[uses: ...]` across neuron families. Use inheritance only when an object is truly a specialization inside the same family. Artifacts are not neurons.
 - Model/domain objects own business state, identity, invariants, and rules. For example, every visitor must be represented through a user/session context object, whether anonymous or authenticated.

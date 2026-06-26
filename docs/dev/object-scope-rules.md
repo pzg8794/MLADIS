@@ -24,6 +24,7 @@ settings
 docs
 shipping
 work_orders
+transactions
 ```
 
 If work requires a second object, stop and ask Piter to split or explicitly
@@ -55,10 +56,48 @@ high-risk neighboring objects, especially auth.
 - `guests` forbids payments, auth, calendar, and unrelated ops pages.
 - `calendar` forbids auth, payments, guests, and unrelated global navigation.
 - `docs` permits only the declared documentation files.
+- `transactions` is a cross-object architecture object. It may be implemented
+  only after Piter explicitly opens a transaction-refactor task and after the
+  v3.1 release tag exists as a rollback target.
 - Cross-object failures are reported, not opportunistically repaired.
 - Shared files such as `views.py`, `urls.py`, `tests.py`, and `styles.css` are
   allowed only when the declared object genuinely requires them. Keep edits
   limited to that object's sections.
+
+## Transaction Spine Rule
+
+Guests, Reservations, Payments, DepositHolds, and Invoices are not independent
+dashboard-card objects. They must align with:
+
+```text
+Guest -> Transaction -> Reservation / Payment / DepositHold -> Invoice
+```
+
+Implementation tasks for any one of these objects must preserve this graph and
+must not duplicate relationship logic in a neighboring object.
+
+DepositHold is the only deposit object. Do not create Refund or Adjustment
+objects unless Piter explicitly approves a future financial lifecycle
+expansion.
+
+## Real-Record-Only Rule
+
+Production and normal local app behavior must be driven by real database
+records:
+
+```text
+No fake rows.
+No fake payment objects.
+No fake deposit objects.
+No fake guests.
+No fake reservations.
+No fake invoices.
+No fake pagination.
+No dead links.
+No href="#".
+```
+
+Fallback/sample data may exist only in tests or explicitly marked fixtures.
 
 ## Payments Example
 

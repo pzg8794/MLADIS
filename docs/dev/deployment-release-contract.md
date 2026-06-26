@@ -24,6 +24,23 @@ A deployment may proceed only when all of the following are true:
 - required checks passed;
 - Piter explicitly approved deployment in the current thread.
 
+## Transaction Refactor Release Gate
+
+Before implementing the simplified transaction refactor documented in
+`docs/architecture/transactions/README.md`, create and push a v3.1 release tag
+from the current stable commit.
+
+The v3.1 release must exist before model, service, API, UI, or data migration
+work begins for the transaction spine:
+
+```text
+Guest -> Transaction -> Reservation / Payment / DepositHold -> Invoice
+```
+
+Do not start the transaction refactor without a rollback tag.
+
+Do not create the v3.1 tag during a documentation-only architecture task.
+
 ## Version Format
 
 Use a simple monotonically increasing release tag:

@@ -7,12 +7,29 @@ This directory is the canonical documentation home for the **Reservation** objec
 
 The attached Reservations Workspace screenshot is a functionality and layout reference. The implementation source of truth is the object model in this directory.
 
+For the platform-wide transaction spine, read
+`docs/architecture/transactions/README.md`.
+
 ## Core rule
 
 ```text
 Reservation is the source object.
 The list row, guest card, messages panel, payment/deposit panel, documents, activity timeline, FairAgent panel, filters, and metrics are projections of Reservation state.
 ```
+
+## Simplified transaction-spine rule
+
+Reservation is a Transaction type:
+
+```text
+Guest -> Transaction -> Reservation -> Invoice
+```
+
+Reservation represents stay request, booking dates, property/listing, booking
+status, and guest context.
+
+A Reservation transaction can group related Payment and DepositHold
+transactions and can generate or reference invoices.
 
 ## Directory map
 
@@ -62,3 +79,8 @@ The UI does not contain reservation cards.
 The UI contains `Reservation` objects, and every card, row, badge, tab, assistant recommendation, deposit action, and timeline item is a visual projection of those objects.
 
 This is the MLADIS way: design the object system first, then let backend models, APIs, services, frontend domain classes, and UI components express that system consistently.
+
+Production and normal local app behavior must use real records only: no fake
+reservation objects, fake rows, fake invoices, fake pagination, dead links, or
+`href="#"`. Fallback/sample data belongs only in tests or explicitly marked
+fixtures.

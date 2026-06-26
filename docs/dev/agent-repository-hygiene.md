@@ -142,6 +142,20 @@ bash scripts/test_signin_contracts.sh
 For a documentation-only task, run the validation explicitly requested by the
 task. Do not add unrelated build work.
 
+## Documentation-Only Guardrail
+
+For documentation-only tasks:
+
+- edit only the declared documentation files;
+- do not touch `airbnb_agent/`, `frontend/src/`, templates, static assets,
+  migrations, `.env`, settings, middleware, or launchers;
+- do not create release tags unless the task explicitly says to create one;
+- run `git diff --name-only` before validation and stop if non-documentation
+  files appear.
+
+Documentation may clarify architecture, but it must not sneak in app behavior,
+auth, payment, deposit, reservation, guest, frontend, or deployment changes.
+
 ## Staging and Commit Review
 
 Before committing:

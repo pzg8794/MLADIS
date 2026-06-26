@@ -7,12 +7,30 @@ This directory is the canonical documentation home for the **Guest** object syst
 
 The attached Guests screenshot is a functionality and layout reference. The implementation source of truth is the object model in this directory.
 
+For the platform-wide transaction spine, read
+`docs/architecture/transactions/README.md`.
+
 ## Core rule
 
 ```text
 Guest is the source object.
 The list row, profile card, messages panel, documents tab, payments tab, deposits tab, activity timeline, last-stays panel, filters, tags, and metrics are projections of Guest state.
 ```
+
+## Simplified transaction-spine rule
+
+Guest is the customer identity that owns transactions:
+
+```text
+Guest -> Transaction -> Reservation / Payment / DepositHold -> Invoice
+```
+
+Guest makes Transactions. Reservation, Payment, and DepositHold are transaction
+types. Every Transaction is invoiceable.
+
+Guest may currently map to `CustomerProfile`, `BookingInquiry` guest fields, or
+`User` when authenticated, but long-term Guest is the stable customer identity
+for the transaction graph.
 
 ## Directory map
 
@@ -63,3 +81,8 @@ The UI does not contain guest rows.
 The UI contains `Guest` objects, and every row, profile card, tab, message, stay history item, payment/deposit link, activity event, tag, and metric is a visual projection of those objects.
 
 This is the MLADIS way: design the object system first, then let backend models, APIs, services, frontend domain classes, and UI components express that system consistently.
+
+Production and normal local app behavior must use real records only: no fake
+guest objects, fake rows, fake reservations, fake payments, fake deposits, fake
+invoices, fake pagination, dead links, or `href="#"`. Fallback/sample data
+belongs only in tests or explicitly marked fixtures.

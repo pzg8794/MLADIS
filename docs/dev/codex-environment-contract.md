@@ -121,6 +121,28 @@ The detailed scope rules are in `docs/dev/object-scope-rules.md`. Repository
 preflight and completion rules are in
 `docs/dev/agent-repository-hygiene.md`.
 
+## Architecture Contracts
+
+Before changing Guests, Reservations, Payments, DepositHolds, Invoices, booking
+checkout, or financial/admin transaction views, read:
+
+```text
+docs/architecture/transactions/README.md
+```
+
+The governing model is:
+
+```text
+Guest -> Transaction -> Reservation / Payment / DepositHold -> Invoice
+```
+
+Normal local and production behavior must use real database records. Fallback
+or sample data is allowed only in tests or explicitly marked fixtures.
+
+The transaction refactor must not begin until a v3.1 release tag exists from
+the current stable commit. Do not create that tag during documentation-only
+tasks.
+
 ## Completion Standard
 
 A task is complete only when:
