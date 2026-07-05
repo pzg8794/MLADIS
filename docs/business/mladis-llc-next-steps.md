@@ -26,6 +26,7 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 | High | Start the New York publication process | 2026-10-01 | In progress | **NY Daily News:** Order #87497 placed and paid 2026-06-08, $235.00, Print+Online, run dates Jun 10–15 2026, status Pending Approval. Affidavit will be emailed to garcp37@mladis.com after final run. **The Forum:** Two emails sent 2026-06-08 with designation letter attached; awaiting reply with cost, payment method, and first publication date. **Next:** wait for The Forum reply, pay them, then track 6 weekly runs, collect both affidavits, and file Certificate of Publication with NY DOS ($50 fee) by 2026-10-01. See `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md`. |
 | High | Prepare IRS EIN worksheet | 2026-06-03 | Done | Worksheet is in `docs/business/ein-and-banking/ein-worksheet.md`. |
 | High | IRS EIN issued and CP 575 saved | 2026-06-03 | Done | EIN was issued on 2026-06-03. CP 575 G letter and private EIN reference are stored in the private vault at `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/02-tax-ein/`. Do not copy the EIN value into Git. |
+| High | Prepare NYS TR-570 LLC/LLP Request for Information response | 2026-07-05 | Ready for owner signature/submission | Original notice, completed draft response, private values file, and submission log are stored in the private tax/EIN Drive folder at `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/02-tax-ein/`; public-safe Drive pointers are tracked in `docs/business/ein-and-banking/private-records-manifest.md`. Notice date is 2026-06-17 and the notice says to return within 15 days, so submit immediately if not already submitted. |
 | High | Update all business accounts/profiles with MLADIS LLC + EIN | 2026-06-03 | In progress | See `docs/business/platform-account-update-checklist.md` for Airbnb, Squarespace, Cloudflare, Dropbox Sign, Google Workspace, booking app, and bank. |
 | High | Open a business bank account | After EIN | Todo | Keep MLADIS income, deposits, reimbursements, and expenses separate from personal accounts. |
 | Medium | Create bookkeeping starter chart of accounts | 2026-06-03 | Done | Draft chart is in `docs/business/ein-and-banking/bookkeeping-chart-of-accounts.md`; review with CPA before tax filing. |
@@ -93,6 +94,18 @@ Before MLADIS takes direct reservations outside Airbnb, confirm:
 - Cancellation/refund terms shown before payment.
 - Insurance and liability coverage for direct bookings.
 
+## NYS TR-570 Response Notes
+
+The private NYS TR-570 packet is stored in the existing MLADIS private tax/EIN Drive folder, not in Git. See `docs/business/ein-and-banking/private-records-manifest.md` for the Drive links.
+
+Current response status as of 2026-07-05:
+
+- Completed draft PDF prepared from the 2026-06-17 notice.
+- Private identifiers were entered only in the private Drive-hosted draft PDF.
+- NAICS `721199` was selected for the current principal activity based on MLADIS's active vacation lodging/direct-booking hospitality records and New York Publication 910.
+- Prior-business response is marked not successor to any prior business entity based on the private values source.
+- Signature line remains for owner handwriting before fax/mail submission.
+
 ## Federal BOI Status
 
 As of the official FinCEN quick reference reviewed on 2026-06-03, entities created in the United States, including domestic LLCs, are exempt from federal BOI reporting under FinCEN's 2025 interim final rule. Re-check FinCEN before relying on this for a future deadline because BOI rules have changed rapidly.
@@ -104,3 +117,5 @@ As of the official FinCEN quick reference reviewed on 2026-06-03, entities creat
 - NY Senate LLC Law records requirement, Section 1102: https://www.nysenate.gov/legislation/laws/LLC/1102
 - IRS EIN online application: https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online
 - FinCEN BOI quick reference: https://www.fincen.gov/boi/quick-reference
+- NY Tax Publication 910, NAICS Codes for Principal Business Activity: https://www.tax.ny.gov/pdf/publications/general/pub910.pdf
+- Census NAICS 721199, All Other Traveler Accommodation: https://www.census.gov/naics/resources/archives/sect72.html
