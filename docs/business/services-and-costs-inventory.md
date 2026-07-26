@@ -80,10 +80,10 @@ Before any transfer begins, expand the tables below or create a dedicated transf
 | Service | Login email | Cost | Plan/Tier | Purpose | Migration status |
 | --- | --- | --- | --- | --- | --- |
 | **Google Workspace** | garcp37@mladis.com (admin) | ~$6/user/mo | Business Starter | Business email (`@mladis.com`), Google Drive, Docs, admin console | ✅ Org name = MLADIS LLC |
-| **Google Cloud (GCE)** | garciapiterz@gmail.com | ~$30–50/mo | Pay-as-you-go | Hosts MLADIS Django booking app on `mladis-test-1` VM (static IP `34.63.199.174`) | ⬜ Not renamed — personal account |
-| **Cloudflare** | garciapiterz@gmail.com | Free | Free | DNS for `mladis.com` (NS: olof / ophelia.ns.cloudflare.com) | ✅ Account name = MLADIS LLC |
-| **Squarespace** | garciapiterz@gmail.com | ~$22/yr (domain only) | Domain registration | `mladis.com` domain registration (not a website builder — DNS delegated to Cloudflare) | Partial — WHOIS org ✅, billing contact ☐ |
-| **GoDaddy** | pzg8794@rit.edu | ~$22.17/yr per domain | Domain registration | `garciapiterz.com` and `mledistech.com` domains; also web hosting for `mledistech.com` ($119.88/yr + PHP support $39.06/yr) | ⬜ Not migrated — legacy domains |
+| **Google Cloud (GCE)** | [private personal account] | ~$30–50/mo | Pay-as-you-go | Hosts MLADIS Django booking app on `mladis-test-1` VM (static IP `34.63.199.174`) | ⬜ Not renamed — personal account |
+| **Cloudflare** | [private personal account] | Free | Free | DNS for `mladis.com` (NS: olof / ophelia.ns.cloudflare.com) | ✅ Account name = MLADIS LLC |
+| **Squarespace** | [private personal account] | ~$22/yr (domain only) | Domain registration | `mladis.com` domain registration (not a website builder — DNS delegated to Cloudflare) | Partial — WHOIS org ✅, billing contact ☐ |
+| **GoDaddy** | [private legacy account] | ~$22.17/yr per domain | Domain registration | Personal and legacy domains; web-hosting charges are tracked in private billing records | ⬜ Not migrated — legacy domains |
 | **MLADIS Booking App (Django)** | garcp37@mladis.com (staff/admin) | Included in GCE | Custom Django app | Guest management, booking requests, rental contracts at `mladis.com` | ✅ site_name = MLADIS LLC, contact_email = garcp37@mladis.com |
 
 ---
@@ -92,8 +92,8 @@ Before any transfer begins, expand the tables below or create a dedicated transf
 
 | Service | Login email | Cost | Plan/Tier | Purpose | Migration status |
 | --- | --- | --- | --- | --- | --- |
-| **Airbnb (host)** | garciapiterz@gmail.com | 3% host fee per booking | Host | Short-term rental listings for G-101 and G-102 (DR properties) | Partial — W-9 ✅ (MLADIS LLC, EIN 42-2932522), payout pending LLC bank account, preferred name = MLADIS LLC ✅ |
-| **Ring** | garciapiterz@gmail.com | ~$10–20/mo | Ring Protect | Security cameras for DR rental properties | ⬜ Not migrated — see `Taxes/Ring Invoice/` |
+| **Airbnb (host)** | [private personal account] | 3% host fee per booking | Host | Short-term rental listings for G-101 and G-102 (DR properties) | Partial — W-9 ✅ (MLADIS LLC, EIN stored privately), payout pending LLC bank account, preferred name = MLADIS LLC ✅ |
+| **Ring** | [private personal account] | ~$10–20/mo | Ring Protect | Security cameras for DR rental properties | ⬜ Not migrated — see private billing records |
 
 ---
 
@@ -109,8 +109,8 @@ Before any transfer begins, expand the tables below or create a dedicated transf
 
 | Service | Login email | Cost | Plan/Tier | Purpose | Migration status |
 | --- | --- | --- | --- | --- | --- |
-| **Meta Business Suite** | garciapiterz@gmail.com | Ad spend variable (no fixed fee) | Free (organic) + Ads | Business portfolio, ad settings, Instagram/Facebook business management | ✅ Portfolio name = Mladis LLC (2026-06-04) |
-| **Facebook Page** | garciapiterz@gmail.com | Free | Facebook Page | Public-facing business page for MLADIS | ✅ Renamed from `Body Transformation` to `Mladis LLC`; live URL = `facebook.com/mladis.connected`; bio/contact info updated; cover = MLADIS Connected Intelligence artwork |
+| **Meta Business Suite** | [private personal account] | Ad spend variable (no fixed fee) | Free (organic) + Ads | Business portfolio, ad settings, Instagram/Facebook business management | ✅ Portfolio name = Mladis LLC (2026-06-04) |
+| **Facebook Page** | [private personal account] | Free | Facebook Page | Public-facing business page for MLADIS | ✅ Renamed from `Body Transformation` to `Mladis LLC`; live URL = `facebook.com/mladis.connected`; bio/contact info updated; cover = MLADIS Connected Intelligence artwork |
 
 ---
 
@@ -118,9 +118,9 @@ Before any transfer begins, expand the tables below or create a dedicated transf
 
 | Service | Login email | Cost | Plan/Tier | Purpose | Migration status |
 | --- | --- | --- | --- | --- | --- |
-| **PayPal Developer** | garciapiterz@gmail.com | Per-transaction (2.9% + $0.30 standard) | Developer / Sandbox+Live | Payment processing integration for booking app | ⬜ Not migrated — check dashboard at developer.paypal.com |
-| **Western Union** | garciapiterz@gmail.com | Per-transfer fee | N/A | International remittances to DR | N/A (personal transfers) |
-| **Remitly** | garciapiterz@gmail.com | Per-transfer fee | N/A | International remittances to DR | N/A (personal transfers) |
+| **PayPal Developer** | [private personal account] | Per-transaction (2.9% + $0.30 standard) | Developer / Sandbox+Live | Payment processing integration for booking app | ⬜ Not migrated — check dashboard at developer.paypal.com |
+| **Western Union** | [private personal account] | Per-transfer fee | N/A | International remittances to DR | N/A (personal transfers) |
+| **Remitly** | [private personal account] | Per-transfer fee | N/A | International remittances to DR | N/A (personal transfers) |
 | **Scotiabank (DR)** | In-person | Variable | Business/Personal | DR bank account for property-related expenses | ⬜ In-person visit required — statements in `Taxes/scotia statements/` |
 | **MLADIS LLC Bank Account (US)** | N/A | TBD | Business checking | US LLC operating account (not yet opened) | ⬜ Pending — need Articles + EIN + ID |
 
@@ -130,8 +130,8 @@ Before any transfer begins, expand the tables below or create a dedicated transf
 
 | Service | Login email | Cost | Plan/Tier | Purpose | Notes |
 | --- | --- | --- | --- | --- | --- |
-| **Uber One** | garciapiterz@gmail.com | ~$9.99/mo | Member | Ride share & Uber Eats membership | Receipts in `Taxes/uberonemembership/` — monthly auto-renewal |
-| **Mobile / Phone plan** | garciapiterz@gmail.com | See `Taxes/Mobile Cost/` | Carrier plan | Business phone line (631-575-4841) | Receipts in `Taxes/Mobile Cost/` |
+| **Uber One** | [private personal account] | ~$9.99/mo | Member | Ride share & Uber Eats membership | Receipts in private billing records — monthly auto-renewal |
+| **Mobile / Phone plan** | [private personal account] | See private billing records | Carrier plan | Private business phone line | Receipts stored privately |
 
 ---
 
@@ -165,10 +165,10 @@ Before any transfer begins, expand the tables below or create a dedicated transf
 
 ## Notes
 
-- **GCE billing account**: Linked to `garciapiterz@gmail.com` Google account. To migrate billing to MLADIS LLC, create a billing account under the Google Workspace org (`garcp37@mladis.com`) and transfer the project.
+- **GCE billing account**: Linked to a private personal Google account. To migrate billing to MLADIS LLC, create a billing account under the Google Workspace org (`garcp37@mladis.com`) and transfer the project.
 - **Meta naming policy**: Meta rejects all-caps business names (e.g., "MLADIS LLC"). Use "Mladis LLC" in Meta Business Suite and on the Facebook Page. Legal name remains MLADIS LLC everywhere else.
-- **Facebook Page branding**: Page renamed live to `Mladis LLC` at `https://www.facebook.com/mladis.connected/`. Bio updated to the MLADIS umbrella positioning, public contact info now shows the MLADIS address / phone / email / website, languages are set to English + Spanish, founding date is set to 3 June 2026, and the cover photo now uses the MLADIS Connected Intelligence artwork. WhatsApp remains pending because Meta requires a verification code sent to `+1 631-575-4841`.
-- **GoDaddy login**: Uses `pzg8794@rit.edu` — receipts paid via PayPal. Consider migrating billing to `garciapiterz@gmail.com` or a MLADIS LLC email.
+- **Facebook Page branding**: Page renamed live to `Mladis LLC` at `https://www.facebook.com/mladis.connected/`. Bio and public business contact settings were updated; exact private contact values are not recorded in Git. WhatsApp remains pending because Meta requires verification through the private business device.
+- **GoDaddy login**: Uses a private legacy account. Consider migrating billing to a MLADIS LLC email.
 - **Dropbox Sign free tier**: 3 documents/month. If rental contract volume increases, upgrade to a paid plan and update billing to MLADIS LLC.
 
 ---
@@ -179,7 +179,7 @@ Before any transfer begins, expand the tables below or create a dedicated transf
 | --- | --- | --- |
 | Google Workspace Admin | `https://admin.google.com/` | Admin login: `garcp37@mladis.com` |
 | Google Drive | `https://drive.google.com/` | Workspace + personal storage |
-| Google Cloud Console | `https://console.cloud.google.com/` | Billing/account currently under `garciapiterz@gmail.com` |
+| Google Cloud Console | `https://console.cloud.google.com/` | Billing/account currently under a private personal account |
 | Airbnb Host Account | `https://www.airbnb.com/account-settings/` | Tax/W-9 and payouts |
 | Cloudflare Dashboard | `https://dash.cloudflare.com/` | Account renamed to MLADIS LLC |
 | Squarespace Account | `https://account.squarespace.com/settings/profile` | Domain registrar for `mladis.com` |

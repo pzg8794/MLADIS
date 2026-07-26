@@ -7,14 +7,14 @@ Created: 2026-06-03. Use this after LLC formation and EIN issuance to update eve
 | Field | Value |
 | --- | --- |
 | Legal business name | MLADIS LLC |
-| EIN | 42-2932522 |
+| EIN | [stored in private Drive vault] |
 | Entity type | Domestic Limited Liability Company |
 | State of formation | New York |
 | Formation date | June 3, 2026 |
 | DOS ID | 7932124 |
-| Business address | 109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375 |
-| Business phone | 631-575-4841 |
-| Current business email | garciapiterz@gmail.com |
+| Business address | [stored in private Drive vault] |
+| Business phone | [stored in private Drive vault] |
+| Current business email | [stored in private account record] |
 | Future business email | garcp37@mladis.com (use once Google Workspace DNS is stable) |
 | Domain | mladis.com |
 
@@ -33,8 +33,8 @@ Reference documents in the private vault:
 2. **Tax info (W-9):** Account → Taxes → Add/Edit tax info.
    - Taxpayer type: **Business**
    - Legal name: `MLADIS LLC`
-   - EIN: `42-2932522`
-   - Business address: `109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375`
+   - EIN: `[stored in private Drive vault]`
+   - Business address: `[stored in private Drive vault]`
    - Save and submit the W-9.
 3. **Payout method:** Account → Payments & Payouts → Payout methods.
    - If a payout is tied to a personal name, update the payee name to `MLADIS LLC` or add a new business payout method once the MLADIS LLC bank account is open.
@@ -54,15 +54,13 @@ Reference documents in the private vault:
 
 **Steps:**
 1. Go to [account.squarespace.com](https://account.squarespace.com) → log in.
-2. **Billing info:** Account → Billing → Update billing name and address to `MLADIS LLC`, address `109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375`.
+2. **Billing info:** Account → Billing → Update billing name to `MLADIS LLC` and use the address stored in the private Drive vault.
 3. **Domain contact / WHOIS registrant:** Domains → mladis.com → Edit contact info.
    - Organization: `MLADIS LLC`
-   - Name: `Piter Zacari Garcia Bautista`
-   - Address: `109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375`
-   - Email: `garciapiterz@gmail.com` (update to `garcp37@mladis.com` after Workspace DNS is verified)
-   - Phone: `631-575-4841`
+   - Owner identity, address, personal email, and phone: use the private account record.
+   - Business email: update to `garcp37@mladis.com` after Workspace DNS is verified.
 4. **Status:**
-   - ✅ WHOIS registrant updated (2026-06-03) — Organization: MLADIS LLC, Phone: 631-575-4841, Address: 109-19 72nd Rd. APT 5H, Forest Hills, NY 11375; confirmation email pending from Squarespace/ICANN
+   - ✅ WHOIS registrant updated (2026-06-03) — Organization: MLADIS LLC; private contact values are recorded outside Git; confirmation email pending from Squarespace/ICANN
    - ☐ Billing info — not done
 
 ---
@@ -92,8 +90,8 @@ Reference documents in the private vault:
 2. Settings → Account → Organization name → set to `MLADIS LLC`.
 3. Billing → confirm billing name is `MLADIS LLC`.
 4. Confirm both signers are set correctly for the pending Diana acknowledgment:
-   - Piter: `Piter Zacari Garcia Bautista <garcp37@mladis.com>`
-   - Diana: `Diana Sori Garcia Bautista <garciabdianas@gmail.com>`
+   - Owner signer: use the identity record stored privately with the company mailbox.
+   - Contractor signer: use the identity and email stored in the private contractor record.
 5. **Status:** ✅ Done — 2026-06-04 — Profile → Company name set to `MLADIS LLC` (saved successfully). Receipt address requires paid plan (Free account — skipped). Billing: no card on file (Free plan).
 
 ---
@@ -107,7 +105,7 @@ Reference documents in the private vault:
 2. Navigate to Bookings → Site Settings → (pk=1 record).
 3. Update:
    - **Site name:** `MLADIS LLC`
-   - **Contact email:** `garcp37@mladis.com` (once Google Workspace DNS is stable; otherwise keep `garciapiterz@gmail.com`)
+   - **Contact email:** `garcp37@mladis.com` once Google Workspace DNS is stable; otherwise use the private current account.
 4. Save.
 
 **Source code — model default and seed migration were also updated** (see `bookings/models.py` `site_name` default and migration `0007_seed_booking_platform.py`) to `"MLADIS LLC"` so fresh databases reflect the correct name.
@@ -132,7 +130,7 @@ Reference documents in the private vault:
 
 The LLC bank account has not been opened yet. When opening:
 - Account name: **MLADIS LLC** (exactly as shown on Articles)
-- EIN: `42-2932522`
+- EIN: `[stored in private Drive vault]`
 - Bring: Articles / Filing Receipt, Signed Operating Agreement, Signed Initial Member Consent, EIN confirmation letter (CP 575 G), owner ID.
 - Reference: `docs/business/ein-and-banking/bank-account-opening-packet.md`
 - **Status:** ☐ Not done — pending
@@ -143,7 +141,7 @@ The LLC bank account has not been opened yet. When opening:
 
 **What to update:** Business portfolio name and public Facebook Page branding.
 
-**Account:** `garciapiterz@gmail.com`
+**Account:** personal administrator account stored privately
 **Business Portfolio ID:** `2115472558905606`
 
 **Steps:**
@@ -155,15 +153,15 @@ The LLC bank account has not been opened yet. When opening:
 6. Facebook Settings → Page setup → **Name** → change the Page name from `Body Transformation` to `Mladis LLC`.
 7. Update the Page bio to MLADIS umbrella branding and fill the public About/contact fields.
    - Bio: `MLADIS LLC is a connected business ecosystem where hospitality, fitness and technology learn from each other to grow smarter together.`
-   - Address: `109-19 72nd Rd Apt 5H, Queens, NY, United States, 11375`
-   - Phone: `+1 631-575-4841`
+   - Address: use the private business record.
+   - Phone: use the private business record.
    - Public email: `garcp37@mladis.com`
    - Website: `https://mladis.com/`
    - Languages: `English language (United States)` and `Spanish language`
    - Founding date: `3 June 2026`
 8. Update the cover photo to the MLADIS Connected Intelligence artwork (brain / neuron network concept).
 9. Keep the current MLADIS profile picture/logo.
-10. WhatsApp connection remains optional until the phone verification code can be completed from the device receiving `+1 631-575-4841`.
+10. WhatsApp connection remains optional until the phone verification code can be completed from the private business device.
 11. Optionally update the Legal business name field under **Business details** once Meta's business verification is completed.
 12. **Status:** ✅ Done — 2026-06-04 — Business portfolio name changed from "Body Transformation" to `Mladis LLC`. Primary Facebook Page also changed from `Body Transformation` to `Mladis LLC`, now live at `https://www.facebook.com/mladis.connected/`. Page bio and About/contact info were updated with the MLADIS business details, and the cover photo was changed to the MLADIS Connected Intelligence artwork. WhatsApp setup is still pending phone verification. Note: Meta requires title-case — "MLADIS LLC" was rejected by Meta naming policy; "Mladis LLC" was accepted.
 
@@ -173,8 +171,8 @@ The LLC bank account has not been opened yet. When opening:
 
 When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any payment/OTA platform:
 - Always use **MLADIS LLC** as the legal business name.
-- Always use EIN **42-2932522** for W-9 / tax forms.
-- Always use the business address: **109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375**.
+- Always use EIN **[stored in private Drive vault]** for W-9 / tax forms.
+- Always use the business address stored in the private Drive vault.
 - Keep the signed Operating Agreement and EIN letter on hand — most platforms will ask for them during business verification.
 
 ---
@@ -184,10 +182,10 @@ When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any pay
 | Date | Platform | Action | Done by |
 | --- | --- | --- | --- |
 | 2026-06-03 | Booking app (code) | `site_name` default + seed updated to "MLADIS LLC" | Copilot |
-| 2026-06-03 | Airbnb | W-9 Form submitted — MLADIS LLC, EIN 42-2932522, Queens NY 11375; IRS validation pending | Copilot |
+| 2026-06-03 | Airbnb | W-9 Form submitted for MLADIS LLC using private tax/address values; IRS validation pending | Copilot |
 | | Airbnb | Payout method update — pending LLC bank account | |
 | 2026-06-04 | Airbnb | Preferred first name set to `MLADIS LLC` (Account → Personal Info) | Copilot |
-| 2026-06-03 | Squarespace | WHOIS registrant updated — Organization: MLADIS LLC, Phone: 631-575-4841, Address corrected; ICANN confirmation email pending | Copilot |
+| 2026-06-03 | Squarespace | WHOIS registrant updated for MLADIS LLC using private contact values; ICANN confirmation email pending | Copilot |
 | | Squarespace | Billing contact name — not done | |
 | 2026-06-04 | Cloudflare | Account name renamed to `MLADIS LLC` via API (PUT /accounts/{id}, token: MLADIS Account Rename) | Copilot |
 | ✅ | Dropbox Sign | Company name (Profile) | 2026-06-04 |

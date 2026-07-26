@@ -1,6 +1,6 @@
 # MLADIS LLC Next Steps
 
-Private operating checklist. This is an implementation tracker for MLADIS LLC and not legal, tax, or accounting advice.
+Public-safe operating checklist. Private identifiers, signed filings, tax forms, affidavits, bank records, and personal financial information stay in the separate private Drive record. This is an implementation tracker, not legal, tax, accounting, or lending advice.
 
 ## Current State
 
@@ -21,24 +21,29 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 | High | Download or print the NYBE filing acknowledgement | 2026-06-03 | Done | Archived as `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`. |
 | High | Verify the official Department of State filing receipt details | 2026-06-03 | Done | Receipt shows DOS ID `7932124`, file number `260603000036`, and authentication number `100010406121`. |
 | High | Draft MLADIS LLC operating agreement package | 2026-06-03 | Done | Draft package is in `docs/business/operating-agreement/`. |
-| High | Sign MLADIS LLC operating agreement and initial member consent | 2026-06-03 | Done | Execution-ready copies signed by Piter are in `docs/business/signing/execution-ready-2026-06-03/`. |
+| High | Sign MLADIS LLC operating agreement and initial member consent | 2026-06-03 | Done | Executed copies are stored privately; historical public-repo copies require privacy review. |
 | High | Prepare Queens publication package | 2026-06-03 | Done | Draft package is in `docs/business/publication/`. |
-| High | Start the New York publication process | 2026-10-01 | In progress | **NY Daily News:** Order #87497 placed and paid 2026-06-08, $235.00, Print+Online, run dates Jun 10–15 2026, status Pending Approval. Affidavit will be emailed to garcp37@mladis.com after final run. **The Forum:** Two emails sent 2026-06-08 with designation letter attached; awaiting reply with cost, payment method, and first publication date. **Next:** wait for The Forum reply, pay them, then track 6 weekly runs, collect both affidavits, and file Certificate of Publication with NY DOS ($50 fee) by 2026-10-01. See `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md`. |
+| High | Complete the New York publication process | 2026-10-01 | Blocked / urgent | Both designated papers were paid, but neither notarized affidavit is in the record. The Daily News invoice shows 2026-06-10 through 2026-06-15, which appears to be six consecutive days instead of one insertion in each week for six successive weeks. Correction and affidavit requests were sent to both papers on 2026-07-26. An unsigned Certificate of Publication draft is stored privately and must not be signed until both affidavits pass review. See `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md`. |
+| High | File Certificate of Publication | 2026-10-01 | Blocked | After both affidavits establish compliant publication, review/sign the private draft, attach both affidavits, include the $50 Department of State fee, retain tracking, and archive the filing receipt. |
+| High | Order fresh Certificate of Status | After publication filing | Todo | Order the current $25 Department of State certificate after the Certificate of Publication is accepted for the lender packet. |
 | High | Prepare IRS EIN worksheet | 2026-06-03 | Done | Worksheet is in `docs/business/ein-and-banking/ein-worksheet.md`. |
 | High | IRS EIN issued and CP 575 saved | 2026-06-03 | Done | EIN was issued on 2026-06-03. CP 575 G letter and private EIN reference are stored in the private vault at `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/02-tax-ein/`. Do not copy the EIN value into Git. |
-| High | Prepare NYS TR-570 LLC/LLP Request for Information response | 2026-07-05 | Ready for owner signature/submission | Original notice, completed draft response, private values file, and submission log are stored in the private tax/EIN Drive folder at `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/02-tax-ein/`; public-safe Drive pointers are tracked in `docs/business/ein-and-banking/private-records-manifest.md`. Notice date is 2026-06-17 and the notice says to return within 15 days, so submit immediately if not already submitted. |
+| High | Complete and submit NYS TR-570 response | Immediate | Overdue / unsigned | No fax, mailing, or agency acknowledgment was found. A corrected unsigned draft and field-by-field log are stored in private `02-tax-ein`. The private source supports the prefilled entity, classification, start, member, officer, and not-a-successor facts. NAICS and hand-entry identifiers remain blank; owner/CPA review, signature, date, and delivery proof are still required. |
 | High | Update all business accounts/profiles with MLADIS LLC + EIN | 2026-06-03 | In progress | See `docs/business/platform-account-update-checklist.md` for Airbnb, Squarespace, Cloudflare, Dropbox Sign, Google Workspace, booking app, and bank. |
-| High | Open a business bank account | After EIN | Todo | Keep MLADIS income, deposits, reimbursements, and expenses separate from personal accounts. |
+| High | Open a business bank account | Immediate after KYC | Todo | No account-opening evidence or statements were found. Keep MLADIS income, deposits, reimbursements, and expenses separate from personal accounts. |
+| High | Bind business and property-operation insurance | Before loan application / direct booking | Todo | No current insurance binder was found in the MLADIS packet. Review general liability, property, business interruption, cyber, host/short-term-rental, and lender requirements with a broker. |
+| High | Remediate historical public-repo private data | Security review | In progress | This docs pass removed the exposed EIN and private contact values from the touched trackers. Other historical docs, signed/source files, code defaults, and Git history still contain personal contact or identity data. Coordinate a current-tree cleanup, secret/identifier exposure assessment, replacements in app configuration, and any required history rewrite before treating the public repo as privacy-clean. |
 | Medium | Create bookkeeping starter chart of accounts | 2026-06-03 | Done | Draft chart is in `docs/business/ein-and-banking/bookkeeping-chart-of-accounts.md`; review with CPA before tax filing. |
 | Medium | Implement bookkeeping system in selected tool | After OOP booking-system cleanup | In progress | Owner started a bookkeeping/booking system. Leave final cleanup for the MLADIS OOP integration phase, then track lodging revenue, deposits/holds, refunds, fees, cleaning, repairs, donations, software, hosting, advertising, taxes, and owner contributions/distributions. |
 | Medium | Decide tax/accounting treatment with a CPA | Before first tax filing | Todo | A single-member LLC is often disregarded for federal tax by default, but verify based on MLADIS ownership and future AI/business plans. |
-| Medium | Confirm sales tax, hotel occupancy, short-term rental, and local compliance obligations | Before direct bookings go live | Todo | Airbnb platform compliance does not automatically cover direct-booking obligations. |
+| Medium | Confirm NY and Dominican Republic tax, tourism, short-term-rental, and local compliance | Before direct bookings or lender certification | Todo | Airbnb platform compliance does not establish MLADIS's direct-booking, property-control, RENATUR/MITUR, RNC/Registro Mercantil, ITBIS, insurance, or local authorization status. Obtain DR attorney/accountant review and archive current evidence privately. |
 | Medium | Archive Diana contractor agreement | 2026-06-03 | Done | Signed contractor agreement is archived in `docs/business/source-documents/contractor-agreements/`. |
-| Medium | Prepare Diana operations acknowledgment | 2026-06-03 | In progress | Piter/MLADIS signed execution copy is in `docs/business/signing/execution-ready-2026-06-03/`; send to Diana for review/acceptance. |
+| Medium | Prepare operations acknowledgment | 2026-06-03 | In progress | Owner/MLADIS signature exists; counterparty acceptance remains pending. Canonical copy is private. |
+| Medium | Ratify/assign pre-formation contractor agreement to MLADIS LLC | After NY/DR legal-tax review | Draft prepared | Printable unsigned draft is stored privately in `04-diana-operations`; do not treat the assignment as effective until all required parties sign. |
 | Medium | Prepare B-1 business visitor process package | 2026-06-03 | Done | Templates and official source links are in `docs/business/immigration/`; completed sensitive visa-history answers stay outside Git. |
 | Medium | Configure `mladis.com` business email and DNS records | Before customer-facing launch | In progress | Keep Google Workspace MX/SPF/DKIM/DMARC stable before using a `@mladis.com` mailbox for production emails. |
 | Medium | Store production secrets in a proper secret manager | Before live payments/agents | Todo | Stripe, OpenAI, SMTP, OAuth, and calendar credentials must stay out of Git. |
-| Medium | Create funding-readiness tracker and data-room checklist | 2026-06-03 | Done | Package is in `docs/business/funding-readiness/`; keep it updated after every funding/compliance action. |
+| Medium | Create funding-readiness tracker and data-room checklist | 2026-07-26 | Done | Public-safe trackers are in `docs/business/funding-readiness/`; the consolidated private legal/loan audit, current blank SBA forms, and unsigned borrowing resolution are in private `05-banking`. |
 | Medium | Create financial-institution resume guide | 2026-06-04 | Done | Resume guide is in `docs/business/funding-readiness/financial-institution-resume-plan.md`; use it for bank account, Airbnb exports, P&L, forecast, lender one-pager, use-of-funds, and lender/CDFI/SBA conversations. |
 | Medium | Build lender/grant/investor data room | After EIN and bank account | Todo | Use `docs/business/funding-readiness/data-room-index.md` as the checklist. Keep sensitive files outside public app assets. |
 | Medium | Prepare first business plan and financial forecast | After bookkeeping setup | Todo | Needs revenue history, direct-booking plan, expense assumptions, and use-of-funds model. |
@@ -47,12 +52,13 @@ Private operating checklist. This is an implementation tracker for MLADIS LLC an
 
 ## Publication Workplan
 
-1. Contact the Queens County Clerk for the two newspapers designated for the LLC publication requirement.
-2. Publish the Articles of Organization or a formation notice in both newspapers for six consecutive weeks.
-3. Collect affidavits of publication from both newspapers.
-4. File the Certificate of Publication with the affidavits attached.
-5. Pay the current Department of State filing fee.
-6. Store the filed Certificate of Publication and affidavits in the private business records folder, not in public website assets.
+1. Obtain the NY Daily News correction/rerun schedule and both papers' exact weekly dates.
+2. Confirm one insertion in each paper in each week for six successive weeks.
+3. Collect and review both notarized affidavits.
+4. Review and sign the private Certificate of Publication draft only after the affidavits pass.
+5. File the certificate with both affidavits and the current $50 Department of State fee.
+6. Store the complete signed packet, tracking, payment proof, and filing receipt privately.
+7. Verify the filing history and order a fresh Certificate of Status.
 
 Target deadline from 2026-06-03 plus 120 days: 2026-10-01.
 
@@ -96,26 +102,40 @@ Before MLADIS takes direct reservations outside Airbnb, confirm:
 
 ## NYS TR-570 Response Notes
 
-The private NYS TR-570 packet is stored in the existing MLADIS private tax/EIN Drive folder, not in Git. See `docs/business/ein-and-banking/private-records-manifest.md` for the Drive links.
+The private NYS TR-570 packet is stored in the existing MLADIS private tax/EIN Drive folder, not in Git. See `docs/business/ein-and-banking/private-records-manifest.md` for filenames and storage rules.
 
-Current response status as of 2026-07-05:
+Current response status as of 2026-07-26:
 
-- Completed draft PDF prepared from the 2026-06-17 notice.
-- Private identifiers were entered only in the private Drive-hosted draft PDF.
-- NAICS `721199` was selected for the current principal activity based on MLADIS's active vacation lodging/direct-booking hospitality records and New York Publication 910.
-- Prior-business response is marked not successor to any prior business entity based on the private values source.
-- Signature line remains for owner handwriting before fax/mail submission.
+- No submission proof or agency acknowledgment was found; treat the response as overdue and unsubmitted.
+- Corrected unsigned draft prepared from the 2026-06-17 notice.
+- Entity, classification, start, member, officer, and not-a-successor facts were filled only where the private values source explicitly marks them safe.
+- NAICS remains blank for owner/CPA determination.
+- The three owner/member/officer identifier fields remain blank for hand entry as directed by the private values source.
+- Signer title, signature, and date remain blank.
+- Exact fax and mailing methods from the notice are recorded only in the private field plan/submission log.
 
-## Federal BOI Status
+## Ownership Disclosure And Recurring Filing Status
 
-As of the official FinCEN quick reference reviewed on 2026-06-03, entities created in the United States, including domestic LLCs, are exempt from federal BOI reporting under FinCEN's 2025 interim final rule. Re-check FinCEN before relying on this for a future deadline because BOI rules have changed rapidly.
+- Current FinCEN rules exempt entities created in the United States from federal BOI reporting.
+- Current New York beneficial-ownership rules apply to LLCs formed under foreign-country law and authorized in New York, not MLADIS LLC as a domestic New York LLC.
+- First New York Biennial Statement is expected in June 2028; verify current rules before filing.
+- A calendar-year disregarded LLC may have a March 15, 2027 IT-204-LL / annual filing-fee obligation if applicable; CPA review is required.
+- No assumed-name filing was found. Use `MLADIS LLC` on legal, tax, banking, and lending documents unless an assumed-name certificate is filed and accepted.
+- Public Git is not yet privacy-clean. Do not add any completed form, private
+  Drive URL, affidavit, signed filing, tax ID, home address, personal contact
+  value, bank record, or owner financial statement while the remediation item
+  remains open.
 
 ## Official Source Links
 
 - NY DOS Articles of Organization for Domestic LLC: https://dos.ny.gov/node/35506
-- NY DOS Certificate of Publication for Domestic LLC: https://dos.ny.gov/node/16241
+- NY DOS Certificate of Publication for Domestic LLC: https://dos.ny.gov/certificate-publication-domestic-limited-liability-company-0
+- NY DOS Certificate of Status: https://dos.ny.gov/certificate-status
+- NY DOS LLC FAQs / Biennial Statement: https://dos.ny.gov/node/35461
+- NY LLC annual filing fee: https://www.tax.ny.gov/pit/efile/annual_filing_fee.htm
 - NY Senate LLC Law records requirement, Section 1102: https://www.nysenate.gov/legislation/laws/LLC/1102
 - IRS EIN online application: https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online
-- FinCEN BOI quick reference: https://www.fincen.gov/boi/quick-reference
+- FinCEN BOI FAQs: https://www.fincen.gov/boi-faqs
+- NY beneficial ownership FAQs: https://dos.ny.gov/beneficial-ownership-disclosure-frequently-asked-questions
+- SBA Lender Match: https://www.sba.gov/funding-programs/loans/lender-match-connects-you-lenders
 - NY Tax Publication 910, NAICS Codes for Principal Business Activity: https://www.tax.ny.gov/pdf/publications/general/pub910.pdf
-- Census NAICS 721199, All Other Traveler Accommodation: https://www.census.gov/naics/resources/archives/sect72.html

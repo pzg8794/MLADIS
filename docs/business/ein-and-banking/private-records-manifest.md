@@ -4,13 +4,13 @@ This manifest records where sensitive records are stored without exposing the EI
 
 ## Primary Private Google Drive Folder
 
-Private records are now stored in the Google Drive-synced AIRBNB workspace, outside the Git repository:
+Private records are stored in the existing Google Drive-synced AIRBNB workspace,
+outside this Git repository, under:
 
-`/Users/pitergarcia/Library/CloudStorage/GoogleDrive-garciapiterz@gmail.com/.shortcut-targets-by-id/1pY_fQ54nHKvFABNRGYAr5bQ3su_tUDAi/DataScience/AIRBNB/MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/`
+`MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/`
 
-Drive access path for the tax/EIN folder:
-
-`https://drive.google.com/drive/folders/1rzUcroTiAbdjkurvy_kP8pPI_e9bE58d`
+Direct Drive URLs are intentionally omitted from public Git. Authorized users
+should open the existing private MLADIS record through their Drive account.
 
 Folder structure:
 
@@ -20,12 +20,13 @@ Folder structure:
 | `02-tax-ein/` | IRS EIN confirmation letter, private EIN reference file, and NYS TR-570 response packet. |
 | `03-governance/` | Signed operating agreement and signed initial member consent. |
 | `04-diana-operations/` | Diana operations acknowledgment and contractor/source agreements. |
-| `05-banking/` | Bank account opening packet and private next-step checklist. |
-| `06-publication/` | Queens publication request sent record and publication tracking checklist. |
+| `05-banking/` | Bank/lender packet, current blank SBA forms, borrowing-resolution draft, and consolidated readiness audit. |
+| `06-publication/` | Designation, paid-order evidence, unsigned Certificate of Publication draft, and closeout record. |
 
 ## Local Backup Folder
 
-`/Users/pitergarcia/Documents/MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/`
+An offline backup may be maintained outside the repository. Its absolute path is
+not recorded publicly.
 
 ## Current Private Files
 
@@ -41,40 +42,56 @@ Folder structure:
 | `bank-account-opening-packet.md` | Bank onboarding guide | Safe Git copy also exists |
 | `BANK_ACCOUNT_NEXT_STEPS_PRIVATE.md` | Private next-step checklist for opening the bank account | Do not commit unless sanitized first |
 | `queens-publication-email-ready-to-send.md` | Sent publication request record | Safe Git copy also exists |
+| `MLADIS_LLC_Legal_and_Loan_Readiness_Status_2026-07-26.md` | Consolidated legal and lender-readiness audit | Do not commit; public tracker only |
+| `MLADIS_LLC_Borrowing_Resolution_DRAFT_UNSIGNED_2026-07-26.pdf` | Printable lender-resolution draft | Keep private until lender terms are known |
+| Current blank SBA Forms 1919 and 413 | Lender application source forms | Keep completed copies private |
+| `MLADIS_LLC_Publication_Closeout_Status_2026-07-26.md` | Publication evidence and filing-control record | Do not commit; public tracker only |
+| `MLADIS_LLC_Certificate_of_Publication_DRAFT_UNSIGNED_2026-07-26.pdf` | Unsigned state filing draft | Keep private; do not sign before both affidavits |
+| `MLADIS_LLC_Contractor_Ratification_and_Assignment_DRAFT_UNSIGNED_2026-07-26.pdf` | Printable cross-border contract-assignment draft | Keep private until legal/tax review and signatures |
 
 ## NYS TR-570 Response Packet
 
 The New York Taxation and Finance LLC/LLP Request for Information packet is stored privately in the existing tax/EIN Drive folder above. These files contain private tax identifiers and must not be copied into Git.
 
-| Private Drive file | Purpose | Drive URL |
+| Private Drive file | Purpose | Status |
 | --- | --- | --- |
-| `MLADIS_TR-570_original-notice_2026-06-17.pdf` | Original NYS LLC/LLP Request for Information notice | https://drive.google.com/file/d/1uq86PmpbC_rg1X0DsRWxA8N5mbiW4vvr/view |
-| `MLADIS_TR-570_filled-response-draft_2026-07-05.pdf` | Completed draft response with private identifiers filled; signature line remains for owner handwriting | https://drive.google.com/file/d/1QhYCu6O4meaSnArz4u_4I6yFB7ZvN4Jk/view |
-| `MLADIS_TR-570_submission-log_2026-07-05.txt` | Field-by-field log, source notes, submission methods, and final review notes without printing private identifier values | https://drive.google.com/file/d/1eH9kCxMjjIj58etntHnrfoo7RH6M0Fsg/view |
-| `MLADIS_TR-570_private-business-values_2026-07-05.txt` | Private values source used for the draft response | https://drive.google.com/file/d/18DkS2yk87NvUSmVSH3RHrdxuvhlWQXW9/view |
+| `MLADIS_TR-570_original-notice_2026-06-17.pdf` | Original NYS LLC/LLP Request for Information notice | Source |
+| `MLADIS_TR-570_private-business-values_2026-07-05.txt` | Authoritative private values and hand-entry controls | Source |
+| `MLADIS_TR-570_corrected-response-draft_UNSIGNED_2026-07-26.pdf` | Corrected draft using only supported values | Current draft |
+| `MLADIS_TR-570_field-plan_and_submission-log_2026-07-26.txt` | Field plan, blank-field review, exact notice submission methods, and proof controls | Current log |
+| `MLADIS_TR-570_filled-response-draft_2026-07-05.pdf` and duplicate | Earlier work containing unresolved selections and a stale date | Historical; do not submit |
 
-TR-570 draft status as of 2026-07-05:
+TR-570 draft status as of 2026-07-26:
 
-- Entity type, owner/member/officer facts, EIN, SSN-backed owner/member/officer identifier fields, address, phone, start date, ownership percentage, NAICS, and prior-business classification are filled in the private draft PDF.
-- NAICS `721199` was used for the current principal activity because MLADIS records describe the active operating branch as vacation lodging/direct-booking hospitality, and New York Publication 910 lists `721199 All Other Traveler Accommodation`.
-- Signature line is intentionally not machine-signed. The owner must hand-sign the printed final copy before fax or mail submission.
-- Notice date is 2026-06-17. The notice says to return the completed form within 15 days by fax or mail, so submit immediately if not already submitted.
+- No fax confirmation, mailing receipt, or agency acknowledgment was found.
+- The corrected draft fills only values explicitly supported by the private
+  source record.
+- NAICS remains blank for owner/CPA review.
+- Owner, member, and officer identifier fields remain blank for hand entry as
+  directed by the private values source.
+- Signer title, signature, and date remain blank.
+- The private submission log records the exact fax and mailing methods printed
+  on the notice.
+- The notice date is 2026-06-17 and requested return within 15 days; treat the
+  response as overdue and submit promptly after review.
 
 ## Private EIN Path For Agents
 
-When an authorized MLADIS agent needs the EIN for a bank, CPA, tax, payroll, payment processor, or government workflow, use the private Google Drive vault file:
+When an authorized MLADIS agent needs the EIN for a bank, CPA, tax, payroll,
+payment processor, or government workflow, use the private Drive vault file:
 
-`/Users/pitergarcia/Library/CloudStorage/GoogleDrive-garciapiterz@gmail.com/.shortcut-targets-by-id/1pY_fQ54nHKvFABNRGYAr5bQ3su_tUDAi/DataScience/AIRBNB/MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/02-tax-ein/MLADIS_EIN_INFO_PRIVATE.md`
+`02-tax-ein/MLADIS_EIN_INFO_PRIVATE.md`
 
 Do not copy the EIN value into GitHub, app fixtures, screenshots, chat logs, public documents, or customer-facing systems.
 
 The private bank packet that includes the EIN value is:
 
-`/Users/pitergarcia/Library/CloudStorage/GoogleDrive-garciapiterz@gmail.com/.shortcut-targets-by-id/1pY_fQ54nHKvFABNRGYAr5bQ3su_tUDAi/DataScience/AIRBNB/MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/05-banking/bank-account-opening-packet.md`
+`05-banking/bank-account-opening-packet.md`
 
 ## Rules
 
 - Do not commit EIN value, SSN/ITIN, bank account/routing numbers, ID images, tax returns, or unredacted bank statements.
 - If a bank, payment processor, CPA, or government portal needs the EIN, enter it directly into that official system from the private CP 575 letter.
-- For official tax forms, keep completed PDFs and private value files in the private Drive folder; Git stores only the manifest and Drive access path.
+- For official tax forms, keep completed PDFs and private value files in the private Drive folder; Git stores only this filename-level manifest.
+- Do not place direct private Drive file URLs in public Git.
 - If a future encrypted bookkeeping vault is created, move or mirror the private files there and update this manifest with the new storage location only, not the sensitive values.
