@@ -17,7 +17,7 @@ completed loan applications stay outside Git.
 | Certificate of Publication and affidavits | Blocked | Both papers were paid, but no affidavit was found and Daily News evidence appears to show an incorrect consecutive-day schedule. Unsigned draft is private. |
 | Certificate of Status | Todo | Order a fresh certificate after the publication filing is accepted. |
 | EIN confirmation letter | Done | Stored outside Git in private business records. Do not commit EIN value or CP 575 letter. |
-| NYS TR-570 response | Overdue / unsigned | Corrected draft and field plan are in private `02-tax-ein`; retain submission proof and agency response. |
+| NYS TR-570 response | Overdue / ready to sign | Fax-ready five-page response and field log are in private `02-tax-ein`; owner must review, sign, date, fax, and retain submission proof and agency response. |
 | Recurring compliance calendar | CPA review | Track biennial statement, IT-204-LL/annual filing fee, tax returns, assumed name, and ownership-disclosure rule changes. |
 
 ## Folder 2 - Ownership, Identity, And Authority

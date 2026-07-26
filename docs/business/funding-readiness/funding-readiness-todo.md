@@ -12,7 +12,7 @@ Public-safe checklist for preparing MLADIS LLC for government and financial-inst
 | High | Sign operations acknowledgment if used | In progress | Obtain counterparty review/acceptance | Owner/MLADIS signed; counterparty signature is pending. |
 | High | Complete Queens publication process | Blocked / urgent | Obtain Daily News correction and both notarized affidavits | Both designated papers were paid. No affidavit was found. Daily News evidence shows six consecutive days rather than six successive weeks; correction and affidavit requests were sent 2026-07-26. Deadline target is 2026-10-01. |
 | High | File Certificate of Publication | Blocked | Sign and submit only after both affidavits pass review | Unsigned draft is private. File with both affidavits and $50 fee; retain full packet, tracking, payment proof, and filing receipt. |
-| High | Submit NYS TR-570 | Overdue / unsigned | Resolve NAICS and hand-entry identifiers; review, sign, date, and submit | Corrected private draft and field log prepared 2026-07-26. No submission proof or agency acknowledgment found. |
+| High | Submit NYS TR-570 | Overdue / ready to sign | Review all five pages, sign, date, fax, and retain proof | Fax-ready private response and updated field log prepared 2026-07-26 with all non-signature fields completed. No submission proof or agency acknowledgment found. |
 | Medium | Obtain Certificate of Status | Todo | Order after publication filing is accepted | A fresh $25 certificate belongs in the lender packet. |
 | Medium | Confirm recurring NY filings | CPA review | Calendar biennial statement and annual LLC filing fee | Biennial statement is expected June 2028; evaluate March 15, 2027 IT-204-LL/annual filing-fee applicability. |
 

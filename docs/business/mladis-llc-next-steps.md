@@ -28,7 +28,7 @@ Public-safe operating checklist. Private identifiers, signed filings, tax forms,
 | High | Order fresh Certificate of Status | After publication filing | Todo | Order the current $25 Department of State certificate after the Certificate of Publication is accepted for the lender packet. |
 | High | Prepare IRS EIN worksheet | 2026-06-03 | Done | Worksheet is in `docs/business/ein-and-banking/ein-worksheet.md`. |
 | High | IRS EIN issued and CP 575 saved | 2026-06-03 | Done | EIN was issued on 2026-06-03. CP 575 G letter and private EIN reference are stored in the private vault at `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/02-tax-ein/`. Do not copy the EIN value into Git. |
-| High | Complete and submit NYS TR-570 response | Immediate | Overdue / unsigned | No fax, mailing, or agency acknowledgment was found. A corrected unsigned draft and field-by-field log are stored in private `02-tax-ein`. The private source supports the prefilled entity, classification, start, member, officer, and not-a-successor facts. NAICS and hand-entry identifiers remain blank; owner/CPA review, signature, date, and delivery proof are still required. |
+| High | Complete and submit NYS TR-570 response | Immediate | Overdue / ready to sign | No fax, mailing, or agency acknowledgment was found. The private five-page fax-ready response now contains every supported non-signature answer, including NAICS `721199`, private identifiers, and signer title. Owner review, signature, actual signing date, fax transmission, and delivery proof remain. |
 | High | Update all business accounts/profiles with MLADIS LLC + EIN | 2026-06-03 | In progress | See `docs/business/platform-account-update-checklist.md` for Airbnb, Squarespace, Cloudflare, Dropbox Sign, Google Workspace, booking app, and bank. |
 | High | Open a business bank account | Immediate after KYC | Todo | No account-opening evidence or statements were found. Keep MLADIS income, deposits, reimbursements, and expenses separate from personal accounts. |
 | High | Bind business and property-operation insurance | Before loan application / direct booking | Todo | No current insurance binder was found in the MLADIS packet. Review general liability, property, business interruption, cyber, host/short-term-rental, and lender requirements with a broker. |
@@ -107,11 +107,15 @@ The private NYS TR-570 packet is stored in the existing MLADIS private tax/EIN D
 Current response status as of 2026-07-26:
 
 - No submission proof or agency acknowledgment was found; treat the response as overdue and unsubmitted.
-- Corrected unsigned draft prepared from the 2026-06-17 notice.
-- Entity, classification, start, member, officer, and not-a-successor facts were filled only where the private values source explicitly marks them safe.
-- NAICS remains blank for owner/CPA determination.
-- The three owner/member/officer identifier fields remain blank for hand entry as directed by the private values source.
-- Signer title, signature, and date remain blank.
+- Fax-ready unsigned five-page response prepared from the 2026-06-17 notice.
+- Entity, tax treatment, start, member, officer, identifier, and
+  not-a-successor facts are filled from the private formation, tax,
+  governance, identity, and prior-response records.
+- NAICS `721199` is filled because the documented current production activity
+  is vacation stays and direct booking, and the official classification covers
+  other short-term traveler accommodation.
+- Signer title is filled from the executed governance record.
+- Only the owner's signature and actual signing date remain blank.
 - Exact fax and mailing methods from the notice are recorded only in the private field plan/submission log.
 
 ## Ownership Disclosure And Recurring Filing Status
@@ -139,3 +143,4 @@ Current response status as of 2026-07-26:
 - NY beneficial ownership FAQs: https://dos.ny.gov/beneficial-ownership-disclosure-frequently-asked-questions
 - SBA Lender Match: https://www.sba.gov/funding-programs/loans/lender-match-connects-you-lenders
 - NY Tax Publication 910, NAICS Codes for Principal Business Activity: https://www.tax.ny.gov/pdf/publications/general/pub910.pdf
+- U.S. Census NAICS 721199, All Other Traveler Accommodation: https://www.census.gov/naics/?details=721199&input=721199&year=2022

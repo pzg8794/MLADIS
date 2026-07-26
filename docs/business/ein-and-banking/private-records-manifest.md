@@ -57,19 +57,22 @@ The New York Taxation and Finance LLC/LLP Request for Information packet is stor
 | --- | --- | --- |
 | `MLADIS_TR-570_original-notice_2026-06-17.pdf` | Original NYS LLC/LLP Request for Information notice | Source |
 | `MLADIS_TR-570_private-business-values_2026-07-05.txt` | Authoritative private values and hand-entry controls | Source |
-| `MLADIS_TR-570_corrected-response-draft_UNSIGNED_2026-07-26.pdf` | Corrected draft using only supported values | Current draft |
-| `MLADIS_TR-570_field-plan_and_submission-log_2026-07-26.txt` | Field plan, blank-field review, exact notice submission methods, and proof controls | Current log |
+| `MLADIS_TR-570_corrected-response-draft_UNSIGNED_2026-07-26.pdf` | Corrected intermediate draft using supported non-identifier values | Superseded reference |
+| `MLADIS_TR-570_fax-ready_SIGN-AND-DATE_2026-07-26.pdf` | Complete five-page response with every non-signature field filled | Current fax-ready file |
+| `MLADIS_TR-570_field-plan_and_submission-log_2026-07-26.txt` | Field plan, source rationale, owner review, exact notice submission methods, and proof controls | Current log |
 | `MLADIS_TR-570_filled-response-draft_2026-07-05.pdf` and duplicate | Earlier work containing unresolved selections and a stale date | Historical; do not submit |
 
 TR-570 draft status as of 2026-07-26:
 
 - No fax confirmation, mailing receipt, or agency acknowledgment was found.
-- The corrected draft fills only values explicitly supported by the private
-  source record.
-- NAICS remains blank for owner/CPA review.
-- Owner, member, and officer identifier fields remain blank for hand entry as
-  directed by the private values source.
-- Signer title, signature, and date remain blank.
+- The fax-ready private response fills every supported non-signature field.
+- NAICS `721199` is supported by MLADIS's documented active vacation-stay and
+  direct-booking operation and the official short-term traveler-accommodation
+  classification.
+- Owner, member, and officer identifier fields are filled from private source
+  records under the owner's July 26 instruction. No values are copied to Git.
+- Signer title is filled; only the owner's signature and actual signing date
+  remain blank.
 - The private submission log records the exact fax and mailing methods printed
   on the notice.
 - The notice date is 2026-06-17 and requested return within 15 days; treat the
