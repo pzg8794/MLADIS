@@ -17,7 +17,8 @@ Use the EIN only in official bank, tax, CPA, payroll, payment processor, vendor 
 
 MLADIS should build financing in layers, from lowest-risk operating infrastructure toward credit and grants:
 
-1. Open business checking and keep clean monthly statements.
+1. Verify and fund the approved Mercury business account, use it consistently,
+   and keep clean monthly statements.
 2. Add one business credit card or charge card used only for business expenses.
 3. Build bookkeeping, monthly P&L, cash-flow forecast, and proof of revenue.
 4. Apply for smaller working-capital products or CDFI microloans before larger loans.
@@ -40,9 +41,11 @@ These are relationship targets, not endorsements. Choose based on branch access,
 
 ## Recommended Opening Sequence
 
-### Phase 1 - Bank Account Now
+### Phase 1 - Mercury Verification And Use
 
-Open business checking with the bank that gives the best combination of:
+The Mercury account was approved on 2026-06-19. Verify that it is open and in
+good standing, fund it if the first deposit is still outstanding, and confirm
+that it provides the needed combination of:
 
 - Easy onboarding for a new NY single-member LLC.
 - Low/no monthly fee path.
@@ -51,7 +54,7 @@ Open business checking with the bank that gives the best combination of:
 - Branch access in Queens/NYC.
 - Ability to grow into credit card, line of credit, and SBA conversations.
 
-Bring/upload the private bank packet:
+Keep the private bank packet available if Mercury requests reverification:
 
 - Filing receipt and Articles.
 - Signed Operating Agreement.
@@ -61,7 +64,7 @@ Bring/upload the private bank packet:
 
 ### Phase 2 - Credit Building
 
-After the account is open:
+After the account is verified and being used:
 
 - Use a business credit card only for predictable expenses: hosting, software, advertising tests, supplies, minor repairs.
 - Pay in full every month.
@@ -101,7 +104,7 @@ Later targets:
 
 Before applying for credit or loans, prepare:
 
-- Business checking account open.
+- Mercury business checking account open, current, funded, and being used.
 - EIN confirmation letter in private vault.
 - Signed Operating Agreement and Initial Member Consent.
 - Bookkeeping categories and receipt storage.

@@ -2,7 +2,7 @@
 
 Private status page. This is the current "read, sign, and click it away" center.
 
-Last status sweep: 2026-08-08.
+Last status sweep: 2026-08-09.
 
 ## Already Done
 
@@ -24,6 +24,8 @@ Last status sweep: 2026-08-08.
 | Funding-readiness tracker and data-room checklist | Done | `docs/business/funding-readiness/` |
 | EIN issued | Done | IRS confirmation letter stored in the private Google Drive business-record vault outside Git |
 | Bank account opening packet | Done | `docs/business/ein-and-banking/bank-account-opening-packet.md` |
+| Mercury business account | Opened / approval confirmed | MLADIS mailbox: Mercury approval dated 2026-06-19; Stripe bank-account-addition notice dated 2026-06-19. Funding, current use, and statements remain to be verified. |
+| G-101/G-102 Dominican counsel package | Prepared / outreach sent | Private 173-page evidence binder, editable official forms, and 13 unsigned counsel-review instruments completed. Engagement request sent from the MLADIS mailbox on 2026-08-09 without attachments; await secure intake and counsel's plan. |
 | Queens publication designation request | Done | Designation letter received 2026-06-08 from `QCC-LLC@nycourts.gov`. Daily: **NY Daily News** (placeanad.nydailynews.com). Weekly: **The Forum** (forumsouth@gmail.com). Canonical letter is in the owner-only Drive record; historical public-repo copy requires privacy review. |
 | Signature source pointer | Done | `docs/business/signing/README.md` records the Drive file metadata, not the signature image |
 | Private Google Drive record | Partially secured / urgent | Current packet is in an owner-only folder; the legacy AIRBNB mirror still has link-writer access. See `docs/business/ein-and-banking/private-records-manifest.md`. |
@@ -66,7 +68,7 @@ person's signature without that person's separate authorization.
 | Step | Action | Prepared support | Official place |
 | --- | --- | --- | --- |
 | 4 | EIN application / IRS CP 575 | Done; private CP 575 letter saved in Google Drive outside Git | No IRS action remains unless an official portal later asks for the EIN from the private record |
-| 5 | Open business bank account | `docs/business/ein-and-banking/bank-account-opening-packet.md` | Bank or fintech chosen by owner |
+| 5 | Verify/fund Mercury business account | `docs/business/ein-and-banking/bank-account-opening-packet.md` | Log in directly to Mercury; verify good standing, fund if still needed, and download bank-generated verification/statements privately. |
 | 6 | Queens newspaper designations | Done; designation letter received 2026-06-08 and secured in the owner-only Drive record | Daily: NY Daily News. Weekly: The Forum. |
 | 7 | Close publication evidence | **NY Daily News: affidavit received and reviewed.** It establishes six weekly dates through 2026-07-15. **The Forum: BLOCKER.** Payment authorization was sent, but no receipt, dates, or affidavit was found. Follow-ups were sent 2026-07-26 and 2026-08-08. | `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md` |
 | 8 | Submit NYS TR-570 | Private five-page fax-ready response is complete except owner signature and actual date; owner confirmed 2026-08-08 that it remains unsent. | Owner-only Drive submission-control log |
@@ -93,7 +95,7 @@ person's signature without that person's separate authorization.
 
 Use `docs/business/funding-readiness/financial-institution-resume-plan.md` when resuming the bank/funding path. It covers the open items outside Diana signing and Queens publication:
 
-1. Open business bank account.
+1. Verify, fund if needed, and consistently use the approved Mercury business account.
 2. Export Airbnb payouts/reservations and build revenue history.
 3. Build expense history.
 4. Build monthly P&L and cash-flow forecast.
@@ -106,7 +108,14 @@ Use `docs/business/funding-readiness/financial-institution-resume-plan.md` when 
 2. Obtain The Forum's paid receipt, six weekly dates, and notarized affidavit.
 3. Review The Forum affidavit, then sign and file the private Certificate of Publication with both affidavits and the $50 fee by the 2026-10-01 working deadline.
 4. Archive the DOS filing receipt and order a fresh Certificate of Status.
-5. Open the business bank account using the private EIN confirmation letter and bank packet.
+5. Verify the Mercury account is open and in good standing, fund it if still
+   unfunded, confirm intended Stripe/Airbnb payout links, and archive
+   bank-generated verification and statements privately.
 6. Export 2026 Airbnb activity, reconcile expenses, and build the P&L, balance sheet, cash-flow history, and forecast.
-7. Complete CPA, insurance, and Dominican Republic operating-compliance review before a final loan certification.
+7. Use `docs/business/dominican-republic-apartment-transition.md` to monitor the
+   private counsel package and secure-intake response. Complete New York
+   CPA/legal and insurance review, then execute the confirmed G-101/G-102
+   Dominican Republic transition through Dominican counsel and an
+   accountant: current titles/encumbrances, lender/Fiduciaria consent, lawful
+   MLADIS authority, RNC/Registro Mercantil, tax, HOA, MITUR, and insurance.
 8. Finish Diana's counter-signature and any contractor assignment only through the separate signing/legal review path.

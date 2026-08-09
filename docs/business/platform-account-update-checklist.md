@@ -40,13 +40,13 @@ Do not use the similarly named link-accessible AIRBNB mirror. See
    - Business address: `[stored in private Drive vault]`
    - Save and submit the W-9.
 3. **Payout method:** Account → Payments & Payouts → Payout methods.
-   - If a payout is tied to a personal name, update the payee name to `MLADIS LLC` or add a new business payout method once the MLADIS LLC bank account is open.
+   - If a payout is tied to a personal name, update the payee name to `MLADIS LLC` or add the approved Mercury business account after confirming it is current and funded.
    - Note: Airbnb may require an official bank account in the LLC name to set the payee as MLADIS LLC.
 4. **Host profile name:** Account → Personal info → Name.
    - Consider using `MLADIS LLC` or `MLADIS Vacation Rentals` as the display name. This is visible to guests.
 5. **Status:**
    - ✅ W-9 submitted (2026-06-03) — IRS validation pending (up to 10 business days)
-   - ☐ Payout method — pending LLC bank account
+   - ☐ Payout method — Mercury account exists; verify the intended MLADIS LLC payout link
    - ✅ Preferred first name set to `MLADIS LLC` (2026-06-04)
 
 ---
@@ -129,14 +129,19 @@ Do not use the similarly named link-accessible AIRBNB mirror. See
 
 ---
 
-## 7. Bank Account (when opened)
+## 7. Mercury Business Account
 
-The LLC bank account has not been opened yet. When opening:
-- Account name: **MLADIS LLC** (exactly as shown on Articles)
-- EIN: `[stored in private Drive vault]`
-- Bring: Articles / Filing Receipt, Signed Operating Agreement, Signed Initial Member Consent, EIN confirmation letter (CP 575 G), owner ID.
+The MLADIS mailbox confirms that Mercury approved a business account for
+MLADIS LLC on 2026-06-19. Stripe confirmed a bank account was added to MLADIS
+LLC the same day. Mercury reminders through 2026-07-24 still described the
+first deposit as a future step, and no monthly-statement email was found.
+
+- Verify directly in Mercury that the account is open and in good standing.
+- Fund it if the first deposit remains outstanding.
+- Download bank-generated verification and available statements privately.
+- Confirm that Stripe and the intended Airbnb payout method use this account.
 - Reference: `docs/business/ein-and-banking/bank-account-opening-packet.md`
-- **Status:** ☐ Not done — pending
+- **Status:** Opened / approval confirmed; funding, use, and statements unverified
 
 ---
 
@@ -186,7 +191,9 @@ When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any pay
 | --- | --- | --- | --- |
 | 2026-06-03 | Booking app (code) | `site_name` default + seed updated to "MLADIS LLC" | Copilot |
 | 2026-06-03 | Airbnb | W-9 Form submitted for MLADIS LLC using private tax/address values; IRS validation pending | Copilot |
-| | Airbnb | Payout method update — pending LLC bank account | |
+| | Airbnb | Payout method update — verify approved Mercury account link | |
+| 2026-06-19 | Mercury | MLADIS LLC business account approved; private account values remain outside Git | MLADIS mailbox verification |
+| 2026-06-19 | Stripe | Bank account added to MLADIS LLC; exact linked destination and payout status still require dashboard verification | MLADIS mailbox verification |
 | 2026-06-04 | Airbnb | Preferred first name set to `MLADIS LLC` (Account → Personal Info) | Copilot |
 | 2026-06-03 | Squarespace | WHOIS registrant updated for MLADIS LLC using private contact values; ICANN confirmation email pending | Copilot |
 | | Squarespace | Billing contact name — not done | |
@@ -199,4 +206,4 @@ When adding Stripe, PayPal, Airbnb direct-deposit, Booking.com, VRBO, or any pay
 | 2026-06-04 | Facebook Page | Public bio refreshed; address, phone, email, website, languages, and founding date added to About/contact info | Copilot |
 | 2026-06-04 | Facebook Page | Cover photo updated to MLADIS Connected Intelligence artwork; current MLADIS profile image retained | Copilot |
 | 2026-06-04 | Facebook Page | WhatsApp setup opened but left pending because Meta requires a phone verification code | Copilot |
-| | Bank account | Open + fund | |
+| | Mercury account | Verify current status + fund if needed + archive statements | |

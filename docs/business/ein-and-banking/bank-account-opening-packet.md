@@ -1,6 +1,10 @@
-# MLADIS LLC Bank Account Opening Packet
+# MLADIS LLC Bank Account Verification And Control Packet
 
-Use this as the working packet for opening the first MLADIS LLC business bank account. This document is intentionally safe for Git: it does not include the EIN value, SSN, bank account number, or identity-document numbers.
+The first MLADIS LLC business bank account has already been approved. Use this
+as the working packet for verification, funding, payment-platform linking, and
+banking controls. This document is intentionally safe for Git: it does not
+include the EIN value, SSN, bank account number, routing number, balance, or
+identity-document numbers.
 
 ## Status
 
@@ -12,7 +16,9 @@ Use this as the working packet for opening the first MLADIS LLC business bank ac
 | Initial Member Consent / banking authority | Signed by Piter on 2026-06-03 |
 | EIN | Issued; value stored privately |
 | EIN confirmation letter | Private CP 575 PDF, not committed to Git |
-| Owner government ID | Needed at bank onboarding only |
+| Mercury business account | Approved 2026-06-19; funding, current use, and statements unverified |
+| Stripe bank link | Bank-account addition notice received 2026-06-19; exact payout mapping unverified |
+| Owner government ID | Provide directly only if Mercury requests reverification |
 
 Private note: the Google Drive vault version of this bank packet includes the EIN value. This GitHub version intentionally does not.
 
@@ -32,8 +38,8 @@ Private note: the Google Drive vault version of this bank packet includes the EI
 | Domain | mladis.com |
 | Principal address | Use the owner-only formation and tax records |
 | Mailing address | Use the private IRS CP 575 / bank application address as needed |
-| Industry | Accommodations, vacation rentals, hospitality booking operations, and related software/AI systems |
-| Primary product/service | Vacation-rental booking operations and MLADIS direct-booking platform |
+| Industry | Vacation rentals, hospitality booking operations, and supporting software/automation for G-101 and G-102; disclose that the Dominican legal and accounting transition is in progress |
+| Primary product/service | Vacation-rental lodging, booking, guest support, payments, reporting, and direct-booking automation for G-101 and G-102 under the documented transition to MLADIS LLC |
 
 ## Documents To Upload Or Bring
 
@@ -53,19 +59,20 @@ Use the bank's exact choices when available.
 | Bank prompt | Suggested answer |
 | --- | --- |
 | Business type | LLC; use the bank's tax-classification choice only after checking the private tax record |
-| Industry | Select the bank choice that accurately describes the documented current operation; do not guess |
-| Business description | MLADIS LLC operates vacation-rental booking, guest-support, deposit, invoice, and direct-booking systems, supported by software and AI-agent infrastructure. |
+| Industry | Select the closest available vacation-rental, accommodation, hospitality, or property-operations category and disclose that the G-101/G-102 transition is being completed through Dominican counsel |
+| Business description | MLADIS LLC was formed to formalize and grow the G-101 and G-102 Dominican Republic vacation-rental operations and their booking, guest-support, payment, reporting, and direct-booking systems. The company is completing the property/operating-authority and accounting transition. |
 | Ownership | Enter member and percentage facts exactly as documented in the owner-only governance record |
 | Employees | Enter the current count supported by payroll and contractor records; do not assume |
-| Expected deposits | Airbnb payouts, direct-booking payments, owner contributions, payment processor settlements |
-| Expected withdrawals | Cleaning, repairs, software, hosting, advertising, refunds, deposit releases, taxes, contractor/vendor payments |
-| International activity | Dominican Republic vacation-rental operations and related vendor/contractor coordination |
+| Expected deposits | Owner contributions and supported payment-processor settlements now; G-101/G-102 lodging payouts after the counsel- and CPA-supported effective transition. Keep pre-formation payouts separately labeled. |
+| Expected withdrawals | Enter only supported current categories, such as software, hosting, advertising, refunds, taxes, and documented contractor/vendor payments |
+| International activity | Describe the confirmed plan accurately: MLADIS LLC is transitioning the G-101 and G-102 Dominican Republic vacation-rental operations into the company. State that the legal property/operating-authority and accounting transition is in progress; do not claim completed title, local registration, or licensed-operator status until documented. |
 | Cash activity | Enter the actual expected amount and frequency; do not assume |
 | Credit request | None at initial bank opening |
 
 ## Banking Controls
 
-- Open checking first.
+- Use the existing Mercury checking account as the primary business money lane
+  after current status and funding are verified.
 - Do not enable overdraft credit, credit line, business loan, merchant cash advance, or personal guarantee product without a separate written owner decision.
 - Keep a reserve for refunds, chargebacks, damage-deposit release timing, taxes, and repairs.
 - Reconcile bank statements monthly against Airbnb payouts, direct bookings, Stripe/PayPal, invoices, refunds, and vendor payments.

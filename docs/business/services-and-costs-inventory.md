@@ -90,9 +90,17 @@ Before any transfer begins, expand the tables below or create a dedicated transf
 
 ## 2. Property & Rental Platforms
 
+Scope note: MLADIS LLC was formed to bring G-101 and G-102 and their Dominican
+Republic vacation-rental operations under the company. The source records and
+platform changes establish that transition objective, but they do not replace
+a current title/encumbrance review or an executed MLADIS title, lease,
+management, or operating instrument. See
+`docs/business/dominican-republic-apartment-transition.md` before using them in a
+company or lender packet.
+
 | Service | Login email | Cost | Plan/Tier | Purpose | Migration status |
 | --- | --- | --- | --- | --- | --- |
-| **Airbnb (host)** | [private personal account] | 3% host fee per booking | Host | Short-term rental listings for G-101 and G-102 (DR properties) | Partial — W-9 ✅ (MLADIS LLC, EIN stored privately), payout pending LLC bank account, preferred name = MLADIS LLC ✅ |
+| **Airbnb (host)** | [private personal account] | 3% host fee per booking | Host | G-101 and G-102 Dominican Republic vacation-rental listings transitioning to MLADIS LLC; legal property/operating authority and revenue-effective date remain unverified | Partial — MLADIS identity and W-9 submitted, approved Mercury account exists, and intended payout link still requires verification; legal transition remains open |
 | **Ring** | [private personal account] | ~$10–20/mo | Ring Protect | Security cameras for DR rental properties | ⬜ Not migrated — see private billing records |
 
 ---
@@ -121,8 +129,8 @@ Before any transfer begins, expand the tables below or create a dedicated transf
 | **PayPal Developer** | [private personal account] | Per-transaction (2.9% + $0.30 standard) | Developer / Sandbox+Live | Payment processing integration for booking app | ⬜ Not migrated — check dashboard at developer.paypal.com |
 | **Western Union** | [private personal account] | Per-transfer fee | N/A | International remittances to DR | N/A (personal transfers) |
 | **Remitly** | [private personal account] | Per-transfer fee | N/A | International remittances to DR | N/A (personal transfers) |
-| **Scotiabank (DR)** | In-person | Variable | Business/Personal | DR bank account for property-related expenses | ⬜ In-person visit required — statements in `Taxes/scotia statements/` |
-| **MLADIS LLC Bank Account (US)** | N/A | TBD | Business checking | US LLC operating account (not yet opened) | ⬜ Pending — need Articles + EIN + ID |
+| **Scotiabank (DR)** | In-person | Variable | Personal/legacy status unverified | Historical reference for property-related expenses; not MLADIS LLC banking evidence | Do not include in a company/lender packet unless ownership, current status, and lawful business relevance are verified privately |
+| **Mercury (MLADIS LLC)** | Private company account | Verify current terms | Business checking | U.S. LLC operating account | Approved 2026-06-19; Stripe bank-account addition confirmed same day; funding, current use, and statements unverified |
 
 ---
 

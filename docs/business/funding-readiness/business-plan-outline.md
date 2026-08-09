@@ -2,9 +2,24 @@
 
 Draft structure for lenders, CDFIs, SBA-backed lenders, certification programs, and later investors. Keep sensitive details out until the sharing audience is known.
 
+Scope control: MLADIS LLC was formed to bring the G-101 and G-102 Dominican
+Republic vacation-rental operations under the company. That objective is
+confirmed; its legal execution is incomplete. Do not send a version that says
+the apartments are already titled to MLADIS or that MLADIS is already the
+licensed local operator unless current authority, contracts, revenue rights,
+tax treatment, and licensing are verified. See
+`docs/business/dominican-republic-apartment-transition.md`.
+
 ## 1. Executive Summary
 
-MLADIS LLC is a New York limited liability company building a hospitality and AI-enabled booking operations business. The first operating branch supports vacation rental bookings in Santo Domingo Norte, Dominican Republic, while the technology branch develops direct-booking, customer-support, calendar, payment, deposit, reporting, and automation systems that can later become a reusable booking framework.
+MLADIS LLC is a New York limited liability company formed to formalize and grow
+the G-101 and G-102 vacation-rental operations in Santo Domingo Norte while
+developing booking, customer-support, calendar, payment, deposit, reporting,
+and automation systems. Pre-formation Airbnb activity supports the owner's
+operating-history narrative. The final lender plan must state the effective
+legal and accounting transition date and include the counsel-approved property
+or operating-authority structure before labeling apartment revenue or assets as
+MLADIS LLC revenue or collateral.
 
 To complete:
 
@@ -20,8 +35,10 @@ To complete:
 - Formation approval date: 2026-06-03.
 - Ownership: single-member, member-managed.
 - Business lines:
-  - Vacation rental and direct-booking operations.
-  - Guest communication, deposits, invoices, and customer support.
+  - G-101 and G-102 vacation-rental operations after the documented legal and
+    accounting transition to MLADIS LLC.
+  - Booking and direct-booking technology.
+  - Guest communication, deposits, invoices, reporting, and customer support.
   - AI-assisted booking agent and business automation.
   - Software/data systems for hospitality operations.
 
@@ -51,12 +68,13 @@ MLADIS combines:
 
 ## 5. Market And Customers
 
-Initial customers:
+Initial target customers:
 
-- Travelers visiting Santo Domingo / Santo Domingo Norte.
-- Families and groups booking vacation homes.
-- Returning Airbnb guests who may later opt into direct offers.
-- Guests needing flexible, trusted short-term rental options.
+- Travelers and returning guests for G-101 and G-102 after the documented
+  MLADIS legal transition and required operating approvals.
+- Families and groups seeking short-term stays in Santo Domingo Norte.
+- Property operators and small hospitality businesses that may later use the
+  MLADIS booking, support, payment, reporting, and automation tools.
 
 Future customers:
 
@@ -86,11 +104,20 @@ Use `metrics-and-financial-inputs.md` as the data checklist.
 
 ## 7. Business Model
 
-Current revenue:
+Current MLADIS LLC revenue:
 
-- Vacation-rental booking revenue.
-- Cleaning or other approved fees where applicable.
-- Direct-booking deposits/holds and damage/extra-bill workflows where applicable.
+- Not yet verified in a reconciled MLADIS LLC ledger or company financial
+  statements.
+- Pre-formation Airbnb activity must be shown separately as owner experience,
+  not labeled as LLC revenue without a CPA-supported transition date and
+  reconciled platform/payout records.
+
+Intended post-transition revenue:
+
+- G-101 and G-102 vacation-rental booking revenue.
+- Cleaning or other properly disclosed fees where applicable.
+- Direct-booking deposits, holds, damage claims, and additional billing where
+  lawful and supported by the final customer terms and payment controls.
 
 Future revenue:
 
@@ -104,9 +131,16 @@ Future revenue:
 Current operating structure:
 
 - Owner/member: Piter Zacari Garcia Bautista.
-- Vacation-rental contractor/operator: Diana Sori Garcia Bautista, documented under `docs/business/operations/`.
+- Dominican Republic operations support is documented under
+  `docs/business/operations/`. Historical/pre-formation contractor materials
+  require counsel-approved ratification or replacement before they are treated
+  as current MLADIS contracts.
+- G-101/G-102 legal transition: confirmed objective, not yet completed by a
+  current title or signed MLADIS lease/management/operating instrument.
 - Website/application: MLADIS Django/React platform.
 - Payment/deposit systems: Stripe/PayPal workflows in progress.
+- Banking: Mercury account approval confirmed; funding, current activity, and
+  statement evidence still require direct verification.
 - Business records: `docs/business/` plus private vault for sensitive records.
 
 To complete:
@@ -114,7 +148,10 @@ To complete:
 - Insurance.
 - Compliance review.
 - Direct-booking tax/fee obligations.
-- Bank/accounting setup.
+- Mercury funding/use verification and accounting setup.
+- Current title/encumbrance and mortgage records for G-101 and G-102.
+- Dominican counsel-approved title-transfer or operating-authority structure,
+  company/tax registration, HOA and tourism compliance, and insurance.
 
 ## 9. Technology
 
@@ -166,7 +203,8 @@ Known risks:
 - Platform dependency on Airbnb until direct-booking traction grows.
 - Short-term rental compliance and tax obligations.
 - Payment disputes, chargebacks, refunds, and damage claims.
-- Foreign-property and contractor documentation complexity.
+- Risk of overstating completed title, lodging, revenue, or contractor
+  authority before the G-101/G-102 legal transition is executed.
 - AI/customer-data privacy and accuracy.
 
 Mitigations:

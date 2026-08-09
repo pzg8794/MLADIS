@@ -1,8 +1,12 @@
 # Business Bank Account Checklist
 
-Prepare these before opening a MLADIS LLC business bank account.
+Mercury approved the first MLADIS LLC business account on 2026-06-19. Use this
+checklist to verify, fund, operate, and document that account.
 
-Status update: EIN has been issued. Use the private IRS CP 575 confirmation letter during bank onboarding, but do not place the EIN value in this repo.
+Status update: EIN has been issued and account approval is confirmed. Mercury
+reminders through 2026-07-24 still described funding as pending, and no
+statement email was found. Use the private IRS CP 575 confirmation letter only
+if Mercury requests reverification; do not place the EIN value in this repo.
 
 ## Likely Documents
 
@@ -17,6 +21,8 @@ Status update: EIN has been issued. Use the private IRS CP 575 confirmation lett
 
 ## Controls To Set Up
 
+- [ ] Verify the Mercury account is open and in good standing.
+- [ ] Fund the account if the first deposit remains outstanding.
 - [ ] Separate MLADIS LLC income from personal funds.
 - [ ] Use the business account for direct-booking income, deposits, refunds, operating expenses, software, hosting, ads, repairs, and cleaning.
 - [ ] Keep a minimum reserve for refunds, chargebacks, and damage-deposit release timing.
@@ -32,7 +38,7 @@ Status update: EIN has been issued. Use the private IRS CP 575 confirmation lett
 ## Suggested Bank Controls
 
 - Do not request a business credit card, line of credit, overdraft credit, merchant cash advance, or personal guarantee product during the first setup unless Piter separately approves it in writing.
-- Open a business checking account first, then add savings/reserve subaccounts only if useful for taxes, deposits, refunds, and operating reserves.
+- Use the existing business checking account first, then add savings/reserve subaccounts only if useful for taxes, deposits, refunds, and operating reserves.
 - Keep owner capital contributions, Airbnb payouts, direct-booking deposits, customer refunds, repairs, cleaning, software, ads, and tax payments traceable.
 - Enable monthly statement export and store statements in private records.
 - Add payment processors only after the bank account is open and the direct-booking flow is ready to reconcile.

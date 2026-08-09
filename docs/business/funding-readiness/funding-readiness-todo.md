@@ -21,10 +21,10 @@ Public-safe checklist for preparing MLADIS LLC for government and financial-inst
 | Priority | Task | Status | Owner action needed | Notes |
 | --- | --- | --- | --- | --- |
 | High | EIN application / CP 575 saved | Done | None | EIN issued on 2026-06-03; CP 575 letter and private EIN reference are stored outside Git in the owner-only Drive record. |
-| High | Open business bank account | Todo | Complete bank KYC | No account-opening evidence or statements were found. Needs EIN, formation proof, operating agreement, owner ID, and business address. |
+| High | Verify, fund, and use Mercury business account | Opened / activation evidence pending | Verify the live account and make the first deposit if still needed | Mercury approved the MLADIS LLC account on 2026-06-19; Stripe recorded a bank account addition the same day. Mercury reminders through 2026-07-24 still described funding as pending, and no statement email was found. Archive bank-generated verification and statements privately. |
 | High | Configure accounting/bookkeeping tool | In progress | Finish after MLADIS OOP booking-system cleanup | Owner started the system; final accounting integration should wait until the booking system has a strong stable OOP base. |
-| High | Secure business document vault outside public app assets | Partially remediated / urgent | Remove the legacy mirror's link permission and verify access | The current 30-file packet is in an owner-only Drive folder. A similarly named AIRBNB mirror still has `anyone with the link` writer access and contains legacy sensitive records. See `docs/business/ein-and-banking/private-records-manifest.md`. |
-| Medium | Establish business credit basics | Todo | Open accounts responsibly | Use business bank, payment processors, business email, and vendor records consistently. |
+| High | Secure business document vault outside public app assets | Partially remediated / urgent | Remove the legacy mirror's link permission and verify access | The current 39-file packet is in an owner-only Drive folder, and all 39 files reported `not_shared` on 2026-08-09. A similarly named AIRBNB mirror still has `anyone with the link` writer access and contains legacy sensitive records. See `docs/business/ein-and-banking/private-records-manifest.md`. |
+| Medium | Establish business credit basics | Todo | Verify/fund Mercury and use accounts responsibly | Use the business bank, payment processors, business email, and vendor records consistently; do not apply for credit until the owner approves the product and terms. |
 | High | Obtain insurance package | Todo | Review actual operations and lender collateral with broker | No current business/property-operation insurance binder was found in the MLADIS packet. |
 | High | Remediate public-repo private data | In progress | Coordinate docs/code cleanup and history review | EIN and private contact values were removed from the touched trackers, but historical docs, signed/source files, code defaults, and Git history still require privacy remediation. |
 
@@ -38,7 +38,7 @@ Public-safe checklist for preparing MLADIS LLC for government and financial-inst
 | Medium | Create monthly P&L and balance sheet | Todo | Review with CPA/bookkeeper | Needed for banks, lenders, and investor diligence. |
 | Medium | Create cash-flow forecast | Todo | Approve assumptions | Include direct-booking platform, deposits, cleaning, repairs, taxes, software, marketing. |
 | Medium | Build occupancy and booking metrics | Todo | Export/apply analytics | Include Airbnb stays, direct bookings, cancellations, reviews, average stay, revenue per listing. |
-| High | Curate Dominican Republic property/control evidence | Todo | DR attorney/accountant review | Confirm title/lease/management authority, HOA permission, tourism registration, RNC/Registro Mercantil, tax status, disputes/liens, and ability to assign revenue to MLADIS LLC. |
+| High | Complete G-101/G-102 legal transition to MLADIS | Counsel package prepared / outreach sent | Await secure intake and counsel's current-title/structure plan; do not sign drafts | The private package includes a 173-page evidence binder, editable official forms, and 13 unsigned counsel-review instruments. An engagement request was sent 2026-08-09. Current title/encumbrance results, lender/Fiduciaria consent, HOA confirmation, RNC/Registro Mercantil and tax treatment, MITUR/RENATUR review, insurance, and documented revenue/platform assignment still must be completed before claiming the apartments as MLADIS assets or licensed operations. |
 
 ## Phase 4 - Funding Packet
 
@@ -47,7 +47,7 @@ Public-safe checklist for preparing MLADIS LLC for government and financial-inst
 | High | Write first MLADIS business plan | Template ready | Approve business direction | Template exists in `business-plan-outline.md`; content still needs revenue/strategy details. |
 | High | Prepare use-of-funds plan | Template ready | Choose funding amount and purpose | Worksheet exists in `use-of-funds-worksheet.md`; numbers still need approval. |
 | Medium | Prepare lender one-page summary | Todo | Approve public-safe numbers | For banks, CDFIs, SBA lender conversations. |
-| Medium | Maintain financial-institution resume guide | Done | Resume here when owner has time | Ordered guide exists in `financial-institution-resume-plan.md` for bank account, Airbnb exports, P&L, forecast, lender one-pager, use-of-funds, and lender/CDFI/SBA conversations. |
+| Medium | Maintain financial-institution resume guide | Done | Resume here when owner has time | Ordered guide exists in `financial-institution-resume-plan.md` for Mercury verification, Airbnb exports, P&L, forecast, lender one-pager, use-of-funds, and lender/CDFI/SBA conversations. |
 | Medium | Prepare pitch deck outline | Todo | Approve investor story | For later private investors; use business plan and metrics files first. |
 | Medium | Prepare capability statement | Todo | Approve service categories | Useful for MWBE/government contracting if MLADIS sells services. |
 | High | Archive current SBA source forms | Done | Use only for selected lender/product | Blank current SBA Forms 1919 and 413 are stored privately; completed Form 413 must stay in secure private storage. |

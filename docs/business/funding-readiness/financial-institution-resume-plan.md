@@ -28,46 +28,47 @@ Those are tracked separately in the signing and publication folders. Use this fi
 | --- | --- | --- |
 | Formation / EIN | Done | Use filed Articles, Piter-signed governance docs, and private CP 575 letter when a bank or official portal asks for proof. |
 | NY publication | Partially complete / urgent | Daily News affidavit is received. Obtain The Forum receipt, six dates, and affidavit, then file the Certificate of Publication. |
-| Bank account | Not opened | Use [bank-account-opening-packet.md](../ein-and-banking/bank-account-opening-packet.md) and private EIN letter to open MLADIS LLC business checking. |
+| Bank account | Opened / activation evidence pending | Mercury approved MLADIS LLC on 2026-06-19 and Stripe recorded a bank-account addition that day. Verify good standing, fund if still needed, confirm intended payout links, and archive bank-generated verification and statements privately. |
 | Airbnb/revenue export | In progress | Private 2025 report is pre-formation operating history. Export 2026 payout/reservation data, document the LLC transition, and prepare sanitized monthly summaries. |
 | Expense history | Not built into lender packet | Gather receipts, software, ads, repairs, cleaning, contractor, compliance, and banking costs. |
 | P&L and forecast | Not built | Build monthly P&L, cash-flow forecast, and direct-booking assumptions from the data contract. |
 | Lender one-pager | Not built | Draft after revenue/expense summaries and use-of-funds numbers exist. |
 | Use-of-funds plan | Template ready | Choose target amount, categories, expected outcome, and repayment story. |
-| Bank/CDFI/SBA conversations | Not started | Start after bank account plus basic financial packet are ready. |
+| Bank/CDFI/SBA conversations | Not started | Preliminary conversations may begin after Mercury status is verified; a final application still needs the basic financial packet. |
 
-## Phase 1 - Open Business Bank Account
+## Phase 1 - Verify, Fund, And Operate Mercury
 
-Goal: create the clean money lane before any serious funding conversation.
+Goal: make the existing business account a verified, consistently used money
+lane before any serious funding conversation.
 
 ### Owner Actions
 
-1. Choose the first bank or fintech candidate.
-2. Open a business checking account in the exact legal name `MLADIS LLC`.
-3. Upload or bring the required documents:
-   - NY filing receipt / Articles.
-   - Signed Operating Agreement.
-   - Signed Initial Member Consent.
-   - IRS EIN confirmation letter from the private vault.
-   - Owner ID and proof of address if requested.
-4. Decline overdraft credit, merchant cash advance, loan, or line of credit unless the owner explicitly decides otherwise in writing.
+1. Log in directly to Mercury and verify that the MLADIS LLC account is open
+   and in good standing.
+2. Make the first deposit if the account remains unfunded.
+3. Download a bank-generated account-verification letter and every available
+   monthly statement to the owner-only record.
+4. Confirm that Stripe and any intended Airbnb payout method point to the
+   correct MLADIS LLC account.
+5. Decline overdraft credit, merchant cash advance, loan, or line of credit
+   unless the owner explicitly decides otherwise in writing.
 
 ### Agent Actions
 
-1. Prepare the bank packet from [bank-account-opening-packet.md](../ein-and-banking/bank-account-opening-packet.md).
+1. Maintain the account verification/control packet in [bank-account-opening-packet.md](../ein-and-banking/bank-account-opening-packet.md).
 2. Open or stage the verified owner-only Drive record, but do not copy sensitive numbers into Git.
-3. After the account is opened, update:
+3. After current status, funding, and payout links are verified, update:
    - [../platform-account-update-checklist.md](../platform-account-update-checklist.md).
    - [funding-readiness-todo.md](funding-readiness-todo.md).
    - [data-room-index.md](data-room-index.md).
    - [../mladis-llc-next-steps.md](../mladis-llc-next-steps.md).
 
-### Store After Opening
+### Store After Verification
 
 Store these outside Git:
 
-- Bank welcome letter.
-- Account-opening confirmation.
+- Bank welcome/account-approval record.
+- Current account-verification letter.
 - Signature card, if provided.
 - Monthly statements.
 - Any debit card, routing, account, or login details.
@@ -286,7 +287,8 @@ Re-check these before submitting applications:
 
 MLADIS is ready for serious financial-institution conversations when:
 
-- Business bank account is open.
+- Mercury business account is open, current status is verified, and it is
+  being used for MLADIS activity.
 - Bank statements are being saved monthly.
 - Airbnb revenue/payout exports are stored privately.
 - Monthly revenue summary exists.

@@ -8,8 +8,8 @@ The canonical private record is the existing owner-only Google Drive folder:
 
 `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/`
 
-Drive metadata was rechecked on 2026-08-08. The canonical folder was owner-only,
-and all 30 files listed in it reported `not_shared`; direct Drive URLs and file
+Drive metadata was rechecked on 2026-08-09. The canonical folder was owner-only,
+and all 39 files listed in it reported `not_shared`; direct Drive URLs and file
 IDs are intentionally omitted from public Git. Per the owner's storage
 instruction, this folder is flat and no new subdirectories should be created.
 Use filenames, not public links, to identify records.
@@ -55,6 +55,30 @@ not recorded publicly.
 | `NY_Daily_News_Affidavit_Order_87497_2026-07-27.pdf` | Reviewed notarized six-week publication affidavit | Do not commit |
 | `MLADIS_LLC_Certificate_of_Publication_DRAFT_UNSIGNED_2026-07-26.pdf` | Unsigned state filing draft | Keep private; do not sign before both affidavits |
 | `MLADIS_LLC_Contractor_Ratification_and_Assignment_DRAFT_UNSIGNED_2026-07-26.pdf` | Printable cross-border contract-assignment draft | Keep private until legal/tax review and signatures |
+| `MLADIS_Mercury_Business_Account_Verification_2026-08-08.md` | Mailbox-based account-opening evidence and verification limits | Do not commit; public status only |
+| `MLADIS_G101_G102_Legal_Transition_Audit_2026-08-08.md` | Source-by-source apartment transition audit | Do not commit; public tracker only |
+
+## Dominican Republic G-101/G-102 Counsel Package
+
+The following files are stored directly in the existing flat owner-only folder.
+They contain private corporate, property, identity, tax, and contract evidence.
+Git records filenames and status only.
+
+| Private Drive file | Purpose | Status |
+| --- | --- | --- |
+| `MLADIS_DR_G101_G102_COUNSEL_SUBMISSION_2026-08-08.docx` | Editable Spanish-first counsel brief | Prepared; no signature |
+| `MLADIS_DR_G101_G102_COUNSEL_SUBMISSION_2026-08-08.pdf` | Printable counsel brief | Prepared; visually verified |
+| `MLADIS_DR_G101_G102_SIGNATURE_DRAFTS_2026-08-08.docx` | Editable set of 13 proposed instruments | Unsigned; counsel review required |
+| `MLADIS_DR_G101_G102_SIGNATURE_DRAFTS_2026-08-08.pdf` | Printable proposed instruments | Unsigned; counsel review required |
+| `MLADIS_DR_G101_G102_COMPLETE_PACKAGE_2026-08-08.pdf` | 173-page bookmarked evidence binder | Prepared; visually verified |
+| `MLADIS_DR_G101_G102_COMPLETE_PACKAGE_2026-08-08.zip` | Flat secure archive with evidence and editable official forms | Prepared; ZIP integrity verified |
+| `MLADIS_DR_G101_G102_SUBMISSION_CONTROL_2026-08-08.txt` | Package inventory, evidence gaps, signer matrix, and outreach control | Current control log |
+
+On 2026-08-09, an engagement request was sent from the MLADIS company mailbox
+to the existing Dominican counsel contacts. No attachment or private identifier
+was sent. The message requested conflict clearance, scope, fees, timing,
+missing-document guidance, and a secure upload channel; it granted no authority
+to transfer, borrow, pay third parties, or file records.
 
 ## NYS TR-570 Response Packet
 

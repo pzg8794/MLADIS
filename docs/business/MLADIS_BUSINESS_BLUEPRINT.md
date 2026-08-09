@@ -49,6 +49,15 @@ MLADIS is the umbrella company for connected intelligence systems, automation, b
 
 The current vacation-home platform is the first production expression of the broader **Booking** neuron. It is not the full identity of MLADIS.
 
+MLADIS LLC was formed to bring the G-101 and G-102 Dominican Republic
+vacation-rental operations under the company. The company email, Airbnb,
+banking, payment, and booking-system changes are parts of that transition. The
+audited records establish the apartments and pre-formation operating history,
+but do not yet establish a completed title transfer or enforceable operating
+authority in MLADIS LLC's name. See
+`docs/business/dominican-republic-apartment-transition.md` before making an
+operating or lender claim.
+
 ---
 
 ## Mission
@@ -172,13 +181,14 @@ The company must protect Piter's personal credit.
 | High | Complete New York publication requirement | In progress / urgent | Daily News affidavit is complete. Obtain The Forum receipt, six dates, and affidavit, then file by the 2026-10-01 working deadline. |
 | High | File Certificate of Publication with affidavits | Blocked by The Forum | Private unsigned draft exists. Sign only after both affidavits pass, then file with the $50 fee and tracking. |
 | High | Submit NYS TR-570 response | Overdue / ready to sign | Owner confirmed 2026-08-08 that the private five-page response remains unsent. Review, sign, date, fax, and retain proof. |
-| High | Open business checking account | Todo | Bank packet is prepared; actual business account still pending and needed to clear Stripe/Airbnb payout dependencies. |
+| High | Verify, fund, and operate Mercury business checking | Opened / activation evidence pending | Mercury approved the MLADIS LLC account on 2026-06-19. Stripe recorded a bank account addition that day. Mercury reminders through 2026-07-24 still described funding as pending, and no statement email was found. Verify current status, fund if needed, and archive bank-generated verification and statements privately. |
 | Medium | Start bookkeeping | In progress | Starter chart of accounts is prepared; owner started a bookkeeping/booking system; final integration should wait for the OOP Finance/Booking cleanup. |
 | Medium | Confirm tax/accounting treatment with CPA | Todo | Confirm before first tax filing and before relying on any tax treatment assumptions. |
 | Medium | Confirm direct-booking tax/compliance obligations | Todo | Needed before direct bookings go live outside Airbnb. |
 | Medium | Decide whether MLADIS Bookings needs a DBA/assumed name | Todo | Revisit after parent/Booking naming settles and before public marketing relies on a separate assumed name. |
-| Medium | Connect Stripe/payment processor | In progress | Stripe account has an action-required status email requesting a valid bank account; final readiness is blocked on business checking account setup. |
-| Medium | Build lender/grant/investor data room | In progress | Formation, EIN, governance, blank SBA forms, and pre-formation 2025 Airbnb history are private; bank statements, 2026 exports, financials, insurance, and DR compliance remain open. |
+| Medium | Connect Stripe/payment processor | In progress | Stripe confirmed a bank account was added on 2026-06-19. Verify the linked payout destination, live payout status, webhooks, and reconciliation before treating payment operations as ready. |
+| High | Complete the G-101/G-102 legal transition | Counsel package prepared / outreach sent | The operating objective is confirmed. The private counsel package and unsigned drafts are complete; obtain current titles and encumbrances, lender/Fiduciaria consent, lawful MLADIS title or operating authority, DR registration/tax/tourism review, HOA confirmation, insurance, and revenue-transition records before signing or making lender claims. |
+| Medium | Build lender/grant/investor data room | In progress | Formation, EIN, governance, blank SBA forms, and pre-formation 2025 Airbnb history are private; Mercury verification/statements, 2026 exports, financials, insurance, and the G-101/G-102 legal-transition packet remain open. |
 | Low | Evaluate MWBE certification or incentives | Deferred | Revisit after money infrastructure and records are stable. |
 
 ---
@@ -187,7 +197,7 @@ The company must protect Piter's personal credit.
 
 | Platform / area | Status | Notes |
 | --- | --- | --- |
-| Airbnb W-9 / tax profile | In progress | Business W-9 submitted; IRS/platform validation pending. Payout method still depends on LLC bank account. |
+| Airbnb W-9 / tax profile | In progress | Business W-9 submitted; IRS/platform validation pending. Verify whether the intended MLADIS LLC payout method now uses the approved Mercury account. |
 | Airbnb display identity | Done | Preferred first name updated to MLADIS LLC. |
 | Squarespace domain registrant / WHOIS | In progress | WHOIS organization updated; billing contact still pending. |
 | Cloudflare account name | Done | Account renamed to MLADIS LLC. |
@@ -199,7 +209,7 @@ The company must protect Piter's personal credit.
 | Facebook Page | Done | Page renamed, public URL and About/contact/cover updated. WhatsApp setup remains pending phone verification. |
 | Google Cloud / GCE billing ownership | Deferred | Current production VM remains working; ownership/billing transfer should happen only after export/smoke-test/rollback checklist. |
 | GitHub / code ownership and secrets | Deferred | Keep current access stable; later document MLADIS-controlled admins, protected branches, and CI/deploy secret handling. |
-| PayPal / Stripe / payment platforms | Deferred | Do not migrate/connect serious payment ownership until bank account, webhook checks, and reconciliation are ready. |
+| PayPal / Stripe / payment platforms | In progress | Stripe reports a bank account addition. Verify the account mapping, webhook checks, payout status, and reconciliation before relying on live payment ownership; PayPal remains unverified. |
 | Ring / property security systems | Deferred | Do not migrate until production/support access can be smoke-tested. |
 | Legacy GoDaddy domains/hosting | Deferred | Review only after MLADIS app and domain strategy are stable. |
 

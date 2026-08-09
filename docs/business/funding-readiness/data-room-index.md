@@ -27,14 +27,14 @@ completed loan applications stay outside Git.
 | Owner resume / founder bio | Todo | Public-safe version can be committed later. |
 | Owner ID documents | Todo | Never commit. |
 | Proof of address if required | Todo | Never commit unless redacted and intentionally private. |
-| Bank signature card / bank letter | Todo | Bank package is prepared in `docs/business/ein-and-banking/`; final bank records can only exist after the account is opened and must stay outside Git. |
+| Bank account-verification letter / signature record | Account opened; document pending | Mercury approval is confirmed. Download current bank-generated verification and any signature/account records directly from Mercury and keep them outside Git. |
 | Admin/agent authority notes | In progress | Keep non-sensitive summaries in `AGENTS.md` and admin docs. |
 
 ## Folder 3 - Financial Records
 
 | Document | Status | Storage guidance |
 | --- | --- | --- |
-| Business bank statements | Todo | Store outside Git. |
+| Business bank statements | Todo / none found | Mercury approval is confirmed, but no statement email was found. Download every available statement directly and store it outside Git. |
 | Airbnb payout reports | In progress | Private 2025 report is archived as pre-formation operating history. Obtain 2026 year-to-date exports and document the transition to MLADIS. |
 | Direct-booking revenue reports | Todo | Generate after platform has live transactions. |
 | Expense ledger | Todo | Bookkeeping tool preferred. |
@@ -54,9 +54,13 @@ completed loan applications stay outside Git.
 | Customer list / consent status | In progress | Keep direct contact info private and consent-tracked. |
 | Contractor/vendor list | In progress | Summaries okay; sensitive payment details private. |
 | Insurance documents | Todo | Store outside Git. |
-| DR property-control documents | Source archive identified | Attorney must curate current title/lease/authority, HOA permission, disputes/liens, and assignment rights into a lender packet. |
-| DR tax/tourism/business registrations | Todo / not verified | Store current RNC, Registro Mercantil, RENATUR/MITUR, tax, invoicing, and local authorization evidence privately. |
-| Contractor ratification/assignment | Draft ready | Unsigned printable draft is private; execute only after NY/DR legal-tax review. |
+| G-101/G-102 source property documents | Located / private | Signed 2018 purchase-option contracts, 2020 title copies, financing and representation records, condominium rules, and maintenance history are in the private source archive. They establish history, not a completed MLADIS transfer. |
+| Current title, encumbrance, and lender records | Todo / urgent | Obtain a current certified legal-status report for each apartment, current owner/borrower and payoff status, and all required Banco Popular/Fiduciaria consents. |
+| MLADIS property/operating authority | Todo / counsel review | Execute the counsel-selected title transfer/contribution or lease/management/operating structure separately for G-101 and G-102. Do not use an unsigned draft as evidence. |
+| DR counsel submission package | Prepared privately / outreach sent | The owner-only record contains the editable brief, printable brief, 13 unsigned drafts, 173-page binder, flat ZIP, and control log. Counsel outreach was sent 2026-08-09 without attachments; use the firm's secure channel after conflict and engagement terms are confirmed. |
+| DR tax/tourism/business registrations | Todo / none found | Obtain counsel/accountant determination and required RNC, Registro Mercantil, tax/invoicing, MITUR/RENATUR, land-use, inspection, and local authorization evidence. |
+| HOA and insurance evidence | Todo / urgent | Obtain written short-term-rental/lodging-use confirmation and current property, contents, civil-liability, business-interruption, and host coverage for the correct owners/operators. |
+| Contractor ratification/assignment | Draft ready | Unsigned printable draft is private; execute only after counsel confirms the parties, scope, jurisdiction, tax treatment, and the final MLADIS operating structure. |
 
 ## Folder 5 - Funding Materials
 
