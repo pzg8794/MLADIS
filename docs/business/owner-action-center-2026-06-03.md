@@ -2,12 +2,14 @@
 
 Private status page. This is the current "read, sign, and click it away" center.
 
+Last status sweep: 2026-08-08.
+
 ## Already Done
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| LLC formation submitted | Done | `docs/business/source-documents/MLADIS_LLC-Confirmation.pdf` |
-| NYS DOS filing receipt and Articles archived | Done | `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf` |
+| LLC formation submitted | Done | Canonical owner-only Drive copy secured; historical public-repo copy requires privacy review |
+| NYS DOS filing receipt and Articles archived | Done | Canonical owner-only Drive copy secured; historical public-repo copy requires privacy review |
 | Filing receipt details captured | Done | DOS ID `7932124`, file number `260603000036`, authentication number `100010406121` |
 | Operating agreement source | Done | `docs/business/operating-agreement/MLADIS_LLC_Operating_Agreement_DRAFT.md` |
 | Initial member consent source | Done | `docs/business/operating-agreement/initial-member-consent.md` |
@@ -22,20 +24,21 @@ Private status page. This is the current "read, sign, and click it away" center.
 | Funding-readiness tracker and data-room checklist | Done | `docs/business/funding-readiness/` |
 | EIN issued | Done | IRS confirmation letter stored in the private Google Drive business-record vault outside Git |
 | Bank account opening packet | Done | `docs/business/ein-and-banking/bank-account-opening-packet.md` |
-| Queens publication designation request | Done | Designation letter received 2026-06-08 from `QCC-LLC@nycourts.gov`. Daily: **NY Daily News** (placeanad.nydailynews.com). Weekly: **The Forum** (forumsouth@gmail.com). Letter archived at `docs/business/source-documents/MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf`. |
+| Queens publication designation request | Done | Designation letter received 2026-06-08 from `QCC-LLC@nycourts.gov`. Daily: **NY Daily News** (placeanad.nydailynews.com). Weekly: **The Forum** (forumsouth@gmail.com). Canonical letter is in the owner-only Drive record; historical public-repo copy requires privacy review. |
 | Signature source pointer | Done | `docs/business/signing/README.md` records the Drive file metadata, not the signature image |
-| Private Google Drive vault | Done | See `docs/business/ein-and-banking/private-records-manifest.md`; private files live outside the Git repo |
-| Private EIN reference | Done | Exact private path documented in `docs/business/ein-and-banking/private-records-manifest.md` |
+| Private Google Drive record | Partially secured / urgent | Current packet is in an owner-only folder; the legacy AIRBNB mirror still has link-writer access. See `docs/business/ein-and-banking/private-records-manifest.md`. |
+| Private EIN reference | Secured in canonical copy | Filename-level location is documented without a Drive URL; exposed legacy mirror permission still requires removal. |
 
-## Dated And Signed By Piter
+## Executed Governance Status
 
 | Step | Document | Executed copy | Status |
 | --- | --- | --- | --- |
-| 1 | Operating Agreement | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Operating_Agreement_EXECUTED_2026-06-03.pdf` | Signed by Piter on 2026-06-03 |
-| 2 | Initial Written Consent | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Initial_Member_Consent_EXECUTED_2026-06-03.pdf` | Signed by Piter on 2026-06-03 |
-| 3 | MLADIS Bookings Founding Operations Pillar Acknowledgment | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.pdf` | Signed by Piter/MLADIS on 2026-06-03; Diana signature pending |
+| 1 | Operating Agreement | Owner-only Drive record | Executed by the owner on 2026-06-03 |
+| 2 | Initial Written Consent | Owner-only Drive record | Executed by the owner on 2026-06-03 |
+| 3 | MLADIS Bookings Founding Operations Pillar Acknowledgment | Owner-only Drive record | Executed by the owner/MLADIS on 2026-06-03; counterparty signature pending |
 
-Important: Diana's signature is still pending. Do not apply Diana's signature unless Diana separately authorizes it.
+Important: the counterparty signature is still pending. Do not apply another
+person's signature without that person's separate authorization.
 
 ## Dropbox Sign Status
 
@@ -43,8 +46,8 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 | --- | --- |
 | Account | Created with Google sign-in under `garcp37@mladis.com` |
 | Upload package | Replace any earlier Dropbox Sign uploads with the ready-for-signature PDFs before sending |
-| Piter signer | Added as `Piter Zacari Garcia Bautista <garcp37@mladis.com>` |
-| Diana signer | Added as `Diana Sori Garcia Bautista <garciabdianas@gmail.com>` |
+| Owner signer | Configured using the private identity record |
+| Counterparty signer | Configured using the private contractor record |
 | Send status | Do not send until signature/date fields are placed and reviewed |
 
 ## Ready For Field Placement In Dropbox Sign
@@ -55,7 +58,7 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 | Operating Agreement PDF for e-sign | `docs/business/signing/ready-for-signature-2026-06-03/MLADIS_LLC_Operating_Agreement_READY_FOR_SIGNATURE.pdf` |
 | Initial Member Consent PDF for e-sign | `docs/business/signing/ready-for-signature-2026-06-03/MLADIS_LLC_Initial_Member_Consent_READY_FOR_SIGNATURE.pdf` |
 | Diana acknowledgment PDF for e-sign | `docs/business/signing/ready-for-signature-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_READY_FOR_SIGNATURE.pdf` |
-| Interim Piter-signed Diana acknowledgment PDF | `docs/business/signing/execution-ready-2026-06-03/MLADIS_Bookings_Founding_Operations_Pillar_Acknowledgment_PITER_SIGNED_PENDING_DIANA_2026-06-03.pdf` |
+| Interim owner-signed operations acknowledgment PDF | Owner-only Drive record |
 | Email / e-sign cover note | `docs/business/signing/execution-ready-2026-06-03/email-to-diana.md` |
 
 ## Ready For You To Click In Official Portals
@@ -64,8 +67,9 @@ Important: Diana's signature is still pending. Do not apply Diana's signature un
 | --- | --- | --- | --- |
 | 4 | EIN application / IRS CP 575 | Done; private CP 575 letter saved in Google Drive outside Git | No IRS action remains unless an official portal later asks for the EIN from the private record |
 | 5 | Open business bank account | `docs/business/ein-and-banking/bank-account-opening-packet.md` | Bank or fintech chosen by owner |
-| 6 | Queens newspaper designations | Done; designation letter received 2026-06-08 and archived in `docs/business/source-documents/` | Daily: NY Daily News. Weekly: The Forum. |
-| 7 | Place publication notices | **NY Daily News: DONE.** Order #87497, $235.00, paid 2026-06-08, run dates Jun 10–15 2026, Pending Approval. Affidavit emailed to garcp37@mladis.com after final run. **The Forum: WAITING.** Two emails sent 2026-06-08; reply pending. Once they reply: pay, confirm first date, track 6 weekly runs. | `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md` |
+| 6 | Queens newspaper designations | Done; designation letter received 2026-06-08 and secured in the owner-only Drive record | Daily: NY Daily News. Weekly: The Forum. |
+| 7 | Close publication evidence | **NY Daily News: affidavit received and reviewed.** It establishes six weekly dates through 2026-07-15. **The Forum: BLOCKER.** Payment authorization was sent, but no receipt, dates, or affidavit was found. Follow-ups were sent 2026-07-26 and 2026-08-08. | `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md` |
+| 8 | Submit NYS TR-570 | Private five-page fax-ready response is complete except owner signature and actual date; owner confirmed 2026-08-08 that it remains unsent. | Owner-only Drive submission-control log |
 
 ## Prepared For Future Diana Business Visitor Planning
 
@@ -98,10 +102,11 @@ Use `docs/business/funding-readiness/financial-institution-resume-plan.md` when 
 
 ## Best Next Order
 
-1. Replace any earlier Dropbox Sign files with the ready-for-signature PDFs.
-2. Place and review signature/date fields in Dropbox Sign.
-3. Save the completed signed PDFs and audit trail in private business records.
-4. Open business bank account using the private EIN confirmation letter and bank packet.
-5. ~~Place/pay the NY Daily News LLC legal notice order and save the receipt.~~ **Done 2026-06-08.** Order #87497, $235.00, Jun 10–15 2026.
-6. **[Waiting]** The Forum reply — when they reply, pay them and record first publication date. Then track both papers' six-week runs, collect affidavits, and file Certificate of Publication with NY DOS ($50) by 2026-10-01.
-7. Come back to MLADIS bookkeeping/OOP integration after governance and EIN are stable.
+1. Review, sign, date, and fax the private TR-570 packet; retain the successful five-page transmission report.
+2. Obtain The Forum's paid receipt, six weekly dates, and notarized affidavit.
+3. Review The Forum affidavit, then sign and file the private Certificate of Publication with both affidavits and the $50 fee by the 2026-10-01 working deadline.
+4. Archive the DOS filing receipt and order a fresh Certificate of Status.
+5. Open the business bank account using the private EIN confirmation letter and bank packet.
+6. Export 2026 Airbnb activity, reconcile expenses, and build the P&L, balance sheet, cash-flow history, and forecast.
+7. Complete CPA, insurance, and Dominican Republic operating-compliance review before a final loan certification.
+8. Finish Diana's counter-signature and any contractor assignment only through the separate signing/legal review path.

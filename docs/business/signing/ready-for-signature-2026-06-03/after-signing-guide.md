@@ -22,13 +22,12 @@ The EIN belongs in official bank, tax, CPA, payroll, payment processor, vendor t
 
 1. Download the completed signed PDFs from Dropbox Sign.
 2. Download the Dropbox Sign audit trail / certificate of completion.
-3. Save Piter-only governance documents in the private Drive vault governance folder:
+3. Save owner-only governance documents directly in the existing flat owner-only
+   Drive record identified in [private-records-manifest.md](../../ein-and-banking/private-records-manifest.md).
 
-   `/Users/pitergarcia/Library/CloudStorage/GoogleDrive-garciapiterz@gmail.com/.shortcut-targets-by-id/1pY_fQ54nHKvFABNRGYAr5bQ3su_tUDAi/DataScience/AIRBNB/MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/03-governance/`
-
-4. Save the Diana-signed acknowledgment and audit trail in the private Drive vault Diana folder:
-
-   `/Users/pitergarcia/Library/CloudStorage/GoogleDrive-garciapiterz@gmail.com/.shortcut-targets-by-id/1pY_fQ54nHKvFABNRGYAr5bQ3su_tUDAi/DataScience/AIRBNB/MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/04-diana-operations/`
+4. Save the counterparty-signed acknowledgment and audit trail in that same owner-only
+   record. Do not use the similarly named link-accessible AIRBNB mirror and do
+   not create another directory.
 
 5. For the bank account, use these together:
 

@@ -1,7 +1,7 @@
 # MLADIS Business Blueprint
 
 Last updated: 2026-06-03  
-Last status sweep: 2026-06-10
+Last status sweep: 2026-08-08
 
 This document tracks the public-safe business foundation for MLADIS LLC. It intentionally avoids sensitive tax, banking, address, identity, and account-secret values.
 
@@ -168,16 +168,17 @@ The company must protect Piter's personal credit.
 | High | Sign single-member operating agreement | Done | Executed by Piter on 2026-06-03. |
 | High | Sign initial written consent / member resolutions | Done | Executed by Piter on 2026-06-03. |
 | High | Prepare Queens publication package | Done | Draft package prepared. |
-| High | Start New York publication process | In progress | Queens designation response was received and a publisher follow-up (2026-06-11) included a prepayment packet ($375) plus draft notice run dates (06/11-07/16); payment/launch confirmation still pending. |
-| High | Complete New York publication requirement | Todo | Six-week publication, newspaper affidavits, Certificate of Publication filing, and filed certificate archival still need completion. |
-| High | File Certificate of Publication with affidavits | Todo | Must happen after publication affidavits are received. |
+| High | Start New York publication process | Done | Daily News payment and affidavit are documented. The owner reports The Forum was paid and the record shows its requested card authorization was returned, but the paid receipt and completion evidence are still missing. |
+| High | Complete New York publication requirement | In progress / urgent | Daily News affidavit is complete. Obtain The Forum receipt, six dates, and affidavit, then file by the 2026-10-01 working deadline. |
+| High | File Certificate of Publication with affidavits | Blocked by The Forum | Private unsigned draft exists. Sign only after both affidavits pass, then file with the $50 fee and tracking. |
+| High | Submit NYS TR-570 response | Overdue / ready to sign | Owner confirmed 2026-08-08 that the private five-page response remains unsent. Review, sign, date, fax, and retain proof. |
 | High | Open business checking account | Todo | Bank packet is prepared; actual business account still pending and needed to clear Stripe/Airbnb payout dependencies. |
 | Medium | Start bookkeeping | In progress | Starter chart of accounts is prepared; owner started a bookkeeping/booking system; final integration should wait for the OOP Finance/Booking cleanup. |
 | Medium | Confirm tax/accounting treatment with CPA | Todo | Confirm before first tax filing and before relying on any tax treatment assumptions. |
 | Medium | Confirm direct-booking tax/compliance obligations | Todo | Needed before direct bookings go live outside Airbnb. |
 | Medium | Decide whether MLADIS Bookings needs a DBA/assumed name | Todo | Revisit after parent/Booking naming settles and before public marketing relies on a separate assumed name. |
 | Medium | Connect Stripe/payment processor | In progress | Stripe account has an action-required status email requesting a valid bank account; final readiness is blocked on business checking account setup. |
-| Medium | Build lender/grant/investor data room | Todo | Use funding-readiness checklist once bank account/bookkeeping are further along. |
+| Medium | Build lender/grant/investor data room | In progress | Formation, EIN, governance, blank SBA forms, and pre-formation 2025 Airbnb history are private; bank statements, 2026 exports, financials, insurance, and DR compliance remain open. |
 | Low | Evaluate MWBE certification or incentives | Deferred | Revisit after money infrastructure and records are stable. |
 
 ---

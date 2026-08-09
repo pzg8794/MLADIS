@@ -97,14 +97,21 @@
 
 ## Business Operations
 
-- Use `docs/business/` as the private source of truth for MLADIS LLC formation facts, post-formation deadlines, and administrative records.
-- Do not copy private legal addresses, government portal references, transaction IDs, tax IDs, bank details, or owner contact details from `docs/business/` into public frontend pages or customer emails.
+- Use `docs/business/` only for public-safe status, workflow, and filename-level
+  provenance. The canonical private legal/financial source is the owner-only
+  Drive record identified in
+  `docs/business/ein-and-banking/private-records-manifest.md`; never infer
+  privacy from the folder name alone or use the link-accessible AIRBNB mirror.
+- Do not commit or copy private legal addresses, government portal references,
+  transaction IDs, tax IDs, bank details, owner/counterparty identity values,
+  private Drive URLs, or personal contact details into public docs, frontend
+  pages, fixtures, screenshots, or customer emails.
 - If app features need legal-business facts, model them explicitly behind admin-only access instead of reading directly from the Markdown docs.
 - The current business goal is to make MLADIS LLC fundable for government programs, CDFIs, banks, SBA-backed lenders, grants, and later private investors. The active tracker is `docs/business/funding-readiness/`.
 - When resuming bank, lender, CDFI, SBA, grant, investor, P&L, forecast, Airbnb export, or use-of-funds work, start with `docs/business/funding-readiness/financial-institution-resume-plan.md`; do not re-plan from scratch.
 - Service/account/tool transfer work is deferred until the MLADIS web application is robust/completed. When resumed, start from `docs/business/services-and-costs-inventory.md`, implement exactly one service transfer at a time, and do not batch migrate, cancel, rotate, or reconfigure accounts without backup/export, smoke test, rollback notes, and evidence.
 - After any business-formation, compliance, banking, bookkeeping, certification, grant, lender, investor, or government-funding work, update `docs/business/mladis-llc-next-steps.md` and the matching file under `docs/business/funding-readiness/`.
-- Do not submit EIN, SAM.gov, grants, loans, bank accounts, certification applications, or investor materials without explicit owner approval in the current thread. Prepare packets and drafts; leave SSN, EIN, tax, bank, and identity fields for the owner or a secure official portal.
+- Do not submit EIN, SAM.gov, grants, loans, bank accounts, certification applications, or investor materials without explicit owner approval in the current thread. When explicitly authorized, private local/Drive drafts may be completed from verified private source records, but signatures and final submissions remain with the owner unless separately authorized; no completed private form belongs in Git.
 - Never commit reusable signature images, signature stamps, identity documents, EIN letters, SSNs, bank records, or tax returns. If the owner asks for help signing a document, require explicit per-document authorization and keep any reusable signature asset outside Git.
 - For counterparty contracts, use the MLADIS-owned Dropbox Sign account under `garcp37@mladis.com`; do not fall back to typed `/s/` signatures as the final workflow when an e-sign request is practical.
 - Do not send an e-sign request until every recipient email, signer name, and field assignment has been confirmed in the current thread or visible signing UI.

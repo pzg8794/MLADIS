@@ -50,8 +50,8 @@ MLADIS LLC
 
 ## Attachments
 
-- Required: `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`
-- Optional: `docs/business/source-documents/MLADIS_LLC-Confirmation.pdf`, only if useful as supplemental context.
+- Required: owner-only Drive file `MLADIS_LLC-FilingReceipt-And-Articles.pdf`
+- Optional: owner-only Drive file `MLADIS_LLC-Confirmation.pdf`, only if useful as supplemental context.
 
 ## Send Notes
 

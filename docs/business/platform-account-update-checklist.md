@@ -18,9 +18,12 @@ Created: 2026-06-03. Use this after LLC formation and EIN issuance to update eve
 | Future business email | garcp37@mladis.com (use once Google Workspace DNS is stable) |
 | Domain | mladis.com |
 
-Reference documents in the private vault:
-- Articles / Filing Receipt: `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/01-formation/MLADIS_LLC-FilingReceipt-And-Articles.pdf`
-- EIN Confirmation (CP 575 G): `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/02-tax-ein/MLADIS-EIN_CONFIRMATION-CP_575_G.pdf`
+Reference documents in the existing flat owner-only Drive record:
+- Articles / Filing Receipt: `MLADIS_LLC-FilingReceipt-And-Articles.pdf`
+- EIN Confirmation (CP 575 G): `MLADIS-EIN_CONFIRMATION-CP_575_G.pdf`
+
+Do not use the similarly named link-accessible AIRBNB mirror. See
+`docs/business/ein-and-banking/private-records-manifest.md`.
 
 ---
 

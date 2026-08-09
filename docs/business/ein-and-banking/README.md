@@ -17,7 +17,7 @@ Private preparation notes for EIN, banking, bookkeeping, and direct-booking read
 - [bank-account-opening-packet.md](bank-account-opening-packet.md) - bank-ready cover package and application-answer guide.
 - [bank-credit-loan-and-grant-guide.md](bank-credit-loan-and-grant-guide.md) - bank shortlist, credit sequence, and loan/grant program guide.
 - [business-bank-cover-letter.md](business-bank-cover-letter.md) - short cover letter to include if a bank or fintech asks for an upload/letter.
-- [private-records-manifest.md](private-records-manifest.md) - private storage checklist and exact private Drive paths for EIN/banking records without the EIN value.
+- [private-records-manifest.md](private-records-manifest.md) - private storage checklist, owner-only source rule, and warning about the legacy link-accessible mirror.
 - [bookkeeping-chart-of-accounts.md](bookkeeping-chart-of-accounts.md) - starting categories for bookkeeping.
 
 ## Sensitive Data Rule

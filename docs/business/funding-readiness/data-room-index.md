@@ -8,16 +8,16 @@ completed loan applications stay outside Git.
 
 | Document | Status | Storage guidance |
 | --- | --- | --- |
-| Articles / NYBE application confirmation | Done | Archived in `docs/business/source-documents/MLADIS_LLC-Confirmation.pdf`. |
-| NY filing acknowledgement / filing receipt | Done | Archived in `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`. |
-| Operating agreement | Executed | Canonical executed copy is in private `03-governance`; public-repo historical copies require privacy review. |
-| Initial member consent | Executed | Canonical executed copy is in private `03-governance`; public-repo historical copies require privacy review. |
+| Articles / NYBE application confirmation | Done | Canonical owner-only copy secured; historical public-repo copy requires privacy review. |
+| NY filing acknowledgement / filing receipt | Done | Canonical owner-only copy secured; historical public-repo copy requires privacy review. |
+| Operating agreement | Executed | Canonical executed copy is in the flat owner-only Drive record; public-repo historical copies require privacy review. |
+| Initial member consent | Executed | Canonical executed copy is in the flat owner-only Drive record; public-repo historical copies require privacy review. |
 | Operations acknowledgment | Owner signed; counterparty pending | Obtain counterparty review/acceptance, then store the fully executed copy privately. |
 | Business visitor process package | Template ready | Keep blank templates in Git; completed visa-history answers stay outside Git. |
-| Certificate of Publication and affidavits | Blocked | Both papers were paid, but no affidavit was found and Daily News evidence appears to show an incorrect consecutive-day schedule. Unsigned draft is private. |
+| Certificate of Publication and affidavits | Partially complete / blocked | Daily News affidavit is received and private. The Forum receipt, dates, and affidavit remain missing; unsigned certificate draft stays private. |
 | Certificate of Status | Todo | Order a fresh certificate after the publication filing is accepted. |
 | EIN confirmation letter | Done | Stored outside Git in private business records. Do not commit EIN value or CP 575 letter. |
-| NYS TR-570 response | Overdue / ready to sign | Fax-ready five-page response and field log are in private `02-tax-ein`; owner must review, sign, date, fax, and retain submission proof and agency response. |
+| NYS TR-570 response | Overdue / ready to sign | Owner confirmed 2026-08-08 that it remains unsent. Fax-ready five-page response and submission control are in the flat owner-only Drive record; owner must review, sign, date, fax, and retain proof. |
 | Recurring compliance calendar | CPA review | Track biennial statement, IT-204-LL/annual filing fee, tax returns, assumed name, and ownership-disclosure rule changes. |
 
 ## Folder 2 - Ownership, Identity, And Authority
@@ -35,7 +35,7 @@ completed loan applications stay outside Git.
 | Document | Status | Storage guidance |
 | --- | --- | --- |
 | Business bank statements | Todo | Store outside Git. |
-| Airbnb payout reports | Todo | Private data room; summaries may be committed if anonymized. |
+| Airbnb payout reports | In progress | Private 2025 report is archived as pre-formation operating history. Obtain 2026 year-to-date exports and document the transition to MLADIS. |
 | Direct-booking revenue reports | Todo | Generate after platform has live transactions. |
 | Expense ledger | Todo | Bookkeeping tool preferred. |
 | Receipts and invoices | Todo | Store outside Git by year/vendor. |

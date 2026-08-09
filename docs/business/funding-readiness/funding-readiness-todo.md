@@ -6,24 +6,24 @@ Public-safe checklist for preparing MLADIS LLC for government and financial-inst
 
 | Priority | Task | Status | Owner action needed | Notes |
 | --- | --- | --- | --- | --- |
-| High | Save NYBE filing acknowledgement/receipt | Done | None | Filing receipt and Articles packet is archived in `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`. |
+| High | Save NYBE filing acknowledgement/receipt | Done | None | Canonical copy is in the owner-only Drive record; the historical public-repo copy requires privacy review. |
 | High | Sign operating agreement | Done | None | Executed canonical copy is stored privately. |
 | High | Sign initial member consent | Done | None | Executed canonical copy authorizes EIN, banking, payments, records, and contractor/vendor actions. |
 | High | Sign operations acknowledgment if used | In progress | Obtain counterparty review/acceptance | Owner/MLADIS signed; counterparty signature is pending. |
-| High | Complete Queens publication process | Blocked / urgent | Obtain Daily News correction and both notarized affidavits | Both designated papers were paid. No affidavit was found. Daily News evidence shows six consecutive days rather than six successive weeks; correction and affidavit requests were sent 2026-07-26. Deadline target is 2026-10-01. |
-| High | File Certificate of Publication | Blocked | Sign and submit only after both affidavits pass review | Unsigned draft is private. File with both affidavits and $50 fee; retain full packet, tracking, payment proof, and filing receipt. |
-| High | Submit NYS TR-570 | Overdue / ready to sign | Review all five pages, sign, date, fax, and retain proof | Fax-ready private response and updated field log prepared 2026-07-26 with all non-signature fields completed. No submission proof or agency acknowledgment found. |
+| High | Complete Queens publication process | Partially complete / urgent | Obtain The Forum receipt, dates, and notarized affidavit | Daily News affidavit received and reviewed with six weekly dates. The Forum evidence remains missing after follow-ups sent 2026-07-26 and 2026-08-08. Deadline target is 2026-10-01. |
+| High | File Certificate of Publication | Blocked by The Forum | Sign and submit only after both affidavits pass review | Unsigned draft is private. File with both affidavits and $50 fee; retain full packet, tracking, payment proof, and filing receipt. |
+| High | Submit NYS TR-570 | Overdue / ready to sign | Review all five pages, sign, date, fax, and retain proof | Owner confirmed 2026-08-08 that it remains unsent. Fax-ready private response has all non-signature fields completed. |
 | Medium | Obtain Certificate of Status | Todo | Order after publication filing is accepted | A fresh $25 certificate belongs in the lender packet. |
-| Medium | Confirm recurring NY filings | CPA review | Calendar biennial statement and annual LLC filing fee | Biennial statement is expected June 2028; evaluate March 15, 2027 IT-204-LL/annual filing-fee applicability. |
+| Medium | Confirm recurring NY filings | CPA review | Calendar biennial statement and determine annual LLC filing-fee applicability | Biennial statement is expected June 2028. Form IT-204-LL depends on classification and New York-source items; if applicable for a calendar-year entity, the normal deadline is the 15th day of the third month after year-end. |
 
 ## Phase 2 - Money Infrastructure
 
 | Priority | Task | Status | Owner action needed | Notes |
 | --- | --- | --- | --- | --- |
-| High | EIN application / CP 575 saved | Done | None | EIN issued on 2026-06-03; CP 575 letter and private EIN reference are stored outside Git in the private business-record vault. |
+| High | EIN application / CP 575 saved | Done | None | EIN issued on 2026-06-03; CP 575 letter and private EIN reference are stored outside Git in the owner-only Drive record. |
 | High | Open business bank account | Todo | Complete bank KYC | No account-opening evidence or statements were found. Needs EIN, formation proof, operating agreement, owner ID, and business address. |
 | High | Configure accounting/bookkeeping tool | In progress | Finish after MLADIS OOP booking-system cleanup | Owner started the system; final accounting integration should wait until the booking system has a strong stable OOP base. |
-| High | Create business document vault outside public app assets | Done | Keep saving sensitive records there | Private Google Drive vault is documented in `docs/business/ein-and-banking/private-records-manifest.md`; keep EIN letter, bank docs, tax returns, IDs, and statements outside Git. |
+| High | Secure business document vault outside public app assets | Partially remediated / urgent | Remove the legacy mirror's link permission and verify access | The current 30-file packet is in an owner-only Drive folder. A similarly named AIRBNB mirror still has `anyone with the link` writer access and contains legacy sensitive records. See `docs/business/ein-and-banking/private-records-manifest.md`. |
 | Medium | Establish business credit basics | Todo | Open accounts responsibly | Use business bank, payment processors, business email, and vendor records consistently. |
 | High | Obtain insurance package | Todo | Review actual operations and lender collateral with broker | No current business/property-operation insurance binder was found in the MLADIS packet. |
 | High | Remediate public-repo private data | In progress | Coordinate docs/code cleanup and history review | EIN and private contact values were removed from the touched trackers, but historical docs, signed/source files, code defaults, and Git history still require privacy remediation. |
@@ -32,10 +32,10 @@ Public-safe checklist for preparing MLADIS LLC for government and financial-inst
 
 | Priority | Task | Status | Owner action needed | Notes |
 | --- | --- | --- | --- | --- |
-| High | Import Airbnb payout history | Todo | Export from Airbnb/accounting source | Needed for revenue proof and underwriting. |
+| High | Import Airbnb payout history | In progress | Export 2026 year-to-date data | A private 2025 report is archived as pre-formation operating history, not MLADIS LLC financial statements. 2026 payouts, reservations, and transition evidence remain required. |
 | High | Build expense history | Todo | Gather receipts/statements | Cleaning, maintenance, supplies, software, ads, repairs, platform fees, contractor support. |
 | High | Reconcile contractor payments/reimbursements | Todo | Gather records | Keep Diana compensation and reimbursements clear for tax/accounting review. |
-| Medium | Create monthly P&L view | Todo | Review with CPA/bookkeeper | Needed for banks, lenders, and investor diligence. |
+| Medium | Create monthly P&L and balance sheet | Todo | Review with CPA/bookkeeper | Needed for banks, lenders, and investor diligence. |
 | Medium | Create cash-flow forecast | Todo | Approve assumptions | Include direct-booking platform, deposits, cleaning, repairs, taxes, software, marketing. |
 | Medium | Build occupancy and booking metrics | Todo | Export/apply analytics | Include Airbnb stays, direct bookings, cancellations, reviews, average stay, revenue per listing. |
 | High | Curate Dominican Republic property/control evidence | Todo | DR attorney/accountant review | Confirm title/lease/management authority, HOA permission, tourism registration, RNC/Registro Mercantil, tax status, disputes/liens, and ability to assign revenue to MLADIS LLC. |

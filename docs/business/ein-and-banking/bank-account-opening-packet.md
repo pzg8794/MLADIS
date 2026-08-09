@@ -26,11 +26,11 @@ Private note: the Google Drive vault version of this bank packet includes the EI
 | Formation date | 2026-06-03 |
 | DOS ID | 7932124 |
 | County office location | Queens County |
-| Sole member / authorized signer | Piter Zacari Garcia Bautista |
-| Business phone | 631-575-4841 |
-| Current contact email | garciapiterz@gmail.com |
+| Sole member / authorized signer | Use the owner-only Operating Agreement and Initial Member Consent |
+| Business phone | Use the owner-only business record |
+| Current contact email | Use the owner-only account record |
 | Domain | mladis.com |
-| Principal address | 109-19 72nd Rd., Apt 5H, Forest Hills, NY 11375 |
+| Principal address | Use the owner-only formation and tax records |
 | Mailing address | Use the private IRS CP 575 / bank application address as needed |
 | Industry | Accommodations, vacation rentals, hospitality booking operations, and related software/AI systems |
 | Primary product/service | Vacation-rental booking operations and MLADIS direct-booking platform |
@@ -39,9 +39,9 @@ Private note: the Google Drive vault version of this bank packet includes the EI
 
 | Document | Current location | Notes |
 | --- | --- | --- |
-| NYS DOS filing receipt and Articles | `docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf` | Safe formation record already in repo. |
-| Operating Agreement | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Operating_Agreement_EXECUTED_2026-06-03.pdf` | Signed by Piter. |
-| Initial Member Consent | `docs/business/signing/execution-ready-2026-06-03/MLADIS_LLC_Initial_Member_Consent_EXECUTED_2026-06-03.pdf` | Shows banking and operational authority. |
+| NYS DOS filing receipt and Articles | Owner-only Drive record | Use `MLADIS_LLC-FilingReceipt-And-Articles.pdf`; historical public-repo copy requires privacy review. |
+| Operating Agreement | Owner-only Drive record | Use the canonical executed PDF; historical public-repo copy requires privacy review. |
+| Initial Member Consent | Owner-only Drive record | Use the canonical executed PDF showing banking and operational authority. |
 | EIN confirmation letter | Private records only | Use IRS CP 575 PDF from private folder. Do not commit. |
 | Owner government ID | Private records only | Upload directly to bank if required. Do not commit. |
 | Proof of address, if required | Private records only | Utility bill, lease, bank statement, or accepted alternative. Do not commit unless intentionally redacted and private. |
@@ -52,15 +52,15 @@ Use the bank's exact choices when available.
 
 | Bank prompt | Suggested answer |
 | --- | --- |
-| Business type | LLC / Single-member LLC |
-| Industry | Accommodations, hospitality, lodging, vacation rentals, or real estate rental/management depending on available choices |
+| Business type | LLC; use the bank's tax-classification choice only after checking the private tax record |
+| Industry | Select the bank choice that accurately describes the documented current operation; do not guess |
 | Business description | MLADIS LLC operates vacation-rental booking, guest-support, deposit, invoice, and direct-booking systems, supported by software and AI-agent infrastructure. |
-| Ownership | Piter Zacari Garcia Bautista owns 100% as sole member |
-| Employees | No W-2 employees at opening unless that changes |
+| Ownership | Enter member and percentage facts exactly as documented in the owner-only governance record |
+| Employees | Enter the current count supported by payroll and contractor records; do not assume |
 | Expected deposits | Airbnb payouts, direct-booking payments, owner contributions, payment processor settlements |
 | Expected withdrawals | Cleaning, repairs, software, hosting, advertising, refunds, deposit releases, taxes, contractor/vendor payments |
 | International activity | Dominican Republic vacation-rental operations and related vendor/contractor coordination |
-| Cash activity | Low / minimal cash if true |
+| Cash activity | Enter the actual expected amount and frequency; do not assume |
 | Credit request | None at initial bank opening |
 
 ## Banking Controls
@@ -82,6 +82,7 @@ Sources:
 
 ## Private Drive Version
 
-The bank-ready private version with EIN details is stored outside Git at:
-
-`/Users/pitergarcia/Library/CloudStorage/GoogleDrive-garciapiterz@gmail.com/.shortcut-targets-by-id/1pY_fQ54nHKvFABNRGYAr5bQ3su_tUDAi/DataScience/AIRBNB/MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/05-banking/bank-account-opening-packet.md`
+The bank-ready private version is stored outside Git as
+`bank-account-opening-packet.md` in the existing flat owner-only Drive record.
+Use [private-records-manifest.md](private-records-manifest.md) to distinguish it
+from the link-accessible AIRBNB mirror.

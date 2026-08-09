@@ -1,7 +1,7 @@
 # Financial Institution Readiness Resume Plan
 
 Created: 2026-06-04.
-Last status sweep: 2026-06-10.
+Last status sweep: 2026-08-08.
 
 This is the resume plan for getting MLADIS LLC ready to approach banks, CDFIs, SBA-backed lenders, NYC/NYS financing support, and later grant or investor conversations.
 
@@ -17,7 +17,9 @@ Those are tracked separately in the signing and publication folders. Use this fi
 - Do not submit a bank, loan, grant, SAM.gov, certification, investor, or government-funding application without explicit owner approval in the current thread.
 - Do not commit EIN, SSN, ITIN, bank account numbers, routing numbers, tax returns, ID images, private guest contact data, or payment credentials.
 - Use the private records manifest when an official form needs private records: [private-records-manifest.md](../ein-and-banking/private-records-manifest.md).
-- Keep sanitized guides and templates in Git; keep completed forms, statements, IDs, tax records, and private exports in the private Google Drive vault.
+- Keep sanitized guides and templates in Git; keep completed forms, statements,
+  IDs, tax records, and private exports in the verified owner-only Drive record.
+  Do not use the similarly named link-accessible AIRBNB mirror.
 - After every completed step, update this file, [funding-readiness-todo.md](funding-readiness-todo.md), [data-room-index.md](data-room-index.md), and [../mladis-llc-next-steps.md](../mladis-llc-next-steps.md).
 
 ## Resume Snapshot
@@ -25,9 +27,9 @@ Those are tracked separately in the signing and publication folders. Use this fi
 | Area | Current status | Resume action |
 | --- | --- | --- |
 | Formation / EIN | Done | Use filed Articles, Piter-signed governance docs, and private CP 575 letter when a bank or official portal asks for proof. |
-| NY publication | In progress | NY Daily News is placed/paid; wait for approval/run proof. The Forum still needs reply/payment/first date. Certificate of Publication comes after both affidavits. |
+| NY publication | Partially complete / urgent | Daily News affidavit is received. Obtain The Forum receipt, six dates, and affidavit, then file the Certificate of Publication. |
 | Bank account | Not opened | Use [bank-account-opening-packet.md](../ein-and-banking/bank-account-opening-packet.md) and private EIN letter to open MLADIS LLC business checking. |
-| Airbnb/revenue export | Not built into lender packet | Export payout/reservation data, store private raw exports, and prepare sanitized monthly summaries. |
+| Airbnb/revenue export | In progress | Private 2025 report is pre-formation operating history. Export 2026 payout/reservation data, document the LLC transition, and prepare sanitized monthly summaries. |
 | Expense history | Not built into lender packet | Gather receipts, software, ads, repairs, cleaning, contractor, compliance, and banking costs. |
 | P&L and forecast | Not built | Build monthly P&L, cash-flow forecast, and direct-booking assumptions from the data contract. |
 | Lender one-pager | Not built | Draft after revenue/expense summaries and use-of-funds numbers exist. |
@@ -53,7 +55,7 @@ Goal: create the clean money lane before any serious funding conversation.
 ### Agent Actions
 
 1. Prepare the bank packet from [bank-account-opening-packet.md](../ein-and-banking/bank-account-opening-packet.md).
-2. Open or stage the private vault folder for records, but do not copy sensitive numbers into Git.
+2. Open or stage the verified owner-only Drive record, but do not copy sensitive numbers into Git.
 3. After the account is opened, update:
    - [../platform-account-update-checklist.md](../platform-account-update-checklist.md).
    - [funding-readiness-todo.md](funding-readiness-todo.md).
@@ -70,9 +72,8 @@ Store these outside Git:
 - Monthly statements.
 - Any debit card, routing, account, or login details.
 
-Recommended private folder:
-
-`MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/05-banking/`
+Use the existing flat owner-only folder named in the private records manifest;
+do not create another directory.
 
 ## Phase 2 - Export Airbnb Payouts And Reservation History
 
@@ -90,9 +91,8 @@ Goal: turn operating history into lender-grade evidence.
 
 Store raw exports outside Git because they may contain guest names, platform IDs, payout details, tax data, or private business information.
 
-Recommended private folder:
-
-`MLADIS-Private-Business-Records/financial-data/airbnb-exports/`
+Use the existing flat owner-only folder named in the private records manifest;
+do not create another directory.
 
 Safe summaries can be committed later only if they are aggregated and approved, for example:
 
@@ -139,9 +139,8 @@ Use [bookkeeping-chart-of-accounts.md](../ein-and-banking/bookkeeping-chart-of-a
 
 Keep raw receipts, statements, tax-sensitive documents, IDs, and private contractor payment details outside Git.
 
-Recommended private folder:
-
-`MLADIS-Private-Business-Records/financial-data/expenses/`
+Use the existing flat owner-only folder named in the private records manifest;
+do not create another directory.
 
 ### Agent Output To Create
 

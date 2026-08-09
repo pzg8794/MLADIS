@@ -41,7 +41,7 @@ MLADIS LLC
 
 Attach this file:
 
-`/Users/pitergarcia/Library/CloudStorage/GoogleDrive-garciapiterz@gmail.com/.shortcut-targets-by-id/1pY_fQ54nHKvFABNRGYAr5bQ3su_tUDAi/DataScience/AIRBNB/MLADIS/docs/business/source-documents/MLADIS_LLC-FilingReceipt-And-Articles.pdf`
+Attach the owner-only Drive file `MLADIS_LLC-FilingReceipt-And-Articles.pdf`.
 
 ## Do Not Attach
 

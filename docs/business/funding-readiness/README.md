@@ -10,7 +10,7 @@ This is not an application folder yet. It is the preparation layer that keeps ML
 
 ## Current Position
 
-MLADIS LLC is formed, approved in NYBE, and has an issued EIN, but it is not yet fundable-ready.
+MLADIS LLC is formed, approved in NYBE, and has an issued EIN, but it is not yet final loan-ready.
 
 The strongest current assets are:
 
@@ -23,10 +23,11 @@ The strongest current assets are:
 
 The main blockers are:
 
-- Final e-sign completion/audit trail still needs to be saved after Dropbox Sign.
+- The overdue TR-570 is fax-ready but still needs owner review, signature, actual date, submission, and proof.
 - Business bank account and bookkeeping system are not live yet.
-- NY publication is not complete: NY Daily News is placed/paid and waiting for approval/run proof, The Forum reply/payment/first date is pending, and affidavits/Certificate of Publication still need to be completed.
-- Financial statements, business plan, and use-of-funds model are not yet prepared.
+- NY publication is not complete: the Daily News notarized affidavit is received, while The Forum receipt/dates/affidavit and the Certificate of Publication filing remain open.
+- A 2025 Airbnb report is archived as pre-formation operating history, but 2026 exports, MLADIS financial statements, a business plan, and a use-of-funds model are not yet prepared.
+- No current business-bank statement, insurance binder, or curated Dominican Republic operating-compliance packet was found.
 
 ## Active Files
 

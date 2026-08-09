@@ -2,6 +2,21 @@
 
 Operational log for the MLADIS LLC New York publication requirement. This file records what was verified, what was only attempted, and what still needs owner action.
 
+## 2026-08-08 - Daily News Affidavit Received; Forum Still Open
+
+- The NY Daily News replied on 2026-07-27 that order #87497 ran once each week for six weeks and then supplied `Affidavits 87497.pdf`.
+- The reviewed private two-page notarized affidavit identifies `MLADIS LLC`, Queens County, and weekly dates 2026-06-10, 06-17, 06-24, 07-01, 07-08, and 07-15. It includes the publisher's sworn execution, notary, and annexed notice.
+- The earlier invoice's June 10-15 display is no longer treated as the publication schedule; the notarized affidavit establishes the actual weekly dates.
+- The affidavit is stored outside Git in the flat owner-only Drive record as `NY_Daily_News_Affidavit_Order_87497_2026-07-27.pdf`.
+- The Forum's last incoming message remains its 2026-06-19 `Thank you`
+  acknowledgment. The owner's urgent 2026-07-26 request received no reply; no
+  paid receipt, six dates, or affidavit was found through this audit.
+- A second urgent follow-up was sent from the MLADIS company mailbox to The
+  Forum on 2026-08-08 at approximately 10:09 PM EDT. Gmail confirmed `Message
+  sent`.
+- No Certificate of Publication filing receipt exists. The private draft remains unsigned and blocked by The Forum affidavit.
+- Working 120-day filing deadline remains **2026-10-01**.
+
 ## 2026-07-26 - Compliance Audit And Newspaper Follow-Ups
 
 - The private publication record now contains the Queens designation letter, NY Daily News order proof, approval/invoice, and email confirmation.
@@ -10,7 +25,9 @@ Operational log for the MLADIS LLC New York publication requirement. This file r
 - No notarized affidavit from either newspaper was found in the connected private Drive, local records, or connected MLADIS mailbox.
 - Follow-up sent to The Forum on 2026-07-26 requesting the exact six weekly dates, completion status, paid receipt, and notarized affidavit.
 - Compliance-correction request sent to NY Daily News on 2026-07-26 requesting every insertion date, confirmation of the six-successive-weeks schedule, a no-charge correction or rerun if needed, and the final notarized affidavit. No new charge was authorized.
-- An unsigned Certificate of Publication draft and a private closeout checklist were prepared in the existing private `06-publication` folder. The certificate must remain unsigned until both affidavits establish compliant publication.
+- An unsigned Certificate of Publication draft and a private closeout checklist
+  were prepared in the existing flat owner-only Drive record. The certificate
+  must remain unsigned until both affidavits establish compliant publication.
 - Calculated 120-day deadline from the 2026-06-03 formation date: **2026-10-01**.
 - Public filing-history review found the Articles filing but no Certificate of Publication as of this audit.
 
@@ -45,7 +62,7 @@ Operational log for the MLADIS LLC New York publication requirement. This file r
   - `QCC-LLC` designated NY Daily News for daily publication.
   - `QCC-LLC` sent `MLADIS LLC.pdf`.
 - The designation letter is archived in the repo at:
-  - `docs/business/source-documents/MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf`
+  - Owner-only Drive file `MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf`
 - The archived letter should remain the source of truth for newspaper names and contact details.
 - The letter says to submit the raised-seal designation letter to each designated newspaper.
 
@@ -140,10 +157,8 @@ Save the order confirmation email when it arrives at garcp37@mladis.com.
 
 ## Current Next Actions
 
-1. **[Urgent correction]** Obtain NY Daily News written confirmation of a compliant once-per-week schedule or a no-charge six-week correction/rerun.
-2. **[Waiting]** Obtain The Forum's paid receipt, exact six weekly dates, completion confirmation, and notarized affidavit.
-3. Record only affidavit-supported weekly publication dates in `publication-completion-checklist.md`.
-4. Review both affidavits for exact entity name, designated paper, six successive weeks, and notarization.
-5. Complete and sign the private Certificate of Publication draft only after both affidavits pass review.
-6. File the certificate with both affidavits and the $50 Department of State fee; retain tracking, a full packet copy, and the filing receipt.
-7. Order a fresh Certificate of Status after the publication filing is accepted for the lender packet.
+1. **[Urgent]** Monitor the 2026-08-08 follow-up and obtain The Forum's paid receipt, exact six weekly dates, completion confirmation, and notarized affidavit; call if no prompt reply arrives.
+2. Review The Forum affidavit for exact entity name, designated paper, six successive weeks, notice, and notarization.
+3. Complete and sign the private Certificate of Publication draft only after both affidavits pass review.
+4. File the certificate with both affidavits and the $50 Department of State fee; retain tracking, a full packet copy, and the filing receipt.
+5. Verify the filing history and order a fresh Certificate of Status after acceptance.
