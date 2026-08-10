@@ -98,9 +98,16 @@ timing, missing-document guidance, and a secure upload channel. No attachment
 or private identifier was sent, and no authority to transfer property, incur
 debt, pay third parties, or file records was granted.
 
-The first professional response must provide the secure intake route and the
-current-title investigation plan. No owner or counterparty should sign the
-working drafts until counsel returns approved final instruments.
+On August 10, counsel replied that all documentation related to the apartments
+would help counsel prepare an accurate proposal. Counsel explicitly requested
+the loan documents and, if available, the constancia letter, property title,
+and mortgage certificate. The reply included no attachment, upload link, or
+secure-transfer instructions.
+
+Before transmitting those sensitive records, obtain counsel's approved secure
+intake route. Send the verified current records only through that route, then
+obtain the current-title investigation plan. No owner or counterparty should
+sign the working drafts until counsel returns approved final instruments.
 
 Official references:
 
