@@ -82,7 +82,7 @@ the correct applicant and exact license category for these two apartments.
 
 ## Counsel Package And Outreach
 
-On August 8-9, 2026, the private owner-only record was expanded with:
+On August 8-9, 2026, the private owner-only record was documented as expanded with:
 
 - a Spanish-first counsel brief with an English executive summary;
 - editable and printable versions of 13 unsigned counsel-review instruments;
@@ -91,7 +91,14 @@ On August 8-9, 2026, the private owner-only record was expanded with:
   source documents; and
 - a submission-control log.
 
-All proposed instruments remain visibly blocked from signature. On August 9,
+During the August 11 mounted-filesystem reconciliation, the previously
+documented brief, draft-set, binder, ZIP, and control-log filenames were not
+present in the current owner-only folder tree. Locate and re-verify them or
+rebuild them from the historical source archive before any submission. The
+historical apartment contracts, loan/closing records, powers, and 2020 title
+copies are present.
+
+All proposed instruments remain blocked from signature. On August 9,
 an engagement request was sent from the MLADIS company mailbox to the existing
 Dominican counsel contacts. It requested conflict clearance, scope, fees,
 timing, missing-document guidance, and a secure upload channel. No attachment

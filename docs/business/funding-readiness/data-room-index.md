@@ -10,14 +10,14 @@ completed loan applications stay outside Git.
 | --- | --- | --- |
 | Articles / NYBE application confirmation | Done | Canonical owner-only copy secured; historical public-repo copy requires privacy review. |
 | NY filing acknowledgement / filing receipt | Done | Canonical owner-only copy secured; historical public-repo copy requires privacy review. |
-| Operating agreement | Executed | Canonical executed copy is in the flat owner-only Drive record; public-repo historical copies require privacy review. |
-| Initial member consent | Executed | Canonical executed copy is in the flat owner-only Drive record; public-repo historical copies require privacy review. |
+| Operating agreement | Executed | Canonical executed copy is in the existing owner-only Drive record; public-repo historical copies require privacy review. |
+| Initial member consent | Executed | Canonical executed copy is in the existing owner-only Drive record; public-repo historical copies require privacy review. |
 | Operations acknowledgment | Owner signed; counterparty pending | Obtain counterparty review/acceptance, then store the fully executed copy privately. |
 | Business visitor process package | Template ready | Keep blank templates in Git; completed visa-history answers stay outside Git. |
-| Certificate of Publication and affidavits | Partially complete / blocked | Daily News affidavit is received and private. The Forum receipt, dates, and affidavit remain missing; unsigned certificate draft stays private. |
+| Certificate of Publication and affidavits | Partially complete / correction pending | Daily News affidavit is usable. The Forum affidavit was received, but its notary commission expired before the jurat date; corrected affidavit requested 2026-08-11. Unsigned certificate draft stays private. |
 | Certificate of Status | Todo | Order a fresh certificate after the publication filing is accepted. |
 | EIN confirmation letter | Done | Stored outside Git in private business records. Do not commit EIN value or CP 575 letter. |
-| NYS TR-570 response | Overdue / ready to sign | Owner confirmed 2026-08-08 that it remains unsent. Fax-ready five-page response and submission control are in the flat owner-only Drive record; owner must review, sign, date, fax, and retain proof. |
+| NYS TR-570 response | Fax transmitted / acknowledgment pending | UPS report dated by file context 2026-08-11 shows the notice destination, five of five pages, and `Result OK`. Machine date is incorrect. Preserve proof and archive the exact signed transmitted copy if available. |
 | Recurring compliance calendar | CPA review | Track biennial statement, IT-204-LL/annual filing fee, tax returns, assumed name, and ownership-disclosure rule changes. |
 
 ## Folder 2 - Ownership, Identity, And Authority
@@ -35,7 +35,7 @@ completed loan applications stay outside Git.
 | Document | Status | Storage guidance |
 | --- | --- | --- |
 | Business bank statements | Todo / none found | Mercury approval is confirmed, but no statement email was found. Download every available statement directly and store it outside Git. |
-| Airbnb payout reports | In progress | Private 2025 report is archived as pre-formation operating history. Obtain 2026 year-to-date exports and document the transition to MLADIS. |
+| Airbnb payout reports | In progress | 2024 Airbnb earnings and related tax summaries were located as pre-formation/personal operating history. No 2025 or 2026 year-to-date Airbnb export was found in the current inventory; obtain both and document the transition to MLADIS. |
 | Direct-booking revenue reports | Todo | Generate after platform has live transactions. |
 | Expense ledger | Todo | Bookkeeping tool preferred. |
 | Receipts and invoices | Todo | Store outside Git by year/vendor. |
@@ -57,7 +57,7 @@ completed loan applications stay outside Git.
 | G-101/G-102 source property documents | Located / private | Signed 2018 purchase-option contracts, 2020 title copies, financing and representation records, condominium rules, and maintenance history are in the private source archive. They establish history, not a completed MLADIS transfer. |
 | Current title, encumbrance, and lender records | Todo / urgent | Obtain a current certified legal-status report for each apartment, current owner/borrower and payoff status, and all required Banco Popular/Fiduciaria consents. |
 | MLADIS property/operating authority | Todo / counsel review | Execute the counsel-selected title transfer/contribution or lease/management/operating structure separately for G-101 and G-102. Do not use an unsigned draft as evidence. |
-| DR counsel submission package | Prepared privately / outreach sent | The owner-only record contains the editable brief, printable brief, 13 unsigned drafts, 173-page binder, flat ZIP, and control log. Counsel outreach was sent 2026-08-09 without attachments; use the firm's secure channel after conflict and engagement terms are confirmed. |
+| DR counsel submission package | Documented previously / current files must be located or rebuilt | Historical apartment source records are present and counsel outreach was sent 2026-08-09 without attachments. The previously documented brief, 13-draft set, 173-page binder, ZIP, and control-log filenames were not present in the mounted owner-only folder during the 2026-08-11 reconciliation. Locate or rebuild them, then use the firm's secure channel after engagement terms are confirmed. |
 | DR tax/tourism/business registrations | Todo / none found | Obtain counsel/accountant determination and required RNC, Registro Mercantil, tax/invoicing, MITUR/RENATUR, land-use, inspection, and local authorization evidence. |
 | HOA and insurance evidence | Todo / urgent | Obtain written short-term-rental/lodging-use confirmation and current property, contents, civil-liability, business-interruption, and host coverage for the correct owners/operators. |
 | Contractor ratification/assignment | Draft ready | Unsigned printable draft is private; execute only after counsel confirms the parties, scope, jurisdiction, tax treatment, and the final MLADIS operating structure. |

@@ -22,7 +22,7 @@ The EIN belongs in official bank, tax, CPA, payroll, payment processor, vendor t
 
 1. Download the completed signed PDFs from Dropbox Sign.
 2. Download the Dropbox Sign audit trail / certificate of completion.
-3. Save owner-only governance documents directly in the existing flat owner-only
+3. Save owner-only governance documents directly in the existing numbered owner-only
    Drive record identified in [private-records-manifest.md](../../ein-and-banking/private-records-manifest.md).
 
 4. Save the counterparty-signed acknowledgment and audit trail in that same owner-only

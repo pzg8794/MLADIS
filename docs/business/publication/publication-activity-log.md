@@ -2,12 +2,32 @@
 
 Operational log for the MLADIS LLC New York publication requirement. This file records what was verified, what was only attempted, and what still needs owner action.
 
+## 2026-08-11 - Forum Affidavit Received But Notary Defect Blocks Filing
+
+- The Forum affidavit forwarded to the correct MLADIS mailbox on 2026-08-10 was
+  downloaded and reviewed. The original scan had been sent on 2026-07-27 to a
+  misspelled `@mlaids.com` address.
+- The private one-page affidavit identifies MLADIS LLC and states publication
+  once weekly from 2026-06-11 through 2026-07-16.
+- The affidavit is not filing-ready: its notary stamp says the commission
+  expired 2024-10-31, but the affidavit was sworn on 2026-07-27.
+- A correction request was sent from the MLADIS mailbox to The Forum on
+  2026-08-11 at approximately 5:36 AM EDT. Gmail Sent confirmed the subject
+  `Correction needed: MLADIS LLC affidavit notary commission expired`.
+- The request asks for a newly signed and notarized affidavit using a notary
+  whose commission was current on the notarization date and identifies the
+  earlier misspelled recipient address.
+- The Daily News affidavit remains usable. The unsigned Certificate of
+  Publication remains blocked only by a corrected Forum affidavit and final
+  owner review/signature.
+- Working 120-day filing date remains **2026-10-01**.
+
 ## 2026-08-08 - Daily News Affidavit Received; Forum Still Open
 
 - The NY Daily News replied on 2026-07-27 that order #87497 ran once each week for six weeks and then supplied `Affidavits 87497.pdf`.
 - The reviewed private two-page notarized affidavit identifies `MLADIS LLC`, Queens County, and weekly dates 2026-06-10, 06-17, 06-24, 07-01, 07-08, and 07-15. It includes the publisher's sworn execution, notary, and annexed notice.
 - The earlier invoice's June 10-15 display is no longer treated as the publication schedule; the notarized affidavit establishes the actual weekly dates.
-- The affidavit is stored outside Git in the flat owner-only Drive record as `NY_Daily_News_Affidavit_Order_87497_2026-07-27.pdf`.
+- The affidavit is stored outside Git in `06-publication` within the owner-only Drive record as `NY_Daily_News_Affidavit_Order_87497_2026-07-27.pdf`.
 - The Forum's last incoming message remains its 2026-06-19 `Thank you`
   acknowledgment. The owner's urgent 2026-07-26 request received no reply; no
   paid receipt, six dates, or affidavit was found through this audit.
@@ -26,7 +46,7 @@ Operational log for the MLADIS LLC New York publication requirement. This file r
 - Follow-up sent to The Forum on 2026-07-26 requesting the exact six weekly dates, completion status, paid receipt, and notarized affidavit.
 - Compliance-correction request sent to NY Daily News on 2026-07-26 requesting every insertion date, confirmation of the six-successive-weeks schedule, a no-charge correction or rerun if needed, and the final notarized affidavit. No new charge was authorized.
 - An unsigned Certificate of Publication draft and a private closeout checklist
-  were prepared in the existing flat owner-only Drive record. The certificate
+  were prepared in `06-publication` within the owner-only Drive record. The certificate
   must remain unsigned until both affidavits establish compliant publication.
 - Calculated 120-day deadline from the 2026-06-03 formation date: **2026-10-01**.
 - Public filing-history review found the Articles filing but no Certificate of Publication as of this audit.
@@ -157,8 +177,8 @@ Save the order confirmation email when it arrives at garcp37@mladis.com.
 
 ## Current Next Actions
 
-1. **[Urgent]** Monitor the 2026-08-08 follow-up and obtain The Forum's paid receipt, exact six weekly dates, completion confirmation, and notarized affidavit; call if no prompt reply arrives.
-2. Review The Forum affidavit for exact entity name, designated paper, six successive weeks, notice, and notarization.
+1. **[Urgent]** Monitor the 2026-08-11 correction request and obtain a newly signed Forum affidavit with a valid current notarization.
+2. Review the corrected Forum affidavit for exact entity name, designated paper, six successive weeks, notice, publisher signature, jurat, and notary commission.
 3. Complete and sign the private Certificate of Publication draft only after both affidavits pass review.
 4. File the certificate with both affidavits and the $50 Department of State fee; retain tracking, a full packet copy, and the filing receipt.
 5. Verify the filing history and order a fresh Certificate of Status after acceptance.

@@ -15,7 +15,8 @@ MLADIS LLC is formed, approved in NYBE, and has an issued EIN, but it is not yet
 The strongest current assets are:
 
 - Formation confirmation and approval status documented in [docs/business](../).
-- Ready-for-signature governance packet in [ready-for-signature-2026-06-03](../signing/ready-for-signature-2026-06-03/).
+- Executed operating agreement and initial member consent archived privately;
+  public-safe source material remains in [ready-for-signature-2026-06-03](../signing/ready-for-signature-2026-06-03/).
 - Private EIN and bank packet split documented in [private-records-manifest.md](../ein-and-banking/private-records-manifest.md).
 - Mercury business-account approval confirmed from the MLADIS mailbox, with a
   same-day Stripe bank-account-addition notice.
@@ -25,12 +26,18 @@ The strongest current assets are:
 
 The main blockers are:
 
-- The overdue TR-570 is fax-ready but still needs owner review, signature, actual date, submission, and proof.
+- The overdue TR-570 was faxed 2026-08-11; the UPS report shows five of five
+  pages and `Result OK`. Agency acknowledgment and a separately archived exact
+  signed copy remain pending.
 - The Mercury business account exists, but current funding, transaction use,
   good standing, and statement availability have not been verified; the
   bookkeeping system is not lender-ready yet.
-- NY publication is not complete: the Daily News notarized affidavit is received, while The Forum receipt/dates/affidavit and the Certificate of Publication filing remain open.
-- A 2025 Airbnb report is archived as pre-formation operating history, but 2026 exports, MLADIS financial statements, a business plan, and a use-of-funds model are not yet prepared.
+- NY publication is not complete: the Daily News affidavit is usable, while the
+  received Forum affidavit requires correction because its notary commission
+  expired before the jurat. The Certificate of Publication remains unsigned.
+- 2024 Airbnb earnings and related tax summaries are located as pre-formation
+  or personal operating history. No 2025 or 2026 year-to-date exports were found;
+  MLADIS financial statements, a business plan, and a use-of-funds model remain open.
 - No current business-bank statement or insurance binder was found. The
   Dominican operating objective is confirmed, but no completed MLADIS title or
   operating-authority instrument, government registration, tax record,

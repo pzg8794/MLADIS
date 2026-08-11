@@ -11,8 +11,8 @@ Private publication workflow for MLADIS LLC.
 - Daily newspaper: NY Daily News, placement site `placeanad.nydailynews.com`
 - Weekly newspaper: The Forum, `forumsouth@gmail.com`
 - NY Daily News: notarized affidavit received and reviewed; six weekly dates are documented privately.
-- The Forum: the owner reports payment and the requested card authorization was returned, but the paid receipt, six dates, and notarized affidavit remain missing after follow-ups on 2026-07-26 and 2026-08-08.
-- Current next action: obtain and review The Forum affidavit, then sign and file the private Certificate of Publication with both affidavits and the $50 fee.
+- The Forum: affidavit received 2026-08-10 and supports publication once weekly from 2026-06-11 through 2026-07-16, but its notary commission expired before the 2026-07-27 jurat. Corrected affidavit requested 2026-08-11.
+- Current next action: obtain and review a corrected Forum affidavit, then sign and file the private Certificate of Publication with both valid affidavits and the $50 fee.
 
 ## Official Process Summary
 
@@ -41,4 +41,4 @@ New York Department of State publication filing:
 
 ## Do Not Skip
 
-Do not mark the overall publication requirement complete until The Forum evidence is received, both affidavits pass review, and the Certificate of Publication is filed with NY DOS. The Daily News affidavit is private and must not be committed. Use the owner-only Drive file `MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf` when a newspaper asks for the Queens County Clerk designation letter.
+Do not mark the overall publication requirement complete until a corrected Forum affidavit is received, both affidavits pass review, and the Certificate of Publication is filed with NY DOS. Both newspaper affidavits are private and must not be committed. Use the owner-only Drive file `MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf` when a newspaper asks for the Queens County Clerk designation letter.

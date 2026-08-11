@@ -27,32 +27,34 @@ Use this after the Queens County Clerk assigns the designated newspapers.
   - Email sent 2026-06-08 from the private MLADIS company mailbox. Follow-up included the designation letter.
 - [x] Confirm publication cost and payment method with The Forum.
   - The Forum quoted $375 in advance, including notarized-affidavit processing. The private record shows payment authorization sent on 2026-06-19.
-- [ ] Confirm first publication date with The Forum.
-  - Follow-ups sent 2026-07-26 and 2026-08-08 requesting the exact six weekly dates, paid receipt, completion status, and notarized affidavit. Gmail confirmed the second message was sent; no reply has been received.
+- [x] Confirm first publication date with The Forum.
+  - The affidavit received 2026-08-10 states publication once weekly from 2026-06-11 through 2026-07-16. It is evidence of the run but is not filing-ready because its notary commission expired before the 2026-07-27 jurat.
 
 ## Step 3 - Track Six Weeks
 
 | Week | Daily newspaper published? | Weekly newspaper published? | Notes |
 | --- | --- | --- | --- |
-| 1 | 2026-06-10 | Unverified | Daily News affidavit-supported date |
-| 2 | 2026-06-17 | Unverified | Daily News affidavit-supported date |
-| 3 | 2026-06-24 | Unverified | Daily News affidavit-supported date |
-| 4 | 2026-07-01 | Unverified | Daily News affidavit-supported date |
-| 5 | 2026-07-08 | Unverified | Daily News affidavit-supported date |
-| 6 | 2026-07-15 | Unverified | Daily News affidavit-supported date |
+| 1 | 2026-06-10 | Run supported; notarization defective | Forum affidavit states the six-week run began 2026-06-11 |
+| 2 | 2026-06-17 | Run supported; notarization defective | Corrected affidavit required before filing |
+| 3 | 2026-06-24 | Run supported; notarization defective | Corrected affidavit required before filing |
+| 4 | 2026-07-01 | Run supported; notarization defective | Corrected affidavit required before filing |
+| 5 | 2026-07-08 | Run supported; notarization defective | Corrected affidavit required before filing |
+| 6 | 2026-07-15 | Run supported; notarization defective | Forum affidavit states the run ended 2026-07-16 |
 
 ## Step 4 - Collect Affidavits
 
 - [x] Receive and review affidavit of publication from daily newspaper.
-- [ ] Receive affidavit of publication from weekly newspaper.
+- [x] Receive affidavit of publication from weekly newspaper.
+  - Received, but not filing-ready because the notary commission shown expired before the jurat date.
 - [ ] Check that both affidavits use the exact legal name, designated newspaper, six successive weeks, correct dates, and notarization.
 - [x] Keep the Daily News affidavit in private records.
-- [ ] Keep The Forum affidavit in private records after receipt.
+- [x] Keep The Forum affidavit in private records after receipt.
+- [ ] Receive and approve a corrected, currently notarized Forum affidavit.
 
 ## Step 5 - File Certificate Of Publication
 
 - [x] Prepare unsigned Certificate of Publication draft in private records.
-- [ ] Review, sign, and date the certificate only after The Forum affidavit is received and both affidavits pass review.
+- [ ] Review, sign, and date the certificate only after the corrected Forum affidavit is received and both affidavits pass review.
 - [ ] Attach both affidavits.
 - [ ] Include $50 filing fee payable to Department of State.
 - [ ] Mail the complete packet to NY DOS Division of Corporations using the current form instructions.

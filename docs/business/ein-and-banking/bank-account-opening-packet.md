@@ -90,6 +90,6 @@ Sources:
 ## Private Drive Version
 
 The bank-ready private version is stored outside Git as
-`bank-account-opening-packet.md` in the existing flat owner-only Drive record.
+`bank-account-opening-packet.md` in `05-banking` within the existing owner-only Drive record.
 Use [private-records-manifest.md](private-records-manifest.md) to distinguish it
 from the link-accessible AIRBNB mirror.

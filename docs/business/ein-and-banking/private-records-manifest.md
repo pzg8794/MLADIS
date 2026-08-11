@@ -9,10 +9,12 @@ The canonical private record is the existing owner-only Google Drive folder:
 `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/`
 
 Drive metadata was rechecked on 2026-08-09. The canonical folder was owner-only,
-and all 39 files listed in it reported `not_shared`; direct Drive URLs and file
-IDs are intentionally omitted from public Git. Per the owner's storage
-instruction, this folder is flat and no new subdirectories should be created.
-Use filenames, not public links, to identify records.
+and all 39 files then listed in it reported `not_shared`; direct Drive URLs and
+file IDs are intentionally omitted from public Git. The mounted record uses the
+existing numbered `01-formation` through `06-publication` subdirectories. Per
+the owner's storage instruction, use those directories and do not create a new
+MLADIS directory or parallel data-room tree. Use filenames, not public links,
+to identify records.
 
 ## Security Warning: Legacy AIRBNB Mirror
 
@@ -25,7 +27,7 @@ permission is removed and the files are rechecked.
 - Do not add new private material to the AIRBNB mirror.
 - Do not publish a link to either Drive location in Git.
 - Canonical owner-only copies of the current legal/loan packet were secured in
-  the existing flat owner-only folder before this tracker was updated.
+  the existing numbered owner-only record before this tracker was updated.
 - Permission removal and a review of whether the exposed link circulated remain
   required security actions.
 
@@ -57,22 +59,31 @@ not recorded publicly.
 | `MLADIS_LLC_Contractor_Ratification_and_Assignment_DRAFT_UNSIGNED_2026-07-26.pdf` | Printable cross-border contract-assignment draft | Keep private until legal/tax review and signatures |
 | `MLADIS_Mercury_Business_Account_Verification_2026-08-08.md` | Mailbox-based account-opening evidence and verification limits | Do not commit; public status only |
 | `MLADIS_G101_G102_Legal_Transition_Audit_2026-08-08.md` | Source-by-source apartment transition audit | Do not commit; public tracker only |
+| `Mercury_MLADIS_LLC_Account_Approval_Email_2026-06-19.pdf` | Private account-approval evidence; includes sensitive bank details | Do not commit |
+| `MLADIS_TR-570_Fax_Transmission_Report_OK_2026-08-11.jpeg` | UPS fax proof showing five of five pages and successful transmission | Do not commit |
+| `Forum_Newsgroup_Affidavit_MLADIS_LLC_2026-07-27.pdf` | Publication affidavit received with expired-notary defect | Do not file; do not commit |
+| `MLADIS_Lender_Readiness_Packet_2026-08-11.md` | Detailed private legal, financial, and lender-readiness control | Do not commit |
+| `MLADIS_Lender_Readiness_Cover_2026-08-11.pdf` | Printable private readiness cover and release checklist | Do not commit |
+| `MLADIS_Lender_Core_Document_Packet_DRAFT_PRIVATE_2026-08-11.pdf` | 22-page private core packet with verified formation, EIN, governance, account, fax, and Daily News evidence | Do not commit or submit as a complete application |
 
 ## Dominican Republic G-101/G-102 Counsel Package
 
-The following files are stored directly in the existing flat owner-only folder.
-They contain private corporate, property, identity, tax, and contract evidence.
-Git records filenames and status only.
+The following files were documented as prepared on 2026-08-08. They contain
+private corporate, property, identity, tax, and contract evidence. During the
+2026-08-11 mounted-filesystem reconciliation, these filenames were not present
+in the current owner-only folder tree. Do not claim the package is available
+for delivery until it is located and re-verified or rebuilt from the historical
+source archive.
 
 | Private Drive file | Purpose | Status |
 | --- | --- | --- |
-| `MLADIS_DR_G101_G102_COUNSEL_SUBMISSION_2026-08-08.docx` | Editable Spanish-first counsel brief | Prepared; no signature |
-| `MLADIS_DR_G101_G102_COUNSEL_SUBMISSION_2026-08-08.pdf` | Printable counsel brief | Prepared; visually verified |
-| `MLADIS_DR_G101_G102_SIGNATURE_DRAFTS_2026-08-08.docx` | Editable set of 13 proposed instruments | Unsigned; counsel review required |
-| `MLADIS_DR_G101_G102_SIGNATURE_DRAFTS_2026-08-08.pdf` | Printable proposed instruments | Unsigned; counsel review required |
-| `MLADIS_DR_G101_G102_COMPLETE_PACKAGE_2026-08-08.pdf` | 173-page bookmarked evidence binder | Prepared; visually verified |
-| `MLADIS_DR_G101_G102_COMPLETE_PACKAGE_2026-08-08.zip` | Flat secure archive with evidence and editable official forms | Prepared; ZIP integrity verified |
-| `MLADIS_DR_G101_G102_SUBMISSION_CONTROL_2026-08-08.txt` | Package inventory, evidence gaps, signer matrix, and outreach control | Current control log |
+| `MLADIS_DR_G101_G102_COUNSEL_SUBMISSION_2026-08-08.docx` | Editable Spanish-first counsel brief | Previously documented; locate/rebuild |
+| `MLADIS_DR_G101_G102_COUNSEL_SUBMISSION_2026-08-08.pdf` | Printable counsel brief | Previously documented; locate/rebuild and re-verify |
+| `MLADIS_DR_G101_G102_SIGNATURE_DRAFTS_2026-08-08.docx` | Editable set of 13 proposed instruments | Previously documented; locate/rebuild; unsigned |
+| `MLADIS_DR_G101_G102_SIGNATURE_DRAFTS_2026-08-08.pdf` | Printable proposed instruments | Previously documented; locate/rebuild; unsigned |
+| `MLADIS_DR_G101_G102_COMPLETE_PACKAGE_2026-08-08.pdf` | 173-page bookmarked evidence binder | Previously documented; locate/rebuild and re-verify |
+| `MLADIS_DR_G101_G102_COMPLETE_PACKAGE_2026-08-08.zip` | Flat secure archive with evidence and editable official forms | Previously documented; locate/rebuild and verify integrity |
+| `MLADIS_DR_G101_G102_SUBMISSION_CONTROL_2026-08-08.txt` | Package inventory, evidence gaps, signer matrix, and outreach control | Previously documented; locate/rebuild |
 
 On 2026-08-09, an engagement request was sent from the MLADIS company mailbox
 to the existing Dominican counsel contacts. No attachment or private identifier
@@ -83,7 +94,7 @@ to transfer, borrow, pay third parties, or file records.
 ## NYS TR-570 Response Packet
 
 The New York Taxation and Finance LLC/LLP Request for Information packet is
-stored directly in the existing flat owner-only Drive folder above. These files
+stored in `02-tax-ein` within the owner-only Drive record above. These files
 contain private tax identifiers and must not be copied into Git.
 
 | Private Drive file | Purpose | Status |
@@ -93,9 +104,12 @@ contain private tax identifiers and must not be copied into Git.
 | `MLADIS_TR-570_field-plan_and_submission-log_2026-07-26.txt` | Field plan, source rationale, owner review, exact notice submission methods, and proof controls | Current log |
 | `MLADIS_TR-570_submission-status_2026-08-08.txt` | Current overdue status and fax/mail proof controls | Current submission control |
 
-TR-570 draft status as of 2026-08-08:
+TR-570 status as of 2026-08-11:
 
-- The owner confirmed it remains unsent. No fax confirmation, mailing receipt, or agency acknowledgment was found.
+- The owner faxed the response. The UPS report shows the notice destination,
+  five of five pages, and `Result OK`; agency acknowledgment is pending.
+- The fax machine printed an incorrect 2021 date. Retain original file metadata
+  and UPS context, and archive the exact signed transmitted packet if available.
 - The fax-ready private response fills every supported non-signature field.
 - NAICS `721199` is supported by MLADIS's documented active vacation-stay and
   direct-booking operation and the official short-term traveler-accommodation

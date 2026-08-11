@@ -18,7 +18,7 @@ Created: 2026-06-03. Use this after LLC formation and EIN issuance to update eve
 | Future business email | garcp37@mladis.com (use once Google Workspace DNS is stable) |
 | Domain | mladis.com |
 
-Reference documents in the existing flat owner-only Drive record:
+Reference documents in the existing numbered owner-only Drive record:
 - Articles / Filing Receipt: `MLADIS_LLC-FilingReceipt-And-Articles.pdf`
 - EIN Confirmation (CP 575 G): `MLADIS-EIN_CONFIRMATION-CP_575_G.pdf`
 

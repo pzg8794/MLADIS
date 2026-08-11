@@ -1,7 +1,7 @@
 # Financial Institution Readiness Resume Plan
 
 Created: 2026-06-04.
-Last status sweep: 2026-08-08.
+Last status sweep: 2026-08-11.
 
 This is the resume plan for getting MLADIS LLC ready to approach banks, CDFIs, SBA-backed lenders, NYC/NYS financing support, and later grant or investor conversations.
 
@@ -27,9 +27,9 @@ Those are tracked separately in the signing and publication folders. Use this fi
 | Area | Current status | Resume action |
 | --- | --- | --- |
 | Formation / EIN | Done | Use filed Articles, Piter-signed governance docs, and private CP 575 letter when a bank or official portal asks for proof. |
-| NY publication | Partially complete / urgent | Daily News affidavit is received. Obtain The Forum receipt, six dates, and affidavit, then file the Certificate of Publication. |
+| NY publication | Partially complete / urgent correction | Daily News affidavit is usable. Forum affidavit was received, but its notary commission expired before the jurat. Obtain the corrected affidavit, then file the Certificate of Publication. |
 | Bank account | Opened / activation evidence pending | Mercury approved MLADIS LLC on 2026-06-19 and Stripe recorded a bank-account addition that day. Verify good standing, fund if still needed, confirm intended payout links, and archive bank-generated verification and statements privately. |
-| Airbnb/revenue export | In progress | Private 2025 report is pre-formation operating history. Export 2026 payout/reservation data, document the LLC transition, and prepare sanitized monthly summaries. |
+| Airbnb/revenue export | In progress | 2024 Airbnb earnings and tax summaries were located as pre-formation/personal operating history. No 2025 or 2026 YTD export was found in the current inventory. Export both periods, document the LLC transition, and prepare sanitized monthly summaries. |
 | Expense history | Not built into lender packet | Gather receipts, software, ads, repairs, cleaning, contractor, compliance, and banking costs. |
 | P&L and forecast | Not built | Build monthly P&L, cash-flow forecast, and direct-booking assumptions from the data contract. |
 | Lender one-pager | Not built | Draft after revenue/expense summaries and use-of-funds numbers exist. |
@@ -73,8 +73,8 @@ Store these outside Git:
 - Monthly statements.
 - Any debit card, routing, account, or login details.
 
-Use the existing flat owner-only folder named in the private records manifest;
-do not create another directory.
+Use the existing numbered owner-only record named in the private records
+manifest; do not create another MLADIS or data-room directory.
 
 ## Phase 2 - Export Airbnb Payouts And Reservation History
 
@@ -92,8 +92,8 @@ Goal: turn operating history into lender-grade evidence.
 
 Store raw exports outside Git because they may contain guest names, platform IDs, payout details, tax data, or private business information.
 
-Use the existing flat owner-only folder named in the private records manifest;
-do not create another directory.
+Use the existing numbered owner-only record named in the private records
+manifest; do not create another MLADIS or data-room directory.
 
 Safe summaries can be committed later only if they are aggregated and approved, for example:
 
@@ -140,8 +140,8 @@ Use [bookkeeping-chart-of-accounts.md](../ein-and-banking/bookkeeping-chart-of-a
 
 Keep raw receipts, statements, tax-sensitive documents, IDs, and private contractor payment details outside Git.
 
-Use the existing flat owner-only folder named in the private records manifest;
-do not create another directory.
+Use the existing numbered owner-only record named in the private records
+manifest; do not create another MLADIS or data-room directory.
 
 ### Agent Output To Create
 

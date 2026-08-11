@@ -10,9 +10,9 @@ Public-safe checklist for preparing MLADIS LLC for government and financial-inst
 | High | Sign operating agreement | Done | None | Executed canonical copy is stored privately. |
 | High | Sign initial member consent | Done | None | Executed canonical copy authorizes EIN, banking, payments, records, and contractor/vendor actions. |
 | High | Sign operations acknowledgment if used | In progress | Obtain counterparty review/acceptance | Owner/MLADIS signed; counterparty signature is pending. |
-| High | Complete Queens publication process | Partially complete / urgent | Obtain The Forum receipt, dates, and notarized affidavit | Daily News affidavit received and reviewed with six weekly dates. The Forum evidence remains missing after follow-ups sent 2026-07-26 and 2026-08-08. Deadline target is 2026-10-01. |
-| High | File Certificate of Publication | Blocked by The Forum | Sign and submit only after both affidavits pass review | Unsigned draft is private. File with both affidavits and $50 fee; retain full packet, tracking, payment proof, and filing receipt. |
-| High | Submit NYS TR-570 | Overdue / ready to sign | Review all five pages, sign, date, fax, and retain proof | Owner confirmed 2026-08-08 that it remains unsent. Fax-ready private response has all non-signature fields completed. |
+| High | Complete Queens publication process | Partially complete / urgent correction | Obtain a corrected Forum affidavit | Daily News affidavit is usable. Forum affidavit was received, but the stated notary commission expired before the jurat date. Correction requested 2026-08-11. Deadline target is 2026-10-01. |
+| High | File Certificate of Publication | Blocked by corrected Forum affidavit | Sign and submit only after both affidavits pass review | Unsigned draft is private. File with both affidavits and $50 fee; retain full packet, tracking, payment proof, and filing receipt. |
+| High | Submit NYS TR-570 | Fax transmitted / acknowledgment pending | Preserve proof and monitor for agency follow-up | UPS report shows five of five pages and `Result OK` to the notice fax number. Machine date is incorrect; archive the exact signed transmitted packet if available. |
 | Medium | Obtain Certificate of Status | Todo | Order after publication filing is accepted | A fresh $25 certificate belongs in the lender packet. |
 | Medium | Confirm recurring NY filings | CPA review | Calendar biennial statement and determine annual LLC filing-fee applicability | Biennial statement is expected June 2028. Form IT-204-LL depends on classification and New York-source items; if applicable for a calendar-year entity, the normal deadline is the 15th day of the third month after year-end. |
 
@@ -32,13 +32,13 @@ Public-safe checklist for preparing MLADIS LLC for government and financial-inst
 
 | Priority | Task | Status | Owner action needed | Notes |
 | --- | --- | --- | --- | --- |
-| High | Import Airbnb payout history | In progress | Export 2026 year-to-date data | A private 2025 report is archived as pre-formation operating history, not MLADIS LLC financial statements. 2026 payouts, reservations, and transition evidence remain required. |
+| High | Import Airbnb payout history | In progress | Export 2025 and 2026 year-to-date data | 2024 Airbnb earnings and related tax summaries were located as pre-formation/personal operating history, not MLADIS LLC financial statements. No 2025 or 2026 year-to-date export was found in the current inventory. |
 | High | Build expense history | Todo | Gather receipts/statements | Cleaning, maintenance, supplies, software, ads, repairs, platform fees, contractor support. |
 | High | Reconcile contractor payments/reimbursements | Todo | Gather records | Keep Diana compensation and reimbursements clear for tax/accounting review. |
 | Medium | Create monthly P&L and balance sheet | Todo | Review with CPA/bookkeeper | Needed for banks, lenders, and investor diligence. |
 | Medium | Create cash-flow forecast | Todo | Approve assumptions | Include direct-booking platform, deposits, cleaning, repairs, taxes, software, marketing. |
 | Medium | Build occupancy and booking metrics | Todo | Export/apply analytics | Include Airbnb stays, direct bookings, cancellations, reviews, average stay, revenue per listing. |
-| High | Complete G-101/G-102 legal transition to MLADIS | Counsel package prepared / outreach sent | Await secure intake and counsel's current-title/structure plan; do not sign drafts | The private package includes a 173-page evidence binder, editable official forms, and 13 unsigned counsel-review instruments. An engagement request was sent 2026-08-09. Current title/encumbrance results, lender/Fiduciaria consent, HOA confirmation, RNC/Registro Mercantil and tax treatment, MITUR/RENATUR review, insurance, and documented revenue/platform assignment still must be completed before claiming the apartments as MLADIS assets or licensed operations. |
+| High | Complete G-101/G-102 legal transition to MLADIS | Source records located / secure counsel intake pending | Obtain secure intake and counsel's current-title/structure plan; do not sign drafts | Historical contracts, loan/closing records, powers, and 2020 title copies are present. Previously documented binder/ZIP/draft filenames were not present in the mounted owner-only folder on 2026-08-11 and must be located or rebuilt. Current title/encumbrance results, lender/Fiduciaria consent, HOA confirmation, RNC/Registro Mercantil and tax treatment, MITUR/RENATUR review, insurance, and documented revenue/platform assignment remain required. |
 
 ## Phase 4 - Funding Packet
 
