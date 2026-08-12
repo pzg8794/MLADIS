@@ -426,6 +426,7 @@ export class AccountReservation {
     public readonly guests: number,
     public readonly phone: string,
     public readonly status: string,
+    public readonly canEdit: boolean,
     public readonly canCancel: boolean,
     public readonly displaySubtotal: string,
     public readonly displayDiscount: string,

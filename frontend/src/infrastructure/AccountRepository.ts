@@ -15,6 +15,7 @@ interface ApiAccountReservation {
   guests: number;
   phone: string;
   status: string;
+  can_edit: boolean;
   can_cancel: boolean;
   display_subtotal: string;
   display_discount: string;
@@ -85,6 +86,7 @@ export class ApiAccountRepository implements AccountRepository {
         reservation.guests,
         reservation.phone,
         reservation.status,
+        reservation.can_edit,
         reservation.can_cancel,
         reservation.display_subtotal,
         reservation.display_discount,

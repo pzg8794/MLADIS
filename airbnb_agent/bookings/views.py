@@ -68,6 +68,7 @@ from .guest_services import GuestService
 from .services import (
     AgentAccessContext,
     BookingCalendarService,
+    CustomerAccountService,
     CustomersCRMService,
     MaintenanceOperationsService,
     MaintenanceService,
@@ -449,6 +450,7 @@ class AccountSummaryAPIView(View):
             "guests": reservation.guests,
             "phone": reservation.phone,
             "status": reservation.get_status_display(),
+            "can_edit": reservation.status in {BookingStatus.NEW, BookingStatus.REVIEWING, BookingStatus.QUOTED},
             "can_cancel": reservation.can_customer_cancel,
             "display_subtotal": reservation.display_subtotal,
             "display_discount": reservation.display_discount,
@@ -711,14 +713,7 @@ class SignUpView(CreateView):
         from .services import AdminAccessService
 
         response = super().form_valid(form)
-        CustomerProfile.objects.get_or_create(
-            user=self.object,
-            defaults={
-                "email": self.object.email,
-                "name": self.object.get_full_name() or self.object.username,
-                "phone": form.cleaned_data.get("phone", ""),
-            },
-        )
+        CustomerAccountService().link_user(self.object, phone=form.cleaned_data.get("phone", ""))
         AdminAccessService().apply_to_user(self.object)
         login(self.request, self.object, backend="django.contrib.auth.backends.ModelBackend")
         return response

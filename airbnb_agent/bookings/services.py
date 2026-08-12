@@ -34,6 +34,7 @@ from .models import (
     BookingStatus,
     CancellationPolicy,
     ClientSegment,
+    ContactSource,
     CustomerProfile,
     DamageDeposit,
     DailyPriceOverride,
@@ -1338,6 +1339,45 @@ class AdminAccessService:
                 changed.append(field)
         if changed:
             profile.save(update_fields=[*changed, "updated_at"])
+
+
+class CustomerAccountService:
+    """Connects a newly authenticated account to its existing guest records."""
+
+    @transaction.atomic
+    def link_user(self, user, phone=""):
+        normalized_email = (getattr(user, "email", "") or "").strip().lower()
+        if not normalized_email:
+            return None
+
+        profile = CustomerProfile.find_or_create_for_email(
+            normalized_email,
+            defaults={
+                "name": user.get_full_name() or user.username,
+                "phone": (phone or "").strip(),
+                "source": ContactSource.DIRECT,
+            },
+        )
+        changed = []
+        if profile.user_id != user.id:
+            profile.user = user
+            changed.append("user")
+        for field, value in {
+            "name": user.get_full_name() or user.username,
+            "phone": (phone or "").strip(),
+        }.items():
+            if value and not getattr(profile, field):
+                setattr(profile, field, value)
+                changed.append(field)
+        if changed:
+            profile.save(update_fields=[*changed, "updated_at"])
+
+        BookingInquiry.objects.filter(email__iexact=normalized_email).update(
+            user=user,
+            customer_profile=profile,
+        )
+        Invoice.objects.filter(recipient_email__iexact=normalized_email).update(customer_profile=profile)
+        return profile
 
 
 class BookingAgentService:

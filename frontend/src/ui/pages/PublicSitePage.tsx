@@ -354,7 +354,7 @@ function handleBookingLinkClick(event: { preventDefault: () => void }) {
 function formatDate(value: string) {
   if (!value) return '';
   const [year, month, day] = value.split('-').map(Number);
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(
     new Date(Date.UTC(year, month - 1, day)),
   );
 }
@@ -2310,6 +2310,8 @@ function AccountReservationCenter({
 
       <footer className="account-v2-center__actions">
         <a href={reservation.detailUrl}><ReceiptText size={16} /> View details</a>
+        {reservation.canEdit && <a href={reservation.editUrl}><PencilLine size={16} /> Edit request</a>}
+        {reservation.canCancel && <a href={reservation.cancelUrl}><X size={16} /> Cancel request</a>}
         <a href={`mailto:?subject=MLADIS reservation ${accountReservationNumber(reservation)}`}><MessageSquareText size={16} /> Message host</a>
         {reservation.airbnbUrl && <a href={reservation.airbnbUrl} target="_blank" rel="noreferrer"><ArrowUpRight size={16} /> Airbnb</a>}
       </footer>

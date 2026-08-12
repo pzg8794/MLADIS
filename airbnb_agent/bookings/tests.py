@@ -2177,6 +2177,46 @@ class LegalPageTests(TestCase):
 
 @override_settings(STORAGES=TEST_STORAGES)
 class AccountReservationTests(TestCase):
+    def test_signup_reuses_existing_guest_profile_and_links_reservations(self):
+        email = "future-guest@example.com"
+        profile = CustomerProfile.objects.create(
+            name="Future Guest",
+            email=email,
+            phone="202-555-0186",
+        )
+        reservation = BookingInquiry.objects.create(
+            customer_profile=profile,
+            item=BookableItem.objects.get(slug="mladis-santo-domingo-guest-home"),
+            guest_name="Future Guest",
+            email=email,
+            phone="202-555-0186",
+            check_in=timezone.localdate() + timedelta(days=10),
+            check_out=timezone.localdate() + timedelta(days=12),
+            guests=2,
+        )
+
+        response = self.client.post(
+            reverse("bookings:signup"),
+            data={
+                "username": "future-guest",
+                "email": email,
+                "first_name": "Future",
+                "last_name": "Guest",
+                "phone": "202-555-0186",
+                "password1": "A-strong-pass-2026!",
+                "password2": "A-strong-pass-2026!",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        user = get_user_model().objects.get(username="future-guest")
+        profile.refresh_from_db()
+        reservation.refresh_from_db()
+        self.assertEqual(CustomerProfile.objects.filter(email__iexact=email).count(), 1)
+        self.assertEqual(profile.user, user)
+        self.assertEqual(reservation.user, user)
+        self.assertEqual(reservation.customer_profile, profile)
+
     def test_agent_admin_command_provisions_dedicated_superuser(self):
         output = StringIO()
 
@@ -2687,6 +2727,7 @@ class SocialAccountAdapterTests(TestCase):
         self.assertEqual(account_response.status_code, 200)
         reservations = account_response.json()["reservations"]
         self.assertEqual(reservations[0]["guest_name"], "Guest User")
+        self.assertTrue(reservations[0]["can_edit"])
 
         response = self.client.post(
             reverse("bookings:reservation-cancel", kwargs={"pk": reservation.pk}),
