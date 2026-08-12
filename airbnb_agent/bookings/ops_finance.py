@@ -94,7 +94,7 @@ def _guest_initials(name):
 def _item_image_url(item):
     if item and item.image:
         return static(item.image)
-    return static("frontend/modern-dashboard/assets/stays/stay-3br.jpg")
+    return static("frontend/modern-dashboard/stays/stay-3br.jpg")
 
 
 def _reservation_date_range(inquiry: BookingInquiry | None):

@@ -71,6 +71,7 @@ from .models import (
     SiteSettings,
 )
 from .ops_navigation import OPS_NAV_ITEMS
+from .ops_finance import _item_image_url
 from .services import (
     AgentAccessContext,
     AgentRequest,
@@ -178,6 +179,18 @@ class OpsNavigationContractTests(TestCase):
 
     def test_ops_deposits_routes(self):
         self._assert_route("/ops/deposits/", "bookings:ops-deposits")
+
+    def test_deposit_fallback_image_uses_collected_static_path(self):
+        with patch("bookings.ops_finance.static", side_effect=lambda path: path):
+            fallback_path = _item_image_url(None)
+
+        self.assertEqual(
+            fallback_path,
+            "frontend/modern-dashboard/stays/stay-3br.jpg",
+        )
+        self.assertTrue(
+            (Path(__file__).resolve().parent / "static" / fallback_path).is_file()
+        )
 
     def test_ops_reports_routes(self):
         self._assert_route("/ops/reports/", "bookings:ops-reports")
