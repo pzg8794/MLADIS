@@ -1,6 +1,6 @@
 # MLADIS Owner Action Center - 2026-06-03
 
-Private status page. This is the current "read, sign, and click it away" center.
+Public-safe status page. Private records, identifiers, and document links remain in the owner-only Drive archive.
 
 Last status sweep: 2026-08-12.
 
@@ -25,7 +25,7 @@ Last status sweep: 2026-08-12.
 | EIN issued | Done | IRS confirmation letter stored in the private Google Drive business-record vault outside Git |
 | Bank account opening packet | Done | `docs/business/ein-and-banking/bank-account-opening-packet.md` |
 | Mercury business account | Opened / approval confirmed | MLADIS mailbox: Mercury approval dated 2026-06-19; Stripe bank-account-addition notice dated 2026-06-19. Funding, current use, and statements remain to be verified. |
-| G-101/G-102 Dominican counsel package | Secure-intake request sent / counsel response pending | Historical contracts, loan/closing records, powers, and 2020 title copies are present. Counsel requested apartment, loan, constancia/title, and mortgage records on 2026-08-10 without providing a secure upload route. MLADIS replied on 2026-08-12 requesting the office's secure transfer method, conflict-check and engagement process, and fee proposal before any sensitive records are transmitted. Previously documented binder/ZIP/draft filenames were not present in the mounted owner-only folder on 2026-08-11 and must be located or rebuilt. |
+| G-101/G-102 Dominican counsel package | Initial private packet delivered / counsel response pending | A corrected 71-page packet was uploaded to Drive and reader access granted to Dr. David Columna on 2026-08-12. It distinguishes G-101's current mortgage from G-102, which the owner confirms is fully paid; final-payment proof was previously delivered to counsel and the related legal work was paid. Counsel must account for the paid scope and deliver or complete current title/status and former-lien cancellation products. Private documents and Drive identifiers remain outside Git. |
 | Queens publication designation request | Done | Designation letter received 2026-06-08 from `QCC-LLC@nycourts.gov`. Daily: **NY Daily News** (placeanad.nydailynews.com). Weekly: **The Forum** (forumsouth@gmail.com). Canonical letter is in the owner-only Drive record; historical public-repo copy requires privacy review. |
 | Signature source pointer | Done | `docs/business/signing/README.md` records the Drive file metadata, not the signature image |
 | Private Google Drive record | Partially secured / urgent | Current packet is in an owner-only folder; the legacy AIRBNB mirror still has link-writer access. See `docs/business/ein-and-banking/private-records-manifest.md`. |
@@ -112,10 +112,5 @@ Use `docs/business/funding-readiness/financial-institution-resume-plan.md` when 
    unfunded, confirm intended Stripe/Airbnb payout links, and archive
    bank-generated verification and statements privately.
 6. Export 2026 Airbnb activity, reconcile expenses, and build the P&L, balance sheet, cash-flow history, and forecast.
-7. Monitor counsel's response to the 2026-08-12 secure-intake, engagement, and
-   fee-process request documented in `docs/business/dominican-republic-apartment-transition.md`. Complete New York
-   CPA/legal and insurance review, then execute the confirmed G-101/G-102
-   Dominican Republic transition through Dominican counsel and an
-   accountant: current titles/encumbrances, lender/Fiduciaria consent, lawful
-   MLADIS authority, RNC/Registro Mercantil, tax, HOA, MITUR, and insurance.
+7. Monitor counsel's response to the private packet delivered by Drive on 2026-08-12, documented in `docs/business/dominican-republic-apartment-transition.md`. The corrected narrative reply remains a Gmail draft until actual send is verified. Require an accounting of the already-paid G-102 work and delivery of its current title or legally applicable constancia, current legal-status certification, and former-lien cancellation record. Complete New York CPA/legal and insurance review, then execute the confirmed G-101/G-102 Dominican Republic transition through Dominican counsel and an accountant: current titles/encumbrances, lender/Fiduciaria consent where applicable, lawful MLADIS authority, RNC/Registro Mercantil, tax, HOA, MITUR, and insurance.
 8. Finish Diana's counter-signature and any contractor assignment only through the separate signing/legal review path.
