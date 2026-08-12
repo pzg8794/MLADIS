@@ -1,19 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
-  CalendarDays,
-  CheckCircle2,
-  ChevronDown,
   ChevronRight,
   Clock3,
   Download,
   FileText,
-  Mail,
   Search,
-  Send,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
   Users,
 } from 'lucide-react';
 import { OpsReservationsFactory } from '../../application/OpsReservationsFactory';
@@ -34,10 +28,6 @@ function formatTimestamp(value: string) {
     hour: 'numeric',
     minute: '2-digit',
   });
-}
-
-function firstName(name: string) {
-  return name.trim().split(/\s+/)[0] || 'there';
 }
 
 function StatusBadge({ reservation }: { reservation: OpsReservation }) {
@@ -121,100 +111,6 @@ function WorkspaceSelect({
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
     </label>
-  );
-}
-
-function AssistantPanel({
-  selected,
-  onAction,
-}: {
-  selected: OpsReservation | undefined;
-  onAction: (message: string) => void;
-}) {
-  if (!selected) return null;
-
-  const missing = selected.agent.missingInformation.length
-    ? selected.agent.missingInformation
-    : ['No missing information flagged'];
-  const positives = selected.agent.positiveSignals.length
-    ? selected.agent.positiveSignals
-    : selected.risk.signals;
-
-  return (
-    <aside className="ops-res-v4-assistant">
-      <header>
-        <div>
-          <Sparkles size={18} />
-          <span>
-            <strong>FairAgent</strong>
-            <small>AI Assistant</small>
-          </span>
-        </div>
-        <em>Beta</em>
-        <ChevronDown size={16} />
-      </header>
-
-      <section>
-        <h3>Suggested Reply</h3>
-        <p>
-          {selected.messages.suggestedDraft
-            || `Hi ${firstName(selected.guest.name)}! Your reservation details are ready. We can confirm check-in instructions, deposit status, and next steps from this workspace.`}
-        </p>
-        <div className="ops-res-v4-assistant__actions">
-          <button type="button" onClick={() => onAction(`Reply prepared for ${selected.guest.name}.`)}>
-            Use this reply
-          </button>
-          <button type="button" onClick={() => onAction('Assistant customization opened.')}>Customize</button>
-        </div>
-      </section>
-
-      <section>
-        <h3>
-          Risk Assessment
-          <span className={`ops-res-v4-risk ops-res-v4-risk--${selected.risk.level}`}>{selected.risk.label}</span>
-        </h3>
-        <ul className="ops-res-v4-checks">
-          {positives.map((signal) => (
-            <li key={signal}><CheckCircle2 size={14} /> {signal}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h3>Missing Information</h3>
-        <ul className="ops-res-v4-warnings">
-          {missing.map((item) => (
-            <li key={item}><AlertCircle size={14} /> {item}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h3>Recommended Actions</h3>
-        <div className="ops-res-v4-action-list">
-          {selected.agent.recommendedActions.map((action) => (
-            <button key={action} type="button" onClick={() => onAction(`${action} queued for ${selected.guest.name}.`)}>
-              <Mail size={14} />
-              {action}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <footer>
-        <button type="button" onClick={() => onAction('Draft message opened.')}>
-          Draft message <ChevronDown size={15} />
-        </button>
-        <div>
-          <button type="button" onClick={() => onAction(`Deposit reviewed for ${selected.guest.name}.`)}>
-            Review deposit
-          </button>
-          <button type="button" onClick={() => onAction(`Invoice generated for ${selected.guest.name}.`)}>
-            Generate invoice
-          </button>
-        </div>
-      </footer>
-    </aside>
   );
 }
 
@@ -317,14 +213,10 @@ function ReservationDetailPanel({
   selected,
   activeTab,
   onTabChange,
-  onStatus,
-  onAction,
 }: {
   selected: OpsReservation | undefined;
   activeTab: ReservationDetailTab;
   onTabChange: (tab: ReservationDetailTab) => void;
-  onStatus: (reservation: OpsReservation, status: 'reviewing' | 'confirmed' | 'cancelled') => void;
-  onAction: (message: string) => void;
 }) {
   if (!selected) {
     return (
@@ -337,7 +229,8 @@ function ReservationDetailPanel({
   }
 
   const tabs: ReservationDetailTab[] = ['messages', 'payments', 'deposits', 'documents', 'activity'];
-  const transitionDisabled = !selected.canTransitionStatus();
+  const depositUrl = `/ops/deposits/?search=${encodeURIComponent(selected.requestKey)}`;
+  const paymentsUrl = `/ops/payments/?search=${encodeURIComponent(selected.requestKey)}`;
 
   return (
     <section className="ops-res-v4-detail">
@@ -370,9 +263,6 @@ function ReservationDetailPanel({
             <dt>Total Amount</dt>
             <dd>{selected.paymentPlan.total.withCurrencySuffix()}</dd>
           </dl>
-          <button type="button" onClick={() => onAction(`Pricing details opened for ${selected.guest.name}.`)}>
-            View pricing details
-          </button>
         </section>
       </aside>
 
@@ -391,24 +281,6 @@ function ReservationDetailPanel({
         </nav>
 
         <DetailTabContent selected={selected} activeTab={activeTab} />
-
-        <div className="ops-res-v4-message-actions">
-          <button type="button" onClick={() => onAction(`Check-in instructions prepared for ${selected.guest.name}.`)}>
-            Send check-in instructions
-          </button>
-          <button type="button" onClick={() => onAction(`House guide prepared for ${selected.guest.name}.`)}>
-            Share house guide
-          </button>
-          <button type="button" onClick={() => onAction(`Arrival-time request prepared for ${selected.guest.name}.`)}>
-            Request arrival time
-          </button>
-        </div>
-        <label className="ops-res-v4-composer">
-          <input placeholder="Type your message..." />
-          <button type="button" onClick={() => onAction(`Message staged for ${selected.guest.name}.`)}>
-            <Send size={15} /> Send
-          </button>
-        </label>
       </div>
 
       <aside className="ops-res-v4-deposit-panel">
@@ -419,21 +291,9 @@ function ReservationDetailPanel({
         <strong>{selected.depositHold.amount.withCurrencySuffix()}</strong>
         <p>Requested for {selected.guest.name}</p>
         <small><Clock3 size={14} /> {selected.depositHold.expiresAt || 'Managed by reservation timeline'}</small>
-        <div>
-          <button
-            disabled={transitionDisabled}
-            type="button"
-            onClick={() => onStatus(selected, 'confirmed')}
-          >
-            Approve deposit
-          </button>
-          <button
-            disabled={transitionDisabled}
-            type="button"
-            onClick={() => onStatus(selected, 'reviewing')}
-          >
-            Release hold
-          </button>
+        <div className="ops-res-v4-related-links">
+          <a href={depositUrl}>Open deposit hold</a>
+          <a href={paymentsUrl}>Open payments</a>
         </div>
         <section>
           <h4>Payment Timeline</h4>
@@ -464,7 +324,6 @@ export function OpsReservationsPage() {
   const [countryFilter, setCountryFilter] = useState('All countries');
   const [riskFilter, setRiskFilter] = useState('All levels');
   const [detailTab, setDetailTab] = useState<ReservationDetailTab>('messages');
-  const [actionMessage, setActionMessage] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -500,12 +359,11 @@ export function OpsReservationsPage() {
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const safePage = Math.min(page, pageCount);
   const visibleRows = filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const selectedReservation = (
-    filteredRows.find((reservation) => reservation.key === selectedKey)
-    ?? visibleRows[0]
-    ?? filteredRows[0]
-    ?? reservations[0]
-  );
+  const selectedReservation = filteredRows.find((reservation) => (
+    reservation.key === selectedKey
+    || reservation.id === selectedKey
+    || reservation.requestKey === selectedKey
+  ));
   const pageStart = filteredRows.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const pageEnd = Math.min(safePage * pageSize, filteredRows.length);
   const visiblePageButtons = Array.from({ length: Math.min(3, pageCount) }, (_, index) => index + 1);
@@ -518,6 +376,14 @@ export function OpsReservationsPage() {
     if (page > pageCount) setPage(pageCount);
   }, [page, pageCount]);
 
+  useEffect(() => {
+    if (!snapshot || !selectedKey) return;
+    if (!selectedReservation) {
+      setSelectedKey('');
+      setDetailTab('messages');
+    }
+  }, [selectedKey, selectedReservation, snapshot]);
+
   function resetFilters() {
     setSearch('');
     setListingFilter('All listings');
@@ -525,20 +391,11 @@ export function OpsReservationsPage() {
     setCountryFilter('All countries');
     setRiskFilter('All levels');
     setSelectedStatus('all');
-    setActionMessage('Reservation filters reset.');
-    window.setTimeout(() => setActionMessage(''), 2200);
   }
 
-  async function updateStatus(reservation: OpsReservation, status: 'reviewing' | 'confirmed' | 'cancelled') {
-    setActionMessage(`Updating ${reservation.guest.name}...`);
-    try {
-      await service.updateStatus(reservation, status);
-      setActionMessage(`Updated ${reservation.guest.name}.`);
-      loadSnapshot();
-      window.setTimeout(() => setActionMessage(''), 2500);
-    } catch (caught) {
-      setActionMessage(caught instanceof Error ? caught.message : 'Could not update that reservation. Check the admin record.');
-    }
+  function toggleSelection(reservation: OpsReservation) {
+    setSelectedKey((current) => current === reservation.key ? '' : reservation.key);
+    setDetailTab('messages');
   }
 
   if (error) {
@@ -558,12 +415,9 @@ export function OpsReservationsPage() {
       <section className="ops-res-v4-titlebar">
         <div>
           <h1>Reservations Workspace</h1>
-          <p>Manage, review, and action reservations with AI-powered assistance.</p>
+          <p>Review real guest, stay, payment, deposit, document, and timeline records.</p>
         </div>
         <div className="ops-res-v4-title-actions">
-          <button type="button" onClick={() => setActionMessage('Date range picker is ready for reservation filtering.')}>
-            <CalendarDays size={15} /> Jun 6 - Jun 12, 2026 <ChevronDown size={15} />
-          </button>
           <button type="button" onClick={() => setShowAdvancedFilters((value) => !value)}>
             <SlidersHorizontal size={15} /> Filters
           </button>
@@ -572,8 +426,6 @@ export function OpsReservationsPage() {
       </section>
 
       <ReservationTabs active={selectedStatus} counts={statusCounts} onChange={setSelectedStatus} />
-
-      {actionMessage && <div className="ops-res-alert">{actionMessage}</div>}
 
       <section className="ops-res-v4-workspace">
         <div className="ops-res-v4-primary">
@@ -627,15 +479,13 @@ export function OpsReservationsPage() {
                     <tr
                       className={selectedReservation?.key === reservation.key ? 'is-selected' : ''}
                       key={reservation.key}
-                      onClick={() => {
-                        setSelectedKey(reservation.key);
-                        setDetailTab('messages');
-                      }}
+                      onClick={() => toggleSelection(reservation)}
                     >
                       <td>
                         <input
                           checked={selectedReservation?.key === reservation.key}
-                          onChange={() => setSelectedKey(reservation.key)}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={() => toggleSelection(reservation)}
                           type="checkbox"
                         />
                       </td>
@@ -689,7 +539,10 @@ export function OpsReservationsPage() {
                   type="button"
                   aria-label="Previous page"
                   disabled={safePage === 1}
-                  onClick={() => setPage((value) => Math.max(1, value - 1))}
+                  onClick={() => {
+                    setSelectedKey('');
+                    setPage((value) => Math.max(1, value - 1));
+                  }}
                 >
                   <ChevronRight size={14} />
                 </button>
@@ -698,7 +551,10 @@ export function OpsReservationsPage() {
                     className={safePage === pageNumber ? 'is-active' : ''}
                     key={pageNumber}
                     type="button"
-                    onClick={() => setPage(pageNumber)}
+                    onClick={() => {
+                      setSelectedKey('');
+                      setPage(pageNumber);
+                    }}
                   >
                     {pageNumber}
                   </button>
@@ -708,7 +564,10 @@ export function OpsReservationsPage() {
                   <button
                     className={safePage === pageCount ? 'is-active' : ''}
                     type="button"
-                    onClick={() => setPage(pageCount)}
+                    onClick={() => {
+                      setSelectedKey('');
+                      setPage(pageCount);
+                    }}
                   >
                     {pageCount}
                   </button>
@@ -717,7 +576,10 @@ export function OpsReservationsPage() {
                   type="button"
                   aria-label="Next page"
                   disabled={safePage === pageCount}
-                  onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+                  onClick={() => {
+                    setSelectedKey('');
+                    setPage((value) => Math.min(pageCount, value + 1));
+                  }}
                 >
                   <ChevronRight size={14} />
                 </button>
@@ -729,12 +591,8 @@ export function OpsReservationsPage() {
             selected={selectedReservation}
             activeTab={detailTab}
             onTabChange={setDetailTab}
-            onStatus={updateStatus}
-            onAction={setActionMessage}
           />
         </div>
-
-        <AssistantPanel selected={selectedReservation} onAction={setActionMessage} />
       </section>
     </main>
   );

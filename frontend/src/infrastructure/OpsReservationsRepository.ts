@@ -88,9 +88,7 @@ export class ApiOpsReservationsRepository implements OpsReservationsRepository {
       row.feedback_admin_url,
       row.updated_at,
     ));
-    const reservations = data.reservations?.length
-      ? data.reservations.map((reservation) => OpsReservation.fromPayload(reservation))
-      : data.rows.map((row, index) => OpsReservation.fromLegacyRow(row, index));
+    const reservations = (data.reservations ?? []).map((reservation) => OpsReservation.fromPayload(reservation));
 
     return new OpsReservationsSnapshot(
       data.summary_cards.map((metric) => new OpsReservationMetric(metric.label, metric.value, metric.caption)),

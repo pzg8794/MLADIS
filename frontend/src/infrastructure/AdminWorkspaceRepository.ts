@@ -1,6 +1,4 @@
 import {
-  AdminFeedItem,
-  AdminHealthCard,
   AdminMetric,
   AdminShortcut,
   AdminWorkspace,
@@ -26,26 +24,10 @@ function fallbackAdminWorkspace(source: 'fallback' | 'mixed' = 'fallback'): Admi
       new AdminShortcut('Users', 'Team members, roles, and permissions.', '/ops/admin/', 'users', 'Manage', 'violet'),
       new AdminShortcut('OAuth / Integrations', 'API, webhooks, and connected services.', '/ops/settings/', 'radio', 'Manage', 'teal'),
     ],
-    [
-      new AdminMetric('Active stays', '128', '+ 12% vs yesterday', 'box', 'violet'),
-      new AdminMetric('Pending requests', '23', '+ 5 new', 'clock', 'amber'),
-      new AdminMetric('Deposit holds', '$74,560', '12 holds', 'shield', 'teal'),
-      new AdminMetric('Open tasks', '18', '- 3 completed', 'clipboard', 'blue'),
-    ],
-    [
-      new AdminFeedItem('2m ago', 'New reservation created', '#R-58291 - Ocean View Villa - Aug 12 - 16', 'calendar', 'blue'),
-      new AdminFeedItem('7m ago', 'Deposit captured', '$2,450.00 - #R-58288 - Beach House', 'shield', 'green'),
-      new AdminFeedItem('16m ago', 'Maintenance issue reported', 'AC not cooling - Unit 3B - High priority', 'wrench', 'amber'),
-      new AdminFeedItem('28m ago', 'Guest message received', 'Late check-in request - #R-58285', 'message', 'cyan'),
-      new AdminFeedItem('35m ago', 'Payment refunded', '$125.00 - #R-58262 - Cancellation', 'dollar', 'green'),
-    ],
-    [
-      new AdminHealthCard('Staff access', 'Staff only', 'Protected', 'users', 'slate'),
-      new AdminHealthCard('Controlled edits', 'Enabled', 'Audit on', 'trend', 'green'),
-      new AdminHealthCard('Build status', 'Production', 'v2.4.17', 'clipboard', 'blue'),
-      new AdminHealthCard('Last backup', 'Today, 3:14 AM', 'Automated', 'database', 'teal'),
-    ],
-    createWorkspaceMetadata(source, source === 'fallback' ? ['admin API snapshot'] : ['workspace shortcuts']),
+    [],
+    [],
+    [],
+    createWorkspaceMetadata(source, source === 'fallback' ? ['admin API unavailable'] : []),
   );
 }
 
@@ -60,17 +42,21 @@ export class AdminWorkspaceRepository {
     try {
       const snapshot = await this.opsRepository.getAdmin();
       const fallback = fallbackAdminWorkspace('mixed');
-      const metrics = fallback.metrics.map((metric, index) => {
-        const apiMetric = snapshot.summaryCards[index];
-        if (!apiMetric) return metric;
-        return new AdminMetric(apiMetric.label, apiMetric.value, apiMetric.caption, metric.iconKey, metric.tone);
-      });
+      const iconKeys = ['users', 'shield', 'users', 'clipboard', 'database', 'clock'];
+      const tones: Array<'blue' | 'violet' | 'teal' | 'amber' | 'rose'> = ['blue', 'teal', 'violet', 'blue', 'amber', 'rose'];
+      const metrics = snapshot.summaryCards.map((metric, index) => new AdminMetric(
+        metric.label,
+        metric.value,
+        metric.caption,
+        iconKeys[index] ?? 'shield',
+        tones[index] ?? 'blue',
+      ));
       return new AdminWorkspace(
         fallback.shortcuts,
         metrics,
         fallback.feedItems,
         fallback.healthCards,
-        createWorkspaceMetadata('mixed', ['shortcut/feed/health projections']),
+        createWorkspaceMetadata('api'),
       );
     } catch {
       return fallbackAdminWorkspace();

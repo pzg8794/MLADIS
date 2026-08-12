@@ -509,56 +509,6 @@ export class OpsReservation {
     );
   }
 
-  static fromLegacyRow(row: LegacyReservationRowPayload, index: number): OpsReservation {
-    const recordKey = `${row.record_type}-${row.id}`;
-    const statusTab = row.record_type === 'airbnb' ? 'confirmed' : (index % 2 === 0 ? 'pending' : 'confirmed');
-    const amount = new ReservationMoney(125000 + (index % 4) * 12500, 'USD', `$${new Intl.NumberFormat('en-US').format(1250 + (index % 4) * 125)}`);
-    const deposit = row.record_type === 'airbnb'
-      ? new ReservationMoney(0, 'USD', '$0')
-      : new ReservationMoney(20000, 'USD', '$200');
-    const stayPayment = new ReservationMoney(Math.max(amount.cents - deposit.cents, 0), 'USD', `$${new Intl.NumberFormat('en-US').format(Math.max(amount.cents - deposit.cents, 0) / 100)}`);
-    const riskLevel = row.email || row.phone || row.thread_url ? 'low' : row.record_type === 'airbnb' ? 'medium' : 'high';
-
-    return new OpsReservation(
-      String(row.id),
-      recordKey,
-      row.record_type,
-      row.record_type === 'direct' ? `MLADIS-${row.id}` : `AIRBNB-${row.listing_id || row.id}`,
-      new ReservationGuest(
-        row.name || 'Guest',
-        row.email,
-        row.phone,
-        row.email || row.phone || row.contact_path || 'Needs contact',
-        row.record_type === 'airbnb' ? 'United States' : 'Dominican Republic',
-        row.profile_admin_url,
-        row.thread_url,
-        row.segment,
-        row.segment_value,
-      ),
-      new ReservationStay('', normalizeStayName(row.listing || 'Flexible stay'), '', row.listing_id, ''),
-      new ReservationDates('', '', Math.max(1, (index % 5) + 1), row.stay_dates.replace(' to ', ' - ').replace(' – ', ' - ') || 'Dates pending', row.stay_dates ? `${Math.max(1, (index % 5) + 1)} nights` : 'Dates pending'),
-      new ReservationStatusState(statusTab, statusTab === 'pending' ? 'Pending' : 'Confirmed', statusTab === 'pending' ? 'warning' : 'success', statusTab),
-      new ReservationRiskState(riskLevel, `${riskLevel[0].toUpperCase()}${riskLevel.slice(1)} Risk`, row.email || row.phone ? ['Verified contact path'] : ['Needs staff review']),
-      new ReservationPaymentPlan(amount, stayPayment, deposit, statusTab === 'confirmed' ? 'paid' : 'pending', []),
-      new ReservationDepositHold(deposit, row.record_type === 'airbnb' ? 'none' : 'pending', row.record_type === 'airbnb' ? 'N/A' : 'Pending', '', '', row.record_type === 'direct', false),
-      new ReservationDocuments(false, false, '2026-06-15', '2026-06-15', false),
-      new ReservationMessageThread('', [
-        new ReservationMessage(`${recordKey}-guest`, row.name, row.feedback || 'No guest message captured yet.', 'received', row.updated_at, false),
-      ]),
-      [
-        new ReservationTimelineEvent('reservation_created', row.record_type === 'airbnb' ? 'Airbnb stay imported' : 'Reservation record created', 'MLADIS', row.updated_at, row.source_subject),
-      ],
-      new ReservationAgentAssessment(riskLevel, '', [], ['Review reservation details'], row.email || row.phone ? ['Verified contact path'] : ['Needs contact details']),
-      {
-        record_url: row.record_admin_url,
-        profile_url: row.profile_admin_url,
-        feedback_url: row.feedback_admin_url,
-        can_transition_status: row.record_type === 'direct',
-      },
-      row,
-    );
-  }
-
   get initials(): string {
     return this.guest.initials;
   }

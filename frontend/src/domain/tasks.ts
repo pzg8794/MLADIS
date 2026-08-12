@@ -17,6 +17,7 @@ export class TaskMetric {
 export class Task {
   constructor(
     public readonly id: string,
+    public readonly recordId: number,
     public readonly title: string,
     public readonly meta: string[],
     public readonly due: string,
@@ -24,6 +25,7 @@ export class Task {
     public readonly avatar: string,
     public readonly avatarTone: string,
     public readonly status: TaskStatus,
+    public readonly statusLabel: string,
   ) {}
 }
 
@@ -42,10 +44,11 @@ export class TaskDetail {
     public readonly assignee: string,
     public readonly priority: string,
     public readonly due: string,
-    public readonly links: Array<{ label: string; value: string }>,
+    public readonly links: Array<{ label: string; value: string; url: string }>,
     public readonly details: Array<{ label: string; value: string }>,
     public readonly note: string,
     public readonly activity: string,
+    public readonly updatedAt: string,
   ) {}
 }
 

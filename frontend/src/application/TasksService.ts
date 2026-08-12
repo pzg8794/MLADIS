@@ -1,4 +1,4 @@
-import type { TaskWorkspace } from '../domain/tasks';
+import type { Task, TaskWorkspace } from '../domain/tasks';
 import type { TasksRepository } from '../infrastructure/TasksRepository';
 
 export class TasksService {
@@ -9,6 +9,11 @@ export class TasksService {
   }
 
   async loadWorkspace(): Promise<TaskWorkspace> {
+    return this.repository.getWorkspace();
+  }
+
+  async setCompletion(task: Task, completed: boolean): Promise<TaskWorkspace> {
+    await this.repository.setCompletion(task, completed);
     return this.repository.getWorkspace();
   }
 }

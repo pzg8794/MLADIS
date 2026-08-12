@@ -4,7 +4,6 @@ import {
   BadgeCheck,
   BadgeDollarSign,
   CalendarClock,
-  CalendarDays,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -59,9 +58,39 @@ function DepositMetricCard({ metric }: { metric: DepositMetric }) {
           <em>{metric.trend}</em>
         </div>
       </div>
-      <DepositSparkline metric={metric} />
+      {metric.points && <DepositSparkline metric={metric} />}
     </article>
   );
+}
+
+function csvCell(value: string | number): string {
+  const normalized = String(value ?? '');
+  return /[",\n]/.test(normalized) ? `"${normalized.replace(/"/g, '""')}"` : normalized;
+}
+
+function exportDepositLedger(rows: DepositHold[]) {
+  const headings = ['Hold', 'Guest', 'Email', 'Reservation', 'Listing', 'Amount', 'Currency', 'Status', 'Requested', 'Expiration'];
+  const body = rows.map((row) => [
+    row.holdNumber,
+    row.guestName,
+    row.email,
+    row.reservation.requestKey || row.reservation.number,
+    row.reservation.listing,
+    row.money.display,
+    row.money.currency,
+    row.statusLabel,
+    `${row.requestedDate} ${row.requestedTime}`.trim(),
+    `${row.expirationDate} ${row.expirationTime}`.trim(),
+  ]);
+  const csv = [headings, ...body].map((line) => line.map(csvCell).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `mladis-deposit-holds-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function avatarTone(row: DepositHold): DepositHoldTone {
@@ -241,7 +270,7 @@ function ExpiringSoonPanel({ holds, onSelect }: { holds: ExpiringDepositHold[]; 
   return (
     <section className="deposit-v4-expiring">
       <header>
-        <h2><Clock3 size={17} /> Expiring Soon</h2>
+        <h2><Clock3 size={17} /> Expiry Attention</h2>
         <a href="/ops/deposits/">View all ({holds.length})</a>
       </header>
       <div>
@@ -398,9 +427,9 @@ function SelectedDepositPanel({
 export function OpsDepositsPage() {
   const service = useMemo(() => OpsDepositHoldsFactory.create(), []);
   const [snapshot, setSnapshot] = useState<DepositHoldsSnapshot | null>(null);
-  const [selectedId, setSelectedId] = useState('');
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('');
+  const [selectedId, setSelectedId] = useState(() => new URLSearchParams(window.location.search).get('hold')?.trim() || '');
+  const [query, setQuery] = useState(() => new URLSearchParams(window.location.search).get('search')?.trim() || '');
+  const [status, setStatus] = useState(() => new URLSearchParams(window.location.search).get('status')?.trim() || '');
   const [page, setPage] = useState(1);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -501,21 +530,14 @@ export function OpsDepositsPage() {
         </div>
         <div className="deposit-v4-title-actions">
           <button
-            disabled
-            title="Date filtering will be implemented in a dedicated deposits filter pass."
-            type="button"
-          >
-            <CalendarDays size={16} /> Date range
-          </button>
-          <button
             onClick={() => document.getElementById('deposit-status-filter')?.focus()}
             type="button"
           >
             <SlidersHorizontal size={16} /> Filters
           </button>
           <button
-            disabled
-            title="Export will be implemented in a dedicated deposits reporting pass."
+            onClick={() => exportDepositLedger(visibleRows)}
+            title={`Export ${visibleRows.length} visible deposit holds`}
             type="button"
           >
             <Download size={16} /> Export

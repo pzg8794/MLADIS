@@ -6,7 +6,7 @@ from math import ceil
 from urllib.parse import urlencode
 
 from django.core.exceptions import ValidationError
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
 from django.urls import reverse
@@ -730,156 +730,235 @@ class PaymentTransactionProjection:
 
 
 @dataclass(frozen=True)
-class FallbackPaymentTransactionProjection:
-    key: str
-    transaction_number: str
-    guest: str
-    reservation_key: str
-    listing: str
-    channel: str
-    method: str
-    date_label: str
-    time_label: str
-    amount: str
-    status_label: str
-    status_tone: str
+class PaymentHoldTransactionProjection:
+    """Real payment transaction backed by a reservation authorization hold."""
+
+    hold: ReservationPaymentHold
+    deposits: list[DamageDeposit]
+
+    @property
+    def key(self):
+        return f"payment-hold-{self.hold.pk}"
+
+    @property
+    def inquiry(self):
+        return self.hold.inquiry
+
+    @property
+    def transaction_number(self):
+        return f"PAY-{self.hold.created_at:%Y}-{self.hold.pk:06d}"
+
+    @property
+    def money(self):
+        return OpsFinanceMoney(self.hold.amount_cents, self.hold.currency)
+
+    @property
+    def method(self):
+        provider = self.hold.get_payment_provider_display()
+        return f"{provider} authorization"
+
+    @property
+    def status_label(self):
+        labels = {
+            DepositStatus.NEW: "New",
+            DepositStatus.REQUIRES_CONFIGURATION: "Action required",
+            DepositStatus.CHECKOUT_CREATED: "Checkout started",
+            DepositStatus.REQUIRES_CAPTURE: "Authorized",
+            DepositStatus.CAPTURED: "Captured",
+            DepositStatus.CANCELED: "Released",
+            DepositStatus.FAILED: "Failed",
+        }
+        return labels.get(self.hold.status, self.hold.get_status_display())
+
+    @property
+    def status_tone(self):
+        if self.hold.status == DepositStatus.CAPTURED:
+            return "paid"
+        if self.hold.status == DepositStatus.REQUIRES_CAPTURE:
+            return "settled"
+        if self.hold.status in {DepositStatus.CANCELED, DepositStatus.FAILED}:
+            return "refunded"
+        return "pending"
+
+    def reservation_projection(self):
+        inquiry = self.inquiry
+        if not inquiry:
+            return {
+                "id": None,
+                "request_key": "-",
+                "listing": self.hold.item.business_display_name if self.hold.item else "Unlinked payment hold",
+                "guest": self.hold.guest_name,
+                "date_range": "Dates unavailable",
+                "view_url": "",
+                "selectable_url": "",
+            }
+        selectable_url = f"{reverse('bookings:ops-reservations')}?{urlencode({'reservation': inquiry.pk})}"
+        return {
+            "id": inquiry.pk,
+            "request_key": inquiry.request_key,
+            "listing": inquiry.item.business_display_name if inquiry.item else "-",
+            "guest": inquiry.guest_name,
+            "date_range": _reservation_date_range(inquiry),
+            "view_url": selectable_url,
+            "selectable_url": selectable_url,
+        }
+
+    def guest_projection(self):
+        inquiry = self.inquiry
+        profile = inquiry.customer_profile if inquiry else None
+        view_url = (
+            f"{reverse('bookings:ops-guests')}?{urlencode({'guest': profile.pk})}"
+            if profile
+            else ""
+        )
+        return {
+            "id": profile.pk if profile else None,
+            "name": profile.name if profile and profile.name else self.hold.guest_name,
+            "email": profile.email if profile and profile.email else self.hold.email,
+            "phone": profile.phone if profile else (inquiry.phone if inquiry else ""),
+            "view_url": view_url,
+        }
+
+    def invoice_projection(self):
+        return {
+            "id": None,
+            "number": "Not generated",
+            "status": "Not generated",
+            "issue_date": "-",
+            "due_date": "-",
+            "amount_due": self.money.with_currency,
+            "view_url": "",
+            "download_url": "",
+            "can_download": False,
+            "disabled_reason": "Generate an invoice for this reservation before downloading it.",
+        }
+
+    def deposit_history_projection(self):
+        return [
+            {
+                "id": deposit.pk,
+                "type": "damage_deposit",
+                "label": "Damage deposit hold",
+                "amount": deposit.display_amount,
+                "status": DepositHoldProjection(deposit, "damage").status_label,
+                "status_cls": _status_tone(deposit.status),
+                "meta": _date_label(deposit.created_at, "-"),
+                "view_url": reverse("bookings:ops-deposits"),
+            }
+            for deposit in self.deposits
+        ]
+
+    def quick_actions(self):
+        reservation = self.reservation_projection()
+        invoice_reason = "No invoice has been generated for this payment authorization."
+        return [
+            _payment_quick_action("Send invoice", "disabled", icon="invoice", tone="blue", disabled_reason=invoice_reason),
+            _payment_quick_action(
+                "Mark as paid",
+                "disabled",
+                icon="paid",
+                tone="green",
+                disabled_reason="Authorization holds cannot be marked paid from the Payments workspace.",
+            ),
+            _payment_quick_action(
+                "Download invoice",
+                "disabled",
+                icon="receipt",
+                tone="slate",
+                disabled_reason="Generate an invoice for this reservation before downloading it.",
+            ),
+            _payment_quick_action(
+                "Issue refund",
+                "disabled",
+                icon="refund",
+                tone="cyan",
+                disabled_reason="Refund workflow will be implemented in a dedicated refund-actions pass.",
+            ),
+            _payment_quick_action(
+                "Open reservation",
+                "link" if reservation["selectable_url"] else "disabled",
+                reservation["selectable_url"],
+                icon="reservation",
+                tone="blue",
+                disabled_reason="" if reservation["selectable_url"] else "This payment hold is not linked to a reservation.",
+            ),
+        ]
 
     def to_row_payload(self):
+        inquiry = self.inquiry
+        item = self.hold.item or (inquiry.item if inquiry else None)
         return {
             "id": self.key,
             "transaction_id": self.transaction_number,
-            "type": "stay_payment",
-            "guest": self.guest,
-            "reservation": self.reservation_key,
-            "listing": self.listing,
-            "channel": self.channel,
+            "type": "stay_payment_hold",
+            "guest": self.hold.guest_name,
+            "reservation": inquiry.request_key if inquiry else "-",
+            "listing": item.business_display_name if item else "Unlinked payment hold",
+            "channel": "Direct Website" if inquiry else "Direct payment",
             "method": self.method,
-            "date_label": self.date_label,
-            "time_label": self.time_label,
-            "amount": self.amount,
+            "date_label": _date_label(self.hold.created_at, "-"),
+            "time_label": _time_label(self.hold.created_at, "-"),
+            "amount": self.money.with_currency,
             "status": self.status_label,
             "status_cls": self.status_tone,
-            "invoice_icon": "↗",
+            "invoice_icon": "",
             "invoice_url": "",
-            "is_mock": True,
+            "is_mock": False,
         }
 
     def detail_payload(self):
         row = self.to_row_payload()
-        unavailable_invoice = {
-            "id": None,
-            "number": "Sample invoice unavailable",
-            "status": self.status_label,
-            "issue_date": self.date_label,
-            "due_date": self.date_label,
-            "amount_due": self.amount,
-            "view_url": "",
-            "download_url": "",
-            "can_download": False,
-            "disabled_reason": "Invoice download will be available after invoice document generation is implemented.",
-        }
-        unavailable_reservation = {
-            "id": None,
-            "request_key": self.reservation_key,
-            "listing": self.listing,
-            "guest": self.guest,
-            "date_range": "Sample reservation dates",
-            "view_url": "",
-            "selectable_url": "",
-        }
+        invoice = self.invoice_projection()
+        reservation = self.reservation_projection()
+        status_tone = "complete" if self.hold.status in {DepositStatus.CAPTURED, DepositStatus.CANCELED} else "active"
+        timeline = [
+            {
+                "label": "Payment authorization created",
+                "meta": _datetime_label(self.hold.created_at, "-"),
+                "tone": "complete",
+            },
+            {
+                "label": self.status_label,
+                "meta": _datetime_label(self.hold.updated_at, "-"),
+                "tone": status_tone,
+            },
+        ]
         return {
             **row,
-            "invoice_number": unavailable_invoice["number"],
+            "invoice_number": invoice["number"],
             "invoice_url": "",
-            "issue_date": unavailable_invoice["issue_date"],
-            "due_date": unavailable_invoice["due_date"],
-            "amount_due": unavailable_invoice["amount_due"],
-            "invoice": unavailable_invoice,
-            "reservation": unavailable_reservation,
-            "linked_reservation": {**unavailable_reservation, "url": ""},
-            "guest_detail": {
-                "id": None,
-                "name": self.guest,
-                "email": "",
-                "phone": "",
-                "view_url": "",
-            },
-            "deposit_history": [
-                {
-                    "id": None,
-                    "type": "none",
-                    "label": "No live deposit history",
-                    "amount": "-",
-                    "status": "Unavailable",
-                    "status_cls": "pending",
-                    "meta": "Sample transaction",
-                    "view_url": "",
-                }
-            ],
-            "timeline": [
-                {
-                    "label": "Sample payment transaction",
-                    "meta": f"{self.date_label} {self.time_label}",
-                    "tone": "pending",
-                    "action_label": "",
-                    "action_url": "",
-                }
-            ],
-            "notes": "Sample transaction shown because no live invoice records are available.",
-            "quick_actions": [
-                _payment_quick_action(
-                    "Send invoice",
-                    "disabled",
-                    icon="invoice",
-                    tone="blue",
-                    disabled_reason="Available when a live invoice is selected.",
-                ),
-                _payment_quick_action(
-                    "Mark as paid",
-                    "disabled",
-                    icon="paid",
-                    tone="green",
-                    disabled_reason="Available when a live invoice is selected.",
-                ),
-                _payment_quick_action(
-                    "Download invoice",
-                    "disabled",
-                    icon="receipt",
-                    tone="slate",
-                    disabled_reason="Invoice download will be available after invoice document generation is implemented.",
-                ),
-                _payment_quick_action(
-                    "Issue refund",
-                    "disabled",
-                    icon="refund",
-                    tone="cyan",
-                    disabled_reason="Refund workflow will be implemented in a dedicated refund-actions pass.",
-                ),
-                _payment_quick_action(
-                    "Open reservation",
-                    "disabled",
-                    icon="reservation",
-                    tone="blue",
-                    disabled_reason="A live reservation is not linked to this sample transaction.",
-                ),
-            ],
+            "issue_date": invoice["issue_date"],
+            "due_date": invoice["due_date"],
+            "amount_due": invoice["amount_due"],
+            "invoice": invoice,
+            "reservation": reservation,
+            "linked_reservation": {**reservation, "url": reservation["selectable_url"]},
+            "guest_detail": self.guest_projection(),
+            "deposit_history": self.deposit_history_projection(),
+            "timeline": timeline,
+            "notes": self.hold.notes or "Real reservation payment authorization. No invoice has been generated yet.",
+            "quick_actions": self.quick_actions(),
         }
 
     def to_payload(self):
+        reservation = self.reservation_projection()
         return {
             "id": self.key,
             "transaction_number": self.transaction_number,
-            "type": "stay_payment",
-            "status": self.status_label.lower(),
+            "type": "stay_payment_hold",
+            "status": self.hold.status,
             "status_label": self.status_label,
             "status_tone": self.status_tone,
-            "channel": self.channel,
+            "channel": "Direct Website" if self.inquiry else "Direct payment",
             "method": self.method,
-            "amount": {"display": self.amount},
-            "guest": self.guest,
-            "reservation_key": self.reservation_key,
-            "listing": self.listing,
+            "amount": self.money.to_payload(),
+            "guest": self.hold.guest_name,
+            "reservation_key": reservation["request_key"],
+            "listing": reservation["listing"],
             "invoice_url": "",
+            "invoice": self.invoice_projection(),
+            "reservation": reservation,
+            "guest_detail": self.guest_projection(),
             "row": self.to_row_payload(),
             "detail": self.detail_payload(),
         }
@@ -990,7 +1069,7 @@ class PaymentTransactionSummaryService:
             "payment_types": self._option_group(rows, "type"),
         }
 
-    def date_range_label(self, filters: PaymentTransactionFilters, rows, using_mock=False):
+    def date_range_label(self, filters: PaymentTransactionFilters, rows):
         if filters.date_from or filters.date_to:
             start = filters.date_from.strftime("%b %-d, %Y") if filters.date_from else "Start"
             end = filters.date_to.strftime("%b %-d, %Y") if filters.date_to else "Today"
@@ -1008,7 +1087,7 @@ class PaymentTransactionSummaryService:
             if start.year == end.year:
                 return f"{start:%b %-d} - {end:%b %-d, %Y}"
             return f"{start:%b %-d, %Y} - {end:%b %-d, %Y}"
-        return "Sample ledger" if using_mock else "Live ledger"
+        return "Live ledger"
 
     @staticmethod
     def _option_group(rows, key):
@@ -1053,9 +1132,7 @@ class PaymentsTransactionsService:
         parsed_filters = PaymentTransactionFilters.from_params(filters)
         query_service = PaymentTransactionQueryService()
         summary_service = PaymentTransactionSummaryService()
-        live_transactions = self.live_transactions()
-        using_mock = not live_transactions
-        transactions = live_transactions or self.fallback_transactions()
+        transactions = self.live_transactions()
         all_rows = [transaction.to_row_payload() for transaction in transactions]
         filtered_transactions = query_service.filter_transactions(transactions, parsed_filters)
         filtered_rows = [transaction.to_row_payload() for transaction in filtered_transactions]
@@ -1078,19 +1155,19 @@ class PaymentsTransactionsService:
             rows = [self._with_toggle_url(row, request, parsed_filters, page, selected_key) for row in rows]
 
         return {
-            "summary_cards": self.summary_cards(using_mock=using_mock),
+            "summary_cards": self.summary_cards(),
             "rows": rows,
             "detail": detail,
             "selected_transaction_id": selected_key,
             "total_results": total_results,
             "total_results_display": f"{total_results:,}",
             "generated_at": timezone.now(),
-            "date_range_label": summary_service.date_range_label(parsed_filters, filtered_rows or all_rows, using_mock),
+            "date_range_label": summary_service.date_range_label(parsed_filters, filtered_rows or all_rows),
             "filters": parsed_filters.to_payload(),
             "filter_options": summary_service.filter_options(all_rows),
             "pagination": pagination,
             "payment_transactions": payment_transactions,
-            "source": "fallback" if using_mock else "api",
+            "source": "api",
         }
 
     def live_transactions(self):
@@ -1098,26 +1175,42 @@ class PaymentsTransactionsService:
             Invoice.objects.select_related("inquiry__item", "customer_profile")
             .order_by("-issue_date", "-created_at")
         )
-        if not invoices:
-            return []
         inquiry_ids = [invoice.inquiry_id for invoice in invoices if invoice.inquiry_id]
         deposits = list(
             DamageDeposit.objects.select_related("inquiry", "item")
             .filter(inquiry_id__in=inquiry_ids)
             .order_by("-created_at")
         )
-        holds = list(
+        linked_holds = list(
             ReservationPaymentHold.objects.select_related("inquiry", "item")
             .filter(inquiry_id__in=inquiry_ids)
+            .order_by("-created_at")
+        )
+        standalone_holds = list(
+            ReservationPaymentHold.objects.select_related(
+                "inquiry__item",
+                "inquiry__customer_profile",
+                "item",
+            )
+            .filter(Q(inquiry_id__isnull=True) | ~Q(inquiry_id__in=inquiry_ids))
+            .order_by("-created_at")
+        )
+        standalone_inquiry_ids = [hold.inquiry_id for hold in standalone_holds if hold.inquiry_id]
+        standalone_deposits = list(
+            DamageDeposit.objects.select_related("inquiry", "item")
+            .filter(inquiry_id__in=standalone_inquiry_ids)
             .order_by("-created_at")
         )
         deposits_by_inquiry = {}
         for deposit in deposits:
             deposits_by_inquiry.setdefault(deposit.inquiry_id, []).append(deposit)
         holds_by_inquiry = {}
-        for hold in holds:
+        for hold in linked_holds:
             holds_by_inquiry.setdefault(hold.inquiry_id, []).append(hold)
-        return [
+        standalone_deposits_by_inquiry = {}
+        for deposit in standalone_deposits:
+            standalone_deposits_by_inquiry.setdefault(deposit.inquiry_id, []).append(deposit)
+        transactions = [
             PaymentTransactionProjection(
                 invoice=invoice,
                 deposits=deposits_by_inquiry.get(invoice.inquiry_id, []),
@@ -1125,24 +1218,45 @@ class PaymentsTransactionsService:
             )
             for invoice in invoices
         ]
+        transactions.extend(
+            PaymentHoldTransactionProjection(
+                hold=hold,
+                deposits=standalone_deposits_by_inquiry.get(hold.inquiry_id, []),
+            )
+            for hold in standalone_holds
+        )
+        return sorted(
+            transactions,
+            key=lambda transaction: transaction.invoice.created_at
+            if isinstance(transaction, PaymentTransactionProjection)
+            else transaction.hold.created_at,
+            reverse=True,
+        )
 
-    def summary_cards(self, using_mock=False):
-        if using_mock:
-            return [
-                {"label": "Total Collected", "value": "$18,540", "trend": "+15% vs last 7 days", "tone": "green"},
-                {"label": "Pending Payments", "value": "$4,320", "trend": "-8% vs last 7 days", "tone": "blue"},
-                {"label": "Refunded", "value": "$620", "trend": "+5% vs last 7 days", "tone": "orange"},
-                {"label": "Payouts in Transit", "value": "$2,100", "trend": "2 payouts", "tone": "violet"},
-            ]
+    def summary_cards(self):
         paid = Invoice.objects.filter(status=InvoiceStatus.PAID)
         pending = Invoice.objects.filter(status__in=[InvoiceStatus.DRAFT, InvoiceStatus.SENT])
-        refunded = Invoice.objects.filter(status=InvoiceStatus.CANCELED)
-        transit = ReservationPaymentHold.objects.filter(status=DepositStatus.REQUIRES_CAPTURE)
+        invoiced_inquiry_ids = Invoice.objects.filter(inquiry_id__isnull=False).values_list("inquiry_id", flat=True)
+        standalone_holds = ReservationPaymentHold.objects.filter(
+            Q(inquiry_id__isnull=True) | ~Q(inquiry_id__in=invoiced_inquiry_ids)
+        )
+        captured = standalone_holds.filter(status=DepositStatus.CAPTURED)
+        pending_holds = standalone_holds.filter(
+            status__in=[DepositStatus.NEW, DepositStatus.REQUIRES_CONFIGURATION, DepositStatus.CHECKOUT_CREATED]
+        )
+        released = standalone_holds.filter(status=DepositStatus.CANCELED)
+        authorized = ReservationPaymentHold.objects.filter(status=DepositStatus.REQUIRES_CAPTURE)
+        collected_cents = (paid.aggregate(total=Sum("total_cents"))["total"] or 0) + (
+            captured.aggregate(total=Sum("amount_cents"))["total"] or 0
+        )
+        pending_cents = (pending.aggregate(total=Sum("total_cents"))["total"] or 0) + (
+            pending_holds.aggregate(total=Sum("amount_cents"))["total"] or 0
+        )
         return [
-            {"label": "Total Collected", "value": self._money(paid.aggregate(total=Sum("total_cents"))["total"]), "trend": f"{paid.count()} paid invoices", "tone": "green"},
-            {"label": "Pending Payments", "value": self._money(pending.aggregate(total=Sum("total_cents"))["total"]), "trend": f"{pending.count()} open invoices", "tone": "blue"},
-            {"label": "Refunded", "value": self._money(refunded.aggregate(total=Sum("total_cents"))["total"]), "trend": f"{refunded.count()} canceled invoices", "tone": "orange"},
-            {"label": "Payouts in Transit", "value": self._money(transit.aggregate(total=Sum("amount_cents"))["total"]), "trend": f"{transit.count()} authorized holds", "tone": "violet"},
+            {"label": "Total Collected", "value": self._money(collected_cents), "trend": f"{paid.count() + captured.count()} completed records", "tone": "green"},
+            {"label": "Pending Payments", "value": self._money(pending_cents), "trend": f"{pending.count() + pending_holds.count()} open records", "tone": "blue"},
+            {"label": "Released Holds", "value": self._money(released.aggregate(total=Sum("amount_cents"))["total"]), "trend": f"{released.count()} released authorizations", "tone": "orange"},
+            {"label": "Authorized Holds", "value": self._money(authorized.aggregate(total=Sum("amount_cents"))["total"]), "trend": f"{authorized.count()} awaiting capture", "tone": "violet"},
         ]
 
     def action(self, transaction_key, action):
@@ -1215,64 +1329,12 @@ class PaymentsTransactionsService:
     def _money(cents):
         return f"${(cents or 0) / 100:,.2f}"
 
-    @staticmethod
-    def fallback_transactions():
-        return [
-            FallbackPaymentTransactionProjection(
-                "mock-txn-10541", "TXN-2026-10541", "Maria Rodriguez", "R-1042",
-                "3 Beds Apt, G-101", "Direct Website", "VISA .... 4242",
-                "Jun 12, 2026", "9:30 AM", "$1,250.00", "Paid", "paid",
-            ),
-            FallbackPaymentTransactionProjection(
-                "mock-txn-10540", "TXN-2026-10540", "John Smith", "R-1040",
-                "2 Beds Apt, Pool", "Airbnb", "MC .... 5655",
-                "Jun 11, 2026", "4:15 PM", "$550.00", "Paid", "paid",
-            ),
-            FallbackPaymentTransactionProjection(
-                "mock-txn-10539", "TXN-2026-10539", "Ana Lopez", "R-1039",
-                "Meeting Room 1", "Corporate Booking", "ACH Transfer",
-                "Jun 10, 2026", "11:20 AM", "$250.00", "Paid", "paid",
-            ),
-            FallbackPaymentTransactionProjection(
-                "mock-txn-10538", "TXN-2026-10538", "David Brown", "R-1038",
-                "6 Beds Apt, G-101", "Vrbo", "VISA .... 1111",
-                "Jun 9, 2026", "2:45 PM", "$2,100.00", "Settled", "settled",
-            ),
-            FallbackPaymentTransactionProjection(
-                "mock-txn-10537", "TXN-2026-10537", "Sophie Martin", "R-1037",
-                "3 Beds Apt, G-101", "Booking.com", "MC .... 8888",
-                "Jun 9, 2026", "10:05 AM", "$500.00", "Pending", "pending",
-            ),
-            FallbackPaymentTransactionProjection(
-                "mock-txn-10536", "TXN-2026-10536", "Carlos Mendez", "R-1036",
-                "2 Beds Apt, Pool", "Direct Website", "Amex .... 1005",
-                "Jun 8, 2026", "8:20 PM", "$1,320.00", "Paid", "paid",
-            ),
-            FallbackPaymentTransactionProjection(
-                "mock-txn-10535", "TXN-2026-10535", "Emily Johnson", "R-1035",
-                "Conference Room A", "Direct Website", "VISA .... 4242",
-                "Jun 8, 2026", "1:10 PM", "$180.00", "Refunded", "refunded",
-            ),
-            FallbackPaymentTransactionProjection(
-                "mock-txn-10534", "TXN-2026-10534", "Michael Lee", "R-1034",
-                "6 Beds Apt, Pool", "Airbnb", "MC .... 2222",
-                "Jun 7, 2026", "6:40 PM", "$2,350.00", "Paid", "paid",
-            ),
-            FallbackPaymentTransactionProjection(
-                "mock-txn-10533", "TXN-2026-10533", "Laura Garcia", "R-1033",
-                "3 Beds Apt, G-101", "Corporate Booking", "ACH Transfer",
-                "Jun 7, 2026", "9:00 AM", "$300.00", "Pending", "pending",
-            ),
-            FallbackPaymentTransactionProjection(
-                "mock-txn-10532", "TXN-2026-10532", "Robert Wilson", "R-1032",
-                "2 Beds Apt, Pool", "Vrbo", "VISA .... 9009",
-                "Jun 6, 2026", "3:15 PM", "$720.00", "Paid", "paid",
-            ),
-        ]
-
-
 class DepositHoldOperationsService:
     """DepositHold aggregate service for the operations deposits page."""
+
+    @staticmethod
+    def _money(cents):
+        return f"${(cents or 0) / 100:,.2f}"
 
     def projections(self):
         damage = [
@@ -1298,14 +1360,41 @@ class DepositHoldOperationsService:
         rows = [hold.to_row_payload(request) for hold in holds]
         active = [hold for hold in holds if hold.record.status in ACTIVE_HOLD_STATUSES]
         expiring = [hold for hold in active if hold.expires_at <= timezone.now() + timedelta(days=2)]
-        released = [hold for hold in holds if hold.record.status == DepositStatus.CANCELED]
+        week_ago = timezone.now() - timedelta(days=7)
+        released = [
+            hold
+            for hold in holds
+            if hold.record.status == DepositStatus.CANCELED
+            and hold.record.updated_at >= week_ago
+        ]
         failed = [hold for hold in holds if hold.record.status == DepositStatus.FAILED]
+        active_cents = sum(hold.record.amount_cents for hold in active)
         return {
             "summary_cards": [
-                self._metric("Active Holds", len(active), f"+{min(len(active), 8)} vs last 7 days", "green", "M0 38 L22 34 L44 24 L66 29 L88 26 L110 14 L132 27 L154 31 L176 37 L198 28 L220 32"),
-                self._metric("Expiring Soon", len(expiring), f"+{min(len(expiring), 2)} vs last 7 days", "orange", "M0 34 L20 28 L39 26 L58 31 L78 30 L98 14 L118 30 L138 33 L158 29 L178 36 L198 33 L220 37"),
-                self._metric("Released This Week", len(released), f"+{min(len(released), 12)} vs last 7 days", "blue", "M0 39 L20 34 L40 25 L60 31 L80 22 L100 28 L120 24 L140 34 L160 32 L180 39 L200 33 L220 34"),
-                self._metric("Disputes", len(failed), f"-{min(len(failed), 1)} vs last 7 days", "red", "M0 40 L19 36 L38 28 L57 34 L76 39 L95 36 L114 38 L133 31 L152 22 L171 33 L190 37 L220 40"),
+                self._metric(
+                    "Active Holds",
+                    len(active),
+                    f"{self._money(active_cents)} currently authorized",
+                    "green",
+                ),
+                self._metric(
+                    "Expiry Attention",
+                    len(expiring),
+                    "Expired or due within the next 48 hours",
+                    "orange",
+                ),
+                self._metric(
+                    "Released This Week",
+                    len(released),
+                    "Released during the last 7 days",
+                    "blue",
+                ),
+                self._metric(
+                    "Failed Holds",
+                    len(failed),
+                    "Provider failures requiring review",
+                    "red",
+                ),
             ],
             "status_options": self.status_options(rows),
             "rows": rows,
@@ -1387,7 +1476,7 @@ class DepositHoldOperationsService:
         raise ValidationError("Unknown deposit hold record.")
 
     @staticmethod
-    def _metric(label, value, trend, tone, points):
+    def _metric(label, value, trend, tone, points=""):
         return {
             "label": label,
             "value": str(value),

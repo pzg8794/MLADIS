@@ -171,7 +171,7 @@
 
       <div class="ops-cal-detail__status">
         <span id="ops-cal-detail-pill">Available</span>
-        <a id="ops-cal-detail-record" href="#" hidden>Open record</a>
+        <a id="ops-cal-detail-record" href="{% url 'bookings:ops-reservations' %}" hidden>Open record</a>
       </div>
 
       <div class="ops-cal-detail__forms">
@@ -284,7 +284,7 @@
       return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     };
     const collectCellData = (cell) => ({
-      key: `${cell.dataset.itemId || "mock"}:${cell.dataset.date}`,
+      key: `${cell.dataset.itemId || "unlinked"}:${cell.dataset.date}`,
       itemId: cell.dataset.itemId,
       itemName: cell.dataset.itemName,
       unit: cell.dataset.unit,
@@ -311,7 +311,7 @@
       title.textContent = data.itemName || "Calendar day";
       subtitle.textContent = data.canEdit
         ? "Manage this room's availability, price, or linked record."
-        : "This mock row needs a real stay record before changes can be saved.";
+        : "Connect this calendar row to a stay record before saving changes.";
       pill.textContent = data.label || data.status || "Available";
       pill.className = `ops-cal-detail-pill ops-cal-detail-pill--${data.status || "available"}`;
       if (data.adminHref) {
@@ -329,7 +329,7 @@
       setFormValues(priceForm, data);
       message.textContent = data.canEdit
         ? "These actions update the selected calendar object and refresh the board."
-        : "Actions are disabled for mock-only rows. Add or connect a stay to save changes.";
+        : "Actions are disabled until this row is connected to a stay record.";
     };
     const apiUrlForRecordType = (recordType) => {
       if (recordType === "price") return detail.dataset.priceApiUrl;

@@ -174,7 +174,7 @@ export class DepositMetric {
       String(payload.value),
       payload.trend || payload.caption || 'Live ledger',
       payload.tone || 'blue',
-      payload.points || 'M0 38 L22 34 L44 24 L66 29 L88 26 L110 14 L132 27 L154 31 L176 37 L198 28 L220 32',
+      payload.points || '',
     );
   }
 }
@@ -404,7 +404,10 @@ export class DepositHold {
     return [
       this.guestName,
       this.email,
+      this.phone,
       this.holdNumber,
+      this.reservation.requestKey,
+      this.reservation.number,
       this.reservation.listing,
       this.kindLabel,
       this.statusLabel,

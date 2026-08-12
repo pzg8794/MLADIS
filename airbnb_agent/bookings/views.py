@@ -67,7 +67,6 @@ from .ops_finance import DepositHoldOperationsService, PaymentsTransactionsServi
 from .guest_services import GuestService
 from .services import (
     AgentAccessContext,
-    AgentIntelligenceOperationsService,
     BookingCalendarService,
     CustomersCRMService,
     MaintenanceOperationsService,
@@ -1339,10 +1338,9 @@ class ModernOpsStaysView(TemplateView):
     """
     Ops Stays & Listings page (Object 2).
 
-    Renders a server-side two-column layout that matches the Stays & Listings
-    mock: property card list on the left, selected listing detail panel on the
-    right.  All data is provided by StayListingService; mocked values are
-    documented in that service.
+    Renders a server-side two-column property workspace. All operational data
+    is projected from real listing, reservation, and maintenance records by
+    StayListingService.
 
     Query params:
         tab    – "all" | "published" | "draft" | "inactive" | "maintenance" |
@@ -1367,14 +1365,12 @@ class ModernOpsStaysView(TemplateView):
         tab_counts = service.get_tab_counts()
         cards = [service.card_payload(s) for s in stays]
 
-        # Resolve the selected stay: explicit slug → first stay → None
+        # Detail is explicit so filtering never opens an unrelated record.
         selected_stay = None
         if selected_slug:
             selected_stay = next(
                 (s for s in stays if s.slug == selected_slug), None
             )
-        if selected_stay is None and stays:
-            selected_stay = stays[0]
 
         detail = service.detail_payload(selected_stay) if selected_stay else None
 
@@ -1388,6 +1384,7 @@ class ModernOpsStaysView(TemplateView):
                     else "Manage guest stays, channels, arrivals, and operational readiness."
                 ),
                 "page_action_label": "Add New Property" if is_properties_page else "Add New Guest",
+                "page_create_url": reverse("admin:bookings_bookableitem_add"),
                 "page_search_placeholder": (
                     "Search by property name, area, listing..."
                     if is_properties_page
@@ -2493,27 +2490,12 @@ class ModernOpsDepositsView(TemplateView):
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsAgentView(TemplateView):
-    template_name = "bookings/modern_ops_agent.html"
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx.update(AgentIntelligenceOperationsService().page_payload())
-        ctx["site_settings"] = SiteSettings.current()
-        return ctx
+    template_name = "bookings/modern_dashboard.html"
 
 
 @method_decorator(ops_staff_required, name="dispatch")
 class ModernOpsMaintenanceView(TemplateView):
-    template_name = "bookings/modern_ops_maintenance.html"
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        payload = MaintenanceOperationsService().page_payload(
-            selected_id=self.request.GET.get("work_order", "").strip()
-        )
-        ctx.update(payload)
-        ctx["site_settings"] = SiteSettings.current()
-        return ctx
+    template_name = "bookings/modern_dashboard.html"
 
 
 @method_decorator(ops_staff_required, name="dispatch")

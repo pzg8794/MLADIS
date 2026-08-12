@@ -2768,6 +2768,33 @@ class OpsFinanceObjectTests(TestCase):
         self.assertEqual(payload["detail"]["quick_actions"][1]["kind"], "post")
         self.assertEqual(payload["detail"]["quick_actions"][1]["icon"], "paid")
 
+    def test_payments_api_uses_real_payment_holds_when_no_invoices_exist(self):
+        self.invoice.delete()
+        self.client.force_login(self.staff)
+
+        response = self.client.get(
+            reverse("bookings:ops-payments-api"),
+            {"transaction": f"payment-hold-{self.hold.pk}"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["source"], "api")
+        self.assertEqual(payload["total_results"], 1)
+        self.assertEqual(payload["rows"][0]["id"], f"payment-hold-{self.hold.pk}")
+        self.assertFalse(payload["rows"][0]["is_mock"])
+        self.assertEqual(payload["rows"][0]["status"], "Authorized")
+        self.assertEqual(payload["detail"]["reservation"]["id"], self.inquiry.pk)
+        self.assertEqual(payload["detail"]["guest_detail"]["email"], self.inquiry.email)
+        self.assertEqual(payload["detail"]["deposit_history"][0]["id"], self.deposit.pk)
+        self.assertEqual(payload["detail"]["invoice"]["number"], "Not generated")
+        self.assertFalse(payload["detail"]["invoice"]["can_download"])
+        open_reservation = next(
+            action for action in payload["detail"]["quick_actions"] if action["label"] == "Open reservation"
+        )
+        self.assertEqual(open_reservation["kind"], "link")
+        self.assertIn(f"reservation={self.inquiry.pk}", open_reservation["url"])
+
     def test_payments_api_exposes_structured_invoice_and_reservation_links(self):
         self.client.force_login(self.staff)
 
@@ -3185,7 +3212,7 @@ class OpsDashboardTests(TestCase):
             response = self.client.get(reverse(f"bookings:{route_name}"))
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, "mladis-ops-nav-items")
-            if route_name in {"ops-deposits", "ops-admin", "ops-settings", "ops-reports"}:
+            if route_name in {"ops-deposits", "ops-agent", "ops-admin", "ops-settings", "ops-reports"}:
                 self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
 
         customers_payload = self.client.get(reverse("bookings:ops-customers-api")).json()
@@ -4738,9 +4765,9 @@ class MaintenanceOpsTests(TestCase):
         response = self.client.get(reverse("bookings:ops-maintenance"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Maintenance &amp; Work Orders")
-        self.assertContains(response, "frontend/modern-dashboard/assets/ops-maintenance.css")
-        self.assertContains(response, "WO-2026-0104")
+        self.assertContains(response, '<div id="root"></div>', html=True)
+        self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
+        self.assertNotContains(response, "WO-2026-0104")
 
     def test_maintenance_api_rejects_completed_event_without_photo(self):
         self.client.force_login(self.user)

@@ -167,7 +167,7 @@
                   {% if row.invoice_url %}
                     <a class="ops-pay-invoice-link" href="{{ row.invoice_url }}" onclick="event.stopPropagation()" aria-label="Open invoice {{ row.transaction_id }}">↗</a>
                   {% else %}
-                    <span class="ops-pay-invoice-link is-disabled" title="A live invoice is not available for this sample transaction." aria-label="Invoice unavailable">↗</span>
+                    <span class="ops-pay-invoice-link is-disabled" title="An invoice has not been generated for this transaction." aria-label="Invoice unavailable">↗</span>
                   {% endif %}
                 </td>
               </tr>

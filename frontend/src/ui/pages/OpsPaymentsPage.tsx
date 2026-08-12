@@ -188,7 +188,7 @@ function PaymentTable({
                         <FileText size={16} />
                       </a>
                     ) : (
-                      <span title="A live invoice is not available for this sample transaction." aria-label="Invoice unavailable">
+                      <span title="No invoice document is linked to this transaction." aria-label="Invoice unavailable">
                         <FileText size={16} />
                       </span>
                     )}

@@ -3838,9 +3838,9 @@ class StayListingService:
     """
     Service layer for the Stays & Listings ops page.
 
-    Real data is used wherever the model carries it; values not yet in the
-    schema (occupancy %, ADR, housekeeping schedule, tags) are mocked with
-    sensible defaults until the schema is extended.
+    Every projection is built from persisted listing, reservation, and
+    maintenance records. Fields that are not represented in the current
+    schema are omitted rather than simulated.
 
     All public methods return plain dicts or querysets safe for template use.
     """
@@ -3913,10 +3913,8 @@ class StayListingService:
             "cover_image": self._cover_image(stay),
             "tab_status": "Published" if stay.is_active else "Draft",
             "readiness": self._readiness(stay),
-            "tags": self._tags(stay),
-            # Occupancy / delta: mocked until calendar integration is added
-            "occupancy_pct": None,
-            "occupancy_delta": None,
+            "tags": [],
+            "admin_url": reverse("admin:bookings_bookableitem_change", args=[stay.pk]),
         }
 
     def detail_payload(self, stay):
@@ -3940,10 +3938,7 @@ class StayListingService:
             "gallery": gallery,
             "gallery_total": len(gallery),
             "cover_image": self._cover_image(stay),
-            # Mocked until occupancy/ADR models are added
-            "occupancy_pct": 72,
-            "adr": int(stay.starting_price) if stay.starting_price else 146,
-            "adr_delta": "+9% vs last 7 days",
+            "admin_url": reverse("admin:bookings_bookableitem_change", args=[stay.pk]),
             # Location
             "area_label": stay.location_label or "—",
             # Housekeeping — next_clean and cleaner from real maintenance data when available
@@ -3981,21 +3976,6 @@ class StayListingService:
             status__in=self.OPEN_STATUSES,
         ).exists()
         return "Needs attention" if has_open else "Ready"
-
-    @staticmethod
-    def _tags(stay):
-        """
-        Mock property feature tags.  A future amenities model would replace this.
-        Returns list of (label, css_modifier) tuples.
-        """
-        tags = []
-        if stay.airbnb_listing_id or stay.airbnb_url:
-            tags.append(("Pool", "tag--pool"))
-            tags.append(("Self check-in", "tag--checkin"))
-        tags.append(("$200 Secure hold", "tag--deposit"))
-        if stay.airbnb_url:
-            tags.append(("Direct booking", "tag--direct"))
-        return tags
 
     def _maintenance_summary(self, stay):
         """Return {open, overdue, last_inspection} for a stay."""
