@@ -70,6 +70,84 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.admin-documents,
+.admin-operations {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+}
+
+.admin-document-list {
+  display: grid;
+}
+
+.admin-document-list article {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto auto auto auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border-top: 1px solid #e2e8f0;
+  padding: 9px 2px;
+}
+
+.admin-document-list article > svg {
+  color: #0f766e;
+}
+
+.admin-document-list span {
+  display: grid;
+  min-width: 0;
+}
+
+.admin-document-list strong,
+.admin-document-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-document-list strong {
+  color: #0f172a;
+  font-size: 0.8rem;
+}
+
+.admin-document-list small,
+.admin-document-list em,
+.admin-document-list b,
+.admin-document-list a,
+.admin-document-empty {
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.admin-document-list em {
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: #ecfdf5;
+  color: #047857;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.admin-document-list b {
+  color: #0f172a;
+}
+
+.admin-document-list a {
+  display: inline-flex;
+  align-items: center;
+  color: #075985;
+  font-weight: 900;
+}
+
+.admin-document-empty {
+  margin: 0;
+}
+
 .admin-health-card,
 .admin-shortcut {
   border: 1px solid rgba(148, 163, 184, 0.22);

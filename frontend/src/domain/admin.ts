@@ -45,12 +45,27 @@ export class AdminHealthCard {
   ) {}
 }
 
+export class AdminTransactionDocument {
+  constructor(
+    public readonly id: string,
+    public readonly kind: string,
+    public readonly title: string,
+    public readonly reference: string,
+    public readonly status: string,
+    public readonly displayAmount: string,
+    public readonly recipientEmail: string,
+    public readonly viewUrl: string,
+    public readonly downloadUrl: string,
+  ) {}
+}
+
 export class AdminWorkspace {
   constructor(
     public readonly shortcuts: AdminShortcut[],
     public readonly metrics: AdminMetric[],
     public readonly feedItems: AdminFeedItem[],
     public readonly healthCards: AdminHealthCard[],
+    public readonly transactionDocuments: AdminTransactionDocument[],
     public readonly metadata: WorkspaceObjectMetadata = createWorkspaceMetadata('fallback'),
   ) {}
 

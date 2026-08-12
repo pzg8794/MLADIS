@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Box, CalendarDays, ClipboardList, Clock3, Database, DollarSign, MessageCircle, Radio, Settings, ShieldCheck, Sparkles, TrendingUp, Users, Wrench, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Box, CalendarDays, ClipboardList, Clock3, Database, DollarSign, Download, FileText, MessageCircle, Radio, Settings, ShieldCheck, Sparkles, TrendingUp, Users, Wrench, type LucideIcon } from 'lucide-react';
 import { AdminWorkspaceFactory } from '../../application/AdminWorkspaceFactory';
 import type { AdminWorkspace } from '../../domain/admin';
 import './admin-page.css';
@@ -76,6 +76,35 @@ export function AdminPage() {
                 </article>
               );
             })}
+          </section>
+
+          <section className="admin-documents" aria-label="Transaction documents">
+            <header className="admin-section-header">
+              <div>
+                <h2><FileText size={20} /> Transaction documents</h2>
+                <p>Invoices and payment confirmations retained for MLADIS operations.</p>
+              </div>
+              <a className="admin-primary-link" href="/ops/payments/">Open payments</a>
+            </header>
+            {workspace.transactionDocuments.length > 0 ? (
+              <div className="admin-document-list">
+                {workspace.transactionDocuments.map((document) => (
+                  <article key={document.id}>
+                    <FileText size={18} />
+                    <span>
+                      <strong>{document.title}</strong>
+                      <small>{document.reference} · {document.recipientEmail}</small>
+                    </span>
+                    <em>{document.status}</em>
+                    <b>{document.displayAmount}</b>
+                    <a href={document.viewUrl} target="_blank" rel="noreferrer">View</a>
+                    {document.downloadUrl && <a href={document.downloadUrl} title="Download transaction document"><Download size={15} /></a>}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="admin-document-empty">No real transaction documents have been generated yet.</p>
+            )}
           </section>
 
           <section className="admin-operations" id="admin-workspaces">

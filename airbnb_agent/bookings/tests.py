@@ -79,6 +79,7 @@ from .services import (
     BookingCalendarService,
     BookingEmailService,
     DamageDepositService,
+    InvoiceEmailService,
     PaymentAuthorization,
     PromotionEmailService,
     ReservationRequestService,
@@ -2761,6 +2762,30 @@ class InvoicePageTests(TestCase):
         self.assertContains(response, invoice.invoice_number)
         self.assertContains(response, "$500.00 USD")
 
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["operations@mladis.com"],
+    )
+    def test_invoice_email_delivers_customer_and_mladis_copies(self):
+        invoice = Invoice.objects.create(
+            recipient_name="Guest User",
+            recipient_email="guest@example.com",
+            subtotal_cents=50000,
+            total_cents=50000,
+        )
+        request = RequestFactory().get("/ops/payments/")
+
+        sent = InvoiceEmailService().send_invoice(invoice, request=request)
+
+        self.assertTrue(sent)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(mail.outbox[0].to, ["operations@mladis.com"])
+        self.assertEqual(mail.outbox[1].to, ["guest@example.com"])
+        self.assertIn("MLADIS_INVOICE_DELIVERY_V1", mail.outbox[0].body)
+        self.assertIn(invoice.invoice_number, mail.outbox[0].body)
+        self.assertIn(invoice.invoice_number, mail.outbox[1].body)
+        self.assertIn(reverse("bookings:invoice-print", args=[invoice.public_token]), mail.outbox[1].body)
+
 
 @override_settings(STORAGES=TEST_STORAGES)
 class OpsFinanceObjectTests(TestCase):
@@ -3030,6 +3055,10 @@ class OpsFinanceObjectTests(TestCase):
         self.assertEqual(self.invoice.email_status, EmailDeliveryStatus.SENT)
         self.assertEqual(response.json()["transaction"]["status"], InvoiceStatus.PAID)
 
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["operations@mladis.com"],
+    )
     def test_payment_action_send_invoice_updates_invoice_sent_state(self):
         self.client.force_login(self.staff)
 
@@ -3043,6 +3072,38 @@ class OpsFinanceObjectTests(TestCase):
         self.assertEqual(self.invoice.status, InvoiceStatus.SENT)
         self.assertEqual(self.invoice.email_status, EmailDeliveryStatus.SENT)
         self.assertIsNotNone(self.invoice.sent_at)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(mail.outbox[0].to, ["operations@mladis.com"])
+        self.assertEqual(mail.outbox[1].to, ["maria@example.com"])
+
+    def test_transaction_documents_are_available_to_customer_and_admin_accounts(self):
+        customer = get_user_model().objects.create_user(
+            username="maria-account",
+            email=self.inquiry.email,
+            password="secret",
+        )
+        self.inquiry.user = customer
+        self.inquiry.save(update_fields=["user", "updated_at"])
+        self.client.force_login(customer)
+
+        account_payload = self.client.get(reverse("bookings:account-summary-api")).json()
+
+        document_ids = {document["id"] for document in account_payload["transaction_documents"]}
+        self.assertIn(f"invoice-{self.invoice.pk}", document_ids)
+        self.assertIn(f"payment-confirmation-{self.inquiry.pk}", document_ids)
+        confirmation = next(
+            document
+            for document in account_payload["transaction_documents"]
+            if document["kind"] == "payment_confirmation"
+        )
+        self.assertIn(str(self.inquiry.payment_confirmation_token), confirmation["view_url"])
+        self.assertTrue(confirmation["download_url"].endswith("?download=1"))
+
+        self.client.force_login(self.staff)
+        admin_payload = self.client.get(reverse("bookings:ops-admin-api")).json()
+        admin_document_ids = {document["id"] for document in admin_payload["transaction_documents"]}
+        self.assertIn(f"invoice-{self.invoice.pk}", admin_document_ids)
+        self.assertIn(f"payment-confirmation-{self.inquiry.pk}", admin_document_ids)
 
     def test_payment_action_unsupported_returns_400(self):
         self.client.force_login(self.staff)

@@ -2,6 +2,7 @@ import {
   AccountInvoice,
   AccountReservation,
   AccountSnapshot,
+  AccountTransactionDocument,
   ReservationPricingPolicy,
 } from '../domain/models';
 import { HttpClient } from './HttpClient';
@@ -48,6 +49,21 @@ interface ApiAccountInvoice {
   status: string;
   display_total: string;
   print_url: string;
+  reservation_id: number | null;
+  created_at: string;
+}
+
+interface ApiAccountTransactionDocument {
+  id: string;
+  kind: 'invoice' | 'payment_confirmation';
+  title: string;
+  reference: string;
+  status: string;
+  display_amount: string;
+  reservation_id: number | null;
+  recipient_email: string;
+  view_url: string;
+  download_url: string;
   created_at: string;
 }
 
@@ -60,6 +76,7 @@ interface ApiAccountSnapshot {
   };
   reservations: ApiAccountReservation[];
   invoices: ApiAccountInvoice[];
+  transaction_documents: ApiAccountTransactionDocument[];
   generated_at: string;
 }
 
@@ -118,7 +135,21 @@ export class ApiAccountRepository implements AccountRepository {
         invoice.status,
         invoice.display_total,
         invoice.print_url,
+        invoice.reservation_id,
         invoice.created_at,
+      )),
+      (data.transaction_documents ?? []).map((document) => new AccountTransactionDocument(
+        document.id,
+        document.kind,
+        document.title,
+        document.reference,
+        document.status,
+        document.display_amount,
+        document.reservation_id,
+        document.recipient_email,
+        document.view_url,
+        document.download_url,
+        document.created_at,
       )),
       data.generated_at,
     );

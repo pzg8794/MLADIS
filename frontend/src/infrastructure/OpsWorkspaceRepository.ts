@@ -5,6 +5,7 @@ import {
   OpsAgentTopic,
   OpsAdminRoleOption,
   OpsAdminSnapshot,
+  OpsTransactionDocument,
   OpsAdminUserRow,
   OpsChart,
   OpsChartRow,
@@ -99,6 +100,19 @@ interface ApiOpsAdminSnapshot {
   summary_cards: ApiOpsMetric[];
   role_options: ApiOpsAdminRoleOption[];
   rows: ApiOpsAdminUserRow[];
+  transaction_documents: Array<{
+    id: string;
+    kind: string;
+    title: string;
+    reference: string;
+    status: string;
+    display_amount: string;
+    reservation_id: number | null;
+    recipient_email: string;
+    view_url: string;
+    download_url: string;
+    created_at: string;
+  }>;
   admin_url: string;
   access_admin_url: string;
   generated_at: string;
@@ -603,6 +617,19 @@ export class ApiOpsWorkspaceRepository implements OpsWorkspaceRepository {
         row.notes,
         row.admin_url,
         row.access_admin_url,
+      )),
+      (data.transaction_documents ?? []).map((document) => new OpsTransactionDocument(
+        document.id,
+        document.kind,
+        document.title,
+        document.reference,
+        document.status,
+        document.display_amount,
+        document.reservation_id,
+        document.recipient_email,
+        document.view_url,
+        document.download_url,
+        document.created_at,
       )),
       data.admin_url,
       data.access_admin_url,

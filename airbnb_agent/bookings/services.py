@@ -1380,6 +1380,116 @@ class CustomerAccountService:
         return profile
 
 
+class TransactionDocumentService:
+    """Projects real invoice and payment-confirmation records for both account surfaces."""
+
+    DOCUMENTED_HOLD_STATUSES = {
+        DepositStatus.CHECKOUT_CREATED,
+        DepositStatus.REQUIRES_CAPTURE,
+        DepositStatus.CAPTURED,
+        DepositStatus.CANCELED,
+        DepositStatus.FAILED,
+    }
+
+    def for_account(self, request, reservations, invoices):
+        documents = [self._invoice_document(request, invoice) for invoice in invoices]
+        documents.extend(
+            document
+            for inquiry in reservations
+            if (document := self._confirmation_document(request, inquiry))
+        )
+        return self._ordered(documents)
+
+    def latest_for_admin(self, request, limit=12):
+        invoices = list(
+            Invoice.objects.select_related("inquiry", "customer_profile")
+            .order_by("-created_at")[:limit]
+        )
+        inquiries = list(
+            BookingInquiry.objects.filter(
+                Q(damage_deposits__isnull=False) | Q(payment_holds__isnull=False)
+            )
+            .select_related("item")
+            .prefetch_related("damage_deposits", "payment_holds")
+            .distinct()
+            .order_by("-created_at")[:limit]
+        )
+        documents = [self._invoice_document(request, invoice) for invoice in invoices]
+        documents.extend(
+            document
+            for inquiry in inquiries
+            if (document := self._confirmation_document(request, inquiry))
+        )
+        return self._ordered(documents)[:limit]
+
+    def _invoice_document(self, request, invoice):
+        view_url = self._absolute(
+            request,
+            reverse("bookings:invoice-print", kwargs={"token": invoice.public_token}),
+        )
+        return {
+            "id": f"invoice-{invoice.pk}",
+            "kind": "invoice",
+            "title": f"Invoice {invoice.invoice_number}",
+            "reference": invoice.invoice_number,
+            "status": invoice.get_status_display(),
+            "display_amount": invoice.display_total,
+            "reservation_id": invoice.inquiry_id,
+            "recipient_email": invoice.recipient_email,
+            "view_url": view_url,
+            "download_url": "",
+            "created_at": invoice.created_at.isoformat(),
+        }
+
+    def _confirmation_document(self, request, inquiry):
+        records = [
+            record
+            for record in [*inquiry.damage_deposits.all(), *inquiry.payment_holds.all()]
+            if record.status in self.DOCUMENTED_HOLD_STATUSES
+        ]
+        if not records:
+            return None
+        latest = max(records, key=lambda record: record.created_at)
+        view_url = self._absolute(
+            request,
+            reverse(
+                "bookings:payment-confirmation",
+                kwargs={"token": inquiry.payment_confirmation_token},
+            ),
+        )
+        return {
+            "id": f"payment-confirmation-{inquiry.pk}",
+            "kind": "payment_confirmation",
+            "title": self._confirmation_title(latest.status),
+            "reference": inquiry.request_key,
+            "status": latest.get_status_display(),
+            "display_amount": inquiry.display_total,
+            "reservation_id": inquiry.pk,
+            "recipient_email": inquiry.email,
+            "view_url": view_url,
+            "download_url": f"{view_url}?download=1",
+            "created_at": latest.created_at.isoformat(),
+        }
+
+    @staticmethod
+    def _confirmation_title(status):
+        return {
+            DepositStatus.CHECKOUT_CREATED: "Payment checkout record",
+            DepositStatus.REQUIRES_CAPTURE: "Payment confirmation",
+            DepositStatus.CAPTURED: "Payment confirmation",
+            DepositStatus.CANCELED: "Payment cancellation record",
+            DepositStatus.FAILED: "Payment failure record",
+        }.get(status, "Payment transaction record")
+
+    @staticmethod
+    def _ordered(documents):
+        return sorted(documents, key=lambda document: document["created_at"], reverse=True)
+
+    @staticmethod
+    def _absolute(request, path):
+        return request.build_absolute_uri(path) if request else path
+
+
 class BookingAgentService:
     """Boundary for the public booking agent and future deeper automation."""
 
@@ -2592,10 +2702,11 @@ class BookingEmailService:
 
 class InvoiceEmailService:
     def send_invoice(self, invoice: Invoice, request=None):
+        recipients = list(settings.BOOKING_INQUIRY_RECIPIENTS)
         invoice_url = ""
         if request:
             invoice_url = request.build_absolute_uri(reverse("bookings:invoice-print", kwargs={"token": invoice.public_token}))
-        body = "\n".join(
+        customer_body = "\n".join(
             [
                 f"Hi {invoice.recipient_name},",
                 "",
@@ -2606,10 +2717,35 @@ class InvoiceEmailService:
                 invoice.notes or "Thank you for booking with MLADIS.",
             ]
         )
+        admin_body = "\n".join(
+            [
+                "MLADIS_INVOICE_DELIVERY_V1",
+                "",
+                f"invoice_number={invoice.invoice_number}",
+                f"recipient_name={invoice.recipient_name}",
+                f"recipient_email={invoice.recipient_email}",
+                f"amount={invoice.display_total}",
+                f"status={invoice.status}",
+                f"booking_inquiry_id={invoice.inquiry_id or ''}",
+                f"invoice_url={invoice_url}",
+            ]
+        )
+        if not recipients or not invoice.recipient_email:
+            invoice.email_status = EmailDeliveryStatus.FAILED
+            invoice.email_error = "Invoice delivery requires a customer email and MLADIS notification recipient."
+            invoice.save(update_fields=["email_status", "email_error", "updated_at"])
+            return False
         try:
             send_mail(
+                f"{invoice.invoice_number} | Invoice delivered | {invoice.recipient_name}",
+                admin_body,
+                settings.DEFAULT_FROM_EMAIL,
+                recipients,
+                fail_silently=False,
+            )
+            send_mail(
                 invoice.subject if hasattr(invoice, "subject") else f"MLADIS invoice {invoice.invoice_number}",
-                body,
+                customer_body,
                 settings.DEFAULT_FROM_EMAIL,
                 [invoice.recipient_email],
                 fail_silently=False,

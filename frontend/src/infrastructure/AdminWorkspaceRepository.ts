@@ -1,6 +1,7 @@
 import {
   AdminMetric,
   AdminShortcut,
+  AdminTransactionDocument,
   AdminWorkspace,
 } from '../domain/admin';
 import { createWorkspaceMetadata } from '../domain/workspaceMetadata';
@@ -24,6 +25,7 @@ function fallbackAdminWorkspace(source: 'fallback' | 'mixed' = 'fallback'): Admi
       new AdminShortcut('Users', 'Team members, roles, and permissions.', '/ops/admin/', 'users', 'Manage', 'violet'),
       new AdminShortcut('OAuth / Integrations', 'API, webhooks, and connected services.', '/ops/settings/', 'radio', 'Manage', 'teal'),
     ],
+    [],
     [],
     [],
     [],
@@ -56,6 +58,17 @@ export class AdminWorkspaceRepository {
         metrics,
         fallback.feedItems,
         fallback.healthCards,
+        snapshot.transactionDocuments.map((document) => new AdminTransactionDocument(
+          document.id,
+          document.kind,
+          document.title,
+          document.reference,
+          document.status,
+          document.displayAmount,
+          document.recipientEmail,
+          document.viewUrl,
+          document.downloadUrl,
+        )),
         createWorkspaceMetadata('api'),
       );
     } catch {

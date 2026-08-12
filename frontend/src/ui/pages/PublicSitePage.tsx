@@ -2173,7 +2173,12 @@ function AccountExperience({ snapshot, userContext, language }: { snapshot: Publ
           ) : selectedReservation && mode === 'cancel' && activeReservation ? (
             <ReservationCancelForm reservation={activeReservation} token={token} />
           ) : selectedReservation ? (
-            <AccountReservationCenter reservation={selectedReservation} stay={selectedStay} invoices={account.invoices} />
+            <AccountReservationCenter
+              reservation={selectedReservation}
+              stay={selectedStay}
+              invoices={account.invoices}
+              transactionDocuments={account.transactionDocuments}
+            />
           ) : (
             <div className="account-v2-empty">
               <h2>Reservation center</h2>
@@ -2251,10 +2256,12 @@ function AccountReservationCenter({
   reservation,
   stay,
   invoices,
+  transactionDocuments,
 }: {
   reservation: AccountReservation;
   stay: PublicStay | null;
   invoices: AccountSnapshot['invoices'];
+  transactionDocuments: AccountSnapshot['transactionDocuments'];
 }) {
   const nights = nightsBetween(reservation.checkIn, reservation.checkOut);
   const depositDisplay = reservation.displayDeposit || '$200.00 USD';
@@ -2265,7 +2272,9 @@ function AccountReservationCenter({
     new AccountTimelineStepModel('Check-in', formatDate(reservation.checkIn), 'future'),
     new AccountTimelineStepModel('Check-out', formatDate(reservation.checkOut), 'future'),
   ];
-  const latestInvoice = invoices[0] ?? null;
+  const reservationInvoices = invoices.filter((invoice) => invoice.reservationId === reservation.id);
+  const reservationDocuments = transactionDocuments.filter((document) => document.reservationId === reservation.id);
+  const latestInvoice = reservationInvoices[0] ?? null;
 
   return (
     <>
@@ -2307,6 +2316,30 @@ function AccountReservationCenter({
           ))}
         </section>
       </div>
+
+      <section className="account-v2-documents" aria-label="Documents and receipts">
+        <header>
+          <h3><ReceiptText size={17} /> Documents &amp; receipts</h3>
+          <p>Available here and sent to your account email when generated.</p>
+        </header>
+        {reservationDocuments.length > 0 ? (
+          <div>
+            {reservationDocuments.map((document) => (
+              <article key={document.id}>
+                <FileText size={18} />
+                <span>
+                  <strong>{document.title}</strong>
+                  <small>{document.reference} · {document.status} · {document.displayAmount}</small>
+                </span>
+                <a href={document.viewUrl} target="_blank" rel="noreferrer">View</a>
+                {document.downloadUrl && <a href={document.downloadUrl}>Download</a>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="account-v2-documents__empty">Transaction documents will appear here after payment authorization or invoice creation.</p>
+        )}
+      </section>
 
       <footer className="account-v2-center__actions">
         <a href={reservation.detailUrl}><ReceiptText size={16} /> View details</a>

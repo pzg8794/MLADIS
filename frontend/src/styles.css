@@ -3170,6 +3170,82 @@ details.dashboard-panel[open] {
   padding-top: 12px;
 }
 
+.account-v2-documents {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+
+.account-v2-documents h3,
+.account-v2-documents p {
+  margin: 0;
+}
+
+.account-v2-documents h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #07142f;
+  font-size: 0.94rem;
+}
+
+.account-v2-documents header p,
+.account-v2-documents__empty {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 0.74rem;
+}
+
+.account-v2-documents > div {
+  display: grid;
+  gap: 7px;
+}
+
+.account-v2-documents article {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  border-top: 1px solid #edf2f7;
+  padding-top: 8px;
+}
+
+.account-v2-documents article > svg {
+  color: #0f766e;
+}
+
+.account-v2-documents article span {
+  display: grid;
+  min-width: 0;
+}
+
+.account-v2-documents article strong,
+.account-v2-documents article small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-v2-documents article strong {
+  color: #0f172a;
+  font-size: 0.78rem;
+}
+
+.account-v2-documents article small {
+  color: #64748b;
+  font-size: 0.7rem;
+}
+
+.account-v2-documents article a {
+  color: #075985;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
 .account-v2-center__actions a {
   flex: 1 1 0;
 }

@@ -1108,7 +1108,7 @@ class PaymentTransactionSummaryService:
 
 
 class PaymentTransactionActionService:
-    def run(self, transaction_key, action):
+    def run(self, transaction_key, action, request=None):
         if not transaction_key.startswith("invoice-"):
             raise ValidationError("Only invoice-backed payment transactions can be updated from this workspace.")
         invoice = get_object_or_404(Invoice, pk=transaction_key.replace("invoice-", "", 1))
@@ -1121,10 +1121,10 @@ class PaymentTransactionActionService:
         elif action == "send-invoice":
             if invoice.status not in {InvoiceStatus.DRAFT, InvoiceStatus.SENT}:
                 raise ValidationError("Only draft or sent invoices can be sent.")
-            invoice.status = InvoiceStatus.SENT
-            invoice.sent_at = timezone.now()
-            invoice.email_status = EmailDeliveryStatus.SENT
-            invoice.save(update_fields=["status", "sent_at", "email_status", "updated_at"])
+            from .services import InvoiceEmailService
+
+            if not InvoiceEmailService().send_invoice(invoice, request=request):
+                raise ValidationError(invoice.email_error or "Invoice email delivery failed.")
         else:
             raise ValidationError("Unsupported payment transaction action.")
         return invoice
@@ -1264,8 +1264,8 @@ class PaymentsTransactionsService:
             {"label": "Authorized Holds", "value": self._money(authorized.aggregate(total=Sum("amount_cents"))["total"]), "trend": f"{authorized.count()} awaiting capture", "tone": "violet"},
         ]
 
-    def action(self, transaction_key, action):
-        PaymentTransactionActionService().run(transaction_key, action)
+    def action(self, transaction_key, action, request=None):
+        PaymentTransactionActionService().run(transaction_key, action, request=request)
         return next((item for item in self.live_transactions() if item.key == transaction_key), None)
 
     def _with_toggle_url(self, row, request, filters, page, selected_key):

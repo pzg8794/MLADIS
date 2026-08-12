@@ -452,6 +452,23 @@ export class AccountInvoice {
     public readonly status: string,
     public readonly displayTotal: string,
     public readonly printUrl: string,
+    public readonly reservationId: number | null,
+    public readonly createdAt: string,
+  ) {}
+}
+
+export class AccountTransactionDocument {
+  constructor(
+    public readonly id: string,
+    public readonly kind: 'invoice' | 'payment_confirmation',
+    public readonly title: string,
+    public readonly reference: string,
+    public readonly status: string,
+    public readonly displayAmount: string,
+    public readonly reservationId: number | null,
+    public readonly recipientEmail: string,
+    public readonly viewUrl: string,
+    public readonly downloadUrl: string,
     public readonly createdAt: string,
   ) {}
 }
@@ -464,6 +481,7 @@ export class AccountSnapshot {
     public readonly isSuperuser: boolean,
     public readonly reservations: AccountReservation[],
     public readonly invoices: AccountInvoice[],
+    public readonly transactionDocuments: AccountTransactionDocument[],
     public readonly generatedAt: string,
   ) {}
 }
@@ -597,9 +615,26 @@ export class OpsAdminSnapshot {
     public readonly summaryCards: OpsMetric[],
     public readonly roleOptions: OpsAdminRoleOption[],
     public readonly rows: OpsAdminUserRow[],
+    public readonly transactionDocuments: OpsTransactionDocument[],
     public readonly adminUrl: string,
     public readonly accessAdminUrl: string,
     public readonly generatedAt: string,
+  ) {}
+}
+
+export class OpsTransactionDocument {
+  constructor(
+    public readonly id: string,
+    public readonly kind: string,
+    public readonly title: string,
+    public readonly reference: string,
+    public readonly status: string,
+    public readonly displayAmount: string,
+    public readonly reservationId: number | null,
+    public readonly recipientEmail: string,
+    public readonly viewUrl: string,
+    public readonly downloadUrl: string,
+    public readonly createdAt: string,
   ) {}
 }
 

@@ -75,6 +75,7 @@ from .services import (
     OpsReservationProjection,
     ReservationPricingService,
     StayListingService,
+    TransactionDocumentService,
 )
 from .social_auth import SOCIAL_LOGIN_PROVIDER_SPECS, get_social_login_providers
 from .social_auth import get_provider_spec, provider_auth_origin, request_origin
@@ -411,6 +412,7 @@ class AccountSummaryAPIView(View):
         reservations = (
             BookingInquiry.objects.filter(Q(user=request.user) | Q(email__iexact=request.user.email))
             .select_related("item", "coupon", "cancellation_policy")
+            .prefetch_related("damage_deposits", "payment_holds")
             .order_by("-created_at")
         )
         invoices = (
@@ -418,6 +420,9 @@ class AccountSummaryAPIView(View):
             .select_related("inquiry", "customer_profile")
             .order_by("-created_at")
         )
+        reservations = list(reservations)
+        invoices = list(invoices)
+        transaction_documents = TransactionDocumentService().for_account(request, reservations, invoices)
         profile = getattr(request.user, "customer_profile", None)
         return JsonResponse(
             {
@@ -434,6 +439,7 @@ class AccountSummaryAPIView(View):
                 "agent": agent_access.to_public_payload(),
                 "reservations": [self._reservation_payload(request, reservation) for reservation in reservations],
                 "invoices": [self._invoice_payload(request, invoice) for invoice in invoices],
+                "transaction_documents": transaction_documents,
                 "generated_at": timezone.now().isoformat(),
             }
         )
@@ -472,9 +478,10 @@ class AccountSummaryAPIView(View):
     def _invoice_payload(request, invoice):
         return {
             "id": invoice.id,
-            "title": invoice.title,
+            "title": f"Invoice {invoice.invoice_number}",
             "status": invoice.get_status_display(),
             "display_total": invoice.display_total,
+            "reservation_id": invoice.inquiry_id,
             "print_url": request.build_absolute_uri(reverse("bookings:invoice-print", kwargs={"token": invoice.public_token})),
             "created_at": invoice.created_at.isoformat(),
         }
@@ -2465,7 +2472,7 @@ class OpsPaymentsAPIView(View):
 class OpsPaymentTransactionActionAPIView(View):
     def post(self, request, transaction_key, action):
         try:
-            transaction = PaymentsTransactionsService().action(transaction_key, action)
+            transaction = PaymentsTransactionsService().action(transaction_key, action, request=request)
         except ValidationError as error:
             return JsonResponse({"ok": False, "errors": OpsMaintenanceAPIView._validation_errors(error)}, status=400)
         if "application/json" in request.headers.get("accept", ""):
@@ -3152,6 +3159,7 @@ class OpsAdminAPIView(View):
                 "rows": rows,
                 "admin_url": reverse("admin:auth_user_changelist"),
                 "access_admin_url": reverse("admin:bookings_adminaccess_changelist"),
+                "transaction_documents": TransactionDocumentService().latest_for_admin(request),
                 "generated_at": timezone.now().isoformat(),
             }
         )
