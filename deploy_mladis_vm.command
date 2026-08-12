@@ -196,6 +196,14 @@ bash scripts/ensure_agent_admin_credentials.sh
 python manage.py collectstatic --noinput
 python manage.py check
 
+if [[ -f deploy/systemd/mladis-payment-lifecycle.service && -f deploy/systemd/mladis-payment-lifecycle.timer ]]; then
+  echo "Installing payment lifecycle scheduler..."
+  sudo install -m 0644 deploy/systemd/mladis-payment-lifecycle.service /etc/systemd/system/
+  sudo install -m 0644 deploy/systemd/mladis-payment-lifecycle.timer /etc/systemd/system/
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now mladis-payment-lifecycle.timer
+fi
+
 echo "Restarting $REMOTE_SERVICE service..."
 sudo systemctl restart "$REMOTE_SERVICE"
 sudo systemctl --no-pager --full status "$REMOTE_SERVICE" | head -n 12

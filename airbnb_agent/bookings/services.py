@@ -1450,6 +1450,8 @@ class TransactionDocumentService:
         if not records:
             return None
         latest = max(records, key=lambda record: record.created_at)
+        total_cents = sum(record.amount_cents for record in records)
+        currency = latest.currency.upper()
         view_url = self._absolute(
             request,
             reverse(
@@ -1463,7 +1465,7 @@ class TransactionDocumentService:
             "title": self._confirmation_title(latest.status),
             "reference": inquiry.request_key,
             "status": latest.get_status_display(),
-            "display_amount": inquiry.display_total,
+            "display_amount": f"${total_cents / 100:,.2f} {currency}",
             "reservation_id": inquiry.pk,
             "recipient_email": inquiry.email,
             "view_url": view_url,
@@ -2351,6 +2353,89 @@ class BookingEmailService:
     DAMAGE_DEPOSIT_EMAIL_MARKER = "email_confirmed:damage_deposit_authorized"
     RESERVATION_PAYMENT_EMAIL_MARKER = "email_confirmed:reservation_payment_authorized"
 
+    def send_transaction_lifecycle_update(self, transaction, event_name, request=None):
+        definitions = {
+            "reservation_payment_captured": {
+                "label": "Reservation payment captured",
+                "customer": "Your reservation payment was captured",
+                "detail": "The authorized stay payment has now been captured.",
+            },
+            "reservation_payment_released": {
+                "label": "Reservation payment authorization released",
+                "customer": "Your reservation payment authorization was released",
+                "detail": "The stay-payment authorization hold has been released.",
+            },
+            "damage_deposit_released": {
+                "label": "Damage deposit authorization released",
+                "customer": "Your damage deposit authorization was released",
+                "detail": "The refundable damage-deposit authorization hold has been released.",
+            },
+        }
+        definition = definitions.get(event_name)
+        marker = f"email_confirmed:{event_name}"
+        if not definition or marker in (transaction.notes or ""):
+            return False
+        recipients = list(settings.BOOKING_INQUIRY_RECIPIENTS)
+        if not recipients or not transaction.email:
+            return False
+
+        request_key = self._request_key(transaction)
+        amount = transaction.display_amount
+        confirmation_url = self._payment_confirmation_url(request, transaction)
+        admin_body = "\n".join(
+            [
+                "MLADIS_PAYMENT_LIFECYCLE_V1",
+                "",
+                f"event={event_name}",
+                f"request_key={request_key}",
+                f"transaction_id={transaction.pk}",
+                f"transaction_type={transaction._meta.model_name}",
+                f"guest_name={transaction.guest_name}",
+                f"guest_email={transaction.email}",
+                f"amount={amount}",
+                f"status={transaction.status}",
+                f"payment_confirmation_url={confirmation_url}",
+            ]
+        )
+        customer_body = "\n".join(
+            [
+                f"Hi {transaction.guest_name},",
+                "",
+                definition["detail"],
+                f"Reference: {request_key}",
+                f"Amount: {amount}",
+                f"Status: {transaction.get_status_display()}",
+                confirmation_url,
+                "",
+                "MLADIS",
+            ]
+        )
+        try:
+            send_mail(
+                self._subject(f"{request_key} | {definition['label']}"),
+                admin_body,
+                settings.DEFAULT_FROM_EMAIL,
+                recipients,
+                fail_silently=False,
+            )
+            send_mail(
+                self._subject(definition["customer"]),
+                customer_body,
+                settings.DEFAULT_FROM_EMAIL,
+                [transaction.email],
+                fail_silently=False,
+            )
+        except Exception:
+            return False
+
+        transaction.notes = self._append_note(
+            transaction.notes,
+            f"{marker} at {timezone.now().isoformat()}",
+        )
+        transaction.save(update_fields=["notes", "updated_at"])
+        self._log_email_event(transaction, f"{event_name}.email_confirmed", request)
+        return True
+
     def send_inquiry_notifications(self, inquiry: BookingInquiry, request=None):
         site_settings = SiteSettings.current()
         if not site_settings.request_notifications_email:
@@ -3018,7 +3103,56 @@ class DamageDepositService(StripeServiceMixin):
         deposit.status = DepositStatus.CANCELED
         deposit.notes = self._append_note(deposit.notes, note)
         deposit.save(update_fields=["status", "notes", "updated_at"])
+        BookingEmailService().send_transaction_lifecycle_update(deposit, "damage_deposit_released")
         return deposit
+
+    def reconcile_payment_intent(self, deposit: DamageDeposit):
+        self._configure_for_request()
+        if not self.is_configured or not deposit.stripe_payment_intent_id:
+            return deposit
+        payment_intent = stripe.PaymentIntent.retrieve(deposit.stripe_payment_intent_id)
+        status = self._status_from_payment_intent(payment_intent)
+        if deposit.status != status:
+            deposit.status = status
+            deposit.notes = self._append_note(
+                deposit.notes,
+                f"Stripe payment intent reconciled as {status} at {timezone.now().isoformat()}",
+            )
+            deposit.save(update_fields=["status", "notes", "updated_at"])
+            if status == DepositStatus.CANCELED:
+                BookingEmailService().send_transaction_lifecycle_update(deposit, "damage_deposit_released")
+        return deposit
+
+    def process_lifecycle(self, now=None, inquiry=None):
+        now = now or timezone.now()
+        result = {"reconciled": 0, "released": 0, "errors": []}
+        deposit_queryset = DamageDeposit.objects.filter(
+            payment_provider=DepositProvider.STRIPE,
+            stripe_payment_intent_id__gt="",
+            status__in=[DepositStatus.CHECKOUT_CREATED, DepositStatus.REQUIRES_CAPTURE],
+        ).select_related("inquiry")
+        if inquiry is not None:
+            deposit_queryset = deposit_queryset.filter(inquiry=inquiry)
+        deposits = list(deposit_queryset)
+        for deposit in deposits:
+            try:
+                self.reconcile_payment_intent(deposit)
+                result["reconciled"] += 1
+                deposit.refresh_from_db()
+                inquiry = deposit.inquiry
+                should_release = bool(
+                    inquiry
+                    and (
+                        inquiry.status == BookingStatus.CANCELED
+                        or (inquiry.check_out and inquiry.check_out < timezone.localdate(now))
+                    )
+                )
+                if should_release and deposit.status == DepositStatus.REQUIRES_CAPTURE:
+                    self.release_deposit(deposit)
+                    result["released"] += 1
+            except (stripe.StripeError, ValueError) as error:
+                result["errors"].append(f"damage-deposit-{deposit.pk}: {error}")
+        return result
 
     def handle_event(self, event):
         event_type = event.get("type")
@@ -3050,6 +3184,8 @@ class DamageDepositService(StripeServiceMixin):
             deposit.save(update_fields=["status", "updated_at"])
             if deposit.status == DepositStatus.REQUIRES_CAPTURE:
                 BookingEmailService().send_damage_deposit_confirmation(deposit)
+            elif deposit.status == DepositStatus.CANCELED:
+                BookingEmailService().send_transaction_lifecycle_update(deposit, "damage_deposit_released")
             return deposit
 
         return None
@@ -3076,6 +3212,17 @@ class DamageDepositService(StripeServiceMixin):
         if deposit.status != DepositStatus.REQUIRES_CAPTURE:
             raise ValueError("Only authorized Stripe deposits can be captured or released.")
         return deposit
+
+    @staticmethod
+    def _status_from_payment_intent(payment_intent):
+        status = _stripe_object_status(payment_intent)
+        if status == "succeeded":
+            return DepositStatus.CAPTURED
+        if status == "canceled":
+            return DepositStatus.CANCELED
+        if status in {"requires_capture", "processing", "requires_confirmation"}:
+            return DepositStatus.REQUIRES_CAPTURE
+        return DepositStatus.CHECKOUT_CREATED
 
 
 class ReservationPaymentHoldService(StripeServiceMixin):
@@ -3509,6 +3656,84 @@ class ReservationPaymentHoldService(StripeServiceMixin):
         payment.send_confirmation(BookingEmailService(), request=request)
         return payment.record
 
+    def reconcile_payment_intent(self, hold: ReservationPaymentHold):
+        self._configure_for_request()
+        if not self.is_configured or not hold.stripe_payment_intent_id:
+            return hold
+        payment_intent = stripe.PaymentIntent.retrieve(hold.stripe_payment_intent_id)
+        status = self._status_from_payment_intent(payment_intent)
+        if hold.status != status:
+            hold.status = status
+            hold.notes = self._append_note(
+                hold.notes,
+                f"Stripe payment intent reconciled as {status} at {timezone.now().isoformat()}",
+            )
+            hold.save(update_fields=["status", "notes", "updated_at"])
+            if status == DepositStatus.CAPTURED:
+                BookingEmailService().send_transaction_lifecycle_update(hold, "reservation_payment_captured")
+            elif status == DepositStatus.CANCELED:
+                BookingEmailService().send_transaction_lifecycle_update(hold, "reservation_payment_released")
+        return hold
+
+    def capture_hold(self, hold: ReservationPaymentHold):
+        self._configure_for_request()
+        hold = self._require_capturable_hold(hold)
+        payment_intent = stripe.PaymentIntent.capture(
+            hold.stripe_payment_intent_id,
+            idempotency_key=f"mladis-scheduled-stay-capture-{hold.pk}",
+        )
+        hold.status = self._status_from_payment_intent(payment_intent)
+        hold.notes = self._append_note(
+            hold.notes,
+            f"Scheduled stay payment captured at {timezone.now().isoformat()}",
+        )
+        hold.save(update_fields=["status", "notes", "updated_at"])
+        self._log_payment_event(hold, "reservation_payment_hold.captured")
+        BookingEmailService().send_transaction_lifecycle_update(hold, "reservation_payment_captured")
+        return hold
+
+    def release_hold(self, hold: ReservationPaymentHold):
+        self._configure_for_request()
+        hold = self._require_capturable_hold(hold)
+        stripe.PaymentIntent.cancel(hold.stripe_payment_intent_id)
+        hold.status = DepositStatus.CANCELED
+        hold.notes = self._append_note(
+            hold.notes,
+            f"Reservation payment authorization released at {timezone.now().isoformat()}",
+        )
+        hold.save(update_fields=["status", "notes", "updated_at"])
+        self._log_payment_event(hold, "reservation_payment_hold.released")
+        BookingEmailService().send_transaction_lifecycle_update(hold, "reservation_payment_released")
+        return hold
+
+    def process_lifecycle(self, now=None, inquiry=None):
+        now = now or timezone.now()
+        result = {"reconciled": 0, "captured": 0, "released": 0, "errors": []}
+        hold_queryset = ReservationPaymentHold.objects.filter(
+            payment_provider=DepositProvider.STRIPE,
+            stripe_payment_intent_id__gt="",
+            status__in=[DepositStatus.CHECKOUT_CREATED, DepositStatus.REQUIRES_CAPTURE],
+        ).select_related("inquiry")
+        if inquiry is not None:
+            hold_queryset = hold_queryset.filter(inquiry=inquiry)
+        holds = list(hold_queryset)
+        for hold in holds:
+            try:
+                self.reconcile_payment_intent(hold)
+                result["reconciled"] += 1
+                hold.refresh_from_db()
+                if hold.status != DepositStatus.REQUIRES_CAPTURE:
+                    continue
+                if hold.inquiry and hold.inquiry.status == BookingStatus.CANCELED:
+                    self.release_hold(hold)
+                    result["released"] += 1
+                elif hold.capture_after and hold.capture_after <= now:
+                    self.capture_hold(hold)
+                    result["captured"] += 1
+            except (stripe.StripeError, ValueError) as error:
+                result["errors"].append(f"reservation-hold-{hold.pk}: {error}")
+        return result
+
     def handle_event(self, event):
         event_type = event.get("type")
         payload = event.get("data", {}).get("object", {})
@@ -3539,6 +3764,10 @@ class ReservationPaymentHoldService(StripeServiceMixin):
             hold.save(update_fields=["status", "updated_at"])
             if hold.status == DepositStatus.REQUIRES_CAPTURE:
                 BookingEmailService().send_reservation_payment_confirmation(hold)
+            elif hold.status == DepositStatus.CAPTURED:
+                BookingEmailService().send_transaction_lifecycle_update(hold, "reservation_payment_captured")
+            elif hold.status == DepositStatus.CANCELED:
+                BookingEmailService().send_transaction_lifecycle_update(hold, "reservation_payment_released")
             return hold
 
         return None
@@ -3581,6 +3810,19 @@ class ReservationPaymentHoldService(StripeServiceMixin):
 
     def _append_note(self, notes, note):
         return f"{notes}\n{note}".strip() if notes else note
+
+    def _require_capturable_hold(self, hold):
+        if not self.is_configured:
+            raise ValueError(
+                self._stripe_unavailable_message("Stripe is not configured for reservation payment holds.")
+            )
+        if not hold or hold.payment_provider != DepositProvider.STRIPE:
+            raise ValueError("This reservation payment hold is not managed by Stripe.")
+        if not hold.stripe_payment_intent_id:
+            raise ValueError("This reservation payment hold does not have a Stripe payment intent.")
+        if hold.status != DepositStatus.REQUIRES_CAPTURE:
+            raise ValueError("Only authorized reservation payment holds can be captured or released.")
+        return hold
 
 
 class PayPalDamageDepositService:

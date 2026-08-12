@@ -70,10 +70,12 @@ from .services import (
     BookingCalendarService,
     CustomerAccountService,
     CustomersCRMService,
+    DamageDepositService,
     MaintenanceOperationsService,
     MaintenanceService,
     OpsReservationProjection,
     ReservationPricingService,
+    ReservationPaymentHoldService,
     StayListingService,
     TransactionDocumentService,
 )
@@ -817,6 +819,14 @@ class ReservationCancelView(OwnedReservationMixin, View):
             return redirect(reverse("bookings:reservation-detail", kwargs={"pk": reservation.pk}))
         if form.is_valid():
             reservation.cancel(reason=form.cleaned_data.get("reason", ""), by_user=request.user)
+            hold_result = ReservationPaymentHoldService().process_lifecycle(inquiry=reservation)
+            deposit_result = DamageDepositService().process_lifecycle(inquiry=reservation)
+            lifecycle_errors = [*hold_result["errors"], *deposit_result["errors"]]
+            if lifecycle_errors:
+                messages.warning(
+                    request,
+                    "Your reservation was canceled. MLADIS will finish releasing any open authorization hold.",
+                )
             messages.success(request, "Your cancellation request was recorded.")
             return redirect(reverse("bookings:dashboard"))
         return render(request, self.template_name, {"reservation": reservation, "form": form}, status=400)
@@ -1186,6 +1196,9 @@ class PaymentConfirmationView(View):
     def _context(self, request, inquiry):
         deposit = self._preferred_record(inquiry.damage_deposits.all())
         hold = self._preferred_record(inquiry.payment_holds.all())
+        authorization_records = [record for record in (hold, deposit) if record]
+        authorization_total_cents = sum(record.amount_cents for record in authorization_records)
+        authorization_currency = authorization_records[0].currency if authorization_records else inquiry.currency
         confirmation_url = request.build_absolute_uri(
             reverse("bookings:payment-confirmation", kwargs={"token": inquiry.payment_confirmation_token})
         )
@@ -1197,6 +1210,7 @@ class PaymentConfirmationView(View):
             "inquiry": inquiry,
             "deposit": deposit,
             "hold": hold,
+            "authorization_total": f"${authorization_total_cents / 100:,.2f} {authorization_currency.upper()}",
             "confirmation_url": confirmation_url,
             "download_url": f"{confirmation_url}?download=1",
             "mailto_url": "mailto:?" + urlencode(
@@ -1237,6 +1251,7 @@ class PaymentConfirmationView(View):
             f"Reservation payment status: {hold.get_status_display() if hold else 'Pending'}",
             f"Damage deposit hold: {deposit.display_amount if deposit else inquiry.display_deposit}",
             f"Damage deposit status: {deposit.get_status_display() if deposit else 'Pending'}",
+            f"Total authorized: {context['authorization_total']}",
             "",
             f"Confirmation URL: {context['confirmation_url']}",
         ]

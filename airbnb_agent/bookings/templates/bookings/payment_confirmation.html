@@ -378,8 +378,8 @@
       <div class="success-mark">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
       </div>
-      <h1 id="confirmation-title">Payment confirmed!</h1>
-      <p>Your payment was successful and your reservation is confirmed.<br>We&rsquo;ve sent the details to your email.</p>
+      <h1 id="confirmation-title">Payment authorization confirmed!</h1>
+      <p>Your payment method was authorized and your reservation is confirmed.<br>We&rsquo;ve sent the details to your email.</p>
     </section>
 
     <section class="confirmation-card stay-card" aria-label="Reservation summary">
@@ -402,7 +402,7 @@
       <div class="summary-lines">
         <p><span>MLADIS stay payment hold</span><b>{% if hold %}{{ hold.display_amount }}{% else %}{{ inquiry.display_reservation_payment }}{% endif %}</b></p>
         <p><span>MLADIS refundable damage deposit</span><b>{% if deposit %}{{ deposit.display_amount }}{% else %}{{ inquiry.display_deposit }}{% endif %}</b></p>
-        <div class="summary-total"><span>Total paid today</span><b>{{ inquiry.display_total }}</b></div>
+        <div class="summary-total"><span>Total authorized today</span><b>{{ authorization_total }}</b></div>
       </div>
     </section>
 

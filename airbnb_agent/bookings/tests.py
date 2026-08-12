@@ -1162,6 +1162,13 @@ class BookingInquiryViewTests(TestCase):
 
 
 class ReservationPricingAndPaymentHoldTests(TestCase):
+    def test_payment_hold_amounts_keep_cent_precision(self):
+        deposit = DamageDeposit(amount_cents=99, currency="usd")
+        hold = ReservationPaymentHold(amount_cents=99, currency="usd")
+
+        self.assertEqual(deposit.display_amount, "$0.99 USD")
+        self.assertEqual(hold.display_amount, "$0.99 USD")
+
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
         BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
@@ -1652,6 +1659,102 @@ class ReservationPricingAndPaymentHoldTests(TestCase):
 
         ReservationPaymentHoldService().sync_checkout_session("cs_test_payment_complete")
         self.assertEqual(len(mail.outbox), 2)
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_contract")
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
+    )
+    @patch("bookings.services.stripe.PaymentIntent.capture")
+    @patch("bookings.services.stripe.PaymentIntent.retrieve")
+    def test_due_reservation_payment_hold_is_reconciled_and_captured(self, retrieve, capture):
+        retrieve.return_value = SimpleNamespace(id="pi_due", status="requires_capture")
+        capture.return_value = SimpleNamespace(id="pi_due", status="succeeded")
+        inquiry = BookingInquiry.objects.create(
+            guest_name="Due Guest",
+            email="due@example.com",
+            check_in=timezone.localdate() + timedelta(days=1),
+            check_out=timezone.localdate() + timedelta(days=3),
+            guests=1,
+            status=BookingStatus.CONFIRMED,
+        )
+        hold = ReservationPaymentHold.objects.create(
+            inquiry=inquiry,
+            guest_name=inquiry.guest_name,
+            email=inquiry.email,
+            amount_cents=99,
+            currency="usd",
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.REQUIRES_CAPTURE,
+            stripe_payment_intent_id="pi_due",
+            capture_after=timezone.now() - timedelta(minutes=1),
+        )
+
+        result = ReservationPaymentHoldService().process_lifecycle()
+
+        hold.refresh_from_db()
+        self.assertEqual(hold.status, DepositStatus.CAPTURED)
+        self.assertEqual(result["captured"], 1)
+        capture.assert_called_once_with(
+            "pi_due",
+            idempotency_key=f"mladis-scheduled-stay-capture-{hold.pk}",
+        )
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(mail.outbox[0].to, ["owner@example.com"])
+        self.assertEqual(mail.outbox[1].to, ["due@example.com"])
+        self.assertIn("event=reservation_payment_captured", mail.outbox[0].body)
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_contract")
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
+    )
+    @patch("bookings.services.stripe.PaymentIntent.cancel")
+    @patch("bookings.services.stripe.PaymentIntent.retrieve")
+    def test_canceled_reservation_releases_open_stay_and_damage_holds(self, retrieve, cancel):
+        retrieve.return_value = SimpleNamespace(status="requires_capture")
+        inquiry = BookingInquiry.objects.create(
+            guest_name="Canceled Guest",
+            email="canceled@example.com",
+            check_in=timezone.localdate() + timedelta(days=5),
+            check_out=timezone.localdate() + timedelta(days=7),
+            guests=1,
+            status=BookingStatus.CANCELED,
+        )
+        hold = ReservationPaymentHold.objects.create(
+            inquiry=inquiry,
+            guest_name=inquiry.guest_name,
+            email=inquiry.email,
+            amount_cents=99,
+            currency="usd",
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.REQUIRES_CAPTURE,
+            stripe_payment_intent_id="pi_stay_canceled",
+        )
+        deposit = DamageDeposit.objects.create(
+            inquiry=inquiry,
+            guest_name=inquiry.guest_name,
+            email=inquiry.email,
+            amount_cents=99,
+            currency="usd",
+            payment_provider=DepositProvider.STRIPE,
+            status=DepositStatus.REQUIRES_CAPTURE,
+            stripe_payment_intent_id="pi_deposit_canceled",
+        )
+
+        hold_result = ReservationPaymentHoldService().process_lifecycle()
+        deposit_result = DamageDepositService().process_lifecycle()
+
+        hold.refresh_from_db()
+        deposit.refresh_from_db()
+        self.assertEqual(hold.status, DepositStatus.CANCELED)
+        self.assertEqual(deposit.status, DepositStatus.CANCELED)
+        self.assertEqual(hold_result["released"], 1)
+        self.assertEqual(deposit_result["released"], 1)
+        self.assertEqual(cancel.call_count, 2)
+        self.assertEqual(len(mail.outbox), 4)
+        self.assertIn("event=reservation_payment_released", mail.outbox[0].body)
+        self.assertIn("event=damage_deposit_released", mail.outbox[2].body)
 
 
 class BookingCalendarServiceTests(TestCase):
@@ -3098,12 +3201,34 @@ class OpsFinanceObjectTests(TestCase):
         )
         self.assertIn(str(self.inquiry.payment_confirmation_token), confirmation["view_url"])
         self.assertTrue(confirmation["download_url"].endswith("?download=1"))
+        self.assertEqual(confirmation["display_amount"], "$620.00 USD")
 
         self.client.force_login(self.staff)
         admin_payload = self.client.get(reverse("bookings:ops-admin-api")).json()
         admin_document_ids = {document["id"] for document in admin_payload["transaction_documents"]}
         self.assertIn(f"invoice-{self.invoice.pk}", admin_document_ids)
         self.assertIn(f"payment-confirmation-{self.inquiry.pk}", admin_document_ids)
+
+    def test_payment_confirmation_uses_transaction_amounts_instead_of_inquiry_estimate(self):
+        self.inquiry.total_cents = 0
+        self.inquiry.save(update_fields=["total_cents", "updated_at"])
+        self.deposit.amount_cents = 0
+        self.deposit.status = DepositStatus.REQUIRES_CAPTURE
+        self.deposit.save(update_fields=["amount_cents", "status", "updated_at"])
+        self.hold.amount_cents = 99
+        self.hold.save(update_fields=["amount_cents", "updated_at"])
+
+        response = self.client.get(
+            reverse(
+                "bookings:payment-confirmation",
+                kwargs={"token": self.inquiry.payment_confirmation_token},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "$0.99 USD")
+        self.assertContains(response, "Total authorized today")
+        self.assertNotContains(response, "Total paid today")
 
     def test_payment_action_unsupported_returns_400(self):
         self.client.force_login(self.staff)

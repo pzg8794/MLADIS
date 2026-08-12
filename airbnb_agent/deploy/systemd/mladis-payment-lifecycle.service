@@ -1,0 +1,14 @@
+[Unit]
+Description=MLADIS Stripe payment lifecycle reconciliation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pitergarcia
+WorkingDirectory=/home/pitergarcia/airbnb_agent
+EnvironmentFile=/home/pitergarcia/airbnb_agent/.env
+ExecStart=/home/pitergarcia/airbnb_agent/.venv/bin/python manage.py process_payment_lifecycle
+
+[Install]
+WantedBy=multi-user.target

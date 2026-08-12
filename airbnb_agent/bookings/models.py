@@ -1200,7 +1200,7 @@ class DamageDeposit(models.Model):
 
     @property
     def display_amount(self):
-        return f"${self.amount:,.0f} {self.currency.upper()}"
+        return f"${self.amount:,.2f} {self.currency.upper()}"
 
 
 class ReservationPaymentHold(models.Model):
@@ -1255,7 +1255,7 @@ class ReservationPaymentHold(models.Model):
 
     @property
     def display_amount(self):
-        return f"${self.amount:,.0f} {self.currency.upper()}"
+        return f"${self.amount:,.2f} {self.currency.upper()}"
 
 
 class MissionCause(models.Model):
