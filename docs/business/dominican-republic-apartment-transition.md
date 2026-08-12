@@ -83,33 +83,34 @@ the correct applicant and exact license category for these two apartments.
 ## Counsel Package And Outreach
 
 On August 12, 2026, the private counsel package was rebuilt and verified from
-the historical source archive. The corrected package contains a Spanish-first
-control brief, an exact exhibit index, MLADIS formation and authority records,
-and separate G-101 and G-102 evidence sections using signed acquisition
-records, official developer payment ledgers, historical title records, bank
-closing copies, and the applicable representation record.
+the historical source archive. It contains a Spanish-first control brief, an
+exact exhibit index, MLADIS formation and authority records, and separate G-101
+and G-102 evidence sections using signed acquisition records, official
+developer payment ledgers, historical title records, bank closing copies, the
+applicable representation record, and a selected Google Photos evidence annex.
 
-The earlier private packet is marked superseded after a unit-evidence mapping
-error was identified. The corrected package excludes duplicate payment
-screenshots, unrelated closing correspondence, an unsigned lease draft, and
-other material that does not prove payment, ownership, or registry status. Its
-private evidence log records source status, exhibit hashes, deliberate
-exclusions, and the searches performed. No private source document is stored in
-Git.
+The private Google Photos audit retained eight relevant records and documented
+28 reviewed exclusions with specific reasons. It found two distinct historical
+G-102 loan-payment records, unit-specific G-101/G-102 property-payment history,
+a G-101 historical loan-balance image, and a separate payment to counsel labeled
+for apartment closing. The counsel receipt identifies neither unit nor the
+completed legal deliverable. No private source document, identifier, evidence
+hash, or Drive link is stored in Git.
 
 G-102 payoff and mortgage-cancellation status is controlled separately from
-G-101. Documentary proof of the final payoff, registered cancellation, current
-title, and current legal-status certification remains an express counsel
-deliverable. For G-101, current bank, title, encumbrance, and consent evidence
+G-101. None of the reviewed photographic records is the final-payment proof,
+zero-balance/cancellation letter, registered mortgage cancellation, current
+title, or current legal-status certification. Those remain express counsel
+deliverables. For G-101, current bank, title, encumbrance, and consent evidence
 also remains outstanding. Historical balances and title copies are not treated
 as current status.
 
 Counsel previously requested the loan records and, if available, the constancia
-letter, title, and mortgage certificate. The corrected packet is ready in the
-private Drive record, but transmission and engagement remain pending. Counsel
-must return the executed and registered closing instruments, current registry
-results, and a written structure/tax implementation plan before any transfer,
-lease, contribution, power, or registration instrument is signed.
+letter, title, and mortgage certificate. The private packet is ready in the
+owner-only Drive record, but transmission and engagement remain pending.
+Counsel must return the executed and registered closing instruments, current
+registry results, and a written structure/tax implementation plan before any
+transfer, lease, contribution, power, or registration instrument is signed.
 
 Official references:
 
