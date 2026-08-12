@@ -11,6 +11,7 @@ See:
 - [MLADIS Universe and Neuron Architecture](docs/architecture/0001-mladis-universe-neuron-model.md)
 - [Operations Workboard ADR](docs/architecture/0002-operations-workboard-gentelella.md)
 - [Gentelella v4 Full-Site Rebrand ADR](docs/architecture/0003-gentelella-v4-full-site-rebrand.md)
+- [Document Archive Sharding And Rehydration](docs/architecture/0004-document-archive-sharding-and-rehydration.md)
 - [MLADIS Master TODO / Roadmap](docs/roadmap/MLADIS_MASTER_TODO.md)
 - [MLADIS Business Blueprint](docs/business/MLADIS_BUSINESS_BLUEPRINT.md)
 
