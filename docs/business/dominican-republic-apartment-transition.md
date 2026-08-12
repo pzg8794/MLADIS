@@ -82,39 +82,34 @@ the correct applicant and exact license category for these two apartments.
 
 ## Counsel Package And Outreach
 
-On August 8-9, 2026, the private owner-only record was documented as expanded with:
+On August 12, 2026, the private counsel package was rebuilt and verified from
+the historical source archive. The corrected package contains a Spanish-first
+control brief, an exact exhibit index, MLADIS formation and authority records,
+and separate G-101 and G-102 evidence sections using signed acquisition
+records, official developer payment ledgers, historical title records, bank
+closing copies, and the applicable representation record.
 
-- a Spanish-first counsel brief with an English executive summary;
-- editable and printable versions of 13 unsigned counsel-review instruments;
-- a 173-page bookmarked evidence binder;
-- a flat secure ZIP containing the evidence, official forms, and editable
-  source documents; and
-- a submission-control log.
+The earlier private packet is marked superseded after a unit-evidence mapping
+error was identified. The corrected package excludes duplicate payment
+screenshots, unrelated closing correspondence, an unsigned lease draft, and
+other material that does not prove payment, ownership, or registry status. Its
+private evidence log records source status, exhibit hashes, deliberate
+exclusions, and the searches performed. No private source document is stored in
+Git.
 
-During the August 11 mounted-filesystem reconciliation, the previously
-documented brief, draft-set, binder, ZIP, and control-log filenames were not
-present in the current owner-only folder tree. Locate and re-verify them or
-rebuild them from the historical source archive before any submission. The
-historical apartment contracts, loan/closing records, powers, and 2020 title
-copies are present.
+G-102 payoff and mortgage-cancellation status is controlled separately from
+G-101. Documentary proof of the final payoff, registered cancellation, current
+title, and current legal-status certification remains an express counsel
+deliverable. For G-101, current bank, title, encumbrance, and consent evidence
+also remains outstanding. Historical balances and title copies are not treated
+as current status.
 
-All proposed instruments remain blocked from signature. On August 9,
-an engagement request was sent from the MLADIS company mailbox to the existing
-Dominican counsel contacts. It requested conflict clearance, scope, fees,
-timing, missing-document guidance, and a secure upload channel. No attachment
-or private identifier was sent, and no authority to transfer property, incur
-debt, pay third parties, or file records was granted.
-
-On August 10, counsel replied that all documentation related to the apartments
-would help counsel prepare an accurate proposal. Counsel explicitly requested
-the loan documents and, if available, the constancia letter, property title,
-and mortgage certificate. The reply included no attachment, upload link, or
-secure-transfer instructions.
-
-Before transmitting those sensitive records, obtain counsel's approved secure
-intake route. Send the verified current records only through that route, then
-obtain the current-title investigation plan. No owner or counterparty should
-sign the working drafts until counsel returns approved final instruments.
+Counsel previously requested the loan records and, if available, the constancia
+letter, title, and mortgage certificate. The corrected packet is ready in the
+private Drive record, but transmission and engagement remain pending. Counsel
+must return the executed and registered closing instruments, current registry
+results, and a written structure/tax implementation plan before any transfer,
+lease, contribution, power, or registration instrument is signed.
 
 Official references:
 
