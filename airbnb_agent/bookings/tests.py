@@ -3650,6 +3650,35 @@ class OpsDashboardTests(TestCase):
 
 
 class DamageDepositTests(TestCase):
+    @override_settings(STRIPE_WEBHOOK_SECRET="whsec_test_mladis")
+    @patch("bookings.views.stripe.Webhook.construct_event")
+    def test_stripe_webhook_accepts_nested_stripe_objects(self, mock_construct_event):
+        deposit = DamageDeposit.objects.create(
+            guest_name="Webhook Canary",
+            email="webhook@example.com",
+            payment_provider=DepositProvider.STRIPE,
+            stripe_payment_intent_id="pi_webhook_canary",
+            status=DepositStatus.REQUIRES_CAPTURE,
+        )
+        mock_construct_event.return_value = stripe.StripeObject.construct_from(
+            {
+                "type": "payment_intent.canceled",
+                "data": {"object": {"id": "pi_webhook_canary"}},
+            },
+            "sk_test_mladis",
+        )
+
+        response = self.client.post(
+            reverse("bookings:stripe-webhook"),
+            data=b"{}",
+            content_type="application/json",
+            HTTP_STRIPE_SIGNATURE="test-signature",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        deposit.refresh_from_db()
+        self.assertEqual(deposit.status, DepositStatus.CANCELED)
+
     @override_settings(STRIPE_SECRET_KEY="", STRIPE_TEST_SECRET_KEY="", STRIPE_LIVE_SECRET_KEY="")
     def test_deposit_checkout_without_stripe_key_records_configuration_status(self):
         item = BookableItem.objects.create(

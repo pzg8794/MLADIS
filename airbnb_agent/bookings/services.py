@@ -112,6 +112,25 @@ def _stripe_object_metadata(value):
     return {}
 
 
+def _stripe_object_dict(value):
+    if not value:
+        return {}
+    if isinstance(value, dict):
+        return dict(value)
+    if hasattr(value, "to_dict"):
+        return value.to_dict()
+    if hasattr(value, "items"):
+        return dict(value.items())
+    return {}
+
+
+def _stripe_event_parts(event):
+    event_data = _stripe_object_dict(event)
+    data = _stripe_object_dict(event_data.get("data"))
+    payload = _stripe_object_dict(data.get("object"))
+    return event_data.get("type", ""), payload
+
+
 def _stripe_payment_intent_status(payment_intent):
     if not payment_intent:
         return ""
@@ -3155,8 +3174,7 @@ class DamageDepositService(StripeServiceMixin):
         return result
 
     def handle_event(self, event):
-        event_type = event.get("type")
-        payload = event.get("data", {}).get("object", {})
+        event_type, payload = _stripe_event_parts(event)
 
         if event_type == "checkout.session.completed":
             deposit = DamageDeposit.objects.filter(stripe_checkout_session_id=payload.get("id")).first()
@@ -3735,8 +3753,7 @@ class ReservationPaymentHoldService(StripeServiceMixin):
         return result
 
     def handle_event(self, event):
-        event_type = event.get("type")
-        payload = event.get("data", {}).get("object", {})
+        event_type, payload = _stripe_event_parts(event)
 
         if event_type == "checkout.session.completed":
             hold = ReservationPaymentHold.objects.filter(stripe_checkout_session_id=payload.get("id")).first()
@@ -4214,8 +4231,7 @@ class DonationService:
         return donation
 
     def handle_event(self, event):
-        event_type = event.get("type")
-        payload = event.get("data", {}).get("object", {})
+        event_type, payload = _stripe_event_parts(event)
 
         if event_type == "checkout.session.completed":
             donation = Donation.objects.filter(stripe_checkout_session_id=payload.get("id")).first()
