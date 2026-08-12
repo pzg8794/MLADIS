@@ -192,6 +192,18 @@ class OpsNavigationContractTests(TestCase):
             (Path(__file__).resolve().parent / "static" / fallback_path).is_file()
         )
 
+    def test_deposit_item_image_preserves_remote_urls(self):
+        remote_url = "https://cdn.example.test/stay.jpg"
+
+        self.assertEqual(
+            _item_image_url(SimpleNamespace(image=remote_url)),
+            remote_url,
+        )
+        self.assertEqual(
+            _item_image_url(SimpleNamespace(image="/im/pictures/stay.jpg")),
+            "https://a0.muscache.com/im/pictures/stay.jpg",
+        )
+
     def test_ops_reports_routes(self):
         self._assert_route("/ops/reports/", "bookings:ops-reports")
 

@@ -93,7 +93,12 @@ def _guest_initials(name):
 
 def _item_image_url(item):
     if item and item.image:
-        return static(item.image)
+        image = str(item.image).strip()
+        if image.startswith("/im/pictures/"):
+            return f"https://a0.muscache.com{image}"
+        if image.startswith(("http://", "https://", "/")):
+            return image
+        return static(image)
     return static("frontend/modern-dashboard/stays/stay-3br.jpg")
 
 
