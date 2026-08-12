@@ -2,7 +2,7 @@
 
 Private status page. This is the current "read, sign, and click it away" center.
 
-Last status sweep: 2026-08-11.
+Last status sweep: 2026-08-12.
 
 ## Already Done
 
@@ -25,7 +25,7 @@ Last status sweep: 2026-08-11.
 | EIN issued | Done | IRS confirmation letter stored in the private Google Drive business-record vault outside Git |
 | Bank account opening packet | Done | `docs/business/ein-and-banking/bank-account-opening-packet.md` |
 | Mercury business account | Opened / approval confirmed | MLADIS mailbox: Mercury approval dated 2026-06-19; Stripe bank-account-addition notice dated 2026-06-19. Funding, current use, and statements remain to be verified. |
-| G-101/G-102 Dominican counsel package | Source records located / secure intake pending | Historical contracts, loan/closing records, powers, and 2020 title copies are present. Engagement request sent 2026-08-09; counsel requested apartment, loan, constancia/title, and mortgage records on 2026-08-10 but provided no secure upload route. Previously documented binder/ZIP/draft filenames were not present in the mounted owner-only folder on 2026-08-11 and must be located or rebuilt. |
+| G-101/G-102 Dominican counsel package | Secure-intake request sent / counsel response pending | Historical contracts, loan/closing records, powers, and 2020 title copies are present. Counsel requested apartment, loan, constancia/title, and mortgage records on 2026-08-10 without providing a secure upload route. MLADIS replied on 2026-08-12 requesting the office's secure transfer method, conflict-check and engagement process, and fee proposal before any sensitive records are transmitted. Previously documented binder/ZIP/draft filenames were not present in the mounted owner-only folder on 2026-08-11 and must be located or rebuilt. |
 | Queens publication designation request | Done | Designation letter received 2026-06-08 from `QCC-LLC@nycourts.gov`. Daily: **NY Daily News** (placeanad.nydailynews.com). Weekly: **The Forum** (forumsouth@gmail.com). Canonical letter is in the owner-only Drive record; historical public-repo copy requires privacy review. |
 | Signature source pointer | Done | `docs/business/signing/README.md` records the Drive file metadata, not the signature image |
 | Private Google Drive record | Partially secured / urgent | Current packet is in an owner-only folder; the legacy AIRBNB mirror still has link-writer access. See `docs/business/ein-and-banking/private-records-manifest.md`. |
@@ -70,7 +70,7 @@ person's signature without that person's separate authorization.
 | 4 | EIN application / IRS CP 575 | Done; private CP 575 letter saved in Google Drive outside Git | No IRS action remains unless an official portal later asks for the EIN from the private record |
 | 5 | Verify/fund Mercury business account | `docs/business/ein-and-banking/bank-account-opening-packet.md` | Log in directly to Mercury; verify good standing, fund if still needed, and download bank-generated verification/statements privately. |
 | 6 | Queens newspaper designations | Done; designation letter received 2026-06-08 and secured in the owner-only Drive record | Daily: NY Daily News. Weekly: The Forum. |
-| 7 | Close publication evidence | **NY Daily News: affidavit received and usable.** **The Forum: correction blocker.** Its received affidavit supports a six-week run but shows a notary commission that expired before the jurat. Correction requested 2026-08-11. | `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md` |
+| 7 | Close publication evidence | **NY Daily News: affidavit received and usable.** **The Forum: correction blocker.** Its received affidavit supports a six-week run but shows a notary commission that expired before the jurat. Correction requested 2026-08-11; the 2026-08-12 mailbox sweep found no response. | `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md` |
 | 8 | Confirm NYS TR-570 processing | Five-page response faxed 2026-08-11; UPS report shows `005/005` and `Result OK`. Agency acknowledgment and a separately archived exact signed copy remain pending. | Owner-only Drive submission-control log and fax report |
 
 ## Prepared For Future Diana Business Visitor Planning
@@ -112,8 +112,8 @@ Use `docs/business/funding-readiness/financial-institution-resume-plan.md` when 
    unfunded, confirm intended Stripe/Airbnb payout links, and archive
    bank-generated verification and statements privately.
 6. Export 2026 Airbnb activity, reconcile expenses, and build the P&L, balance sheet, cash-flow history, and forecast.
-7. Use `docs/business/dominican-republic-apartment-transition.md` to monitor the
-   private counsel package and secure-intake response. Complete New York
+7. Monitor counsel's response to the 2026-08-12 secure-intake, engagement, and
+   fee-process request documented in `docs/business/dominican-republic-apartment-transition.md`. Complete New York
    CPA/legal and insurance review, then execute the confirmed G-101/G-102
    Dominican Republic transition through Dominican counsel and an
    accountant: current titles/encumbrances, lender/Fiduciaria consent, lawful
