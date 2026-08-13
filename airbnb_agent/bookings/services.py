@@ -1596,19 +1596,21 @@ class BookingAgentService:
     def _setup_reply(self, item):
         subject = item.name if item else "your booking"
         return (
-            f"I can help with {subject}, dates, guest count, amenities, and custom services. "
-            "The live AI key is not configured yet, so I am running in setup mode. "
-            "To start a reservation, choose the stay, dates, guest count, name, email, and phone in the booking form. "
-            "After you submit it, the secure $200 damage-deposit hold step appears."
+            "Next step\n"
+            "The live AI assistant is not configured in this local environment, but you can still start a reservation.\n"
+            f"1) Confirm {subject}, your arrival and departure dates, and guest count.\n"
+            "2) Add your name, email, phone, and any special request in the booking form.\n"
+            "3) Submit the request; the secure $200 damage-deposit authorization step appears next."
         )
 
     def _fallback_reply(self, item):
         subject = item.name if item else "MLADIS bookings"
         return (
-            f"I can still help with {subject}: choose your stay, dates, guest count, name, email, and phone in the booking form. "
-            "Then use Make secure deposit hold to open the refundable $200 damage-deposit authorization through Stripe or PayPal. "
-            "A MLADIS admin reviews availability and confirms the reservation by email. "
-            "The live AI assistant is temporarily unavailable, so please include any special questions in the booking message."
+            "Next step\n"
+            "The live AI assistant is temporarily unavailable, but the reservation form is working.\n"
+            f"1) Choose {subject}, dates, and guest count.\n"
+            "2) Add your contact details and special questions.\n"
+            "3) Submit the request and complete the refundable $200 authorization hold; MLADIS confirms availability by email."
         )
 
     def _openai_reply(self, request, item):
@@ -1617,6 +1619,7 @@ class BookingAgentService:
             model=self.model,
             instructions=self._instructions(),
             input=self._prompt(request, item),
+            max_output_tokens=280,
         )
         reply = self._response_text(response).strip()
         if not reply:
@@ -1626,7 +1629,7 @@ class BookingAgentService:
     def _instructions(self):
         return (
             "You are the MLADIS website booking assistant for Santo Domingo Norte vacation stays. "
-            "Be warm, concise, bilingual when useful, and focused on helping guests choose a stay, "
+            "Be warm, direct, concise, and focused on helping guests choose a stay, "
             "understand rules, deposits, location, amenities, and next steps. Do not promise live "
             "availability, final pricing, refunds, or reservation confirmation. Explain that bookings "
             "are admin-confirmed and that the $200 damage deposit is an authorization hold. When a guest "
@@ -1638,13 +1641,13 @@ class BookingAgentService:
             "early or late checkout, exact address details, private pool access, or waived house rules unless "
             "an admin has explicitly confirmed them. If a question needs owner action, direct the guest to "
             "submit the booking form or contact MLADIS. If a guest asks for unrelated general knowledge, jokes, or help outside MLADIS business topics, "
-            "politely refuse and redirect them back to booking, guest support, account support, or business-policy questions. Default to well-organized plain text with short headings, "
-            "numbered steps, and short bullet lists instead of dense paragraphs. For booking, availability, deposit, "
-            "or next-step questions, use the preferred booking answer template from the prompt unless the guest asks for "
-            "a much shorter reply. Keep the same section titles and order: opening line, Quick steps (English / Español), "
-            "Important notes, and Next step - ready to book?. Include short Spanish lines after each numbered step. Keep each "
-            "list item to one sentence when possible. Do not use markdown tables. Use the selected stay context, booking workflow, "
-            "preferred booking answer template, repository-backed guest knowledge, and admin-provided knowledge sources from the prompt as your source of truth, "
+            "politely refuse and redirect them back to booking, guest support, account support, or business-policy questions. "
+            "Answer in the same language as the guest unless the guest explicitly asks for another language or a bilingual answer. "
+            "Lead with the direct answer. Normally stay under 120 words. Use at most one short heading and three short bullets or numbered steps. "
+            "If details are missing, ask only for the minimum details needed to continue instead of repeating the entire booking workflow. "
+            "Use blank lines between short sections so the website can present the answer accessibly. Do not use markdown tables. "
+            "Use the selected stay context, booking workflow, concise response guide, repository-backed guest knowledge, "
+            "and admin-provided knowledge sources from the prompt as your source of truth, "
             "but never mention the repository or internal files to the guest."
         )
 
@@ -1662,7 +1665,7 @@ class BookingAgentService:
             "Booking workflow:",
             self._booking_workflow_context(),
             "",
-            "Preferred booking answer template:",
+            "Concise response guide:",
             self._response_template_context(),
             "",
             "Repository-backed guest knowledge:",
@@ -1718,23 +1721,12 @@ class BookingAgentService:
 
     def _response_template_context(self):
         return (
-            "Opening line: Great - I can help. Here's how to make a reservation and what to expect.\n"
-            "Quick steps (English / Español)\n"
-            "1) Choose a stay on our site, or offer the main options: G-101, G-102, 6-bedroom, or Custom Booking Concierge.\n"
-            "   - Elige una estancia en nuestro sitio, u ofrece las opciones principales: G-101, G-102, 6 habitaciones o Custom Booking Concierge.\n"
-            "2) Tell the guest to fill the booking form with stay, arrival and departure dates, guest count, full name, email, phone, coupon if any, and special requests.\n"
-            "   - Indica al huesped que complete el formulario con estancia, fechas de llegada y salida, numero de huespedes, nombre completo, correo, telefono, cupon si tiene y peticiones especiales.\n"
-            "3) Explain that after submitting, the site opens the refundable $200 USD damage-deposit authorization hold through Stripe Checkout or PayPal.\n"
-            "   - Explica que despues de enviar, el sitio abre la retencion reembolsable de deposito por $200 USD mediante Stripe Checkout o PayPal.\n"
-            "4) Explain that all reservation requests go to MLADIS admins for review and confirmation by email.\n"
-            "   - Explica que todas las solicitudes pasan al equipo de MLADIS para revision y confirmacion por correo.\n"
-            "Important notes\n"
-            "- Say that availability, final pricing, discounts, address details, pool exceptions, and waived rules require admin confirmation.\n"
-            "- Say that standard house rules apply: no parties or events, no indoor smoking, registered guests only, respect quiet hours, and protect keys or smart locks.\n"
-            "- Say that concierge, airport pickup, and add-on requests should use Custom Booking Concierge or be written in the form.\n"
-            "Next step - ready to book?\n"
-            "- Ask for exact arrival and departure dates, guest count, preferred stay, full name, email, and phone number.\n"
-            "- If the guest wants help choosing first, ask for group size and travel dates and recommend the best option."
+            "For availability questions without exact details, say you can help and ask for exact arrival date, departure date, guest count, and preferred stay.\n"
+            "For availability questions with those details, summarize the request and explain that MLADIS confirms availability before the reservation is final.\n"
+            "For booking-process questions, give no more than three steps: choose a stay and dates, submit the booking form, then complete the refundable $200 USD authorization hold.\n"
+            "Mention admin email confirmation only when it answers the question.\n"
+            "Mention house rules, concierge services, contact details, and payment providers only when relevant to the guest's request.\n"
+            "Never repeat the answer in a second language unless the guest explicitly requests bilingual help."
         )
 
     def _repo_knowledge_context(self):

@@ -715,14 +715,17 @@ class AgentAPITests(TestCase):
         conversation = AgentConversation.objects.get()
         self.assertEqual(response.reply, "Yes, I can help with those dates.")
         self.assertEqual(fake_responses.kwargs["model"], "gpt-5.4-nano")
+        self.assertEqual(fake_responses.kwargs["max_output_tokens"], 280)
         self.assertIn("admin-confirmed", fake_responses.kwargs["instructions"])
         self.assertIn("secure deposit-hold step", fake_responses.kwargs["instructions"])
-        self.assertIn("Quick steps (English / Español)", fake_responses.kwargs["instructions"])
-        self.assertIn("preferred booking answer template", fake_responses.kwargs["instructions"])
+        self.assertIn("same language as the guest", fake_responses.kwargs["instructions"])
+        self.assertIn("under 120 words", fake_responses.kwargs["instructions"])
+        self.assertIn("only for the minimum details", fake_responses.kwargs["instructions"])
+        self.assertNotIn("Quick steps (English / Español)", fake_responses.kwargs["instructions"])
         self.assertIn("Do not promise discounts", fake_responses.kwargs["instructions"])
         self.assertIn("Is there room for four guests?", fake_responses.kwargs["input"])
         self.assertIn("Booking workflow", fake_responses.kwargs["input"])
-        self.assertIn("Preferred booking answer template", fake_responses.kwargs["input"])
+        self.assertIn("Concise response guide", fake_responses.kwargs["input"])
         self.assertIn("Custom Booking Concierge", fake_responses.kwargs["input"])
         self.assertIn("Repository-backed guest knowledge", fake_responses.kwargs["input"])
         self.assertIn("Admin and external knowledge sources", fake_responses.kwargs["input"])
@@ -736,6 +739,20 @@ class AgentAPITests(TestCase):
         )
         self.assertEqual(conversation.metadata["agent_mode"], "openai")
         self.assertEqual(conversation.metadata["openai_response_id"], "resp_test")
+
+    def test_agent_setup_reply_uses_short_structured_steps(self):
+        response = BookingAgentService(api_key="").reply(
+            AgentRequest(
+                message="Is the place available next week?",
+                session_id="session-setup",
+                item_id=self.item.id,
+            )
+        )
+
+        self.assertTrue(response.reply.startswith("Next step\n"))
+        self.assertIn("1) Confirm Test Stay", response.reply)
+        self.assertIn("3) Submit the request", response.reply)
+        self.assertLessEqual(len(response.reply.split()), 90)
 
     @override_settings(OPENAI_AGENT_MODEL="gpt-5.4-nano")
     def test_agent_service_blocks_off_topic_question_before_openai(self):

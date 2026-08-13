@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { AccountFactory } from '../../application/AccountFactory';
 import { PublicSiteFactory } from '../../application/PublicSiteFactory';
+import { AgentReplyPresentation } from '../../domain/agent';
 import {
   AccountReservation,
   AccountSnapshot,
@@ -638,6 +639,7 @@ function LegacyAgentPrompt({
   const [agentBusy, setAgentBusy] = useState(false);
   const [agentAccess, setAgentAccess] = useState(agent);
   const t = copy[language];
+  const replyPresentation = useMemo(() => AgentReplyPresentation.fromText(agentReply), [agentReply]);
 
   useEffect(() => {
     setAgentAccess(agent);
@@ -732,7 +734,32 @@ function LegacyAgentPrompt({
         <small className="public-agent-prompt__count">{agentMessage.length} / {AGENT_MESSAGE_LIMIT}</small>
         <button type="submit" disabled={agentBusy}><Send size={15} /> {agentBusy ? 'Asking...' : t.agentAction}</button>
       </form>
-      {agentReply && <p className="public-agent-reply">{agentReply}</p>}
+      {agentReply && (
+        <div className="public-agent-reply" role="status" aria-live="polite">
+          {replyPresentation.blocks.map((block, index) => {
+            if (block.kind === 'heading') {
+              return <h4 key={`${block.kind}-${index}`}>{block.text}</h4>;
+            }
+            if (block.kind === 'step') {
+              return (
+                <div className="public-agent-reply__item" key={`${block.kind}-${index}`}>
+                  <span aria-hidden="true">{block.marker}</span>
+                  <p>{block.text}</p>
+                </div>
+              );
+            }
+            if (block.kind === 'bullet') {
+              return (
+                <div className="public-agent-reply__item public-agent-reply__item--bullet" key={`${block.kind}-${index}`}>
+                  <span aria-hidden="true">•</span>
+                  <p>{block.text}</p>
+                </div>
+              );
+            }
+            return <p key={`${block.kind}-${index}`}>{block.text}</p>;
+          })}
+        </div>
+      )}
     </>
   );
 }

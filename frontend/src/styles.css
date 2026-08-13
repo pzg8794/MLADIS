@@ -2001,11 +2001,57 @@ details.dashboard-panel[open] {
 }
 
 .public-agent-reply {
-  border-radius: var(--radius);
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
   color: #082f2f !important;
   background: #ecfdf5;
-  padding: 12px;
-  font-weight: 820;
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  font-weight: 620;
+  line-height: 1.48;
+}
+
+.public-agent-reply h4,
+.public-agent-reply p {
+  margin: 0;
+  color: inherit !important;
+  font: inherit;
+  letter-spacing: 0;
+}
+
+.public-agent-reply h4 {
+  margin-top: 3px;
+  color: #065f5b !important;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.public-agent-reply__item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.public-agent-reply__item > span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #0f8b83;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.public-agent-reply__item--bullet > span {
+  color: #0f766e;
+  background: #d1fae5;
 }
 
 .public-agent-chatkit-shell {
