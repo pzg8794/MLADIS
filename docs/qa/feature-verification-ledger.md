@@ -73,6 +73,7 @@ Evidence:
 
 - [`agent-readability-local.png`](evidence/2026-08-13-agent-readability/agent-readability-local.png)
 - [`agent-live-openai-local.png`](evidence/2026-08-13-agent-readability/agent-live-openai-local.png)
+- [`agent-live-openai-production.png`](evidence/2026-08-13-agent-readability/agent-live-openai-production.png)
 - [`browser-observation.md`](evidence/2026-08-13-agent-readability/browser-observation.md)
 - `bookings.tests.AgentAPITests`: 13 passing tests.
 

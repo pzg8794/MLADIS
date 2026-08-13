@@ -33,3 +33,13 @@ Questions:
 
 `agent-live-openai-local.png` is the visual evidence for the live-provider
 result. The temporary QA account is local-only and contains no customer data.
+
+## Production Canary
+
+Release `release/2026.08.13-1` was tested at `https://mladis.com/` using a
+temporary non-customer QA account. The same damage-deposit question returned
+the concise 40-word answer in the production customer UI. No browser console
+errors or warnings were present. The temporary production QA account and its
+credential were removed immediately after verification.
+
+Evidence: `agent-live-openai-production.png`.
