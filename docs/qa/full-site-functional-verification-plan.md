@@ -2,7 +2,11 @@
 
 Status: execution plan
 
-Baseline release: `release/2026.08.11-1`
+Current ledger: [`feature-verification-ledger.csv`](feature-verification-ledger.csv)
+
+Ledger contract: [`feature-verification-ledger.md`](feature-verification-ledger.md)
+
+Latest documented release: `release/2026.08.12-5`
 
 Production: https://mladis.com/
 
@@ -84,8 +88,8 @@ true for the release under test:
 
 ## Phase 1: Generate the Function Inventory
 
-Create `docs/qa/function-inventory.csv` from repository inspection, then review
-it manually. Sources include:
+Maintain `docs/qa/feature-verification-ledger.csv` from repository inspection,
+then review it manually. Sources include:
 
 - Django URL patterns and HTTP methods.
 - React route selection.
@@ -97,9 +101,9 @@ it manually. Sources include:
 Required columns:
 
 ```text
-id,object,route,role,control,action,precondition,expected_ui,
-expected_persistence,expected_external_effect,environment,automated,
-evidence,status,defect
+feature_id,object,route,actor,function,implementation_status,
+local_dev_status,local_user_status,production_dev_status,
+production_user_status,automation,evidence,last_verified_at,release,notes,defect
 ```
 
 No function is omitted because it is unfinished. Unfinished behavior is recorded
@@ -270,16 +274,15 @@ The release report must distinguish:
 
 ## Current Release Baseline
 
-For `release/2026.08.11-1`, the following evidence exists:
+For `release/2026.08.12-5`, the following automated release evidence exists:
 
-- 198 bookings tests passed.
-- 9 sign-in contract tests passed.
+- 208 bookings tests passed.
 - Django checks and migration drift checks passed.
-- Production frontend assets built successfully.
-- Production health, homepage, and login routes returned `200`.
-- The `mladis` service is active and its local VM health endpoint returned `ok`.
-- All 17 protected operational routes rendered with `200` under an existing
-  authenticated staff account using the production Django test client.
+- The nested Stripe webhook normalization regression passed.
+- Release `2026.08.12-4`, preserved by the patch release, contains the latest
+  documented production user canary for reservation, calendar, email, USD 0.99
+  Stripe capture/refund, and cancellation.
 
-This is a healthy release and smoke baseline. It is not yet evidence that every
-interactive function works. That claim requires executing the complete plan.
+These are scoped release results. They are not evidence that every interactive
+function works. The CSV records the exact verified scope and the remaining
+`FAIL`, `BLOCKED`, and `NOT_TESTED` functions.
