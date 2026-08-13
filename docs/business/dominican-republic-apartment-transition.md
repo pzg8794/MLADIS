@@ -32,11 +32,13 @@ lodging insurance binder was found.
 On August 13, 2026, the evidence search was expanded and documented across the
 AIRBNB repository and its four apartment submodules, the accessible RIT and
 personal Google Drive records, and indexed Google Photos searches covering 2018
-through 2026. The RIT Photos evidence was deduplicated to 12 distinct records
-and organized in a private MLADIS album. The MLADIS Google account itself was
-signed out in Photos and Drive, so that account is an explicit access gap; no
-claim is made that it was searched. The expanded audit did not locate the
-current payoff/cancellation/title products required below.
+through 2026. Eleven relevant Photos records remain organized in the private
+MLADIS album after the unrelated site-plan image was removed. Diana received
+private review access and was asked to flag any personal, irrelevant, unusual,
+or out-of-context image. The MLADIS Google account itself was signed out in
+Photos and Drive, so that account is an explicit access gap; no claim is made
+that it was searched. The expanded audit did not locate the current
+payoff/cancellation/title products required below.
 
 G-102 is documented in the current packet as fully paid, with no current
 mortgage asserted. Its historical loan records remain relevant evidence; the
@@ -96,16 +98,17 @@ the correct applicant and exact license category for these two apartments.
 
 ## Counsel Package And Outreach
 
-On August 13, 2026, a new private owner-only counsel package was assembled and
-verified from the historical source archive and the expanded Git, Drive, and
-Photos audit. The controlled record now contains:
+On August 13, 2026, a new owner-controlled private counsel package was assembled
+and verified from the historical source archive and the expanded Git, Drive,
+and Photos audit. The controlled record now contains:
 
-- an 89-page Spanish-first submission packet with a six-page counsel brief,
-  70 pages of core corporate and unit-specific evidence, and a 13-page Photos
-  annex;
+- a 68-page Spanish-first counsel document package with a five-page brief and
+  63 pages of core corporate and unit-specific evidence;
+- a separate 18-page historical payment-evidence file, available to counsel on
+  request but not included in the initial delivery;
 - a source-audit record identifying the accounts, repositories, search terms,
   findings, exclusions, and access limitations;
-- a 12-item Photos evidence register with duplicate and relevance decisions;
+- an 11-item Photos evidence register with duplicate and relevance decisions;
   and
 - a packet control log with the page map, checksum, verification results,
   outstanding official documents, and transmission status.
@@ -120,12 +123,18 @@ records was granted.
 On August 10, counsel replied that all documentation related to the apartments
 would help counsel prepare an accurate proposal. Counsel explicitly requested
 the loan documents and, if available, the constancia letter, property title,
-and mortgage certificate. The response is in the existing counsel email thread.
+and mortgage certificate.
 
-No delivery of the August 13 packet is recorded. Send the verified 89-page
-packet in the existing counsel email thread, request receipt confirmation, and
-obtain a written current-title investigation and delivery plan. No owner or
-counterparty should sign the working drafts until counsel returns approved final
+On August 13, the verified 68-page counsel package was delivered by formal
+Spanish email through a private Drive link. Reader access was limited to the two
+counsel addresses and Diana, who was copied as the family member in charge of
+local coordination. The historical payment-evidence file was kept separate and
+was not delivered to counsel. The email requested receipt confirmation, scope,
+fees, schedule, and concrete next steps. Diana separately received the main
+package, payment file, and private Photos album by email and mobile links, and
+was asked to validate every record and obtain official payment histories for
+both units. Counsel acknowledgment and Diana's review remain pending. No owner
+or counterparty should sign working drafts until counsel returns approved final
 instruments.
 
 Official references:

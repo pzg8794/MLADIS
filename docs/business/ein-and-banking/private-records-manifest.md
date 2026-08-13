@@ -8,13 +8,15 @@ The canonical private record is the existing owner-only Google Drive folder:
 
 `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/`
 
-Drive metadata was rechecked on 2026-08-13. The current Dominican counsel packet
-and its four control records reported `not_shared`; direct Drive URLs and file
-IDs are intentionally omitted from public Git. The mounted record uses the
-existing numbered `01-formation` through `06-publication` subdirectories. Per
-the owner's storage instruction, use those directories and do not create a new
-MLADIS directory or parallel data-room tree. Use filenames, not public links,
-to identify records.
+Drive metadata was rechecked on 2026-08-13. The current Dominican counsel
+package has named-reader access for counsel and Diana; the separate payment
+file has named-reader access for Diana only; and the three control records
+remain owner-only. Direct Drive URLs, file IDs, and recipient addresses are
+intentionally omitted from public Git. The mounted record uses the existing
+numbered `01-formation` through `06-publication` subdirectories. Per the owner's
+storage instruction, use those directories and do not create a new MLADIS
+directory or parallel data-room tree. Use filenames, not public links, to
+identify records.
 
 ## Security Warning: Legacy AIRBNB Mirror
 
@@ -68,14 +70,15 @@ not recorded publicly.
 
 ## Dominican Republic G-101/G-102 Counsel Package
 
-The following current files were assembled, uploaded to the existing owner-only
-folder, and verified as `not_shared` on 2026-08-13. They contain private
-corporate, property, identity, financial, and contract evidence.
+The following current files were assembled and uploaded to the existing private
+folder on 2026-08-13. They contain private corporate, property, identity,
+financial, and contract evidence. Access is limited to the specific people and
+purposes stated below; the folder itself was not made public.
 
 | Private Drive file | Purpose | Status |
 | --- | --- | --- |
-| `MLADIS_DR_Counsel_Submission_Packet_2026-08-13.pdf` | Verified 89-page counsel packet: brief, core evidence, and Photos annex | Ready for owner review and counsel delivery; not yet sent |
-| `MLADIS_DR_Google_Photos_Evidence_Annex_2026-08-13.pdf` | 13-page annex containing 12 distinct retained records | Verified private supporting record |
+| `MLADIS_DR_Counsel_Document_Package_2026-08-13.pdf` | Verified 68-page counsel package: brief and core corporate/unit evidence | Delivered by private Drive link to counsel with Diana copied; acknowledgment pending |
+| `MLADIS_DR_Historical_Payment_Evidence_2026-08-13.pdf` | Separate 18-page historical payment record | Shared with Diana for validation; not delivered to counsel; available on request |
 | `MLADIS_DR_Google_Photos_Evidence_Register_2026-08-13.txt` | Source facts, limits, hashes, duplicates, and exclusions | Verified private control |
 | `MLADIS_DR_Source_Audit_2018-2026_2026-08-13.txt` | Git/Drive/Photos source matrix, findings, access limitations, and exact legal gaps | Verified private control |
 | `MLADIS_DR_Counsel_Packet_Control_Log_2026-08-13.txt` | Page map, checksum, verification, outstanding documents, and transmission status | Verified private control |
@@ -83,9 +86,10 @@ corporate, property, identity, financial, and contract evidence.
 The source audit covered the AIRBNB repository and four apartment submodules,
 accessible RIT and personal Drive records, and indexed RIT/personal Photos
 searches from 2018-2026. The MLADIS Google account was signed out and is recorded
-as an access limitation. No counsel transmission is recorded; the packet should
-be sent in the existing counsel email thread with a request for receipt and the
-outstanding official products.
+as an access limitation. Counsel received the main package on August 13 with a
+request for receipt and the outstanding official products. Diana received the
+main package, separate payment file, and private Photos album for family review;
+her validation and the official payment histories remain pending.
 
 ## NYS TR-570 Response Packet
 
