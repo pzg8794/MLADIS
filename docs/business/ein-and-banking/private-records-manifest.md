@@ -8,9 +8,9 @@ The canonical private record is the existing owner-only Google Drive folder:
 
 `MLADIS-Private-Business-Records/2026-06-03-ein-banking-publication/`
 
-Drive metadata was rechecked on 2026-08-09. The canonical folder was owner-only,
-and all 39 files then listed in it reported `not_shared`; direct Drive URLs and
-file IDs are intentionally omitted from public Git. The mounted record uses the
+Drive metadata was rechecked on 2026-08-13. The current Dominican counsel packet
+and its four control records reported `not_shared`; direct Drive URLs and file
+IDs are intentionally omitted from public Git. The mounted record uses the
 existing numbered `01-formation` through `06-publication` subdirectories. Per
 the owner's storage instruction, use those directories and do not create a new
 MLADIS directory or parallel data-room tree. Use filenames, not public links,
@@ -68,28 +68,24 @@ not recorded publicly.
 
 ## Dominican Republic G-101/G-102 Counsel Package
 
-The following files were documented as prepared on 2026-08-08. They contain
-private corporate, property, identity, tax, and contract evidence. During the
-2026-08-11 mounted-filesystem reconciliation, these filenames were not present
-in the current owner-only folder tree. Do not claim the package is available
-for delivery until it is located and re-verified or rebuilt from the historical
-source archive.
+The following current files were assembled, uploaded to the existing owner-only
+folder, and verified as `not_shared` on 2026-08-13. They contain private
+corporate, property, identity, financial, and contract evidence.
 
 | Private Drive file | Purpose | Status |
 | --- | --- | --- |
-| `MLADIS_DR_G101_G102_COUNSEL_SUBMISSION_2026-08-08.docx` | Editable Spanish-first counsel brief | Previously documented; locate/rebuild |
-| `MLADIS_DR_G101_G102_COUNSEL_SUBMISSION_2026-08-08.pdf` | Printable counsel brief | Previously documented; locate/rebuild and re-verify |
-| `MLADIS_DR_G101_G102_SIGNATURE_DRAFTS_2026-08-08.docx` | Editable set of 13 proposed instruments | Previously documented; locate/rebuild; unsigned |
-| `MLADIS_DR_G101_G102_SIGNATURE_DRAFTS_2026-08-08.pdf` | Printable proposed instruments | Previously documented; locate/rebuild; unsigned |
-| `MLADIS_DR_G101_G102_COMPLETE_PACKAGE_2026-08-08.pdf` | 173-page bookmarked evidence binder | Previously documented; locate/rebuild and re-verify |
-| `MLADIS_DR_G101_G102_COMPLETE_PACKAGE_2026-08-08.zip` | Flat secure archive with evidence and editable official forms | Previously documented; locate/rebuild and verify integrity |
-| `MLADIS_DR_G101_G102_SUBMISSION_CONTROL_2026-08-08.txt` | Package inventory, evidence gaps, signer matrix, and outreach control | Previously documented; locate/rebuild |
+| `MLADIS_DR_Counsel_Submission_Packet_2026-08-13.pdf` | Verified 89-page counsel packet: brief, core evidence, and Photos annex | Ready for owner review and counsel delivery; not yet sent |
+| `MLADIS_DR_Google_Photos_Evidence_Annex_2026-08-13.pdf` | 13-page annex containing 12 distinct retained records | Verified private supporting record |
+| `MLADIS_DR_Google_Photos_Evidence_Register_2026-08-13.txt` | Source facts, limits, hashes, duplicates, and exclusions | Verified private control |
+| `MLADIS_DR_Source_Audit_2018-2026_2026-08-13.txt` | Git/Drive/Photos source matrix, findings, access limitations, and exact legal gaps | Verified private control |
+| `MLADIS_DR_Counsel_Packet_Control_Log_2026-08-13.txt` | Page map, checksum, verification, outstanding documents, and transmission status | Verified private control |
 
-On 2026-08-09, an engagement request was sent from the MLADIS company mailbox
-to the existing Dominican counsel contacts. No attachment or private identifier
-was sent. The message requested conflict clearance, scope, fees, timing,
-missing-document guidance, and a secure upload channel; it granted no authority
-to transfer, borrow, pay third parties, or file records.
+The source audit covered the AIRBNB repository and four apartment submodules,
+accessible RIT and personal Drive records, and indexed RIT/personal Photos
+searches from 2018-2026. The MLADIS Google account was signed out and is recorded
+as an access limitation. No counsel transmission is recorded; the packet should
+be sent in the existing counsel email thread with a request for receipt and the
+outstanding official products.
 
 ## NYS TR-570 Response Packet
 

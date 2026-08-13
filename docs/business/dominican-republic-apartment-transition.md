@@ -29,6 +29,20 @@ or Fiduciaria consent, Dominican company registration, RNC, Registro
 Mercantil, MITUR/RENATUR approval, current tax record, or MLADIS property and
 lodging insurance binder was found.
 
+On August 13, 2026, the evidence search was expanded and documented across the
+AIRBNB repository and its four apartment submodules, the accessible RIT and
+personal Google Drive records, and indexed Google Photos searches covering 2018
+through 2026. The RIT Photos evidence was deduplicated to 12 distinct records
+and organized in a private MLADIS album. The MLADIS Google account itself was
+signed out in Photos and Drive, so that account is an explicit access gap; no
+claim is made that it was searched. The expanded audit did not locate the
+current payoff/cancellation/title products required below.
+
+G-102 is documented in the current packet as fully paid, with no current
+mortgage asserted. Its historical loan records remain relevant evidence; the
+payoff, registered cancellation, and current-title records are required to
+close the documentary and registry record, not to imply a present loan balance.
+
 ## Required Legal Structure
 
 Dominican counsel must document the lawful structure separately for each
@@ -82,35 +96,37 @@ the correct applicant and exact license category for these two apartments.
 
 ## Counsel Package And Outreach
 
-On August 12, 2026, the private counsel package was rebuilt and verified from
-the historical source archive. It contains a Spanish-first control brief, an
-exact exhibit index, MLADIS formation and authority records, and separate G-101
-and G-102 evidence sections using signed acquisition records, official
-developer payment ledgers, historical title records, bank closing copies, the
-applicable representation record, and a selected Google Photos evidence annex.
+On August 13, 2026, a new private owner-only counsel package was assembled and
+verified from the historical source archive and the expanded Git, Drive, and
+Photos audit. The controlled record now contains:
 
-The private Google Photos audit retained eight relevant records and documented
-28 reviewed exclusions with specific reasons. It found two distinct historical
-G-102 loan-payment records, unit-specific G-101/G-102 property-payment history,
-a G-101 historical loan-balance image, and a separate payment to counsel labeled
-for apartment closing. The counsel receipt identifies neither unit nor the
-completed legal deliverable. No private source document, identifier, evidence
-hash, or Drive link is stored in Git.
+- an 89-page Spanish-first submission packet with a six-page counsel brief,
+  70 pages of core corporate and unit-specific evidence, and a 13-page Photos
+  annex;
+- a source-audit record identifying the accounts, repositories, search terms,
+  findings, exclusions, and access limitations;
+- a 12-item Photos evidence register with duplicate and relevance decisions;
+  and
+- a packet control log with the page map, checksum, verification results,
+  outstanding official documents, and transmission status.
 
-G-102 payoff and mortgage-cancellation status is controlled separately from
-G-101. None of the reviewed photographic records is the final-payment proof,
-zero-balance/cancellation letter, registered mortgage cancellation, current
-title, or current legal-status certification. Those remain express counsel
-deliverables. For G-101, current bank, title, encumbrance, and consent evidence
-also remains outstanding. Historical balances and title copies are not treated
-as current status.
+All proposed transfer and operating instruments remain blocked from signature
+until Dominican counsel returns approved final documents. On August 9, an
+engagement request was sent from the MLADIS company mailbox to the existing
+Dominican counsel contacts. No attachment or private identifier was sent, and
+no authority to transfer property, incur debt, pay third parties, or file
+records was granted.
 
-Counsel previously requested the loan records and, if available, the constancia
-letter, title, and mortgage certificate. The private packet is ready in the
-owner-only Drive record, but transmission and engagement remain pending.
-Counsel must return the executed and registered closing instruments, current
-registry results, and a written structure/tax implementation plan before any
-transfer, lease, contribution, power, or registration instrument is signed.
+On August 10, counsel replied that all documentation related to the apartments
+would help counsel prepare an accurate proposal. Counsel explicitly requested
+the loan documents and, if available, the constancia letter, property title,
+and mortgage certificate. The response is in the existing counsel email thread.
+
+No delivery of the August 13 packet is recorded. Send the verified 89-page
+packet in the existing counsel email thread, request receipt confirmation, and
+obtain a written current-title investigation and delivery plan. No owner or
+counterparty should sign the working drafts until counsel returns approved final
+instruments.
 
 Official references:
 
