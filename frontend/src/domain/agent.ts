@@ -33,14 +33,19 @@ export class AgentReplyPresentation {
       .map((line) => line.trim())
       .filter(Boolean)
       .map<AgentReplyBlock>((line) => {
+        const cleanText = (text: string) => text
+          .replace(/\*\*([^*]+)\*\*/g, '$1')
+          .replace(/__([^_]+)__/g, '$1')
+          .replace(/`([^`]+)`/g, '$1')
+          .trim();
         if (/^(Quick steps|Important notes|Next step)/i.test(line)) {
-          return { kind: 'heading', text: line };
+          return { kind: 'heading', text: cleanText(line) };
         }
         const step = line.match(/^(\d{1,2})[.)]\s*(.+)$/);
-        if (step) return { kind: 'step', marker: step[1], text: step[2] };
+        if (step) return { kind: 'step', marker: step[1], text: cleanText(step[2]) };
         const bullet = line.match(/^[-*•–—]\s*(.+)$/);
-        if (bullet) return { kind: 'bullet', text: bullet[1] };
-        return { kind: 'paragraph', text: line };
+        if (bullet) return { kind: 'bullet', text: cleanText(bullet[1]) };
+        return { kind: 'paragraph', text: cleanText(line) };
       });
 
     return new AgentReplyPresentation(blocks);

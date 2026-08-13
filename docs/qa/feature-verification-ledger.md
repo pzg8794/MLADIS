@@ -4,6 +4,8 @@ Status: active quality record
 
 Machine-readable ledger: [`feature-verification-ledger.csv`](feature-verification-ledger.csv)
 
+GitHub tracker: [Full Functionality Verification](https://github.com/pzg8794/MLADIS/milestone/1)
+
 ## Purpose
 
 This ledger prevents an implementation, build, route smoke, or prior production
@@ -62,14 +64,16 @@ The verification axes are:
 ## Current Agent Verification
 
 The 2026-08-13 booking-agent readability pass verified the real local homepage
-as an authenticated guest. The response rendered as a heading, one short
-paragraph, and three numbered steps at 13.12px with compact line spacing. The
-browser console contained no application errors. Live OpenAI content remains
-`BLOCKED` locally because the approved local `.env` has no `OPENAI_API_KEY`.
+as an authenticated guest. A live `gpt-5.4-nano` response was returned through
+the configured OpenAI provider and rendered as a compact paragraph without raw
+Markdown emphasis markers. The response was 40 words. The browser contained no
+MLADIS application errors; one unrelated Google Maps widget request failed.
 
 Evidence:
 
 - [`agent-readability-local.png`](evidence/2026-08-13-agent-readability/agent-readability-local.png)
+- [`agent-live-openai-local.png`](evidence/2026-08-13-agent-readability/agent-live-openai-local.png)
+- [`browser-observation.md`](evidence/2026-08-13-agent-readability/browser-observation.md)
 - `bookings.tests.AgentAPITests`: 13 passing tests.
 
 ## Full-Site Claim
