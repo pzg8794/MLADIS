@@ -28,33 +28,33 @@ Use this after the Queens County Clerk assigns the designated newspapers.
 - [x] Confirm publication cost and payment method with The Forum.
   - The Forum quoted $375 in advance, including notarized-affidavit processing. The private record shows payment authorization sent on 2026-06-19.
 - [x] Confirm first publication date with The Forum.
-  - The affidavit received 2026-08-10 states publication once weekly from 2026-06-11 through 2026-07-16. It is evidence of the run but is not filing-ready because its notary commission expired before the 2026-07-27 jurat.
+  - The affidavit received 2026-08-10 states publication once weekly from 2026-06-11 through 2026-07-16. On 2026-08-14, the owner re-reviewed the handwritten commission-expiration date beneath the older preprinted stamp date as a valid manual update; publisher confirmation was requested.
 
 ## Step 3 - Track Six Weeks
 
 | Week | Daily newspaper published? | Weekly newspaper published? | Notes |
 | --- | --- | --- | --- |
-| 1 | 2026-06-10 | Run supported; notarization defective | Forum affidavit states the six-week run began 2026-06-11 |
-| 2 | 2026-06-17 | Run supported; notarization defective | Corrected affidavit required before filing |
-| 3 | 2026-06-24 | Run supported; notarization defective | Corrected affidavit required before filing |
-| 4 | 2026-07-01 | Run supported; notarization defective | Corrected affidavit required before filing |
-| 5 | 2026-07-08 | Run supported; notarization defective | Corrected affidavit required before filing |
-| 6 | 2026-07-15 | Run supported; notarization defective | Forum affidavit states the run ended 2026-07-16 |
+| 1 | 2026-06-10 | Run supported; publisher confirmation pending | Forum affidavit states the six-week run began 2026-06-11 |
+| 2 | 2026-06-17 | Run supported; publisher confirmation pending | Handwritten commission-expiration date re-reviewed as an update |
+| 3 | 2026-06-24 | Run supported; publisher confirmation pending | Retain confirmation with the private affidavit |
+| 4 | 2026-07-01 | Run supported; publisher confirmation pending | No replacement affidavit requested |
+| 5 | 2026-07-08 | Run supported; publisher confirmation pending | Owner final review remains required |
+| 6 | 2026-07-15 | Run supported; publisher confirmation pending | Forum affidavit states the run ended 2026-07-16 |
 
 ## Step 4 - Collect Affidavits
 
 - [x] Receive and review affidavit of publication from daily newspaper.
 - [x] Receive affidavit of publication from weekly newspaper.
-  - Received, but not filing-ready because the notary commission shown expired before the jurat date.
-- [ ] Check that both affidavits use the exact legal name, designated newspaper, six successive weeks, correct dates, and notarization.
+  - Received. The handwritten commission-expiration date beneath the older preprinted stamp date is treated as a manual update; publisher confirmation is pending.
+- [ ] Check that both affidavits use the exact legal name, designated newspaper, six successive weeks, correct dates, and final publisher confirmation.
 - [x] Keep the Daily News affidavit in private records.
 - [x] Keep The Forum affidavit in private records after receipt.
-- [ ] Receive and approve a corrected, currently notarized Forum affidavit.
+- [ ] Retain The Forum's written confirmation that the supplied affidavit is final and that the handwritten commission date is current.
 
 ## Step 5 - File Certificate Of Publication
 
 - [x] Prepare unsigned Certificate of Publication draft in private records.
-- [ ] Review, sign, and date the certificate only after the corrected Forum affidavit is received and both affidavits pass review.
+- [ ] Review, sign, and date the certificate after The Forum confirms the supplied affidavit and the owner completes final review.
 - [ ] Attach both affidavits.
 - [ ] Include $50 filing fee payable to Department of State.
 - [ ] Mail the complete packet to NY DOS Division of Corporations using the current form instructions.

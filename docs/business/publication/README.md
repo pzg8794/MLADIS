@@ -11,8 +11,8 @@ Private publication workflow for MLADIS LLC.
 - Daily newspaper: NY Daily News, placement site `placeanad.nydailynews.com`
 - Weekly newspaper: The Forum, `forumsouth@gmail.com`
 - NY Daily News: notarized affidavit received and reviewed; six weekly dates are documented privately.
-- The Forum: affidavit received 2026-08-10 and supports publication once weekly from 2026-06-11 through 2026-07-16, but its notary commission expired before the 2026-07-27 jurat. Corrected affidavit requested 2026-08-11.
-- Current next action: obtain and review a corrected Forum affidavit, then sign and file the private Certificate of Publication with both valid affidavits and the $50 fee.
+- The Forum: affidavit received 2026-08-10 and supports publication once weekly from 2026-06-11 through 2026-07-16. Its handwritten commission-expiration date beneath the older preprinted stamp date was re-reviewed on 2026-08-14 as a manual update, not a notarization defect. Publisher confirmation of that reading was requested.
+- Current next action: retain the two affidavits privately, await The Forum's confirmation, then complete owner review, signature, and filing of the private Certificate of Publication with the $50 fee.
 
 ## Official Process Summary
 
@@ -41,4 +41,4 @@ New York Department of State publication filing:
 
 ## Do Not Skip
 
-Do not mark the overall publication requirement complete until a corrected Forum affidavit is received, both affidavits pass review, and the Certificate of Publication is filed with NY DOS. Both newspaper affidavits are private and must not be committed. Use the owner-only Drive file `MLADIS_LLC-Publication-Designation-Letter-2026-06-08.pdf` when a newspaper asks for the Queens County Clerk designation letter.
+Do not mark the overall publication requirement complete until The Forum confirms the handwritten commission date, the owner completes final review and signature, and the Certificate of Publication is filed with NY DOS. Both newspaper affidavits are private and must not be committed. Use the owner-only Drive designation-letter record when a newspaper asks for the Queens County Clerk designation letter.

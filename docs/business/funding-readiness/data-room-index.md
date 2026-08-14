@@ -14,7 +14,7 @@ completed loan applications stay outside Git.
 | Initial member consent | Executed | Canonical executed copy is in the existing owner-only Drive record; public-repo historical copies require privacy review. |
 | Operations acknowledgment | Owner signed; counterparty pending | Obtain counterparty review/acceptance, then store the fully executed copy privately. |
 | Business visitor process package | Template ready | Keep blank templates in Git; completed visa-history answers stay outside Git. |
-| Certificate of Publication and affidavits | Partially complete / correction pending | Daily News affidavit is usable. The Forum affidavit was received, but its notary commission expired before the jurat date; corrected affidavit requested 2026-08-11. Unsigned certificate draft stays private. |
+| Certificate of Publication and affidavits | Partially complete / confirmation pending | Both private affidavits are received. The Forum handwritten commission-expiration date was re-reviewed as an update to an older preprinted stamp date; publisher confirmation was requested 2026-08-14. Unsigned certificate draft stays private. |
 | Certificate of Status | Todo | Order a fresh certificate after the publication filing is accepted. |
 | EIN confirmation letter | Done | Stored outside Git in private business records. Do not commit EIN value or CP 575 letter. |
 | NYS TR-570 response | Fax transmitted / acknowledgment pending | UPS report dated by file context 2026-08-11 shows the notice destination, five of five pages, and `Result OK`. Machine date is incorrect. Preserve proof and archive the exact signed transmitted copy if available. |

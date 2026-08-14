@@ -1,7 +1,7 @@
 # Financial Institution Readiness Resume Plan
 
 Created: 2026-06-04.
-Last status sweep: 2026-08-11.
+Last status sweep: 2026-08-14.
 
 This is the resume plan for getting MLADIS LLC ready to approach banks, CDFIs, SBA-backed lenders, NYC/NYS financing support, and later grant or investor conversations.
 
@@ -27,7 +27,7 @@ Those are tracked separately in the signing and publication folders. Use this fi
 | Area | Current status | Resume action |
 | --- | --- | --- |
 | Formation / EIN | Done | Use filed Articles, Piter-signed governance docs, and private CP 575 letter when a bank or official portal asks for proof. |
-| NY publication | Partially complete / urgent correction | Daily News affidavit is usable. Forum affidavit was received, but its notary commission expired before the jurat. Obtain the corrected affidavit, then file the Certificate of Publication. |
+| NY publication | Partially complete / confirmation pending | Both affidavits are received. The Forum handwritten commission-expiration date was re-reviewed as an update to an older preprinted stamp date; retain the publisher's requested confirmation, then complete owner review and file the Certificate of Publication. |
 | Bank account | Opened / activation evidence pending | Mercury approved MLADIS LLC on 2026-06-19 and Stripe recorded a bank-account addition that day. Verify good standing, fund if still needed, confirm intended payout links, and archive bank-generated verification and statements privately. |
 | Airbnb/revenue export | In progress | 2024 Airbnb earnings and tax summaries were located as pre-formation/personal operating history. No 2025 or 2026 YTD export was found in the current inventory. Export both periods, document the LLC transition, and prepare sanitized monthly summaries. |
 | Expense history | Not built into lender packet | Gather receipts, software, ads, repairs, cleaning, contractor, compliance, and banking costs. |

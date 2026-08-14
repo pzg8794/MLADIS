@@ -2,7 +2,7 @@
 
 Public-safe status page. Private records, identifiers, and document links remain in the owner-only Drive archive.
 
-Last status sweep: 2026-08-12.
+Last status sweep: 2026-08-14.
 
 ## Already Done
 
@@ -70,7 +70,7 @@ person's signature without that person's separate authorization.
 | 4 | EIN application / IRS CP 575 | Done; private CP 575 letter saved in Google Drive outside Git | No IRS action remains unless an official portal later asks for the EIN from the private record |
 | 5 | Verify/fund Mercury business account | `docs/business/ein-and-banking/bank-account-opening-packet.md` | Log in directly to Mercury; verify good standing, fund if still needed, and download bank-generated verification/statements privately. |
 | 6 | Queens newspaper designations | Done; designation letter received 2026-06-08 and secured in the owner-only Drive record | Daily: NY Daily News. Weekly: The Forum. |
-| 7 | Close publication evidence | **NY Daily News: affidavit received and usable.** **The Forum: correction blocker.** Its received affidavit supports a six-week run but shows a notary commission that expired before the jurat. Correction requested 2026-08-11; the 2026-08-12 mailbox sweep found no response. | `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md` |
+| 7 | Close publication evidence | **NY Daily News: affidavit received and usable.** **The Forum: affidavit received.** The handwritten commission-expiration date was re-reviewed as a manual update to an older preprinted stamp date; publisher confirmation was requested 2026-08-14. | `docs/business/publication/publication-completion-checklist.md` and `publication-activity-log.md` |
 | 8 | Confirm NYS TR-570 processing | Five-page response faxed 2026-08-11; UPS report shows `005/005` and `Result OK`. Agency acknowledgment and a separately archived exact signed copy remain pending. | Owner-only Drive submission-control log and fax report |
 
 ## Prepared For Future Diana Business Visitor Planning
@@ -105,7 +105,7 @@ Use `docs/business/funding-readiness/financial-institution-resume-plan.md` when 
 ## Best Next Order
 
 1. Preserve the TR-570 fax proof, archive the exact signed transmitted packet if available, and monitor for Tax Department follow-up.
-2. Obtain and review a corrected Forum affidavit with a current notarization.
+2. Retain The Forum's written confirmation that the supplied affidavit is final and that the handwritten commission date is current.
 3. Sign and file the private Certificate of Publication with both valid affidavits and the $50 fee by the 2026-10-01 working deadline.
 4. Archive the DOS filing receipt and order a fresh Certificate of Status.
 5. Verify the Mercury account is open and in good standing, fund it if still
