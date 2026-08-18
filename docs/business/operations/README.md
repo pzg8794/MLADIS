@@ -11,6 +11,9 @@ MLADIS LLC stays single-member for now. The vacation rental branch is already su
 - `diana-garcia-contractor-record.md` - summary and links for the existing signed contractor agreement.
 - `mladis-bookings-founding-operations-pillar-acknowledgment.md` - active signing draft for Diana's MLADIS Bookings role, authority limits, Dominican Republic-based support, and temporary business-visit boundaries.
 - `contractor-ratification-and-assignment-draft.md` - earlier bridge draft retained as background, but no longer the preferred signing item.
+- `customer-service-playbook.md` - property-specific rules, response decisions, written-confirmation requirements, and escalation guidance.
+- `airbnb-response-automation-runbook.md` - the draft-only response workflow, approval gate, and resumable transition process.
+- `../../data-store/airbnb-collection-runbook.md` - the private, new-only collection process for Airbnb conversations and reservation snapshots.
 
 ## Why This Exists
 

@@ -10,6 +10,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
+from bookings.airbnb_capture_state import AirbnbCaptureState
 from bookings.airbnb_reservation_lake import AirbnbReservationSnapshotWriter
 from bookings.interaction_lake import AnonymousInteractionLakeWriter
 
@@ -53,6 +54,11 @@ class Command(BaseCommand):
             default="",
             help="Drive folder ID; defaults to MLADIS_DATASTORE_DRIVE_FOLDER_ID.",
         )
+        parser.add_argument(
+            "--new-only",
+            action="store_true",
+            help="Skip reservation/conversation captures already recorded in the private local checkpoint.",
+        )
 
     def handle(self, *args, **options):
         reservations, interactions = self._load_documents(options["input"])
@@ -62,8 +68,19 @@ class Command(BaseCommand):
         root = options["root"] or self._default_root()
         reservation_writer = AirbnbReservationSnapshotWriter(root)
         interaction_writer = AnonymousInteractionLakeWriter(root)
+        capture_state = AirbnbCaptureState.load(root)
 
-        reservation_results = reservation_writer.write_snapshots(reservations)
+        skipped_reservations = 0
+        skipped_interactions = 0
+        if options["new_only"]:
+            reservations, skipped_reservations = capture_state.select_new(reservations, "reservations")
+            interactions, skipped_interactions = capture_state.select_new(interactions, "interactions")
+
+        reservation_results = {"created": 0, "updated": 0}
+        for document in reservations:
+            _, action = reservation_writer.write_snapshot(document)
+            reservation_results[action] += 1
+            capture_state.mark(document, "reservations")
         interaction_paths = set()
         for document in interactions:
             turns = document.get("turns")
@@ -81,6 +98,9 @@ class Command(BaseCommand):
                     occurred_at=document.get("occurred_at"),
                 )
             )
+            capture_state.mark(document, "interactions")
+
+        capture_state.save()
 
         if options["sync_drive"]:
             self._sync_outputs(
@@ -98,6 +118,10 @@ class Command(BaseCommand):
         )
         self.stdout.write(
             f"Reservations: {reservation_results['created']} created, {reservation_results['updated']} updated."
+        )
+        self.stdout.write(
+            f"Skipped existing captures: {skipped_reservations} reservation(s), "
+            f"{skipped_interactions} interaction(s)."
         )
         self.stdout.write(f"Output root: {Path(root)}")
         self.stdout.write("Output collections: BOOKINGS/airbnb_reservation_snapshots.jsonl and INTERACTIONS/anonymous_interactions.jsonl")
@@ -195,6 +219,7 @@ class Command(BaseCommand):
         return {
             "source_system": "airbnb",
             "channel": f"host_messages_{document.get('dataset', 'unknown')}",
+            "_capture_key": f"{document.get('dataset', 'unknown')}:{document.get('thread_id', '')}",
             "known_names": known_names,
             "turns": turns,
             "occurred_at": document.get("captured_at"),

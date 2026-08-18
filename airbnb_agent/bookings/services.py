@@ -1553,6 +1553,7 @@ class BookingAgentService:
                     }
                 )
 
+        reply = self._format_reply(reply)
         conversation = AgentConversation.objects.create(
             user_id=request.user_id,
             session_id=request.session_id,
@@ -1565,6 +1566,22 @@ class BookingAgentService:
             metadata=metadata,
         )
         return AgentResponse(reply=reply, conversation_id=conversation.id)
+
+    @staticmethod
+    def _format_reply(reply):
+        """Normalize model output for readable guest-facing rendering."""
+        text = re.sub(r"\r\n?", "\n", str(reply or "")).strip()
+        # The public agent renders plain text. Remove emphasis markers before
+        # inserting line breaks so markdown asterisks are never mistaken for
+        # list markers.
+        text = re.sub(r"\*\*(.*?)\*\*", r"\1", text, flags=re.DOTALL)
+        text = re.sub(r"__(.*?)__", r"\1", text, flags=re.DOTALL)
+        text = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"\1", text)
+        text = re.sub(r"[ \t]+", " ", text)
+        text = re.sub(r"(?<![\n\d])(?=(?:\d+[.)]|-)\s)", "\n", text)
+        text = re.sub(r"[ \t]+\n", "\n", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text
 
     def _get_item(self, item_id):
         if not item_id:
@@ -1637,6 +1654,12 @@ class BookingAgentService:
             "guest count, name, email, phone, coupon if any, and special requests. Explain that after "
             "submitting the booking form, the secure deposit-hold step appears through Stripe or PayPal. "
             "Ask for dates, guest count, preferred stay, full name, email, and phone when the guest wants to book. "
+            "A small, normal gathering may be allowed only when it fits the applicable property's rules, permitted hours, "
+            "noise limits, registered guest limits, visitor rules, and any advance-notice or approval requirement. "
+            "Do not treat every gathering as prohibited, and do not treat a broad event setting as permission for a party. "
+            "When a guest changes from a day-use or event request to an overnight request, separately verify total people present "
+            "and registered overnight guests, ask for dates and the final counts, require written agreement to the rules, and "
+            "escalate contradictions or exceptions for staff confirmation. "
             "Do not promise discounts, "
             "early or late checkout, exact address details, private pool access, or waived house rules unless "
             "an admin has explicitly confirmed them. If a question needs owner action, direct the guest to "
@@ -1725,6 +1748,8 @@ class BookingAgentService:
             "For availability questions with those details, summarize the request and explain that MLADIS confirms availability before the reservation is final.\n"
             "For booking-process questions, give no more than three steps: choose a stay and dates, submit the booking form, then complete the refundable $200 USD authorization hold.\n"
             "Mention admin email confirmation only when it answers the question.\n"
+            "For gathering or visitor questions, state the applicable rule conditionally, separate total people from overnight guests, "
+            "ask for written rule acceptance, and say MLADIS must confirm the request when details are uncertain.\n"
             "Mention house rules, concierge services, contact details, and payment providers only when relevant to the guest's request.\n"
             "Never repeat the answer in a second language unless the guest explicitly requests bilingual help."
         )

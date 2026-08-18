@@ -34,9 +34,24 @@ cd airbnb_agent
 
 The command is safe to rerun for reservation snapshots: the reservation writer
 uses a deterministic key and updates an existing snapshot instead of adding a
-duplicate. Interaction records are append-only because a repeated conversation
-capture is treated as a new learning observation; retain the export scope and
-capture date so a later deduplication/quality pass can distinguish repeats.
+duplicate. For a resumable import that must ingest only unseen captures, use
+the repository wrapper:
+
+```bash
+cd airbnb_agent
+./scripts/resume_airbnb_data_lake.sh /private/path/airbnb-combined-export.jsonl
+```
+
+The wrapper passes `--new-only`. MLADIS stores its private source-thread
+checkpoint at `BOOKINGS/.airbnb_capture_state.json`; it is local-only, mode
+`0600`, never mirrored to Drive, and never committed. Existing completed
+reservation snapshots bootstrap the first checkpoint so current detailed
+captures are not appended again. The collector also deduplicates duplicate
+keys within one input file and reports skipped counts.
+
+For a deliberate backfill or reconciliation run, call the management command
+without `--new-only`; this is an operator decision and may append interaction
+observations. Normal resume work must use the wrapper.
 
 For an intentional protected Drive mirror, verify the configured `rclone`
 remote and folder first, then run:
@@ -98,6 +113,12 @@ thread. The second enriches the reservation snapshot and writes sanitized
 conversation turns to `INTERACTIONS`. Use the same output root for both runs;
 reservation snapshots upsert by deterministic key. Keep the raw checkpoint
 outside Git and with restrictive file permissions.
+
+Add `--new-only` when invoking the combined command directly. The browser
+capture helper and this ingestion checkpoint are separate: the browser helper
+obtains new DOM rows/detail captures, while the wrapper imports only unseen
+records from a private export. Either an authorized browser operator or a
+later scheduled job can run the import; no Codex conversation is required.
 
 The detail parser only records fields it can match in the rendered DOM. Dates,
 guest counts, nights, ratings, review counts/text, and potential earnings are
@@ -184,6 +205,22 @@ source fields. Conversation scope can be represented in its channel/topic.
 The collector is read-only with respect to Airbnb. It must not send a message,
 edit a reservation, cancel a stay, charge a guest, capture/release a deposit,
 or create a live `BookingInquiry`.
+
+## Resume contract
+
+The supported collection loop is:
+
+1. capture the normal and archived Airbnb table/detail DOM into a private
+   checkpoint;
+2. run `scripts/resume_airbnb_data_lake.sh` with that export;
+3. review created/skipped counts and lake verification evidence;
+4. mirror sanitized collections only after review.
+
+The state sidecar contains source thread keys because it is a local ingestion
+checkpoint. The anonymized interaction records still contain no source IDs,
+names, contact values, or thread URLs. If the sidecar is lost, do not guess;
+compare the existing lake and private capture checkpoint, then restore the
+sidecar or request operator review before resuming.
 
 ## Contact and consent policy
 

@@ -30,6 +30,7 @@ import stripe
 
 from .adapters import MLADISAccountAdapter, MLADISSocialAccountAdapter
 from .admin import DamageDepositAdmin
+from .airbnb_response_workflow import AirbnbResponseWorkflow, ResponseWorkflowError
 from .airbnb_import import AirbnbGuestEmailParser, AirbnbGuestImportService
 from .airbnb_reservation_lake import AirbnbReservationSnapshotWriter
 from .data_lake import MLADISDataLakeExporter
@@ -714,6 +715,39 @@ class DataLakeExporterTests(TestCase):
         self.assertNotIn("combined@example.com", interaction_text)
         self.assertNotIn("555-0100", interaction_text)
 
+    def test_combined_airbnb_data_lake_new_only_resume_skips_completed_capture(self):
+        thread_capture = [{
+            "dataset": "normal",
+            "thread_id": "resume-thread-1",
+            "preview": "Confirmed · Aug 21, 2026 – Aug 24, 2026 · 2 guests",
+            "messages": [
+                "Private Guest · Booker\nCan we arrive early?",
+                "Diana · Host\nWe can review arrival options.",
+            ],
+            "captured_at": "2026-08-18T12:00:00-04:00",
+        }]
+
+        with TemporaryDirectory() as temp_dir, TemporaryDirectory() as input_dir, override_settings(
+            MLADIS_DATASTORE_LIVE_SYNC_DRIVE=False,
+        ):
+            input_path = Path(input_dir) / "airbnb-thread-captures.json"
+            input_path.write_text(json.dumps(thread_capture), encoding="utf-8")
+            first_output = StringIO()
+            second_output = StringIO()
+            call_command("collect_airbnb_data_lake", input=input_path, root=temp_dir, new_only=True, stdout=first_output)
+            call_command("collect_airbnb_data_lake", input=input_path, root=temp_dir, new_only=True, stdout=second_output)
+
+            interaction_path = Path(temp_dir) / "INTERACTIONS" / "anonymous_interactions.jsonl"
+            reservation_path = Path(temp_dir) / "BOOKINGS" / "airbnb_reservation_snapshots.jsonl"
+            interaction_rows = [line for line in interaction_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            reservation_rows = [line for line in reservation_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            state_text = (Path(temp_dir) / "BOOKINGS" / ".airbnb_capture_state.json").read_text(encoding="utf-8")
+
+        self.assertEqual(len(interaction_rows), 1)
+        self.assertEqual(len(reservation_rows), 1)
+        self.assertIn("Skipped existing captures: 1 reservation(s), 1 interaction(s).", second_output.getvalue())
+        self.assertIn('"threads"', state_text)
+
     def test_airbnb_message_table_capture_composes_reservation_projection(self):
         table_export = {
             "captured_at": "2026-08-18T12:00:00-04:00",
@@ -991,6 +1025,8 @@ class AgentAPITests(TestCase):
         self.assertIn("same language as the guest", fake_responses.kwargs["instructions"])
         self.assertIn("under 120 words", fake_responses.kwargs["instructions"])
         self.assertIn("only for the minimum details", fake_responses.kwargs["instructions"])
+        self.assertIn("small, normal gathering may be allowed", fake_responses.kwargs["instructions"])
+        self.assertIn("registered overnight guests", fake_responses.kwargs["instructions"])
         self.assertNotIn("Quick steps (English / Español)", fake_responses.kwargs["instructions"])
         self.assertIn("Do not promise discounts", fake_responses.kwargs["instructions"])
         self.assertIn("Is there room for four guests?", fake_responses.kwargs["input"])
@@ -1023,6 +1059,59 @@ class AgentAPITests(TestCase):
         self.assertIn("1) Confirm Test Stay", response.reply)
         self.assertIn("3) Submit the request", response.reply)
         self.assertLessEqual(len(response.reply.split()), 90)
+
+    def test_agent_reply_formatter_preserves_markdown_content_without_fragmenting_it(self):
+        reply = BookingAgentService._format_reply(
+            "You’re welcome! **Custom Booking Concierge** can help. 1) Share your dates. 2) Share your 10 guest count."
+        )
+
+        self.assertEqual(
+            reply,
+            "You’re welcome! Custom Booking Concierge can help.\n1) Share your dates.\n2) Share your 10 guest count.",
+        )
+        self.assertNotIn("\n*\n*", reply)
+
+    def test_airbnb_response_workflow_is_draft_first_and_fails_closed(self):
+        workflow = AirbnbResponseWorkflow(agent_service=BookingAgentService(api_key=""))
+        draft = workflow.draft(
+            "Is the place available next week?",
+            item_id=self.item.id,
+            session_id="airbnb-workflow-test",
+        )
+
+        self.assertTrue(draft.low_stakes)
+        self.assertTrue(draft.requires_staff_confirmation)
+        self.assertFalse(draft.approved)
+        self.assertFalse(draft.sendable)
+        self.assertIn("\n1)", draft.reply)
+
+        approved = workflow.approve(draft)
+        self.assertTrue(approved.approved)
+        self.assertTrue(approved.sendable)
+        with self.assertRaises(ResponseWorkflowError):
+            workflow.send(approved)
+
+    def test_airbnb_response_workflow_escalates_financial_questions(self):
+        workflow = AirbnbResponseWorkflow(agent_service=BookingAgentService(api_key=""))
+        draft = workflow.draft(
+            "Can you refund the deposit?",
+            item_id=self.item.id,
+            session_id="airbnb-workflow-escalation-test",
+        )
+
+        self.assertFalse(draft.low_stakes)
+        self.assertFalse(workflow.approve(draft).sendable)
+
+    def test_airbnb_response_workflow_escalates_day_use_events_with_overnight_guests(self):
+        workflow = AirbnbResponseWorkflow(agent_service=BookingAgentService(api_key=""))
+        draft = workflow.draft(
+            "Can we use the pool for a birthday with 10 people, but have only 5 sleep overnight?",
+            item_id=self.item.id,
+            session_id="airbnb-workflow-event-test",
+        )
+
+        self.assertFalse(draft.low_stakes)
+        self.assertFalse(workflow.approve(draft).sendable)
 
     @override_settings(OPENAI_AGENT_MODEL="gpt-5.4-nano")
     def test_agent_service_blocks_off_topic_question_before_openai(self):
