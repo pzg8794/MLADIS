@@ -6,7 +6,7 @@ This tracker records evidence for the two data-lake outputs used during the Airb
 |---|---|---|---|---|---|---|
 | Anonymous conversation lake | Yes | Yes, automated redaction/signal tests | Yes | Not yet | Not yet | Read-only DOM capture completed for 1,775 normal/archived Airbnb threads; 1,775 anonymized Airbnb interaction records are in the protected local runtime lake. |
 | Structured Airbnb reservation lake | Yes | Yes, writer/normalization/idempotence tests | Yes | Not yet | Not yet | Read-only DOM table index and direct-thread capture produced 1,775 unique reservation snapshots; records remain marked `needs_reconciliation` and were not created as live `BookingInquiry` rows. |
-| Drive mirror | Existing infrastructure | Environment-dependent | Not yet | Not yet | Not yet | Requires the approved local `rclone` configuration and an intentional `--sync-drive` run. |
+| Drive mirror | Existing infrastructure | Yes | Yes | Not yet | Not yet | Both completed collections were copied to the configured protected Drive remote using the existing `rclone` settings. |
 | Consent contact protection | Yes | Yes, decline/no-response hashing tests | Not yet | Not yet | Not yet | Unanswered or declined promotional permission clears contact values from the reservation snapshot and retains keyed hashes only. |
 
 ## Evidence Rules
