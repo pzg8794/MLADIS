@@ -59,6 +59,7 @@ SIMPLE_OBJECT_LAKE_FOLDERS = (
     "ADMIN",
     "OPERATIONS",
     "EVENTS",
+    "INTERACTIONS",
 )
 
 MODEL_FOLDER_OVERRIDES = {
@@ -275,6 +276,7 @@ class SimpleObjectLakeLayout:
                     "- ADMIN: admin access and business configuration objects.",
                     "- OPERATIONS: internal workboard tasks and owner-managed operational plans.",
                     "- EVENTS: app/page/workflow events that are not one durable business object.",
+                    "- INTERACTIONS: identity-free conversation turns for response-quality learning.",
                     "",
                     "Each business object is stored as one readable JSON file named `<model>-<id>.json`.",
                     "Each folder may also contain `_history.jsonl` for append-only change history.",
@@ -602,6 +604,13 @@ class MLADISDataLakeExporter:
             entity_type="agent_conversation",
             description="Chatbot conversation logs, topics, language, and item context for agent improvement.",
             pii_classification="private",
+        ),
+        DataLakeCollection(
+            key="anonymous_interactions",
+            folder="INTERACTIONS",
+            entity_type="conversation_interaction",
+            description="Identity-free conversation turns used to improve guest-response quality.",
+            pii_classification="anonymized",
         ),
         DataLakeCollection(
             key="agent_faq",
@@ -1015,31 +1024,34 @@ class MLADISDataLakeExporter:
             )
 
     def _records_agent_conversations(self, collection):
-        queryset = AgentConversation.objects.select_related("item", "user").order_by("created_at", "id")
+        # Keep the legacy collection key for consumers that still request it,
+        # but use the same identity-free projection as INTERACTIONS. New
+        # conversation content must not re-enter the lake through this path.
+        from .interaction_lake import AnonymousInteractionLakeWriter
+
+        writer = AnonymousInteractionLakeWriter(self.layout.root)
+        queryset = AgentConversation.objects.select_related("user").order_by("created_at", "id")
         for conversation in queryset:
-            data = {
-                "agent_conversation_id": conversation.id,
-                "user_id": conversation.user_id,
-                "session_id_hash" if self.redacted else "session_id": self.record_builder.identity(conversation.session_id),
-                "item_id": conversation.item_id,
-                "visitor_name": "" if self.redacted else conversation.visitor_name,
-                **self.record_builder.contact_fields(email=conversation.visitor_email),
-                "last_user_message": "" if self.redacted else conversation.last_user_message,
-                "last_agent_reply": "" if self.redacted else conversation.last_agent_reply,
-                "question_topic": conversation.question_topic,
-                "language": conversation.language,
-                "metadata": {} if self.redacted else conversation.metadata,
-                "created_at": conversation.created_at,
-                "updated_at": conversation.updated_at,
-            }
-            yield self.record_builder.build(
-                collection=collection,
-                source_model="bookings.AgentConversation",
-                entity_id=conversation.id,
-                occurred_at=conversation.created_at,
-                natural_keys=self._base_natural_keys(email=conversation.visitor_email),
-                data=data,
-            )
+            record = writer.build_agent_record(conversation)
+            record["collection"] = collection.key
+            record["entity_type"] = collection.entity_type
+            record["pii_classification"] = "anonymized"
+            if self.redacted:
+                for turn in record.get("data", {}).get("turns", []):
+                    turn["text"] = "[redacted]"
+            yield record
+
+    def _records_anonymous_interactions(self, collection):
+        from .interaction_lake import AnonymousInteractionLakeWriter
+
+        writer = AnonymousInteractionLakeWriter(self.layout.root)
+        queryset = AgentConversation.objects.select_related("user").order_by("created_at", "id")
+        for conversation in queryset:
+            record = writer.build_agent_record(conversation)
+            if self.redacted:
+                for turn in record.get("data", {}).get("turns", []):
+                    turn["text"] = "[redacted]"
+            yield record
 
     def _records_agent_faq(self, collection):
         for faq in AgentFAQ.objects.select_related("item").order_by("category", "priority", "id"):

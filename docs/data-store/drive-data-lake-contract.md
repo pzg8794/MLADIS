@@ -20,6 +20,7 @@ MLADIS-DATASTORE/
     bookinginquiry-15.json
     booking_requests.jsonl
     reservations.jsonl
+    airbnb_reservation_snapshots.jsonl
     _history.jsonl
     _events.jsonl
   CUSTOMERS/
@@ -71,6 +72,8 @@ MLADIS-DATASTORE/
     page_visits.jsonl
     object_events.jsonl
     object_states.jsonl
+  INTERACTIONS/
+    anonymous_interactions.jsonl
   EXPORTS/
     export-run-<timestamp>-<id>.json
 ```
@@ -78,6 +81,7 @@ MLADIS-DATASTORE/
 ## Folder Meaning
 
 - `BOOKINGS`: booked/reservation objects and booking request lifecycle.
+- `BOOKINGS/airbnb_reservation_snapshots.jsonl`: protected, structured Airbnb reservation captures. These are reconciliation inputs, not live `BookingInquiry` rows, until an explicit review/import step confirms the match.
 - `CUSTOMERS`: clients, user accounts, imported guests, feedback, and consent state.
 - `BOOKINGAGENTS`: chat agent conversations, FAQ, and training knowledge.
 - `TRANSACTIONS`: payments, deposits, holds, invoices, donations, coupons, and promotions.
@@ -86,6 +90,7 @@ MLADIS-DATASTORE/
 - `WEBSITE`: site settings, logo/content, and public copy records.
 - `ADMIN`: admin access and internal business configuration.
 - `EVENTS`: high-volume app events that are not one durable business object.
+- `INTERACTIONS`: identity-free conversation turns used for response-quality learning. This collection must not contain Airbnb names, emails, phones, profile IDs, reservation IDs, thread URLs, or raw participant metadata.
 - `EXPORTS`: export manifests only.
 
 ## Object Files
@@ -115,6 +120,7 @@ Current collection snapshots are plain JSONL files inside the matching folder:
 CUSTOMERS/customer_profiles.jsonl
 BOOKINGS/booking_requests.jsonl
 TRANSACTIONS/damage_deposits.jsonl
+BOOKINGS/airbnb_reservation_snapshots.jsonl
 STAYS/inventory.jsonl
 ```
 
@@ -138,6 +144,7 @@ Every functional object must have a data-store path:
 - booking requests and reservation lifecycle records,
 - request/inquiry records,
 - chatbot conversations, FAQ, and training records,
+- structured Airbnb reservation snapshots for reconciliation and repeat-stay analysis,
 - payments, deposit holds, donations, invoices, promotions, coupons, and cancellation records,
 - maintenance events and photo evidence,
 - calendar availability, pricing, feed, stay, and inventory records,
@@ -157,6 +164,15 @@ Never write these to the object lake:
 - payment card numbers.
 
 Sensitive auth/provider fields must be redacted before writing JSON.
+
+Structured Airbnb reservation captures belong only in the protected
+`BOOKINGS/airbnb_reservation_snapshots.jsonl` collection. They retain the
+identifiers needed for reconciliation, but must not contain raw conversation
+bodies. Conversation learning belongs in
+`INTERACTIONS/anonymous_interactions.jsonl` after identity and source
+redaction. Protected reservation/customer records may retain phone and email
+contact fields for service communication and an explicit future permission
+request; those fields are never promotional consent by themselves.
 
 ## Drive Target
 

@@ -1,0 +1,108 @@
+"""Guarded, draft-first workflow for future Airbnb guest responses."""
+
+import re
+from dataclasses import dataclass, replace
+from uuid import uuid4
+
+from .models import AgentConversation
+from .services import AgentRequest, BookingAgentService, QuestionAnalyticsService
+
+
+class ResponseWorkflowError(RuntimeError):
+    """Raised when an outbound response cannot pass the safety contract."""
+
+
+@dataclass(frozen=True)
+class CustomerResponseDraft:
+    reply: str
+    topic: str
+    mode: str
+    conversation_id: int | None
+    low_stakes: bool
+    requires_staff_confirmation: bool = True
+    approved: bool = False
+    sendable: bool = False
+
+
+class AirbnbResponseWorkflow:
+    """Create reviewable responses without silently sending to Airbnb."""
+
+    LOW_STAKES_TOPICS = {"availability", "location", "amenities", "services", "rules", "general"}
+    ESCALATION_TERMS = {
+        "payment",
+        "deposit",
+        "refund",
+        "cancel",
+        "cancellation",
+        "complaint",
+        "damage",
+        "safety",
+        "legal",
+        "discrimination",
+        "discount",
+        "special exception",
+        "guarantee",
+        "party",
+        "parties",
+        "event",
+        "events",
+        "birthday",
+        "day-only",
+        "day use",
+        "day-use",
+        "non-overnight",
+        "without an overnight stay",
+        "common area",
+        "extra visitor",
+        "extra guest",
+        "gathering",
+    }
+
+    def __init__(self, *, agent_service=None, sender=None):
+        self.agent_service = agent_service or BookingAgentService()
+        self.sender = sender
+
+    def draft(self, message, *, item_id=None, session_id=None):
+        message = str(message or "").strip()
+        if not message:
+            raise ResponseWorkflowError("A customer message is required to create a draft.")
+        session_id = session_id or f"airbnb-draft-{uuid4().hex}"
+        response = self.agent_service.reply(
+            AgentRequest(message=message, session_id=session_id, item_id=item_id)
+        )
+        conversation = AgentConversation.objects.filter(id=response.conversation_id).first()
+        metadata = conversation.metadata if conversation else {}
+        topic = QuestionAnalyticsService.classify(message)
+        low_stakes = self._is_low_stakes(message, topic)
+        return CustomerResponseDraft(
+            reply=self.format_reply(response.reply),
+            topic=topic,
+            mode=str((metadata or {}).get("agent_mode") or "unknown"),
+            conversation_id=response.conversation_id,
+            low_stakes=low_stakes,
+        )
+
+    def approve(self, draft):
+        if not draft.requires_staff_confirmation:
+            raise ResponseWorkflowError("This draft cannot be approved through the staff gate.")
+        return replace(draft, approved=True, sendable=draft.low_stakes)
+
+    def send(self, draft):
+        """Send only through an explicitly supplied, tested sender adapter."""
+        if not draft.approved:
+            raise ResponseWorkflowError("Staff confirmation is required before sending.")
+        if not draft.sendable:
+            raise ResponseWorkflowError("This response requires manual review and cannot be auto-sent.")
+        if not callable(self.sender):
+            raise ResponseWorkflowError("No Airbnb sender is configured; draft-only mode is active.")
+        return self.sender(draft.reply)
+
+    @classmethod
+    def _is_low_stakes(cls, message, topic):
+        lowered = message.casefold()
+        return topic in cls.LOW_STAKES_TOPICS and not any(term in lowered for term in cls.ESCALATION_TERMS)
+
+    @staticmethod
+    def format_reply(reply):
+        """Make model output readable without changing its meaning."""
+        return BookingAgentService._format_reply(reply)
