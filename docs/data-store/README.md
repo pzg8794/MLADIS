@@ -11,8 +11,10 @@ The Django database remains the transactional source of truth. The Drive-backed 
 
 - accounts and customer profiles,
 - bookings and reservations,
+- protected structured Airbnb reservation snapshots for reconciliation,
 - request/inquiry records,
 - agent conversations and FAQ training data,
+- identity-free conversation turns for response-quality learning,
 - transactions, deposits, invoices, coupons, and promotions,
 - stays, availability, pricing, and content,
 - maintenance and cleaning evidence,
@@ -26,6 +28,7 @@ Runtime data is organized by business object type:
 BOOKINGS/
 CUSTOMERS/
 BOOKINGAGENTS/
+INTERACTIONS/
 TRANSACTIONS/
 STAYS/
 MAINTENANCE/
@@ -87,6 +90,9 @@ python manage.py export_data_lake --sync-drive
 - Keep customer/runtime JSON out of Git.
 - Git stores code, tests, and contracts only.
 - Drive stores private runtime JSON/JSONL.
+- Store learning conversations only in `INTERACTIONS/anonymous_interactions.jsonl` after identity redaction.
+- Never copy Airbnb names, emails, phones, profile IDs, booking IDs, thread URLs, or raw participant metadata into `INTERACTIONS`.
+- The `INTERACTIONS` collection is the canonical training/evaluation source; `BOOKINGAGENTS` remains the compatibility area for agent configuration and FAQ objects.
 - Use one current JSON file per object.
 - Use `_history.jsonl` only for append-only change history.
 - Do not store SSNs, EIN letters, raw signatures, bank records, passwords, OAuth secrets, identity documents, or payment cards.
@@ -95,3 +101,7 @@ python manage.py export_data_lake --sync-drive
 
 - [Drive object lake contract](drive-data-lake-contract.md)
 - [Collection registry](collections.json)
+- [Anonymous interaction lake contract](anonymous-interaction-lake-contract.md)
+- [Airbnb reservation snapshot contract](airbnb-reservation-snapshot-contract.md)
+- [Airbnb collection runbook](airbnb-collection-runbook.md)
+- [Interaction and reservation verification tracker](../qa/interaction-lake-verification.md)

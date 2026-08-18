@@ -31,7 +31,9 @@ import stripe
 from .adapters import MLADISAccountAdapter, MLADISSocialAccountAdapter
 from .admin import DamageDepositAdmin
 from .airbnb_import import AirbnbGuestEmailParser, AirbnbGuestImportService
+from .airbnb_reservation_lake import AirbnbReservationSnapshotWriter
 from .data_lake import MLADISDataLakeExporter
+from .interaction_lake import AnonymousInteractionLakeWriter
 from .forms import BookingInquiryForm
 from .guest_services import GuestService
 from .models import (
@@ -514,6 +516,274 @@ class DataLakeExporterTests(TestCase):
             self.assertIn('"password": "[redacted]"', state_text)
             self.assertNotIn("pbkdf2", state_text)
             self.assertNotIn("super-secret-pass", state_text)
+
+    def test_anonymous_interaction_writer_removes_identity_and_source_references(self):
+        with TemporaryDirectory() as temp_dir:
+            path = AnonymousInteractionLakeWriter(temp_dir).write_conversation(
+                source_system="airbnb",
+                channel="host_messages",
+                language="en",
+                topic="arrival",
+                known_names=["Maria Rodriguez"],
+                turns=[
+                    {
+                        "role": "guest",
+                        "text": "Hi, I am Maria Rodriguez. Email maria@example.com or call +1 809 555 0100. Ref R-1042.",
+                    },
+                    {"role": "host", "text": "Maria, here is the arrival guide: https://example.com/guide."},
+                ],
+            )
+            payload = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
+            output = json.dumps(payload)
+
+            self.assertEqual(payload["collection"], "anonymous_interactions")
+            self.assertEqual(payload["pii_classification"], "anonymized")
+            self.assertIn("[person]", output)
+            self.assertNotIn("Maria Rodriguez", output)
+            self.assertNotIn("maria@example.com", output)
+            self.assertNotIn("555 0100", output)
+            self.assertNotIn("R-1042", output)
+            self.assertNotIn("https://example.com", output)
+
+    def test_agent_conversation_signal_writes_only_identity_free_interaction_record(self):
+        with TemporaryDirectory() as temp_dir, override_settings(
+            MLADIS_DATASTORE_ROOT=temp_dir,
+            MLADIS_DATASTORE_LIVE_SYNC_DRIVE=False,
+        ):
+            AgentConversation.objects.create(
+                session_id="private-session-123",
+                visitor_name="Guest Person",
+                visitor_email="guest@example.com",
+                last_user_message="My name is Guest Person and my phone is 555-0100.",
+                last_agent_reply="Thanks Guest Person, I can help.",
+                question_topic="arrival",
+            )
+
+            interaction_path = Path(temp_dir) / "INTERACTIONS" / "anonymous_interactions.jsonl"
+            self.assertTrue(interaction_path.exists())
+            interaction_text = interaction_path.read_text(encoding="utf-8")
+            self.assertNotIn("Guest Person", interaction_text)
+            self.assertNotIn("guest@example.com", interaction_text)
+            self.assertNotIn("555-0100", interaction_text)
+            self.assertNotIn("private-session-123", interaction_text)
+            booking_agent_files = list((Path(temp_dir) / "BOOKINGAGENTS").glob("agentconversation-*.json"))
+            self.assertFalse(booking_agent_files)
+
+    def test_anonymous_interactions_are_exportable_as_a_dedicated_collection(self):
+        AgentConversation.objects.create(
+            session_id="export-session",
+            visitor_name="Export Guest",
+            visitor_email="export@example.com",
+            last_user_message="Can I check in early?",
+            last_agent_reply="We can review early check-in availability.",
+            question_topic="arrival",
+        )
+
+        with TemporaryDirectory() as temp_dir:
+            MLADISDataLakeExporter(temp_dir).export(collections=["anonymous_interactions"])
+            export_path = Path(temp_dir) / "INTERACTIONS" / "anonymous_interactions.jsonl"
+            export_text = export_path.read_text(encoding="utf-8")
+
+        self.assertIn("anonymous_interactions", export_text)
+        self.assertNotIn("Export Guest", export_text)
+        self.assertNotIn("export@example.com", export_text)
+
+    def test_airbnb_reservation_snapshot_has_stable_private_id_and_structured_fields(self):
+        snapshot = {
+            "scope": "archived",
+            "thread_id": "2180129386",
+            "thread_url": "https://www.airbnb.com/hosting/messages/2180129386?archived=",
+            "confirmation_code": "HM-PRIVATE-001",
+            "guest": {
+                "name": "Reservation Guest",
+                "email": "guest@example.com",
+                "phone": "+1 809 555 0100",
+            },
+            "property": {
+                "listing_id": "663340642010263561",
+                "listing_title": "Three Bedroom Stay",
+                "address": "Private property address",
+            },
+            "lifecycle": {
+                "booking_date": "2026-06-01",
+                "check_in": "2026-06-16",
+                "check_out": "2026-06-19",
+                "status": "confirmed",
+                "cancellation_policy": "Flexible",
+            },
+            "occupancy": {"guests": 2, "nights": 3},
+            "financials": {"total_amount": "620.00", "currency": "usd", "payment_status": "paid"},
+            "notes": "The guest asked about airport transportation.",
+            "raw_message_body": "This conversation must never be stored in a reservation snapshot.",
+        }
+
+        with TemporaryDirectory() as temp_dir:
+            writer = AirbnbReservationSnapshotWriter(temp_dir)
+            first = writer.build_record(snapshot)
+            second = writer.build_record(snapshot)
+
+        self.assertEqual(first["record_key"], second["record_key"])
+        self.assertTrue(first["data"]["mladis_reservation_key"].startswith("AIRBNB-"))
+        self.assertEqual(first["data"]["lifecycle"]["check_in"], "2026-06-16")
+        self.assertEqual(first["data"]["financials"]["total_amount"], "620.00")
+        self.assertEqual(first["data"]["guest"]["phone"], "+1 809 555 0100")
+        self.assertTrue(first["data"]["source"]["needs_reconciliation"])
+        self.assertNotIn("raw_message_body", first["data"])
+        self.assertNotIn("This conversation must never be stored", json.dumps(first))
+
+    def test_airbnb_reservation_snapshot_upsert_is_idempotent(self):
+        snapshot = {
+            "source": {"scope": "normal", "thread_id": "thread-1", "confirmation_code": "CONF-1"},
+            "guest": {"name": "Guest One", "email": "guest1@example.com"},
+            "property": {"listing_id": "listing-1", "listing_title": "Stay One"},
+            "lifecycle": {"check_in": "2026-07-01", "check_out": "2026-07-03", "status": "confirmed"},
+            "guests": 2,
+        }
+        with TemporaryDirectory() as temp_dir:
+            writer = AirbnbReservationSnapshotWriter(temp_dir)
+            self.assertEqual(writer.write_snapshot(snapshot)[1], "created")
+            snapshot["lifecycle"]["status"] = "canceled"
+            self.assertEqual(writer.write_snapshot(snapshot)[1], "updated")
+
+            path = Path(temp_dir) / "BOOKINGS" / "airbnb_reservation_snapshots.jsonl"
+            records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["data"]["lifecycle"]["status"], "canceled")
+
+    def test_airbnb_reservation_snapshot_hashes_contact_after_decline_or_no_response(self):
+        base = {
+            "source": {"thread_id": "thread-consent", "confirmation_code": "CONF-CONSENT"},
+            "guest": {"name": "Guest Consent", "email": "consent@example.com", "phone": "+1 809 555 0101"},
+            "property": {"listing_title": "Stay Consent"},
+            "lifecycle": {"check_in": "2026-08-01", "check_out": "2026-08-03"},
+        }
+        writer = AirbnbReservationSnapshotWriter("/tmp/mladis-reservation-consent-test")
+
+        declined = writer.build_record({**base, "marketing_consent_status": "opted_out"})
+        no_response = writer.build_record({
+            **base,
+            "marketing_consent": {"status": "requested", "response_received": False},
+        })
+
+        for record in (declined, no_response):
+            guest = record["data"]["guest"]
+            self.assertEqual(guest["email"], "")
+            self.assertEqual(guest["phone"], "")
+            self.assertTrue(guest["email_hash"])
+            self.assertTrue(guest["phone_hash"])
+            self.assertNotIn("consent@example.com", json.dumps(record))
+            self.assertNotIn("+1 809 555 0101", json.dumps(record))
+            self.assertIn(record["data"]["marketing_consent"]["status"], {"opted_out", "no_response"})
+
+    def test_combined_airbnb_data_lake_command_writes_both_collections(self):
+        combined_export = {
+            "reservations": [{
+                "source": {"scope": "normal", "thread_id": "thread-combined", "confirmation_code": "CONF-COMBINED"},
+                "guest": {"name": "Combined Guest", "email": "combined@example.com", "phone": "555-0100"},
+                "property": {"listing_id": "listing-combined", "listing_title": "Combined Stay"},
+                "lifecycle": {"check_in": "2026-09-01", "check_out": "2026-09-03", "status": "confirmed"},
+                "guests": 2,
+                "financials": {"total_amount": "200.00", "currency": "usd"},
+            }],
+            "interactions": [{
+                "source_system": "airbnb",
+                "channel": "host_messages",
+                "known_names": ["Combined Guest"],
+                "turns": [{"role": "guest", "text": "I am Combined Guest, combined@example.com, 555-0100."}],
+            }],
+        }
+
+        with TemporaryDirectory() as temp_dir, TemporaryDirectory() as input_dir, override_settings(
+            MLADIS_DATASTORE_LIVE_SYNC_DRIVE=False,
+        ):
+            input_path = Path(input_dir) / "airbnb-combined.json"
+            input_path.write_text(json.dumps(combined_export), encoding="utf-8")
+            output = StringIO()
+            call_command("collect_airbnb_data_lake", input=input_path, root=temp_dir, stdout=output)
+
+            reservation_path = Path(temp_dir) / "BOOKINGS" / "airbnb_reservation_snapshots.jsonl"
+            interaction_path = Path(temp_dir) / "INTERACTIONS" / "anonymous_interactions.jsonl"
+            reservation_text = reservation_path.read_text(encoding="utf-8")
+            interaction_text = interaction_path.read_text(encoding="utf-8")
+
+        self.assertIn("1 interaction(s)", output.getvalue())
+        self.assertIn("CONF-COMBINED", reservation_text)
+        self.assertIn("Combined Stay", reservation_text)
+        self.assertNotIn("Combined Guest", interaction_text)
+        self.assertNotIn("combined@example.com", interaction_text)
+        self.assertNotIn("555-0100", interaction_text)
+
+    def test_airbnb_message_table_capture_composes_reservation_projection(self):
+        table_export = {
+            "captured_at": "2026-08-18T12:00:00-04:00",
+            "normal": [{
+                "dataset": "normal",
+                "thread_id": "table-thread-1",
+                "href": "https://www.airbnb.com/hosting/messages/table-thread-1",
+                "text": "Confirmed · Aug 21, 2026 – Aug 24, 2026 · 3 guests · 3 nights · 4 bedrooms · potential earnings $620.00 · rating 4.9",
+            }],
+            "archived": [],
+        }
+
+        with TemporaryDirectory() as temp_dir, TemporaryDirectory() as input_dir, override_settings(
+            MLADIS_DATASTORE_LIVE_SYNC_DRIVE=False,
+        ):
+            input_path = Path(input_dir) / "airbnb-thread-index.json"
+            input_path.write_text(json.dumps(table_export), encoding="utf-8")
+            call_command("collect_airbnb_data_lake", input=input_path, root=temp_dir)
+
+            reservation_path = Path(temp_dir) / "BOOKINGS" / "airbnb_reservation_snapshots.jsonl"
+            record = json.loads(reservation_path.read_text(encoding="utf-8").splitlines()[0])
+
+        data = record["data"]
+        self.assertEqual(data["source"]["thread_id"], "table-thread-1")
+        self.assertEqual(data["lifecycle"]["check_in"], "2026-08-21")
+        self.assertEqual(data["lifecycle"]["check_out"], "2026-08-24")
+        self.assertEqual(data["occupancy"]["guests"], 3)
+        self.assertEqual(data["occupancy"]["nights"], 3)
+        self.assertEqual(data["financials"]["potential_earnings"], "620.00")
+        self.assertEqual(data["review"]["rating"], "4.90")
+        self.assertEqual(data["review"]["text"], "")
+
+    def test_airbnb_thread_capture_creates_reservation_and_sanitized_interaction(self):
+        thread_capture = [{
+            "dataset": "archived",
+            "thread_id": "capture-thread-1",
+            "preview": "Confirmed · Aug 21, 2026 – Aug 24, 2026 · 2 guests",
+            "detail_text": "Potential earnings $620.00\n4.9 rating from 12 reviews",
+            "messages": [
+                "Private Guest · Booker\n10:00 AM\nCan we arrive early?",
+                "Diana · Host\n10:05 AM\nWe can review arrival options.",
+            ],
+            "captured_at": "2026-08-18T12:00:00-04:00",
+            "message_count": 2,
+            "ok": True,
+        }]
+
+        with TemporaryDirectory() as temp_dir, TemporaryDirectory() as input_dir, override_settings(
+            MLADIS_DATASTORE_LIVE_SYNC_DRIVE=False,
+        ):
+            input_path = Path(input_dir) / "airbnb-thread-captures.jsonl"
+            input_path.write_text("\n".join(json.dumps(row) for row in thread_capture), encoding="utf-8")
+            call_command("collect_airbnb_data_lake", input=input_path, root=temp_dir)
+
+            reservation_text = (Path(temp_dir) / "BOOKINGS" / "airbnb_reservation_snapshots.jsonl").read_text(
+                encoding="utf-8"
+            )
+            interaction_text = (Path(temp_dir) / "INTERACTIONS" / "anonymous_interactions.jsonl").read_text(
+                encoding="utf-8"
+            )
+
+        self.assertIn("capture-thread-1", reservation_text)
+        self.assertIn("2", reservation_text)
+        reservation = json.loads(reservation_text.splitlines()[0])
+        self.assertEqual(reservation["data"]["financials"]["potential_earnings"], "620.00")
+        self.assertEqual(reservation["data"]["review"]["rating"], "4.90")
+        self.assertEqual(reservation["data"]["review"]["count"], 12)
+        self.assertNotIn("Private Guest", interaction_text)
+        self.assertNotIn("Diana", interaction_text)
+        self.assertIn("Can we arrive early?", interaction_text)
 
     def test_redacted_export_removes_direct_contact_and_message_text(self):
         User = get_user_model()

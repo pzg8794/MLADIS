@@ -6,6 +6,9 @@ from django.dispatch import receiver
 LIVE_OBJECT_STATE_APP_LABELS = {"bookings", "operations", "auth", "account", "socialaccount"}
 LIVE_OBJECT_STATE_EXCLUDED_MODELS = {
     "bookings.PageVisit",
+    # Conversation text is written through the identity-free interaction lake
+    # instead of the generic model-state serializer.
+    "bookings.AgentConversation",
 }
 
 
@@ -18,7 +21,11 @@ def promote_known_admin_email(sender, request, user, **kwargs):
 
 @receiver(post_save)
 def write_data_lake_object_state_on_save(sender, instance, created=False, raw=False, using=None, update_fields=None, **kwargs):
-    if raw or not _should_write_object_state(instance):
+    if raw:
+        return
+    if _is_agent_conversation(instance) and created:
+        _write_anonymous_interaction(instance)
+    if not _should_write_object_state(instance):
         return
     _write_object_state(
         event_name="object.created" if created else "object.updated",
@@ -49,6 +56,20 @@ def _should_write_object_state(instance):
     if meta.label in LIVE_OBJECT_STATE_EXCLUDED_MODELS:
         return False
     return True
+
+
+def _is_agent_conversation(instance):
+    return instance._meta.label == "bookings.AgentConversation"
+
+
+def _write_anonymous_interaction(instance):
+    try:
+        from .interaction_lake import AnonymousInteractionLakeWriter
+
+        AnonymousInteractionLakeWriter.from_settings().write_agent_conversation(instance)
+    except Exception:
+        # Learning-lake persistence must never break the transactional app path.
+        return
 
 
 def _write_object_state(*, event_name, instance, created, using, update_fields):

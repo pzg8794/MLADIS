@@ -7,7 +7,7 @@
     {
       "name": "BOOKINGS",
       "purpose": "Booked/reservation objects and booking request lifecycle.",
-      "collections": ["booking_requests", "reservations"]
+      "collections": ["booking_requests", "reservations", "airbnb_reservation_snapshots"]
     },
     {
       "name": "CUSTOMERS",
@@ -18,6 +18,11 @@
       "name": "BOOKINGAGENTS",
       "purpose": "Chat agent conversations, FAQ, and training knowledge.",
       "collections": ["agent_conversations", "agent_faq"]
+    },
+    {
+      "name": "INTERACTIONS",
+      "purpose": "Identity-free conversation turns used for response-quality learning.",
+      "collections": ["anonymous_interactions"]
     },
     {
       "name": "TRANSACTIONS",
