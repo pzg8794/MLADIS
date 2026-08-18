@@ -2,25 +2,26 @@
 
 Operational log for the MLADIS LLC New York publication requirement. This file records what was verified, what was only attempted, and what still needs owner action.
 
-## 2026-08-11 - Forum Affidavit Received But Notary Defect Blocks Filing
+## 2026-08-14 - Forum Affidavit Re-reviewed; Publisher Confirmation Requested
 
-- The Forum affidavit forwarded to the correct MLADIS mailbox on 2026-08-10 was
-  downloaded and reviewed. The original scan had been sent on 2026-07-27 to a
-  misspelled `@mlaids.com` address.
-- The private one-page affidavit identifies MLADIS LLC and states publication
-  once weekly from 2026-06-11 through 2026-07-16.
-- The affidavit is not filing-ready: its notary stamp says the commission
-  expired 2024-10-31, but the affidavit was sworn on 2026-07-27.
-- A correction request was sent from the MLADIS mailbox to The Forum on
-  2026-08-11 at approximately 5:36 AM EDT. Gmail Sent confirmed the subject
-  `Correction needed: MLADIS LLC affidavit notary commission expired`.
-- The request asks for a newly signed and notarized affidavit using a notary
-  whose commission was current on the notarization date and identifies the
-  earlier misspelled recipient address.
-- The Daily News affidavit remains usable. The unsigned Certificate of
-  Publication remains blocked only by a corrected Forum affidavit and final
-  owner review/signature.
-- Working 120-day filing date remains **2026-10-01**.
+- The Forum affidavit forwarded to the correct MLADIS mailbox on 2026-08-10
+  identifies MLADIS LLC and states publication once weekly from 2026-06-11
+  through 2026-07-16.
+- The date beneath the notary information was re-reviewed with the owner. It
+  is a handwritten update to the older preprinted commission-expiration date,
+  rather than a defect caused by the 2026-07-27 jurat date.
+- The 2026-08-11 replacement-affidavit request is withdrawn. A short
+  clarification was sent to The Forum on 2026-08-14: it apologizes for the
+  confusion and asks the publisher to confirm that the handwritten date is the
+  notary's current commission-expiration date and that the supplied affidavit
+  is final.
+- No replacement affidavit is currently requested. The Daily News affidavit
+  remains usable. Preserve both affidavits in the owner-only record; do not
+  commit them.
+- After the publisher replies, the remaining publication work is owner review,
+  signature, and filing of the private Certificate of Publication with both
+  affidavits and the current filing fee. Working 120-day filing date remains
+  **2026-10-01**.
 
 ## 2026-08-08 - Daily News Affidavit Received; Forum Still Open
 
@@ -177,8 +178,8 @@ Save the order confirmation email when it arrives at garcp37@mladis.com.
 
 ## Current Next Actions
 
-1. **[Urgent]** Monitor the 2026-08-11 correction request and obtain a newly signed Forum affidavit with a valid current notarization.
-2. Review the corrected Forum affidavit for exact entity name, designated paper, six successive weeks, notice, publisher signature, jurat, and notary commission.
-3. Complete and sign the private Certificate of Publication draft only after both affidavits pass review.
+1. **[Urgent]** Monitor The Forum's 2026-08-14 confirmation request; do not request a replacement affidavit unless the publisher identifies a real error.
+2. Retain the written confirmation with the private affidavit and verify the exact entity name, designated paper, six successive weeks, notice, publisher signature, and jurat before owner signature.
+3. Complete and sign the private Certificate of Publication draft after the owner completes final review.
 4. File the certificate with both affidavits and the $50 Department of State fee; retain tracking, a full packet copy, and the filing receipt.
 5. Verify the filing history and order a fresh Certificate of Status after acceptance.

@@ -177,9 +177,9 @@ The company must protect Piter's personal credit.
 | High | Sign single-member operating agreement | Done | Executed by Piter on 2026-06-03. |
 | High | Sign initial written consent / member resolutions | Done | Executed by Piter on 2026-06-03. |
 | High | Prepare Queens publication package | Done | Draft package prepared. |
-| High | Start New York publication process | Done | Daily News and Forum six-week publication evidence has been received. The Forum affidavit requires correction because its notary commission expired before the jurat. |
-| High | Complete New York publication requirement | In progress / urgent correction | Daily News affidavit is usable. Corrected Forum affidavit requested 2026-08-11; file by the 2026-10-01 working deadline after both affidavits pass. |
-| High | File Certificate of Publication with affidavits | Blocked by corrected Forum affidavit | Private unsigned draft exists. Sign only after both affidavits pass, then file with the $50 fee and tracking. |
+| High | Start New York publication process | Done | Daily News and Forum six-week publication evidence has been received. |
+| High | Complete New York publication requirement | In progress / confirmation pending | The Forum handwritten commission-expiration date was re-reviewed as a manual update to an older preprinted stamp date; publisher confirmation was requested 2026-08-14. File by the 2026-10-01 working deadline after final owner review. |
+| High | File Certificate of Publication with affidavits | Awaiting publisher confirmation and owner signature | Private unsigned draft exists. After confirmation and review, sign and file with the $50 fee and tracking. |
 | High | Submit NYS TR-570 response | Fax transmitted / acknowledgment pending | Owner faxed the five-page response 2026-08-11. UPS report shows `005/005` and `Result OK`; preserve proof and monitor for Tax Department follow-up. |
 | High | Verify, fund, and operate Mercury business checking | Opened / activation evidence pending | Mercury approved the MLADIS LLC account on 2026-06-19. Stripe recorded a bank account addition that day. Mercury reminders through 2026-07-24 still described funding as pending, and no statement email was found. Verify current status, fund if needed, and archive bank-generated verification and statements privately. |
 | Medium | Start bookkeeping | In progress | Starter chart of accounts is prepared; owner started a bookkeeping/booking system; final integration should wait for the OOP Finance/Booking cleanup. |
