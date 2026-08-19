@@ -24,9 +24,11 @@ the live property records.
    rules-compliant gathering may be allowed only when the applicable property
    rules, permitted hours, noise limits, guest limits, visitor rules, and any
    advance-notice or approval requirements are satisfied.
-6. Parties, disruptive events, unregistered visitors, and day-use arrangements
-   that exceed the property's rules require manual review. Do not promise an
-   approval in chat.
+6. Parties are not allowed where the property rules prohibit them. A birthday
+   or gathering must not be labeled a party without enough evidence, but it
+   also must not be treated as approved. Events, day-use arrangements,
+   unregistered visitors, and any unclear gathering require manual review.
+   Do not promise an approval in chat.
 7. The person who makes the reservation is solely responsible for everything
    that happens during the reservation, regardless of who does what. The
    reservation holder is responsible for accurate registration, rule
@@ -146,7 +148,7 @@ An anonymized controlled test contained this sequence:
    acceptance before MLADIS reviews a reservation request.
 5. The case remains manual review until staff confirms the final facts and
    property-specific rules. The initial permissive practice draft was not sent;
-   the corrected rules-first response was staged as an unsent draft instead.
+   the response composer was cleared, and no customer-facing draft remains.
 
 ## Response quality checklist
 
@@ -162,6 +164,9 @@ Before a staff member approves a draft, verify:
 - The reservation holder's sole responsibility for everything during the
   reservation is stated when the situation involves visitors, gatherings,
   guest-count changes, or other conduct risks.
+- Party prohibition is stated when the property's rules prohibit parties; a
+  birthday or gathering is not silently treated as either a party or an
+  approval without evidence.
 - The message uses short paragraphs or numbered steps, with one idea per
   paragraph, and is easy to read.
 - Grammar and wording have been checked against current property rules rather

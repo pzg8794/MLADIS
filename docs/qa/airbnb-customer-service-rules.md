@@ -31,14 +31,16 @@ A one-night reservation is for the registered overnight guests only. It is not a
 
 The person who makes the reservation is solely responsible for everything that happens during the reservation, regardless of who does what. The reservation holder is responsible for accurate registration, compliance with the property rules, and all conduct and activity connected to the booking. This accountability rule does not authorize visitors or override the one-night/no-day-use rule.
 
+Parties are not allowed where the property rules prohibit them. A birthday or gathering is not automatically proof of a party, but it is also not approval. The workflow must preserve the prohibition and escalate when the facts do not establish whether the proposed activity is rules-compliant.
+
 When an inquiry describes a day-use group, a birthday, a different number of people sleeping, or any other changed count, do not reinterpret the additional people as visitors or assume that the arrangement is allowed. Require an accurate final registered guest count and written agreement to the applicable property rules before MLADIS reviews the request.
 
 ## Controlled response learning
 
 The controlled inquiry exposed a response-generation failure: an initial draft described a possible gathering subject to conditions. That wording left room for the customer to believe extra people might be allowed. The corrected response must state the no-visitors/no-additional-people rule first, state that the reservation holder is solely responsible for everything during the reservation, and then explain that the changed count cannot be approved.
 
-Future test responses must be edited or staged for review when the platform supports it. Do not send successive corrections as separate messages when an existing message can be edited. If a test message is unsent, keep it unsent and replace it with the corrected draft.
+Future test outputs must stay internal to the workflow. Do not send successive corrections as separate messages when an existing message can be edited. If a practice message is created, unsend it and clear the composer after review; no customer-facing draft should remain without explicit owner approval.
 
 ## Test evidence boundary
 
-The latest controlled test used a verified customer inquiry thread. The incorrect drafts were unsent. The final rules-first response was left as an unsent draft for owner review. No claim of customer receipt or customer response is made.
+The latest controlled test used a verified customer inquiry thread. The incorrect drafts were unsent, the composer was cleared, and no customer-facing response remains. No claim of customer receipt or customer response is made.

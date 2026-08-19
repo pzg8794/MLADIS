@@ -14,7 +14,8 @@ private evidence store and never be copied here.
 | No sender adapter means send fails closed | PASS | Unit test and command evidence | 2026-08-18 |
 | One controlled real-customer draft reviewed | PASS | Private active thread; no name, message, or thread ID copied into Git | 2026-08-18 |
 | Rules-first one-night/no-visitors interpretation | PASS | Property rule applied before conversation history; reservation-holder accountability included; no identity copied | 2026-08-18 |
-| Practice edit/unsend handling | PASS | Practice messages were unsent; corrected response was staged and left unsent; no customer-facing practice message remains | 2026-08-18 |
+| Practice edit/unsend handling | PASS | Practice messages were unsent; the composer was cleared; no customer-facing practice message remains | 2026-08-18 |
+| Party prohibition is preserved | PASS | Workflow documentation distinguishes prohibited parties from an unconfirmed birthday/gathering and requires manual review | 2026-08-18 |
 | One approved customer send | NOT CLAIMED | Practice browser activity was not retained as customer-facing evidence; no automated sender adapter | 2026-08-18 |
 | Customer response observed | NOT RUN | Requires approved send and private observation |  |
 

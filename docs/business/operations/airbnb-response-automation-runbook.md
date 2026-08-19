@@ -112,14 +112,17 @@ review. For the one-night property involved, the rules-first interpretation is
 that the reservation is for registered overnight guests only: it is not day use
 and does not permit visitors or additional people to gather at the property.
 The reservation holder is solely responsible for everything during the
-reservation, regardless of who does what. The first permissive practice draft
-was not sent; it was replaced with a corrected rules-first draft left unsent
-for owner review.
+reservation, regardless of who does what. Parties are not allowed where the
+property rules prohibit them. A birthday or gathering is not automatically a
+party, but the agent must not infer approval; it must escalate when the facts
+are unclear. The first permissive practice draft was not sent, the composer
+was cleared, and no customer-facing draft remains.
 
 When the platform supports editing or unsending a practice message, use that
-instead of sending successive correction messages. A practice correction is
-not customer-facing evidence unless the owner explicitly confirms a send and
-the resulting customer-visible state is observed.
+instead of sending successive correction messages. The agent workflow should
+produce an internal draft for staff review, not write directly to Airbnb. A
+practice correction is not customer-facing evidence unless the owner explicitly
+confirms a send and the resulting customer-visible state is observed.
 
 ## Evidence and limitations
 
