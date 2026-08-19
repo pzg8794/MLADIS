@@ -779,6 +779,27 @@ class DataLakeExporterTests(TestCase):
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["record_key"], writer.build_record(snapshot)["record_key"])
 
+    def test_airbnb_reservation_writer_heals_thread_only_legacy_scope_key(self):
+        snapshot = {
+            "source": {"scope": "archived", "thread_id": "legacy-thread-only"},
+            "guest": {"name": "Legacy Thread Guest"},
+            "property": {"listing_title": "Legacy Thread Stay"},
+            "lifecycle": {"status": "confirmed"},
+        }
+        with TemporaryDirectory() as temp_dir:
+            writer = AirbnbReservationSnapshotWriter(temp_dir)
+            writer.layout.initialize()
+            legacy_record = writer.build_record(snapshot)
+            legacy_record["record_key"] = "reservation_snapshot:ARCHIVED-OLD-SCOPE-KEY"
+            path = writer.layout.collection_path(AIRBNB_RESERVATION_SNAPSHOTS_COLLECTION)
+            path.write_text(json.dumps(legacy_record) + "\n", encoding="utf-8")
+
+            writer.write_snapshot(snapshot)
+            records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["record_key"], writer.build_record(snapshot)["record_key"])
+
     def test_airbnb_reservation_snapshot_hashes_contact_after_decline_or_no_response(self):
         base = {
             "source": {"thread_id": "thread-consent", "confirmation_code": "CONF-CONSENT"},
