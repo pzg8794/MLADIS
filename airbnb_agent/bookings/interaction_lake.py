@@ -162,6 +162,7 @@ class AnonymousInteractionLakeWriter:
         known_names=(),
         occurred_at=None,
         observation_semantics="snapshot",
+        source_observation_fingerprint="",
     ):
         normalized_turns = []
         for index, turn in enumerate(turns or []):
@@ -195,6 +196,10 @@ class AnonymousInteractionLakeWriter:
                 "participant_names_removed": True,
             },
         }
+        if source_observation_fingerprint:
+            data["source_observation_fingerprint"] = self.sanitizer.safe_label(
+                source_observation_fingerprint
+            )
         source_label = self.sanitizer.safe_label(source_system, default="unknown")
         channel_label = self.sanitizer.safe_label(channel, default="unknown")
         occurred_at_value = self._iso(occurred_at)
@@ -208,15 +213,18 @@ class AnonymousInteractionLakeWriter:
         # are deliberately excluded so retries remain idempotent.
         if supplied_occurred_at is not None:
             identity["occurred_at"] = occurred_at_value
-        serialized_identity = json.dumps(
-            identity,
-            cls=DataLakeJsonEncoder,
-            sort_keys=True,
-            separators=(",", ":"),
-        )
-        record_key = hashlib.sha256(
-            f"{ANONYMOUS_INTERACTIONS_COLLECTION.key}:{serialized_identity}".encode("utf-8")
-        ).hexdigest()
+        if source_observation_fingerprint:
+            record_key = str(source_observation_fingerprint)
+        else:
+            serialized_identity = json.dumps(
+                identity,
+                cls=DataLakeJsonEncoder,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            record_key = hashlib.sha256(
+                f"{ANONYMOUS_INTERACTIONS_COLLECTION.key}:{serialized_identity}".encode("utf-8")
+            ).hexdigest()
         return {
             "schema_version": "1.0",
             "collection": ANONYMOUS_INTERACTIONS_COLLECTION.key,
@@ -229,6 +237,22 @@ class AnonymousInteractionLakeWriter:
             "extracted_at": timezone.now().isoformat(),
             "data": data,
         }
+
+    def source_observation_fingerprint(self, **kwargs):
+        """Hash the complete redacted source observation before delta slicing."""
+        supplied_occurred_at = kwargs.get("occurred_at")
+        record = self.build_record(**kwargs, observation_semantics="snapshot")
+        identity = {
+            "source_system": record["source_system"],
+            "channel": record["channel"],
+            "data": record["data"],
+        }
+        if supplied_occurred_at is not None:
+            identity["occurred_at"] = record["occurred_at"]
+        serialized = json.dumps(identity, cls=DataLakeJsonEncoder, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(
+            f"{ANONYMOUS_INTERACTIONS_COLLECTION.key}:source-observation:{serialized}".encode("utf-8")
+        ).hexdigest()
 
     def _iso(self, value):
         if isinstance(value, (datetime, date)):
