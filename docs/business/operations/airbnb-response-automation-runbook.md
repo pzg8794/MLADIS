@@ -71,6 +71,11 @@ required.
 The detailed property-specific rules and service response ladder are maintained
 in the [Customer Service Playbook](./customer-service-playbook.md).
 
+When a reservation is discussed, the reservation holder must be treated as the
+sole responsible party for everything that happens during the reservation,
+regardless of who does what. This responsibility statement does not authorize
+visitors or change a property's guest-count, day-use, or gathering rules.
+
 ## Actual-customer test protocol
 
 For a controlled test, the host may designate one real customer thread and
@@ -96,10 +101,18 @@ Do not expose the customer's name or message in Git documentation.
 One controlled draft test used the private active Airbnb thread where a guest
 first proposed a daytime birthday use for ten people, then clarified that only
 five would sleep overnight. The workflow correctly kept the case in manual
-review. The correct policy interpretation is that a small, normal gathering may
-be possible when the property rules and advance-notice conditions are met, but
-the mismatch between total people and overnight guests must be resolved and the
-request cannot be approved from chat. No message was sent.
+review. For the one-night property involved, the rules-first interpretation is
+that the reservation is for registered overnight guests only: it is not day use
+and does not permit visitors or additional people to gather at the property.
+The reservation holder is solely responsible for everything during the
+reservation, regardless of who does what. The first permissive practice draft
+was not sent; it was replaced with a corrected rules-first draft left unsent
+for owner review.
+
+When the platform supports editing or unsending a practice message, use that
+instead of sending successive correction messages. A practice correction is
+not customer-facing evidence unless the owner explicitly confirms a send and
+the resulting customer-visible state is observed.
 
 ## Evidence and limitations
 

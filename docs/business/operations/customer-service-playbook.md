@@ -27,17 +27,22 @@ the live property records.
 6. Parties, disruptive events, unregistered visitors, and day-use arrangements
    that exceed the property's rules require manual review. Do not promise an
    approval in chat.
-7. Before a reservation proceeds, require an explicit written confirmation that
-   the guest count is accurate and that the customer will follow the property
-   rules and any approved gathering conditions.
-8. If Airbnb's listing summary and arrival guide conflict, stop guessing and
+7. The person who makes the reservation is solely responsible for everything
+   that happens during the reservation, regardless of who does what. The
+   reservation holder is responsible for accurate registration, rule
+   compliance, and the conduct and activity connected to the booking.
+8. Before a reservation proceeds, require an explicit written confirmation that
+   the guest count is accurate, the reservation holder accepts sole
+   responsibility, and the customer will follow the property rules and any
+   approved gathering conditions.
+9. If Airbnb's listing summary and arrival guide conflict, stop guessing and
    escalate the answer to staff. A stale or contradictory source is not a valid
    basis for an automated promise.
-9. Do not expose private Wi-Fi credentials, access codes, host phone numbers, or
+10. Do not expose private Wi-Fi credentials, access codes, host phone numbers, or
    other operational secrets in public AI responses, Git, the anonymized
    interaction lake, or a public help page. Deliver those details only through
    the approved post-confirmation channel.
-10. Do not promise availability, pricing, discounts, refunds, cancellation
+11. Do not promise availability, pricing, discounts, refunds, cancellation
     outcomes, or reservation confirmation without current system evidence and
     staff authorization.
 
@@ -123,16 +128,17 @@ An anonymized controlled test contained this sequence:
    stay.
 2. The customer clarified that it was a birthday and later said ten people
    would use the common area while five would sleep overnight.
-3. The correct interpretation is not “ten overnight guests,” and it is not
-   “all gatherings are forbidden.” It is a request for a possible
-   rules-compliant gathering with a mismatch between total people and registered
-   overnight guests.
-4. The draft must ask for the dates, property, final overnight count, total
-   people present, and written agreement to the rules. It must say that MLADIS
-   will confirm whether the proposed gathering fits the applicable limits.
-5. The case remains manual review until staff confirms the gathering, visitor
-   conditions, hours, and property-specific rules. No message was sent in the
-   controlled test.
+3. For the one-night property involved in the test, the applicable rule is
+   narrower: the reservation is for registered overnight guests only. It is not
+   day use and does not permit visitors or additional people to gather at the
+   property. The reservation holder remains solely responsible for everything
+   during the reservation, regardless of who does what.
+4. The draft must say that the described arrangement cannot be approved and
+   must request an accurate registered overnight guest count and written rule
+   acceptance before MLADIS reviews a reservation request.
+5. The case remains manual review until staff confirms the final facts and
+   property-specific rules. The initial permissive practice draft was not sent;
+   the corrected rules-first response was staged as an unsent draft instead.
 
 ## Response quality checklist
 
@@ -145,6 +151,9 @@ Before a staff member approves a draft, verify:
 - No availability, price, discount, exception, or approval is invented.
 - The customer is asked only for the missing facts needed to proceed.
 - Written rule acceptance is requested before the reservation continues.
+- The reservation holder's sole responsibility for everything during the
+  reservation is stated when the situation involves visitors, gatherings,
+  guest-count changes, or other conduct risks.
 - The message uses short paragraphs or numbered steps and is easy to read.
 - Any conflict or risky topic is marked for staff review.
 
