@@ -28,6 +28,11 @@ No direct main edits.
 directly on `main`. Start from current `main`, then work on `codex/dev` unless
 Piter explicitly approves a separate feature branch.
 
+GitHub is the durable engineering communication record. The approved Google
+Drive MLADIS Object Lake is the private record for runtime data and evidence.
+Use the [GitHub and Drive communication contract](github-drive-communication-contract.md)
+for handoffs, external-agent feedback, and privacy boundaries.
+
 ## Branch Initialization
 
 Use the canonical checkout:

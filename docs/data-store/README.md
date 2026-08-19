@@ -99,6 +99,7 @@ python manage.py export_data_lake --sync-drive
 
 ## Documents
 
+- [GitHub and Drive communication contract](../dev/github-drive-communication-contract.md)
 - [Drive object lake contract](drive-data-lake-contract.md)
 - [Collection registry](collections.json)
 - [Anonymous interaction lake contract](anonymous-interaction-lake-contract.md)

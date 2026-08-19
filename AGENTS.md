@@ -6,6 +6,11 @@
 
 - The environment name is `MLADIS Stable Dev Environment`.
 - The canonical repository is `pzg8794/MLADIS`.
+- GitHub is the durable engineering communication record, while the approved
+  Google Drive MLADIS Object Lake stores private runtime data and evidence.
+  Record sanitized decisions, feedback, handoffs, and verification in GitHub;
+  never commit raw customer data or secrets. Follow
+  `docs/dev/github-drive-communication-contract.md`.
 - AI work starts from current `main` but is performed on `codex/dev`. Never edit or push directly to `main`.
 - Worktrees are forbidden unless Piter explicitly approves one for the current task.
 - Every task must declare its active object, allowed files, forbidden files, required tests, and stop condition before editing.
