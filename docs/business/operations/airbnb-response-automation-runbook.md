@@ -36,6 +36,13 @@ flowchart LR
 5. Obtain staff confirmation immediately before any future send action.
 6. Record the result and evidence in the verification tracker.
 
+The response formatter must keep drafts concise: short paragraphs, one idea per
+paragraph, and only the facts needed for the next decision. A greeting is fine
+when it is its own paragraph; never combine it with the first substantive idea
+or follow it with a wall of text. Before drafting from older guidance, compare
+the rule wording with the current property record and correct grammar or
+ambiguity.
+
 ## Draft command
 
 From the repository:

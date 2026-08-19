@@ -45,6 +45,14 @@ the live property records.
 11. Do not promise availability, pricing, discounts, refunds, cancellation
     outcomes, or reservation confirmation without current system evidence and
     staff authorization.
+12. Keep customer messages short and easy to scan. Each paragraph should carry
+   one idea, and a response should ask only for the information needed for the
+   next decision. A greeting is fine, but keep it in its own paragraph and do
+   not attach it to the first substantive sentence. Do not overload the
+   customer with a long list or a wall of text.
+13. Treat old rule wording as a source to verify, not as permanent truth. Before
+    using it in a customer response, compare it with the current property
+    record, correct grammar and ambiguity, and escalate any unresolved conflict.
 
 ## Response decision ladder
 
@@ -154,7 +162,10 @@ Before a staff member approves a draft, verify:
 - The reservation holder's sole responsibility for everything during the
   reservation is stated when the situation involves visitors, gatherings,
   guest-count changes, or other conduct risks.
-- The message uses short paragraphs or numbered steps and is easy to read.
+- The message uses short paragraphs or numbered steps, with one idea per
+  paragraph, and is easy to read.
+- Grammar and wording have been checked against current property rules rather
+  than copied unchanged from an old response.
 - Any conflict or risky topic is marked for staff review.
 
 ## Source and maintenance record

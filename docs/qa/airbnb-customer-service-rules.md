@@ -13,6 +13,18 @@ Every customer-facing response must be generated in this order:
 
 Conversation history improves the response; it does not override the property rules.
 
+## Message quality and rule maintenance
+
+Customer messages must be concise and easy to scan. Use short paragraphs, with
+one idea per paragraph. A greeting such as “Hi [name],” is fine when it is its
+own paragraph; never combine the greeting with the first substantive idea. Ask
+only for the facts needed for the next decision and do not send a wall of text.
+
+The written rules are maintained over time and may become stale. Before using a
+rule in a customer response, compare it with the current property record,
+correct grammar and ambiguous wording, and escalate any conflict instead of
+silently inventing an update.
+
 ## One-night reservation rule
 
 A one-night reservation is for the registered overnight guests only. It is not a day-use booking and does not permit visitors or additional people to gather at the property, including people who do not stay overnight. The number of people present must match the reservation's registered guest count.
