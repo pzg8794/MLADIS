@@ -13,12 +13,26 @@ MLADIS_REMOTE_SERVICE="${MLADIS_REMOTE_SERVICE:-mladis}"
 MLADIS_REMOTE_USER_HOME="${MLADIS_REMOTE_USER_HOME:-/home/pitergarcia}"
 MLADIS_DEPLOY_PRUNE="${MLADIS_DEPLOY_PRUNE:-0}"
 MLADIS_RELOAD_CADDY="${MLADIS_RELOAD_CADDY:-0}"
+MLADIS_RELEASE_TAG="${MLADIS_RELEASE_TAG:-}"
+MLADIS_ROLLBACK_TAG="${MLADIS_ROLLBACK_TAG:-}"
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 DEPLOY_LABEL="${MLADIS_DEPLOY_LABEL:-$STAMP}"
-GIT_COMMIT="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo working-tree)"
+GIT_COMMIT="$(git -C "$PROJECT_ROOT" rev-parse --verify HEAD 2>/dev/null || true)"
 LOCAL_ARCHIVE="$(mktemp "${TMPDIR:-/tmp}/mladis-release.${STAMP}.XXXXXX.tar.gz")"
+PACKAGE_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/mladis-package.${STAMP}.XXXXXX")"
 REMOTE_ARCHIVE="$MLADIS_REMOTE_USER_HOME/mladis-release-$STAMP.tar.gz"
+
+file_checksum() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    echo "A SHA-256 utility is required for deployment." >&2
+    return 1
+  fi
+}
 
 truthy() {
   case "${1:-}" in
@@ -29,12 +43,64 @@ truthy() {
 
 cleanup() {
   rm -f "$LOCAL_ARCHIVE"
+  rm -rf "$PACKAGE_ROOT"
 }
 
 trap cleanup EXIT
 
 if [[ ! -f "$APP_DIR/manage.py" ]]; then
   echo "Could not find manage.py in $APP_DIR" >&2
+  exit 1
+fi
+
+if [[ -z "$GIT_COMMIT" ]]; then
+  echo "Deployment blocked: the deployment commit cannot be identified." >&2
+  exit 1
+fi
+
+if [[ -n "$(git -C "$PROJECT_ROOT" status --porcelain --untracked-files=all)" ]]; then
+  echo "Deployment blocked: the working tree is not clean." >&2
+  git -C "$PROJECT_ROOT" status --short
+  exit 1
+fi
+
+if [[ -z "$MLADIS_RELEASE_TAG" || -z "$MLADIS_ROLLBACK_TAG" ]]; then
+  echo "Deployment blocked: MLADIS_RELEASE_TAG and MLADIS_ROLLBACK_TAG are required." >&2
+  exit 1
+fi
+
+if [[ ! "$MLADIS_RELEASE_TAG" =~ ^[A-Za-z0-9._/-]+$ || ! "$MLADIS_ROLLBACK_TAG" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+  echo "Deployment blocked: release and rollback tags contain unsupported characters." >&2
+  exit 1
+fi
+
+RELEASE_COMMIT="$(git -C "$PROJECT_ROOT" rev-parse --verify "$MLADIS_RELEASE_TAG^{commit}" 2>/dev/null || true)"
+ROLLBACK_COMMIT="$(git -C "$PROJECT_ROOT" rev-parse --verify "$MLADIS_ROLLBACK_TAG^{commit}" 2>/dev/null || true)"
+if [[ "$RELEASE_COMMIT" != "$GIT_COMMIT" ]]; then
+  echo "Deployment blocked: release tag $MLADIS_RELEASE_TAG does not point to HEAD $GIT_COMMIT." >&2
+  exit 1
+fi
+if [[ -z "$ROLLBACK_COMMIT" || "$MLADIS_ROLLBACK_TAG" == "$MLADIS_RELEASE_TAG" ]]; then
+  echo "Deployment blocked: rollback target is missing or invalid." >&2
+  exit 1
+fi
+
+RELEASE_MANIFEST="$(grep -Rl --exclude-dir=.git -F "Release tag: \`$MLADIS_RELEASE_TAG\`" "$PROJECT_ROOT/docs/releases" 2>/dev/null | head -n 1 || true)"
+if [[ -z "$RELEASE_MANIFEST" ]]; then
+  echo "Deployment blocked: no release manifest identifies $MLADIS_RELEASE_TAG." >&2
+  exit 1
+fi
+if ! grep -Fq "$GIT_COMMIT" "$RELEASE_MANIFEST" || ! grep -Fq "$MLADIS_ROLLBACK_TAG" "$RELEASE_MANIFEST"; then
+  echo "Deployment blocked: release manifest does not identify the commit and rollback target." >&2
+  exit 1
+fi
+
+if ! git -C "$PROJECT_ROOT" ls-remote --exit-code origin "refs/tags/$MLADIS_RELEASE_TAG" >/dev/null 2>&1; then
+  echo "Deployment blocked: release tag $MLADIS_RELEASE_TAG is not visible on origin." >&2
+  exit 1
+fi
+if ! git -C "$PROJECT_ROOT" ls-remote --exit-code origin "refs/tags/$MLADIS_ROLLBACK_TAG" >/dev/null 2>&1; then
+  echo "Deployment blocked: rollback tag $MLADIS_ROLLBACK_TAG is not visible on origin." >&2
   exit 1
 fi
 
@@ -64,10 +130,22 @@ if [[ -f "$PROJECT_ROOT/frontend/package.json" ]]; then
     fi
     npm run build:django
   )
+  if [[ -n "$(git -C "$PROJECT_ROOT" status --porcelain --untracked-files=all)" ]]; then
+    echo "Deployment blocked: frontend packaging changed the committed tree." >&2
+    git -C "$PROJECT_ROOT" status --short
+    exit 1
+  fi
 fi
 
 echo
 echo "Packaging MLADIS app for deployment..."
+cp -a "$APP_DIR" "$PACKAGE_ROOT/airbnb_agent"
+cat > "$PACKAGE_ROOT/airbnb_agent/.mladis-release-source-identity" <<EOF
+release_tag=$MLADIS_RELEASE_TAG
+commit_sha=$GIT_COMMIT
+rollback_target=$MLADIS_ROLLBACK_TAG
+deployment_timestamp=$STAMP
+EOF
 tar \
   --exclude='airbnb_agent/.env' \
   --exclude='airbnb_agent/.venv' \
@@ -81,8 +159,9 @@ tar \
   --exclude='airbnb_agent/__pycache__' \
   --exclude='airbnb_agent/*/__pycache__' \
   -czf "$LOCAL_ARCHIVE" \
-  -C "$PROJECT_ROOT" \
+  -C "$PACKAGE_ROOT" \
   airbnb_agent
+ARTIFACT_SHA256="$(file_checksum "$LOCAL_ARCHIVE")"
 
 echo
 echo "Uploading release archive to $MLADIS_GCE_INSTANCE..."
@@ -107,7 +186,7 @@ gcloud compute ssh \
   "$MLADIS_GCE_INSTANCE" \
   --project "$MLADIS_GCP_PROJECT_ID" \
   --zone "$MLADIS_GCE_ZONE" \
-  --command "bash -s -- '$REMOTE_ARCHIVE' '$MLADIS_REMOTE_APP_DIR' '$MLADIS_REMOTE_SERVICE' '$DEPLOY_LABEL' '$GIT_COMMIT' '$PRUNE_FLAG' '$RELOAD_CADDY_FLAG'" <<'REMOTE'
+  --command "bash -s -- '$REMOTE_ARCHIVE' '$MLADIS_REMOTE_APP_DIR' '$MLADIS_REMOTE_SERVICE' '$DEPLOY_LABEL' '$GIT_COMMIT' '$MLADIS_RELEASE_TAG' '$MLADIS_ROLLBACK_TAG' '$ARTIFACT_SHA256' '$STAMP' '$PRUNE_FLAG' '$RELOAD_CADDY_FLAG'" <<'REMOTE'
 set -Eeuo pipefail
 
 DEPLOY_ARCHIVE="$1"
@@ -115,8 +194,12 @@ REMOTE_APP_DIR="$2"
 REMOTE_SERVICE="$3"
 DEPLOY_LABEL="$4"
 GIT_COMMIT="$5"
-PRUNE_FLAG="$6"
-RELOAD_CADDY_FLAG="$7"
+RELEASE_TAG="$6"
+ROLLBACK_TAG="$7"
+EXPECTED_ARTIFACT_SHA256="$8"
+DEPLOYMENT_TIMESTAMP="$9"
+PRUNE_FLAG="${10}"
+RELOAD_CADDY_FLAG="${11}"
 
 truthy() {
   case "${1:-}" in
@@ -139,11 +222,29 @@ if [[ ! -d "$REMOTE_APP_DIR" ]]; then
   exit 1
 fi
 
+if command -v sha256sum >/dev/null 2>&1; then
+  ACTUAL_ARTIFACT_SHA256="$(sha256sum "$DEPLOY_ARCHIVE" | awk '{print $1}')"
+elif command -v shasum >/dev/null 2>&1; then
+  ACTUAL_ARTIFACT_SHA256="$(shasum -a 256 "$DEPLOY_ARCHIVE" | awk '{print $1}')"
+else
+  echo "Deployment blocked: the VM has no SHA-256 utility." >&2
+  exit 1
+fi
+if [[ "$ACTUAL_ARTIFACT_SHA256" != "$EXPECTED_ARTIFACT_SHA256" ]]; then
+  echo "Deployment blocked: uploaded artifact hash does not match the packaged artifact." >&2
+  exit 1
+fi
+
 tar -xzf "$DEPLOY_ARCHIVE" -C "$RELEASE_DIR"
 
 SOURCE_DIR="$RELEASE_DIR/airbnb_agent"
 if [[ ! -f "$SOURCE_DIR/manage.py" ]]; then
   echo "Release archive did not contain airbnb_agent/manage.py" >&2
+  exit 1
+fi
+IDENTITY_FILE="$SOURCE_DIR/.mladis-release-source-identity"
+if [[ ! -f "$IDENTITY_FILE" ]] || ! grep -Fxq "release_tag=$RELEASE_TAG" "$IDENTITY_FILE" || ! grep -Fxq "commit_sha=$GIT_COMMIT" "$IDENTITY_FILE" || ! grep -Fxq "rollback_target=$ROLLBACK_TAG" "$IDENTITY_FILE"; then
+  echo "Deployment blocked: the artifact identity does not match the release arguments." >&2
   exit 1
 fi
 
@@ -207,6 +308,20 @@ fi
 echo "Restarting $REMOTE_SERVICE service..."
 sudo systemctl restart "$REMOTE_SERVICE"
 sudo systemctl --no-pager --full status "$REMOTE_SERVICE" | head -n 12
+if ! sudo systemctl is-active --quiet "$REMOTE_SERVICE"; then
+  echo "Deployment failed: $REMOTE_SERVICE is not active after restart." >&2
+  exit 1
+fi
+
+cat > "$REMOTE_APP_DIR/.mladis-release-identity.json" <<EOF
+{
+  "release": "$RELEASE_TAG",
+  "commit_sha": "$GIT_COMMIT",
+  "deployment_timestamp": "$DEPLOYMENT_TIMESTAMP",
+  "artifact_sha256": "$EXPECTED_ARTIFACT_SHA256",
+  "rollback_target": "$ROLLBACK_TAG"
+}
+EOF
 
 if truthy "$RELOAD_CADDY_FLAG"; then
   echo "Reloading Caddy..."
@@ -216,11 +331,18 @@ fi
 echo
 echo "Deploy label: $DEPLOY_LABEL"
 echo "Git commit: $GIT_COMMIT"
+echo "Release tag: $RELEASE_TAG"
+echo "Artifact SHA-256: $EXPECTED_ARTIFACT_SHA256"
+echo "Rollback target: $ROLLBACK_TAG"
 echo "Production URL: https://mladis.com/"
 REMOTE
 
 echo
 echo "Deploy finished for https://mladis.com/"
+echo "Release tag: $MLADIS_RELEASE_TAG"
+echo "Commit: $GIT_COMMIT"
+echo "Artifact SHA-256: $ARTIFACT_SHA256"
+echo "Rollback target: $MLADIS_ROLLBACK_TAG"
 if truthy "$MLADIS_DEPLOY_PRUNE"; then
   echo "Remote prune mode was enabled for this deploy."
 else

@@ -10,6 +10,12 @@ This contract exists so a bad local or production change never leaves operators 
 No release version, no deployment.
 ```
 
+The deployment script enforces this contract. Production deployment is blocked
+unless the source checkout is clean, the exact full commit SHA is known, the
+release and rollback tags exist locally and on `origin`, and a release manifest
+under `docs/releases/` identifies both the deployment commit and rollback
+target.
+
 ## Release Requirement
 
 Before any deployment, an agent must create or identify a release version for the exact commit being deployed.
@@ -99,6 +105,17 @@ Deployment performed by:
 Deployment timestamp:
 ```
 
+The deploy script also stages a non-sensitive source identity file inside the
+archive, computes the archive SHA-256 before upload, verifies the same hash on
+the VM, and writes the successful deployment identity to:
+
+```text
+/home/pitergarcia/airbnb_agent/.mladis-release-identity.json
+```
+
+That record contains only the release tag, full commit SHA, deployment
+timestamp, artifact SHA-256, and rollback target.
+
 If more than one object is being deployed, the manifest must say why this is safe. Multi-object deploys require explicit approval.
 
 ## Required Pre-Deployment Checks
@@ -154,6 +171,18 @@ The tag must be pushed before or as part of the deployment process.
 Do not create a release tag after deploying as an afterthought.
 
 ## Deployment Rule
+
+Production deployment requires the exact release and rollback tags:
+
+```bash
+MLADIS_RELEASE_TAG=release/YYYY.MM.DD-N \
+MLADIS_ROLLBACK_TAG=release/YYYY.MM.DD-N-previous \
+./deploy_mladis_vm.command
+```
+
+The release tag must point to `HEAD` and the release manifest must identify the
+same full commit SHA. A clean checkout is mandatory. The existing non-pruning
+sync and runtime-backup behavior remains unchanged.
 
 A deployment report must include:
 

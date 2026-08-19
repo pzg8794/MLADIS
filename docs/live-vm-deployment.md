@@ -51,11 +51,27 @@ callbacks too. The Meta app should also allow the stable local callback
 
 ## One-File Deployment Pipeline
 
-Use the root-level command:
+Use the root-level command after the release tag and manifest have been
+created, the required checks have passed, and the checkout is clean:
 
 ```bash
 ./deploy_mladis_vm.command
 ```
+
+For production, provide both release identities:
+
+```bash
+MLADIS_RELEASE_TAG=release/YYYY.MM.DD-N \
+MLADIS_ROLLBACK_TAG=release/YYYY.MM.DD-N-previous \
+./deploy_mladis_vm.command
+```
+
+The script refuses dirty or unidentifiable source, untagged commits, missing
+release manifests, rollback tags that are not on `origin`, artifact hash
+mismatches, and a release artifact whose embedded source identity does not
+match the deployment arguments. After a successful restart it records the
+non-sensitive identity at
+`/home/pitergarcia/airbnb_agent/.mladis-release-identity.json`.
 
 What it does:
 
