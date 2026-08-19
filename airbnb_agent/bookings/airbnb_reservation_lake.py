@@ -180,7 +180,7 @@ class AirbnbReservationSnapshotWriter:
                 "status": self._text(lifecycle.get("status") or snapshot.get("status")),
                 "cancellation_policy": self._text(lifecycle.get("cancellation_policy")),
                 "cancellation_status": self._text(lifecycle.get("cancellation_status")),
-                "last_modified": self._timestamp(lifecycle.get("last_modified")),
+                "last_modified": self._optional_timestamp(lifecycle.get("last_modified")),
             },
             "occupancy": {
                 "guests": self._integer(occupancy.get("guests") or snapshot.get("guests") or snapshot.get("guest_count")),
@@ -203,7 +203,7 @@ class AirbnbReservationSnapshotWriter:
             },
             "communication": {
                 "message_count": self._integer(communication.get("message_count")),
-                "last_message_at": self._timestamp(communication.get("last_message_at")),
+                "last_message_at": self._optional_timestamp(communication.get("last_message_at")),
                 "has_raw_messages": False,
             },
             "review": {
@@ -320,6 +320,13 @@ class AirbnbReservationSnapshotWriter:
         if timezone.is_naive(parsed):
             parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
         return parsed.isoformat()
+
+    @staticmethod
+    def _optional_timestamp(value):
+        """Normalize an optional source timestamp without inventing one."""
+        if not value:
+            return ""
+        return AirbnbReservationSnapshotWriter._timestamp(value)
 
 
 def load_reservation_documents(path):

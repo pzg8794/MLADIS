@@ -41,16 +41,34 @@ class AirbnbCaptureState:
         return state
 
     def select_new(self, documents, kind):
-        """Return unseen documents and the count skipped from the checkpoint."""
+        """Return captures whose content is new since the last successful write.
+
+        Thread identity alone is not a sufficient resume key: an existing
+        Airbnb thread can receive another message or a reservation can change
+        status.  The checkpoint therefore tracks a private content fingerprint
+        per thread and per collection.
+        """
         selected = []
         skipped = 0
         seen = set()
         for document in documents:
             key = self.key_for(document, kind)
-            if key in seen or self.entries.get(key, {}).get(kind):
+            fingerprint = self.fingerprint_for(document, kind)
+            entry = self.entries.get(key, {})
+            known_fingerprints = self._known_fingerprints(entry, kind)
+            observation_key = (key, fingerprint)
+            if fingerprint in known_fingerprints or observation_key in seen:
                 skipped += 1
                 continue
-            seen.add(key)
+            # Older checkpoints stored only a boolean per thread.  A legacy
+            # interaction entry can still be resumed when its message count
+            # grows; the first successful pass upgrades it with a fingerprint.
+            if not known_fingerprints and entry.get(kind) and self._legacy_observation_is_unchanged(
+                document, entry, kind
+            ):
+                skipped += 1
+                continue
+            seen.add(observation_key)
             selected.append(document)
         return selected, skipped
 
@@ -58,6 +76,11 @@ class AirbnbCaptureState:
         key = self.key_for(document, kind)
         entry = self.entries.setdefault(key, {})
         entry[kind] = True
+        fingerprints = entry.setdefault("fingerprints", {}).setdefault(kind, [])
+        fingerprint = self.fingerprint_for(document, kind)
+        if fingerprint not in fingerprints:
+            fingerprints.append(fingerprint)
+        entry.setdefault("observation_counts", {})[kind] = self._observation_count(document, kind)
         entry["last_seen_at"] = datetime.now(timezone.utc).isoformat()
 
     def save(self):
@@ -101,6 +124,12 @@ class AirbnbCaptureState:
             entry = self.entries.setdefault(key, {})
             entry.setdefault("reservations", True)
             entry.setdefault("interactions", True)
+            entry.setdefault("fingerprints", {}).setdefault("reservations", []).append(
+                self.fingerprint_for(record, "reservations")
+            )
+            entry.setdefault("observation_counts", {}).setdefault(
+                "interactions", (data.get("communication") or {}).get("message_count")
+            )
 
     @classmethod
     def key_for(cls, document, kind):
@@ -125,6 +154,75 @@ class AirbnbCaptureState:
         encoded = json.dumps(stable, default=str, sort_keys=True, separators=(",", ":"))
         digest = hashlib.sha256(f"{kind}:{encoded}".encode("utf-8")).hexdigest()
         return f"content:{digest}"
+
+    @classmethod
+    def fingerprint_for(cls, document, kind):
+        """Return a private, deterministic fingerprint for one observation."""
+        if not isinstance(document, dict):
+            raise ValueError("Airbnb capture documents must be objects.")
+
+        if kind == "reservations":
+            from .airbnb_reservation_lake import AirbnbReservationSnapshotWriter
+
+            payload = document.get("data") if document.get("collection") else None
+            if not isinstance(payload, dict):
+                payload = AirbnbReservationSnapshotWriter("").build_record(document).get("data", {})
+        elif kind == "interactions":
+            from .interaction_lake import AnonymousInteractionLakeWriter
+
+            if document.get("collection") == "anonymous_interactions":
+                payload = document.get("data") or {}
+            else:
+                payload = AnonymousInteractionLakeWriter("").build_record(
+                    source_system=document.get("source_system", "airbnb"),
+                    channel=document.get("channel", "host_messages"),
+                    language=document.get("language", ""),
+                    topic=document.get("topic", "general"),
+                    outcome=document.get("outcome", ""),
+                    turns=document.get("turns", []),
+                    known_names=document.get("known_names", []),
+                    occurred_at=document.get("occurred_at"),
+                ).get("data", {})
+        else:
+            payload = dict(document)
+
+        encoded = json.dumps(payload, default=str, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(f"{kind}:{encoded}".encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _known_fingerprints(entry, kind):
+        fingerprints = entry.get("fingerprints") if isinstance(entry, dict) else None
+        values = fingerprints.get(kind) if isinstance(fingerprints, dict) else None
+        return set(values or [])
+
+    @classmethod
+    def _legacy_observation_is_unchanged(cls, document, entry, kind):
+        counts = entry.get("observation_counts") if isinstance(entry, dict) else None
+        if not isinstance(counts, dict) or counts.get(kind) is None:
+            # A legacy checkpoint without an observation count is upgraded by
+            # accepting one pass; subsequent runs use fingerprints.
+            return False
+        current_count = cls._observation_count(document, kind)
+        return current_count is not None and current_count <= counts.get(kind)
+
+    @staticmethod
+    def _observation_count(document, kind):
+        if not isinstance(document, dict):
+            return None
+        if kind == "interactions":
+            turns = document.get("turns")
+            return len(turns) if isinstance(turns, list) else None
+        if kind == "reservations":
+            if document.get("collection") == "airbnb_reservation_snapshots":
+                data = document.get("data") or {}
+                communication = data.get("communication") or {}
+            else:
+                communication = document.get("communication") or {}
+            value = communication.get("message_count")
+            try:
+                return int(value) if value is not None else None
+            except (TypeError, ValueError):
+                return None
 
     @staticmethod
     def _thread_key(scope, thread_id):

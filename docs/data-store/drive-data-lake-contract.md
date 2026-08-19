@@ -152,6 +152,20 @@ Every functional object must have a data-store path:
 
 ## Privacy
 
+The Drive-backed surfaces have three privacy tiers. They may share a
+protected Drive account, but they are different data classes and must not be
+treated as one undifferentiated lake:
+
+1. **Tier 1: private capture/evidence.** Raw or restricted Airbnb DOM exports,
+   screenshots, and source evidence. This tier is short-lived, access-limited,
+   and never copied into Git or the identity-free learning collection.
+2. **Tier 2: protected operational objects.** Structured reservation, guest,
+   payment, deposit, and property records that retain the identifiers needed
+   for reconciliation and service operations.
+3. **Tier 3: anonymized learning objects.** Identity-free interaction records
+   containing redacted conversation shape, intent, outcome, and response
+   content. This tier cannot resolve or target a live guest.
+
 Never write these to the object lake:
 
 - SSNs,
@@ -170,9 +184,12 @@ Structured Airbnb reservation captures belong only in the protected
 identifiers needed for reconciliation, but must not contain raw conversation
 bodies. Conversation learning belongs in
 `INTERACTIONS/anonymous_interactions.jsonl` after identity and source
-redaction. Protected reservation/customer records may retain phone and email
-contact fields for service communication and an explicit future permission
-request; those fields are never promotional consent by themselves.
+redaction. The operational response path resolves a protected thread, guest,
+reservation, and property before drafting. The learning path is downstream of
+that resolution and must never be used for operational identity lookup.
+Protected reservation/customer records may retain phone and email contact
+fields for service communication and an explicit future permission request;
+those fields are never promotional consent by themselves.
 
 ## Drive Target
 

@@ -41,6 +41,14 @@ That command resumes from the private checkpoint and imports only unseen
 conversation and reservation captures. It is the same path whether a read-only
 browser agent created the export or an operator supplied it later.
 
+Operational response context and learning data are separate projections. The
+operational path keeps protected source references long enough to resolve the
+correct thread, guest, reservation, and property, then loads current rules and
+facts before drafting. The learning path redacts names, contact values, source
+identifiers, and thread references before writing identity-free interaction
+records. An interaction record must never be used to look up or act on a live
+guest or reservation.
+
 ## Actor journeys
 
 ### Guest or prospective guest
@@ -82,14 +90,23 @@ with financial or customer-facing consequences.
 
 ```mermaid
 flowchart LR
-  A[Private captured message] --> B[Normalize and anonymize]
-  B --> C[Load current property rules]
-  C --> D[Load relevant guest and reservation projections]
+  A[Private captured message] --> B[Resolve source thread]
+  B --> C[Resolve Guest + Reservation + Property]
+  C --> D[Load current property rules and facts]
   D --> E[Classify topic and risk]
   E --> F[Create concise internal draft]
   F --> G{Low stakes and staff approved?}
   G -- no --> H[Escalate to staff]
   G -- yes --> I[Keep as staff-reviewable draft]
+```
+
+The separate learning projection is:
+
+```mermaid
+flowchart LR
+  A[Private captured message] --> B[Redact identifiers]
+  B --> C[Extract intent theme and outcome]
+  C --> D[INTERACTIONS identity-free record]
 ```
 
 The response code is intentionally draft-first:
@@ -144,6 +161,64 @@ Do not create a live MLADIS reservation from an unreviewed migration snapshot.
 Do not infer marketing consent, visitor approval, party approval, payment
 completion, or cancellation success from a conversation alone.
 
+### Domain and persistence terminology
+
+The domain names are the target vocabulary. The persistence names below are
+the current transitional implementation and must not be duplicated by a new
+model merely because the names differ.
+
+| Domain object | Current persistence/source object |
+|---|---|
+| `Reservation` | `BookingInquiry` |
+| `Guest` | `CustomerProfile` |
+| `Property` | `BookableItem` |
+| `WorkOrder` | `MaintenanceEvent` |
+| `WorkOrderPhoto` | `MaintenancePhoto` |
+
+### Reconciliation boundaries
+
+An Airbnb capture is evidence for review, not a live MLADIS object:
+
+```text
+AirbnbReservationSnapshot
+  -> ReservationReconciliation
+     -> unmatched | candidate_match | confirmed_match | imported | rejected
+        -> Reservation / BookingInquiry
+
+AirbnbGuestRecord
+  -> GuestIdentityResolver
+     -> unmatched | candidate | confirmed | conflict
+        -> Guest / CustomerProfile
+```
+
+Do not merge guests from name similarity or conversation text alone. Do not
+create a live reservation from an unreviewed snapshot. The reconciliation or
+identity-resolution boundary owns the evidence, match decision, reviewer, and
+audit event.
+
+### Property-centered behavior graph
+
+Property/`BookableItem` is a first-class context for every decision, not a
+decorative listing label:
+
+```text
+Guest
+  -> Reservation
+     -> PaymentTransaction
+     -> DepositHold
+     -> Invoice
+     -> Messages
+     -> WorkOrders
+  -> Property / BookableItem
+     -> HouseRules
+     -> Availability
+     -> Pricing
+     -> ListingState
+```
+
+Rules about occupancy, visitors, gatherings, quiet hours, arrival, amenities,
+availability, and pricing must resolve from the current property context.
+
 ## Implementation backlog
 
 Each row becomes a separate feature in the MLADIS verification ledger before
@@ -153,7 +228,7 @@ implementation. No row is complete because a screen or button exists.
 |---|---|---|
 | Inquiry-to-reservation continuity | `Reservation` | A real record retains guest, dates, property, occupancy, and status through the flow. |
 | Guest history and repeat-stay projection | `Guest` | Linked reservations, spend, reviews, and stays reconcile to source records. |
-| Rules-first response draft | `AirbnbResponseWorkflow` | Automated tests plus an observed internal draft review; no send claim without sender evidence. |
+| Rules-first response draft | `AirbnbResponseWorkflow` | Automated tests plus an observed internal draft review; operational context resolved before drafting; no send claim without sender evidence. |
 | Payment/deposit relationship | `PaymentTransaction` and `DepositHold` | Detail panels and API payloads point to the same reservation and invoice objects. |
 | Arrival guidance | `Reservation` and property content | Published guidance is linked to the confirmed reservation and remains current. |
 | Operational issue handoff | `WorkOrder` | A guest issue creates or links one trackable task with owner and timeline. |

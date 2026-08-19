@@ -748,6 +748,102 @@ class DataLakeExporterTests(TestCase):
         self.assertIn("Skipped existing captures: 1 reservation(s), 1 interaction(s).", second_output.getvalue())
         self.assertIn('"threads"', state_text)
 
+    def test_combined_airbnb_data_lake_new_only_accepts_new_message_in_existing_thread(self):
+        first_capture = {
+            "dataset": "normal",
+            "thread_id": "resume-thread-new-message",
+            "preview": "Confirmed · Aug 21, 2026 – Aug 24, 2026 · 2 guests",
+            "messages": ["Private Guest · Booker\nCan we arrive early?"],
+            "captured_at": "2026-08-18T12:00:00-04:00",
+        }
+        updated_capture = {
+            **first_capture,
+            "messages": [
+                "Private Guest · Booker\nCan we arrive early?",
+                "Diana · Host\nWe can review arrival options.",
+            ],
+            "captured_at": "2026-08-18T12:05:00-04:00",
+        }
+
+        with TemporaryDirectory() as temp_dir, TemporaryDirectory() as input_dir, override_settings(
+            MLADIS_DATASTORE_LIVE_SYNC_DRIVE=False,
+        ):
+            first_path = Path(input_dir) / "first-capture.json"
+            updated_path = Path(input_dir) / "updated-capture.json"
+            first_path.write_text(json.dumps([first_capture]), encoding="utf-8")
+            updated_path.write_text(json.dumps([updated_capture]), encoding="utf-8")
+
+            call_command("collect_airbnb_data_lake", input=first_path, root=temp_dir, new_only=True)
+            call_command("collect_airbnb_data_lake", input=updated_path, root=temp_dir, new_only=True)
+            third_output = StringIO()
+            call_command(
+                "collect_airbnb_data_lake",
+                input=updated_path,
+                root=temp_dir,
+                new_only=True,
+                stdout=third_output,
+            )
+
+            interaction_path = Path(temp_dir) / "INTERACTIONS" / "anonymous_interactions.jsonl"
+            reservation_path = Path(temp_dir) / "BOOKINGS" / "airbnb_reservation_snapshots.jsonl"
+            interaction_rows = [line for line in interaction_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            reservation_rows = [line for line in reservation_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+        self.assertEqual(len(interaction_rows), 2)
+        self.assertEqual(len(reservation_rows), 1)
+        self.assertIn("Skipped existing captures: 1 reservation(s), 1 interaction(s).", third_output.getvalue())
+
+    def test_combined_airbnb_data_lake_new_only_updates_changed_reservation_snapshot(self):
+        first_capture = {
+            "dataset": "normal",
+            "thread_id": "resume-thread-changed-reservation",
+            "source": {"confirmation_code": "CONF-CHANGED"},
+            "guest": {"name": "Snapshot Guest", "email": "snapshot@example.com"},
+            "property": {"listing_id": "listing-snapshot", "listing_title": "Snapshot Stay"},
+            "lifecycle": {
+                "check_in": "2026-09-01",
+                "check_out": "2026-09-03",
+                "status": "confirmed",
+            },
+            "communication": {"message_count": 2},
+            "financials": {"total_amount": "200.00", "currency": "usd"},
+        }
+        changed_capture = {
+            **first_capture,
+            "lifecycle": {**first_capture["lifecycle"], "status": "cancelled"},
+            "captured_at": "2026-08-18T12:05:00-04:00",
+        }
+
+        with TemporaryDirectory() as temp_dir, TemporaryDirectory() as input_dir, override_settings(
+            MLADIS_DATASTORE_LIVE_SYNC_DRIVE=False,
+        ):
+            first_path = Path(input_dir) / "first-reservation.json"
+            changed_path = Path(input_dir) / "changed-reservation.json"
+            first_path.write_text(json.dumps([first_capture]), encoding="utf-8")
+            changed_path.write_text(json.dumps([changed_capture]), encoding="utf-8")
+
+            call_command("collect_airbnb_data_lake", input=first_path, root=temp_dir, new_only=True)
+            call_command("collect_airbnb_data_lake", input=changed_path, root=temp_dir, new_only=True)
+            third_output = StringIO()
+            call_command(
+                "collect_airbnb_data_lake",
+                input=changed_path,
+                root=temp_dir,
+                new_only=True,
+                stdout=third_output,
+            )
+
+            reservation_path = Path(temp_dir) / "BOOKINGS" / "airbnb_reservation_snapshots.jsonl"
+            records = [
+                json.loads(line)
+                for line in reservation_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["data"]["lifecycle"]["status"], "cancelled")
+        self.assertIn("Skipped existing captures: 1 reservation(s), 0 interaction(s).", third_output.getvalue())
+
     def test_airbnb_message_table_capture_composes_reservation_projection(self):
         table_export = {
             "captured_at": "2026-08-18T12:00:00-04:00",
@@ -1111,6 +1207,18 @@ class AgentAPITests(TestCase):
         )
 
         self.assertFalse(draft.low_stakes)
+        self.assertFalse(workflow.approve(draft).sendable)
+
+    def test_airbnb_response_workflow_requires_property_grounding_before_approval(self):
+        workflow = AirbnbResponseWorkflow(agent_service=BookingAgentService(api_key=""))
+        draft = workflow.draft(
+            "Is the place available next week?",
+            session_id="airbnb-workflow-no-property",
+        )
+
+        self.assertTrue(draft.low_stakes)
+        self.assertEqual(draft.grounding_status, "property_unresolved")
+        self.assertIn("property_not_resolved", draft.risk_reasons)
         self.assertFalse(workflow.approve(draft).sendable)
 
     @override_settings(OPENAI_AGENT_MODEL="gpt-5.4-nano")

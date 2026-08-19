@@ -13,6 +13,24 @@ GitHub is the durable engineering communication record. Drive is the private
 data and evidence record. Neither surface replaces the Django database as the
 transactional source of truth.
 
+### Drive privacy tiers
+
+Protected Drive storage is divided into three explicit tiers:
+
+1. **Tier 1: private capture/evidence.** Raw or restricted Airbnb exports,
+   screenshots, and source evidence. Keep access limited and retention short;
+   never copy this tier to GitHub or the learning collection.
+2. **Tier 2: protected operational objects.** Structured records that retain
+   the identifiers needed to reconcile and operate on guests, reservations,
+   properties, payments, and deposits.
+3. **Tier 3: anonymized learning objects.** Redacted interaction records for
+   response-quality analysis. They must not resolve or target a live person or
+   reservation.
+
+The operational response pipeline may use Tier 1 and Tier 2 long enough to
+resolve the correct context. Only a separate downstream projection may write
+to Tier 3.
+
 ## Required workflow
 
 1. Declare the active object and scope in the repository task record.

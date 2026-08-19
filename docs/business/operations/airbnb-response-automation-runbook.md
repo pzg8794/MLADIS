@@ -35,21 +35,35 @@ flowchart LR
   B --> C[resume_airbnb_data_lake.sh]
   C --> D[BOOKINGS reservation snapshots]
   C --> E[INTERACTIONS anonymized learning lake]
-  F[One customer message] --> G[AirbnbResponseWorkflow]
-  G --> H[MLADIS agent draft]
-  H --> I{Low-stakes and staff approved?}
-  I -- no --> J[Escalate for manual handling]
-  I -- yes --> K[Explicit send confirmation]
-  K --> L[Future Airbnb sender adapter]
+  F[Private customer message] --> G[Resolve thread + guest + reservation + property]
+  G --> H[Load current rules and facts]
+  H --> I[Classify risk and create draft]
+  I --> J{Low-stakes and staff approved?}
+  J -- no --> K[Escalate for manual handling]
+  J -- yes --> L[Keep as internal draft]
+  L --> M[Future controlled sender adapter]
 ```
+
+The two paths are intentionally separate:
+
+- **Operations path:** a protected message remains identifiable long enough to
+  resolve the correct conversation, guest, reservation, and property before
+  rules-first drafting and staff review.
+- **Learning path:** a separate projection redacts names, contact values,
+  source identifiers, and thread references before writing to
+  `INTERACTIONS`. The learning record must never be used to resolve an active
+  guest or reservation.
 
 1. Capture only rendered Airbnb DOM through the authorized host session.
 2. Run the new-only lake wrapper. It resumes from
-   `BOOKINGS/.airbnb_capture_state.json` and skips completed source threads.
-3. For a future controlled test, pass one customer message to the draft
-   command. The command stores the normal MLADIS agent conversation and prints
-   only the structured draft result; the customer message is not written to
-   Git. This preparation pass does not run the command against a real customer.
+   `BOOKINGS/.airbnb_capture_state.json`, skips unchanged source content, and
+   still accepts a new message or changed reservation state in an existing
+   thread.
+3. For a future controlled test, pipe one private customer message to the
+   draft command from stdin or a protected file. The command generates an
+   internal MLADIS conversation with an MLADIS-generated session ID and prints
+   the structured draft result; the customer message is not written to Git.
+   This preparation pass does not run the command against a real customer.
 4. Review the language, facts, promised actions, and escalation classification.
 5. Obtain staff confirmation immediately before any future send action.
 6. Record the result and evidence in the verification tracker.
@@ -67,14 +81,21 @@ From the repository:
 
 ```bash
 cd airbnb_agent
-.venv/bin/python manage.py draft_airbnb_response \
-  --message "One private customer message" \
+cat /private/path/customer-message.txt | \
+  .venv/bin/python manage.py draft_airbnb_response \
   --item-id 123
 ```
 
 The command returns `send_status: "draft_only"`. It never sends a message.
-The message argument must come from a private, authorized test flow and must
-not be placed in shell history, logs, fixtures, commits, or issue text.
+The message must come from a private, authorized test flow and must not be
+placed in shell history, process arguments, ordinary logs, fixtures, commits,
+or issue text. Use a protected file instead of putting message text on a
+command line. The JSON output contains the proposed reply, so redirect it
+only to an approved protected review destination rather than CI or shell logs.
+
+The command does not accept an external `--session-id`. The workflow generates
+an internal session identifier so an Airbnb thread ID cannot accidentally
+become an MLADIS session key.
 
 ## Low-stakes gate
 
@@ -94,7 +115,10 @@ classification is not permission to send; the staff approval gate is still
 required.
 
 The detailed property-specific rules and service response ladder are maintained
-in the [Customer Service Playbook](./customer-service-playbook.md).
+in the [Customer Service Playbook](./customer-service-playbook.md). A future
+sender must additionally require a recognized topic, resolved property and
+current factual sources, no conflicting source data, and no escalation signal.
+Classification alone is never permission to send.
 
 When a reservation is discussed, the reservation holder must be treated as the
 sole responsible party for everything that happens during the reservation,

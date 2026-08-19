@@ -47,16 +47,17 @@ checkpoint at `BOOKINGS/.airbnb_capture_state.json`; it is local-only, mode
 `0600`, never mirrored to Drive, and never committed. Existing completed
 reservation snapshots bootstrap the first checkpoint so current detailed
 captures are not appended again. The collector also deduplicates duplicate
-keys within one input file and reports skipped counts.
+observations within one input file and reports skipped counts.
 
 The wrapper is the repeatable entry point for both agent-operated and later
 operator-operated collection. Once a private capture file exists, the same
 single shell file can resume the import without this chat, a particular agent,
 or a long-running browser process.
 
-During a normal resume, only records whose `scope:thread_id` or deterministic
-content key is not already marked in the checkpoint are written. Existing
-conversation and reservation records are skipped rather than appended again.
+During a normal resume, the checkpoint uses `(scope, thread_id, collection,
+content fingerprint)`. An unchanged capture is skipped, while a new message
+in an existing thread is accepted as one new interaction observation and a
+changed reservation snapshot updates its deterministic reservation record.
 Keep the input export private and outside Git.
 
 For a deliberate backfill or reconciliation run, call the management command
@@ -93,10 +94,11 @@ captureAirbnbThreadBatch({ tab, scope, listUrl, threadRows, outputPath })
 ```
 
 First capture the normal and archived table index. Then pass small batches of
-the indexed rows to `captureAirbnbThreadBatch`; it skips `(scope, thread_id)`
-pairs already present in the private JSONL checkpoint. A browser restart or a
-later agent can therefore resume without repeating completed threads. The
-helper prefers each row's observed `href` and navigates directly to that
+the indexed rows to `captureAirbnbThreadBatch`; the ingestion checkpoint skips
+unchanged `(scope, thread_id)` observations while allowing a later capture of
+the same thread to add a new message. A browser restart or a later agent can
+therefore resume without repeating completed content. The helper prefers each
+row's observed `href` and navigates directly to that
 thread, so Airbnb's virtualized table window cannot hide older records. If a
 row has no href it falls back to clicking a visible row. It reads rendered DOM
 content, returns to the supplied list URL after a batch, and never sends a

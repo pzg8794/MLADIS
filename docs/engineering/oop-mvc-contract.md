@@ -8,6 +8,32 @@ OOP and MVC are the engineering bible for MLADIS. Every feature must preserve th
 - **Controllers/API views** coordinate requests, call model/domain objects, and return explicit payloads.
 - **Views/templates/components** render model state. They do not invent business rules or keep duplicate truth.
 
+## Pyramid Integration
+
+The MLADIS data lifecycle is `COLLECT -> CLEAN -> PREPARE -> LEARN -> USE`.
+It describes the maturity of information, not a replacement for the object
+model or MVC boundaries. Each stage must identify its primary objects and
+preserve provenance:
+
+- **COLLECT**: source and evidence objects retain where information came from.
+- **CLEAN**: normalization, validation, conflict, and redaction objects make
+  evidence safe to use without silently changing its meaning.
+- **PREPARE**: domain objects, aggregates, and reconciliation objects establish
+  relationships such as Guest -> Reservation -> Property and Reservation ->
+  Payment/DepositHold/Invoice.
+- **LEARN**: derived signal or knowledge objects retain provenance and
+  confidence; inference must not silently become an operational fact.
+- **USE**: use-case-specific DTOs and projections expose only what a controller
+  or view needs.
+
+JSON/JSONL files are serialized evidence or object representations. They are
+not the application's de facto domain model. Repositories and adapters must
+translate them into domain objects or explicit projections before application
+logic consumes them.
+
+The complete lifecycle contract is in
+`docs/data-store/pyramid-data-lifecycle.md`.
+
 ## User and Agent State
 
 Every visitor is represented as a user/session context object:
