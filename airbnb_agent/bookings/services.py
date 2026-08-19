@@ -22,6 +22,7 @@ from django.utils.dateparse import parse_datetime
 import requests
 import stripe
 
+from .interaction_learning import LearnedInteractionKnowledgeRepository
 from .models import (
     AdminAccess,
     AgentKnowledgeSource,
@@ -1516,10 +1517,11 @@ class BookingAgentService:
 
     ALLOWED_SESSION_AGENT_MODES = {"openai", "fallback", "setup"}
 
-    def __init__(self, api_key=None, client=None):
+    def __init__(self, api_key=None, client=None, learned_repository=None):
         self.api_key = api_key if api_key is not None else settings.OPENAI_API_KEY
         self.model = settings.OPENAI_AGENT_MODEL
         self.client = client
+        self.learned_repository = learned_repository or LearnedInteractionKnowledgeRepository.from_settings()
 
     def reply(self, request: AgentRequest) -> AgentResponse:
         item = self._get_item(request.item_id)
@@ -1670,8 +1672,11 @@ class BookingAgentService:
             "If details are missing, ask only for the minimum details needed to continue instead of repeating the entire booking workflow. "
             "Use blank lines between short sections so the website can present the answer accessibly. Do not use markdown tables. "
             "Use the selected stay context, booking workflow, concise response guide, repository-backed guest knowledge, "
-            "and admin-provided knowledge sources from the prompt as your source of truth, "
-            "but never mention the repository or internal files to the guest."
+            "and admin-provided knowledge sources from the prompt as factual sources. Current MLADIS Property, HouseRule, "
+            "Reservation, availability, pricing, and policy objects always override conversation-derived experience. "
+            "Use learned interaction experience only to anticipate intent and improve communication style; never repeat an "
+            "old conversational claim as a current fact. "
+            "Never mention the repository or internal files to the guest."
         )
 
     def _prompt(self, request, item):
@@ -1696,6 +1701,9 @@ class BookingAgentService:
             "",
             "Admin and external knowledge sources:",
             self._agent_knowledge_sources_context(),
+            "",
+            "Learned interaction experience (not facts):",
+            self._learned_interaction_context(),
         ]
         history = self._recent_history(request.session_id)
         if history:
@@ -1707,7 +1715,8 @@ class BookingAgentService:
             return ""
         stats = ", ".join(item.stat_list) or "details not listed"
         rules = "; ".join(
-            rule.title for rule in item.house_rules.filter(is_active=True).order_by("sort_order", "title")[:6]
+            f"{rule.title}: {rule.description}"
+            for rule in item.house_rules.filter(is_active=True).order_by("sort_order", "title")[:6]
         )
         highlights = "; ".join(
             highlight.title for highlight in item.guest_review_highlights.order_by("sort_order", "id")[:4]
@@ -1765,6 +1774,9 @@ class BookingAgentService:
         if not snippets:
             return "No admin-provided knowledge sources loaded."
         return "\n".join(f"- {snippet}" for snippet in snippets)
+
+    def _learned_interaction_context(self):
+        return self.learned_repository.context()
 
     def _recent_history(self, session_id, limit=6):
         if not session_id:

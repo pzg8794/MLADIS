@@ -32,10 +32,13 @@ objects.
 | Private Git working segment | Not used by the initial implementation |
 | Public GitHub | Code, tests, schemas, contracts, sanitized documentation only |
 
-The prepared sidecar is read-mostly. It does not create or update authoritative
-Django records. Promotion is an explicit, idempotent service boundary that
-requires an approved promotion key and a transactional adapter supplied by the
-caller.
+The prepared sidecar remains read-mostly. `HistoricalPromotionService` is the
+explicit PREPARE-to-transactional boundary: it verifies the manifest and hot
+partition hashes, resolves identity, matches existing records before creating
+new ones, preserves unresolved candidates, and writes stable source markers so
+reruns are idempotent. It promotes only into existing `CustomerProfile`,
+`BookingInquiry`, `AirbnbGuestRecord`, and `CustomerFeedback` contracts; the
+sidecar JSON is never the domain model.
 
 ## CLEAN
 
@@ -122,6 +125,28 @@ only approved reconciled candidates may be promoted, and a promotion key
 prevents duplicate active records. No archive is loaded during module import,
 application startup, or an ordinary active lookup.
 
+## LEARN and USE
+
+`InteractionLearningService` reads only the explicitly anonymized interaction
+collection. It rejects missing redaction evidence and direct contact patterns,
+then derives aggregate intents, recurring needs, language distribution, and
+response-shape evidence. It does not retain raw turns or historical factual
+answers in the learned artifact.
+
+`LearnedInteractionKnowledgeRepository` is the USE adapter for the existing
+`BookingAgentService`. The agent receives aggregate experience to anticipate
+intent and communicate clearly, but authority remains ordered as:
+
+```text
+current Property and HouseRule objects
+  -> current Reservation and operational state
+  -> approved admin knowledge
+  -> learned interaction experience
+```
+
+A prior message can teach the agent that parking is commonly asked about. It
+cannot override the current property record's parking price or policy.
+
 ## Commands
 
 The protected runbook is the operational entry point:
@@ -139,11 +164,25 @@ python manage.py rehydrate_airbnb_history \
   --guest-id customer_profile:42 \
   --year 2024 \
   --private-working-segment
+
+python manage.py promote_airbnb_history \
+  --history-root /protected/MLADIS-HISTORY \
+  --private-working-segment
+
+# Apply only after reviewing dry-run counts and taking a DB backup.
+python manage.py promote_airbnb_history \
+  --history-root /protected/MLADIS-HISTORY \
+  --private-working-segment \
+  --apply
+
+python manage.py learn_anonymous_interactions \
+  --private-working-segment
 ```
 
-Both commands are explicit, protected operations. They do not send messages,
-charge cards, change deposits, accept/cancel reservations, or write
-transactional records.
+Preparation, rehydration, promotion, and learning are explicit protected
+operations. None sends messages, charges cards, changes deposits, or
+accepts/cancels reservations. Only promotion writes transactional guest and
+reservation objects, and it is dry-run by default.
 
 ## Privacy and Git policy
 
@@ -157,7 +196,9 @@ the durable archive and the Django store remains operational truth.
 
 - Connect a reviewed Drive adapter without changing the filesystem storage
   contract.
-- Connect GuestIdentityResolver and ReservationReconciliation implementations
-  when their authoritative service contracts are approved.
-- Add an explicit transactional promotion adapter with audit events.
-- Add LEARN/USE projections after CLEAN/PREPARE evidence is reviewed.
+- Expand hot reservation evidence as more recent source captures become
+  available; unresolved identity and reservation conflicts remain reviewable.
+- Add richer audit-event persistence without weakening source markers and
+  idempotency.
+- Attribute learned themes to a property only when anonymized evidence carries
+  a privacy-safe, verified property identity.

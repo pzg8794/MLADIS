@@ -62,17 +62,41 @@ protected retention policy after the use case is complete.
 
 ## Promotion
 
-Promotion is not performed by either management command. A future authorized
-workflow must:
+Take a private database backup, then run the count-only dry run:
 
-1. review the prepared context and unresolved conflicts;
-2. reconcile Guest and Reservation identity against current domain services;
-3. approve explicit promotion keys;
-4. write through transactional repositories in one auditable operation;
-5. rely on the promotion key to make retries idempotent.
+```bash
+python manage.py promote_airbnb_history \
+  --history-root /protected/MLADIS-HISTORY \
+  --private-working-segment
+```
 
-Do not use prepared JSON as a substitute for a Django domain write, and do not
-silently overwrite a current operational record.
+Review created, matched, and unresolved counts. A controlled first slice can
+use `--limit-guests 5 --apply`; rerun the same slice and confirm it creates zero
+new records. Then apply the verified hot window:
+
+```bash
+python manage.py promote_airbnb_history \
+  --history-root /protected/MLADIS-HISTORY \
+  --private-working-segment \
+  --apply
+```
+
+`GuestIdentityResolver` matches source marker, normalized email, and normalized
+phone before creation. Conflicting or insufficient identity remains unresolved.
+`ReservationReconciliationService` matches stable reservation markers and does
+not overwrite current records. Every guest is promoted transactionally, and a
+rerun must create nothing. Prepared JSON remains evidence, not a Django object.
+
+## Learn and use interaction experience
+
+```bash
+python manage.py learn_anonymous_interactions --private-working-segment
+```
+
+The command validates the anonymized interaction contract and creates a mode
+`0600` aggregate LEARN artifact under the protected Object Lake. The website
+agent loads it lazily. Current property, house-rule, reservation, pricing, and
+policy objects always override learned conversation experience.
 
 ## Failure handling
 
@@ -99,7 +123,7 @@ used by the initial implementation.
 
 ## Scope boundary
 
-This process is historical preparation and targeted lookup only. It does not
-send customer messages, enable an Airbnb live sender, accept or cancel a
-reservation, charge or refund a payment, capture or release a deposit, or
-change authentication.
+This process prepares history, performs reviewed transactional promotion,
+supports targeted lookup, and derives anonymous interaction experience. It
+does not send customer messages, accept or cancel a reservation, charge or
+refund a payment, capture or release a deposit, or change authentication.

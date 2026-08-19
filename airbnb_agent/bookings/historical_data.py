@@ -214,7 +214,10 @@ class RollingTwelveMonthPolicy(HotPartitionPolicy):
         return "rolling-12-months"
 
     def is_hot(self, activity_date: date) -> bool:
-        return self.as_of - timedelta(days=365) <= activity_date <= self.as_of
+        # Upcoming reservations remain operationally active even though their
+        # stay date is after the preparation date. The lower bound keeps old
+        # history cold; deliberately do not cap future operational records.
+        return activity_date >= self.as_of - timedelta(days=365)
 
 
 def build_partition_policy(name: str, *, as_of: date) -> HotPartitionPolicy:
