@@ -15,7 +15,7 @@ from pathlib import Path
 class AirbnbCaptureState:
     """Track successfully written reservation and interaction captures."""
 
-    SCHEMA_VERSION = "1.0"
+    SCHEMA_VERSION = "1.1"
     FILENAME = ".airbnb_capture_state.json"
 
     def __init__(self, root, *, entries=None):
@@ -26,17 +26,20 @@ class AirbnbCaptureState:
     @classmethod
     def load(cls, root):
         state = cls(root)
+        stored_schema_version = "0.0"
         if state.path.is_file():
             try:
                 payload = json.loads(state.path.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 payload = {}
             if isinstance(payload, dict) and isinstance(payload.get("threads"), dict):
+                stored_schema_version = str(payload.get("schema_version") or "0.0")
                 state.entries = {
                     str(key): dict(value)
                     for key, value in payload["threads"].items()
                     if isinstance(value, dict)
                 }
+        state._upgrade_entries(stored_schema_version)
         state._bootstrap_existing_snapshots()
         return state
 
@@ -83,6 +86,30 @@ class AirbnbCaptureState:
         entry.setdefault("observation_counts", {})[kind] = self._observation_count(document, kind)
         entry["last_seen_at"] = datetime.now(timezone.utc).isoformat()
 
+    def prepare_interaction(self, document):
+        """Return only newly observed turns when a thread grows.
+
+        The private checkpoint can retain source-thread counts, while the
+        anonymized lake receives delta observations. This prevents a later
+        cumulative thread snapshot from teaching the same earlier turn twice.
+        """
+        if not isinstance(document, dict):
+            return document
+        turns = document.get("turns")
+        if not isinstance(turns, list):
+            return document
+        entry = self.entries.get(self.key_for(document, "interactions"), {})
+        counts = entry.get("observation_counts") if isinstance(entry, dict) else None
+        previous_count = counts.get("interactions") if isinstance(counts, dict) else None
+        if not isinstance(previous_count, int) or previous_count <= 0 or previous_count >= len(turns):
+            prepared = dict(document)
+            prepared["_observation_semantics"] = "initial_snapshot"
+            return prepared
+        prepared = dict(document)
+        prepared["turns"] = turns[previous_count:]
+        prepared["_observation_semantics"] = "delta"
+        return prepared
+
     def save(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
@@ -98,9 +125,10 @@ class AirbnbCaptureState:
     def _bootstrap_existing_snapshots(self):
         """Seed state from the already completed reservation lake.
 
-        The current Airbnb import contains a detailed interaction for every
-        imported reservation. Marking both sides prevents the first resume
-        after upgrading MLADIS from duplicating the known completed batch.
+        Reservation snapshots can safely bootstrap reservation observations.
+        They must not imply that a detailed conversation interaction was also
+        captured: the table/index collector can create a reservation without
+        ever seeing the thread body.
         """
         snapshot_path = self.root / "BOOKINGS" / "airbnb_reservation_snapshots.jsonl"
         if not snapshot_path.is_file():
@@ -123,13 +151,31 @@ class AirbnbCaptureState:
             key = self._thread_key(source.get("scope"), source.get("thread_id"))
             entry = self.entries.setdefault(key, {})
             entry.setdefault("reservations", True)
-            entry.setdefault("interactions", True)
-            entry.setdefault("fingerprints", {}).setdefault("reservations", []).append(
-                self.fingerprint_for(record, "reservations")
-            )
-            entry.setdefault("observation_counts", {}).setdefault(
-                "interactions", (data.get("communication") or {}).get("message_count")
-            )
+            fingerprints = entry.setdefault("fingerprints", {}).setdefault("reservations", [])
+            fingerprint = self.fingerprint_for(record, "reservations")
+            if fingerprint not in fingerprints:
+                fingerprints.append(fingerprint)
+            reservation_counts = entry.setdefault("observation_counts", {})
+            reservation_counts.setdefault("reservations", self._observation_count(record, "reservations"))
+
+    def _upgrade_entries(self, stored_schema_version):
+        """Normalize legacy checkpoint state before bootstrap or selection."""
+        if stored_schema_version == self.SCHEMA_VERSION:
+            return
+        for entry in self.entries.values():
+            fingerprints = entry.setdefault("fingerprints", {})
+            for kind, values in list(fingerprints.items()):
+                if isinstance(values, list):
+                    fingerprints[kind] = list(dict.fromkeys(str(value) for value in values if value))
+                else:
+                    fingerprints[kind] = []
+            observation_counts = entry.setdefault("observation_counts", {})
+            # Version 1.0 could infer an interaction from a reservation
+            # snapshot. Without an interaction fingerprint/count, discard that
+            # inference so a later detailed thread is not skipped.
+            if entry.get("interactions") and not fingerprints.get("interactions"):
+                entry.pop("interactions", None)
+                observation_counts.pop("interactions", None)
 
     @classmethod
     def key_for(cls, document, kind):

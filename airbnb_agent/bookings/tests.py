@@ -546,6 +546,23 @@ class DataLakeExporterTests(TestCase):
             self.assertNotIn("R-1042", output)
             self.assertNotIn("https://example.com", output)
 
+    def test_anonymous_interaction_writer_is_sink_idempotent(self):
+        kwargs = {
+            "source_system": "airbnb",
+            "channel": "host_messages",
+            "language": "en",
+            "topic": "arrival",
+            "turns": [{"role": "guest", "text": "Can I arrive early?"}],
+        }
+        with TemporaryDirectory() as temp_dir:
+            writer = AnonymousInteractionLakeWriter(temp_dir)
+            first_path = writer.write_conversation(**kwargs)
+            second_path = writer.write_conversation(**kwargs)
+            rows = [line for line in first_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+        self.assertEqual(first_path, second_path)
+        self.assertEqual(len(rows), 1)
+
     def test_agent_conversation_signal_writes_only_identity_free_interaction_record(self):
         with TemporaryDirectory() as temp_dir, override_settings(
             MLADIS_DATASTORE_ROOT=temp_dir,
@@ -651,6 +668,18 @@ class DataLakeExporterTests(TestCase):
 
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["data"]["lifecycle"]["status"], "canceled")
+
+    def test_airbnb_reservation_key_ignores_mutable_dates_when_confirmation_exists(self):
+        base = {
+            "source": {"scope": "normal", "thread_id": "thread-date-change", "confirmation_code": "CONF-DATES"},
+            "guest": {"name": "Guest One", "email": "guest1@example.com"},
+            "property": {"listing_id": "listing-1", "listing_title": "Stay One"},
+            "lifecycle": {"check_in": "2026-07-01", "check_out": "2026-07-03", "status": "confirmed"},
+        }
+        changed = {**base, "lifecycle": {**base["lifecycle"], "check_in": "2026-07-02", "check_out": "2026-07-04"}}
+
+        writer = AirbnbReservationSnapshotWriter("/tmp/mladis-reservation-key-test")
+        self.assertEqual(writer.reservation_key(base), writer.reservation_key(changed))
 
     def test_airbnb_reservation_snapshot_hashes_contact_after_decline_or_no_response(self):
         base = {
@@ -788,9 +817,13 @@ class DataLakeExporterTests(TestCase):
             reservation_path = Path(temp_dir) / "BOOKINGS" / "airbnb_reservation_snapshots.jsonl"
             interaction_rows = [line for line in interaction_path.read_text(encoding="utf-8").splitlines() if line.strip()]
             reservation_rows = [line for line in reservation_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            interaction_records = [json.loads(line) for line in interaction_rows]
 
         self.assertEqual(len(interaction_rows), 2)
         self.assertEqual(len(reservation_rows), 1)
+        self.assertEqual(interaction_records[1]["data"]["turn_count"], 1)
+        self.assertEqual(interaction_records[1]["data"]["observation_semantics"], "delta")
+        self.assertIn("We can review arrival options.", json.dumps(interaction_records[1]))
         self.assertIn("Skipped existing captures: 1 reservation(s), 1 interaction(s).", third_output.getvalue())
 
     def test_combined_airbnb_data_lake_new_only_updates_changed_reservation_snapshot(self):
@@ -1183,7 +1216,7 @@ class AgentAPITests(TestCase):
 
         approved = workflow.approve(draft)
         self.assertTrue(approved.approved)
-        self.assertTrue(approved.sendable)
+        self.assertFalse(approved.sendable)
         with self.assertRaises(ResponseWorkflowError):
             workflow.send(approved)
 

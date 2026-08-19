@@ -99,8 +99,9 @@ become an MLADIS session key.
 
 ## Low-stakes gate
 
-The workflow may classify a draft as low-stakes only for basic availability,
-location, amenities, services, or general house-rule questions. Pricing,
+The workflow may classify a draft as low-stakes only for narrow, factual
+availability, location, amenities, or services questions. Broad general
+questions and blanket house-rule questions remain manual-review topics. Pricing,
 deposits, payments, refunds, cancellations, damage, complaints, safety, legal
 questions, discounts, guarantees, special exceptions, birthdays, events,
 day-use requests, common-area use, contradictory guest counts, and unregistered
@@ -118,7 +119,23 @@ The detailed property-specific rules and service response ladder are maintained
 in the [Customer Service Playbook](./customer-service-playbook.md). A future
 sender must additionally require a recognized topic, resolved property and
 current factual sources, no conflicting source data, and no escalation signal.
-Classification alone is never permission to send.
+Classification alone is never permission to send. Setup-mode and fallback-mode
+drafts are never auto-send eligible; only a successful, recognized model mode
+can proceed to the approval checks.
+
+Before a future sender is enabled, approval must be represented by a durable
+`ResponseReview` or `OutboundResponseAuthorization` object bound to the draft
+ID and hash, reviewer identity and time, property and reservation/thread
+context, rules/facts/grounding version, expected latest customer-message
+reference, expiration, and an unused idempotency key. Send-time validation must
+fail closed unless the reviewer is authorized, the draft and destination still
+match, the latest customer message has not changed, current facts and rules
+have no conflicts, the intent is explicitly allowed, and the idempotency key
+has not been used. A boolean `approved` flag alone is insufficient.
+
+Property grounding must prove that the property is active, required facts are
+present and current, applicable rules are loaded, no conflicts remain, and no
+restricted fact is disclosed.
 
 When a reservation is discussed, the reservation holder must be treated as the
 sole responsible party for everything that happens during the reservation,

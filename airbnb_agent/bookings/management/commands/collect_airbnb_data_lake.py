@@ -83,19 +83,23 @@ class Command(BaseCommand):
             capture_state.mark(document, "reservations")
         interaction_paths = set()
         for document in interactions:
-            turns = document.get("turns")
+            prepared_document = (
+                capture_state.prepare_interaction(document) if options["new_only"] else document
+            )
+            turns = prepared_document.get("turns")
             if not isinstance(turns, list):
                 raise CommandError("Each interaction document must contain a turns list.")
             interaction_paths.add(
                 interaction_writer.write_conversation(
-                    source_system=document.get("source_system", "airbnb"),
-                    channel=document.get("channel", "host_messages"),
-                    language=document.get("language", ""),
-                    topic=document.get("topic", "general"),
-                    outcome=document.get("outcome", ""),
+                    source_system=prepared_document.get("source_system", "airbnb"),
+                    channel=prepared_document.get("channel", "host_messages"),
+                    language=prepared_document.get("language", ""),
+                    topic=prepared_document.get("topic", "general"),
+                    outcome=prepared_document.get("outcome", ""),
                     turns=turns,
-                    known_names=document.get("known_names", []),
-                    occurred_at=document.get("occurred_at"),
+                    known_names=prepared_document.get("known_names", []),
+                    occurred_at=prepared_document.get("occurred_at"),
+                    observation_semantics=prepared_document.get("_observation_semantics", "snapshot"),
                 )
             )
             capture_state.mark(document, "interactions")

@@ -1,10 +1,10 @@
 """Anonymous conversation records for the MLADIS learning data lake."""
 
+import hashlib
 import json
 import re
 from datetime import date, datetime
 from pathlib import Path
-from uuid import uuid4
 
 from django.conf import settings
 from django.utils import timezone
@@ -132,6 +132,19 @@ class AnonymousInteractionLakeWriter:
         record = self.build_record(**kwargs)
         path = self.layout.collection_path(ANONYMOUS_INTERACTIONS_COLLECTION)
         path.parent.mkdir(parents=True, exist_ok=True)
+        if path.is_file():
+            existing_keys = set()
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    existing = json.loads(line)
+                except ValueError:
+                    continue
+                if existing.get("record_key"):
+                    existing_keys.add(existing["record_key"])
+            if record["record_key"] in existing_keys:
+                return path
         with path.open("a", encoding="utf-8") as output:
             output.write(json.dumps(record, cls=DataLakeJsonEncoder, sort_keys=True) + "\n")
         DataLakeDriveMirror.from_settings(self.layout.root).copy_path(path)
@@ -148,6 +161,7 @@ class AnonymousInteractionLakeWriter:
         outcome="",
         known_names=(),
         occurred_at=None,
+        observation_semantics="snapshot",
     ):
         normalized_turns = []
         for index, turn in enumerate(turns or []):
@@ -164,29 +178,56 @@ class AnonymousInteractionLakeWriter:
                 }
             )
 
+        supplied_occurred_at = occurred_at
         occurred_at = occurred_at or timezone.now()
+        data = {
+            "language": self.sanitizer.safe_label(language, default="unknown"),
+            "topic": self.sanitizer.safe_label(topic, default="general"),
+            "outcome": self.sanitizer.safe_label(outcome),
+            "turn_count": len(normalized_turns),
+            "turns": normalized_turns,
+            "observation_semantics": self.sanitizer.safe_label(
+                observation_semantics, default="snapshot"
+            ),
+            "redaction": {
+                "direct_identifiers_removed": True,
+                "source_ids_removed": True,
+                "participant_names_removed": True,
+            },
+        }
+        source_label = self.sanitizer.safe_label(source_system, default="unknown")
+        channel_label = self.sanitizer.safe_label(channel, default="unknown")
+        occurred_at_value = self._iso(occurred_at)
+        identity = {
+            "source_system": source_label,
+            "channel": channel_label,
+            "data": data,
+        }
+        # A caller-provided source timestamp helps distinguish identical
+        # redacted turns from different captures. Generated write timestamps
+        # are deliberately excluded so retries remain idempotent.
+        if supplied_occurred_at is not None:
+            identity["occurred_at"] = occurred_at_value
+        serialized_identity = json.dumps(
+            identity,
+            cls=DataLakeJsonEncoder,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        record_key = hashlib.sha256(
+            f"{ANONYMOUS_INTERACTIONS_COLLECTION.key}:{serialized_identity}".encode("utf-8")
+        ).hexdigest()
         return {
             "schema_version": "1.0",
             "collection": ANONYMOUS_INTERACTIONS_COLLECTION.key,
             "entity_type": ANONYMOUS_INTERACTIONS_COLLECTION.entity_type,
-            "record_key": f"conversation:{uuid4().hex}",
-            "source_system": self.sanitizer.safe_label(source_system, default="unknown"),
-            "channel": self.sanitizer.safe_label(channel, default="unknown"),
+            "record_key": f"conversation:{record_key}",
+            "source_system": source_label,
+            "channel": channel_label,
             "pii_classification": "anonymized",
-            "occurred_at": self._iso(occurred_at),
+            "occurred_at": occurred_at_value,
             "extracted_at": timezone.now().isoformat(),
-            "data": {
-                "language": self.sanitizer.safe_label(language, default="unknown"),
-                "topic": self.sanitizer.safe_label(topic, default="general"),
-                "outcome": self.sanitizer.safe_label(outcome),
-                "turn_count": len(normalized_turns),
-                "turns": normalized_turns,
-                "redaction": {
-                    "direct_identifiers_removed": True,
-                    "source_ids_removed": True,
-                    "participant_names_removed": True,
-                },
-            },
+            "data": data,
         }
 
     def _iso(self, value):

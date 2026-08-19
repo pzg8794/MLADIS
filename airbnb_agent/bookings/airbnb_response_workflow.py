@@ -31,7 +31,10 @@ class CustomerResponseDraft:
 class AirbnbResponseWorkflow:
     """Create reviewable responses without silently sending to Airbnb."""
 
-    LOW_STAKES_TOPICS = {"availability", "location", "amenities", "services", "rules", "general"}
+    # Only narrow, factual intents may reach the approval gate. Broad
+    # "general" and rules questions require staff review because the answer
+    # depends on property-specific facts and applicable policy.
+    LOW_STAKES_TOPICS = {"availability", "location", "amenities", "services"}
     ESCALATION_TERMS = {
         "payment",
         "deposit",
@@ -100,7 +103,7 @@ class AirbnbResponseWorkflow:
             draft.low_stakes
             and draft.grounding_status == "property_resolved"
             and not draft.risk_reasons
-            and draft.mode in {"openai", "fallback", "setup"}
+            and draft.mode == "openai"
         )
         return replace(draft, approved=True, sendable=sendable)
 
