@@ -1413,7 +1413,7 @@ class AgentAPITests(TestCase):
         self.assertIn("property_not_resolved", draft.risk_reasons)
         self.assertFalse(workflow.approve(draft).sendable)
 
-    def test_airbnb_response_workflow_sender_is_hard_disabled(self):
+    def test_airbnb_response_workflow_requires_durable_authorization(self):
         draft = CustomerResponseDraft(
             reply="The stay is available.",
             topic="availability",
@@ -1426,7 +1426,7 @@ class AgentAPITests(TestCase):
             sendable=True,
         )
         workflow = AirbnbResponseWorkflow(sender=lambda _reply: "sent")
-        with self.assertRaisesRegex(ResponseWorkflowError, "Live Airbnb sending is disabled"):
+        with self.assertRaisesRegex(ResponseWorkflowError, "Durable outbound authorization"):
             workflow.send(draft)
 
     @override_settings(OPENAI_AGENT_MODEL="gpt-5.4-nano")

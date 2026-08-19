@@ -6,6 +6,11 @@ from dataclasses import dataclass, replace
 from uuid import uuid4
 
 from .models import AgentConversation, BookableItem
+from .airbnb_outbound import (
+    OutboundAuthorizationService,
+    OutboundAuthorizationError,
+    current_rules_digest,
+)
 from .services import AgentRequest, BookingAgentService, QuestionAnalyticsService
 
 
@@ -26,6 +31,8 @@ class CustomerResponseDraft:
     requires_staff_confirmation: bool = True
     approved: bool = False
     sendable: bool = False
+    item_id: int | None = None
+    rules_digest: str = ""
 
 
 class AirbnbResponseWorkflow:
@@ -65,9 +72,10 @@ class AirbnbResponseWorkflow:
         "gathering",
     }
 
-    def __init__(self, *, agent_service=None, sender=None):
+    def __init__(self, *, agent_service=None, sender=None, authorization_service=None):
         self.agent_service = agent_service or BookingAgentService()
         self.sender = sender
+        self.authorization_service = authorization_service or OutboundAuthorizationService()
 
     def draft(self, message, *, item_id=None, session_id=None):
         message = str(message or "").strip()
@@ -85,6 +93,7 @@ class AirbnbResponseWorkflow:
         grounding_status = "property_resolved" if item else "property_unresolved"
         risk_reasons = self._risk_reasons(message, topic, item)
         reply = self.format_reply(response.reply)
+        rules_digest = current_rules_digest(item)[0] if item else ""
         return CustomerResponseDraft(
             reply=reply,
             topic=topic,
@@ -94,6 +103,8 @@ class AirbnbResponseWorkflow:
             grounding_status=grounding_status,
             risk_reasons=risk_reasons,
             draft_hash=hashlib.sha256(reply.encode("utf-8")).hexdigest(),
+            item_id=item.pk if item else None,
+            rules_digest=rules_digest,
         )
 
     def approve(self, draft):
@@ -107,16 +118,51 @@ class AirbnbResponseWorkflow:
         )
         return replace(draft, approved=True, sendable=sendable)
 
-    def send(self, draft):
-        """Fail closed until durable outbound authorization exists."""
-        if not draft.approved:
-            raise ResponseWorkflowError("Staff confirmation is required before sending.")
-        if not draft.sendable:
-            raise ResponseWorkflowError("This response requires manual review and cannot be auto-sent.")
-        raise ResponseWorkflowError(
-            "Live Airbnb sending is disabled until durable ResponseReview or "
-            "OutboundResponseAuthorization is implemented."
-        )
+    def authorize_automatic(self, draft, *, thread_key, latest_message):
+        """Record a durable owner-policy authorization for a narrow draft."""
+        try:
+            return self.authorization_service.authorize(
+                draft,
+                thread_key=thread_key,
+                latest_message=latest_message,
+            )
+        except OutboundAuthorizationError as error:
+            raise ResponseWorkflowError(str(error)) from error
+
+    def send(self, draft, *, authorization=None, thread_key="", latest_message=""):
+        """Claim authorization, call the provider adapter, and record evidence."""
+        if authorization is None:
+            raise ResponseWorkflowError("Durable outbound authorization is required before sending.")
+        if self.sender is None:
+            raise ResponseWorkflowError("No Airbnb sender adapter is configured.")
+        try:
+            claimed = self.authorization_service.claim(
+                authorization.authorization_id,
+                thread_key=thread_key,
+                latest_message=latest_message,
+                draft_hash=draft.draft_hash,
+            )
+            result = self.sender(
+                draft.reply,
+                thread_key=thread_key,
+                authorization_id=claimed.authorization_id,
+            )
+            provider_message_id = (
+                result.get("provider_message_id") if isinstance(result, dict) else str(result or "")
+            )
+            return self.authorization_service.complete(
+                claimed.authorization_id,
+                provider_message_id=provider_message_id,
+            )
+        except Exception as error:
+            if "claimed" in locals():
+                self.authorization_service.mark_uncertain(
+                    claimed.authorization_id,
+                    reason=error.__class__.__name__,
+                )
+            if isinstance(error, (OutboundAuthorizationError, ResponseWorkflowError)):
+                raise ResponseWorkflowError(str(error)) from error
+            raise ResponseWorkflowError("Airbnb delivery could not be verified.") from error
 
     @classmethod
     def _is_low_stakes(cls, message, topic):
