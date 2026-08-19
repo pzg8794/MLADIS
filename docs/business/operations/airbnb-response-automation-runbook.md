@@ -19,6 +19,8 @@ must not silently represent MLADIS to a customer.
 | Read-only Airbnb capture | `airbnb_agent/scripts/capture_airbnb_messages.mjs` | Reads rendered DOM through an already-authorized host session. |
 | New-only lake resume | `airbnb_agent/scripts/resume_airbnb_data_lake.sh` | Imports only unseen conversation and reservation captures. |
 | Customer-service rules | `docs/business/operations/customer-service-playbook.md` | Supplies rules-first response and escalation guidance. |
+| Behavior mapping | `docs/business/operations/airbnb-platform-behavior-map.md` | Maps guest, staff, agent, and system behavior to MLADIS objects and capabilities. |
+| Listing improvement | `docs/business/operations/airbnb-listing-improvement-runbook.md` | Turns recurring questions and outcomes into approved listing proposals. |
 
 There is deliberately no Airbnb sender adapter in this workflow. A future
 sender requires a separate implementation, staff approval gate, and an
@@ -151,4 +153,6 @@ Related records:
 
 - [Airbnb collection runbook](../../data-store/airbnb-collection-runbook.md)
 - [Anonymous interaction contract](../../data-store/anonymous-interaction-lake-contract.md)
+- [Airbnb-to-MLADIS behavior map](airbnb-platform-behavior-map.md)
+- [Airbnb listing improvement runbook](airbnb-listing-improvement-runbook.md)
 - [Feature verification plan](../../qa/full-site-functional-verification-plan.md)
