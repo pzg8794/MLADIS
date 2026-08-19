@@ -50,13 +50,18 @@ class AirbnbReservationSnapshotWriter:
         record = self.build_record(snapshot)
         path = self.layout.collection_path(AIRBNB_RESERVATION_SNAPSHOTS_COLLECTION)
         records = self._read_records(path)
+        matching_indices = []
         replaced = False
         for index, existing in enumerate(records):
-            if existing.get("record_key") == record["record_key"]:
-                records[index] = record
-                replaced = True
-                break
-        if not replaced:
+            if existing.get("record_key") == record["record_key"] or self._same_natural_identity(existing, record):
+                matching_indices.append(index)
+        if matching_indices:
+            first_index = matching_indices[0]
+            records[first_index] = record
+            for index in reversed(matching_indices[1:]):
+                records.pop(index)
+            replaced = True
+        else:
             records.append(record)
         self._write_records(path, records)
         DataLakeDriveMirror.from_settings(self.layout.root).copy_path(path)
@@ -77,7 +82,7 @@ class AirbnbReservationSnapshotWriter:
         reservation_key = self.reservation_key(normalized)
         captured_at = normalized.pop("captured_at")
         return {
-            "schema_version": "1.0",
+            "schema_version": "1.1",
             "collection": AIRBNB_RESERVATION_SNAPSHOTS_COLLECTION.key,
             "entity_type": AIRBNB_RESERVATION_SNAPSHOTS_COLLECTION.entity_type,
             "record_key": f"reservation_snapshot:{reservation_key}",
@@ -124,6 +129,18 @@ class AirbnbReservationSnapshotWriter:
         if not identity.strip("|"):
             raise ValueError("Reservation snapshots need a confirmation code, thread, guest, or stay identity.")
         return f"AIRBNB-{hashlib.sha256(identity.encode('utf-8')).hexdigest()[:20].upper()}"
+
+    @staticmethod
+    def _same_natural_identity(existing, current):
+        existing_keys = existing.get("natural_keys") or {}
+        current_keys = current.get("natural_keys") or {}
+        existing_confirmation = str(existing_keys.get("airbnb_confirmation_code") or "").strip().lower()
+        current_confirmation = str(current_keys.get("airbnb_confirmation_code") or "").strip().lower()
+        if existing_confirmation and current_confirmation:
+            return existing_confirmation == current_confirmation
+        existing_thread = str(existing_keys.get("airbnb_thread_id") or "").strip().lower()
+        current_thread = str(current_keys.get("airbnb_thread_id") or "").strip().lower()
+        return bool(existing_thread and current_thread and existing_thread == current_thread)
 
     def _normalize_snapshot(self, snapshot):
         source = snapshot.get("source") or {}

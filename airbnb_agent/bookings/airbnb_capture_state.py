@@ -107,10 +107,14 @@ class AirbnbCaptureState:
             previous_count = int(previous_count) if previous_count is not None else None
         except (TypeError, ValueError):
             previous_count = None
-        if not isinstance(previous_count, int) or previous_count <= 0 or previous_count >= len(turns):
+        if not isinstance(previous_count, int) or previous_count <= 0:
             prepared = dict(document)
             prepared["_observation_semantics"] = "initial_snapshot"
             return prepared
+        if previous_count >= len(turns):
+            raise ValueError(
+                "Non-monotonic Airbnb interaction history requires reconciliation before --new-only can continue."
+            )
         previous_turns = entry.get("turn_fingerprints") if isinstance(entry, dict) else None
         if not isinstance(previous_turns, list) or len(previous_turns) < previous_count:
             raise ValueError(

@@ -33,7 +33,10 @@ from .admin import DamageDepositAdmin
 from .airbnb_capture_state import AirbnbCaptureState
 from .airbnb_response_workflow import CustomerResponseDraft, AirbnbResponseWorkflow, ResponseWorkflowError
 from .airbnb_import import AirbnbGuestEmailParser, AirbnbGuestImportService
-from .airbnb_reservation_lake import AirbnbReservationSnapshotWriter
+from .airbnb_reservation_lake import (
+    AIRBNB_RESERVATION_SNAPSHOTS_COLLECTION,
+    AirbnbReservationSnapshotWriter,
+)
 from .data_lake import MLADISDataLakeExporter
 from .interaction_lake import AnonymousInteractionLakeWriter
 from .forms import BookingInquiryForm
@@ -755,6 +758,27 @@ class DataLakeExporterTests(TestCase):
         with self.assertRaises(ValueError):
             AirbnbReservationSnapshotWriter("/tmp/mladis-reservation-key-test").reservation_key({})
 
+    def test_airbnb_reservation_writer_heals_legacy_scope_key(self):
+        snapshot = {
+            "source": {"scope": "normal", "thread_id": "legacy-thread", "confirmation_code": "LEGACY-1"},
+            "guest": {"name": "Legacy Guest"},
+            "property": {"listing_title": "Legacy Stay"},
+            "lifecycle": {"status": "confirmed"},
+        }
+        with TemporaryDirectory() as temp_dir:
+            writer = AirbnbReservationSnapshotWriter(temp_dir)
+            writer.layout.initialize()
+            legacy_record = writer.build_record(snapshot)
+            legacy_record["record_key"] = "reservation_snapshot:AIRBNB-OLD-SCOPE-KEY"
+            path = writer.layout.collection_path(AIRBNB_RESERVATION_SNAPSHOTS_COLLECTION)
+            path.write_text(json.dumps(legacy_record) + "\n", encoding="utf-8")
+
+            writer.write_snapshot(snapshot)
+            records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["record_key"], writer.build_record(snapshot)["record_key"])
+
     def test_airbnb_reservation_snapshot_hashes_contact_after_decline_or_no_response(self):
         base = {
             "source": {"thread_id": "thread-consent", "confirmation_code": "CONF-CONSENT"},
@@ -886,6 +910,8 @@ class DataLakeExporterTests(TestCase):
                 new_only=True,
                 stdout=third_output,
             )
+            (Path(temp_dir) / "BOOKINGS" / AirbnbCaptureState.FILENAME).unlink()
+            call_command("collect_airbnb_data_lake", input=updated_path, root=temp_dir, new_only=True)
 
             interaction_path = Path(temp_dir) / "INTERACTIONS" / "anonymous_interactions.jsonl"
             reservation_path = Path(temp_dir) / "BOOKINGS" / "airbnb_reservation_snapshots.jsonl"
@@ -922,6 +948,21 @@ class DataLakeExporterTests(TestCase):
             call_command("collect_airbnb_data_lake", input=first_path, root=temp_dir, new_only=True)
             with self.assertRaises(CommandError):
                 call_command("collect_airbnb_data_lake", input=changed_path, root=temp_dir, new_only=True)
+
+    def test_airbnb_capture_state_rejects_equal_length_or_truncated_history(self):
+        first = {
+            "thread_id": "thread-history-shape",
+            "turns": [{"role": "guest", "text": "Original"}],
+        }
+        with TemporaryDirectory() as temp_dir:
+            state = AirbnbCaptureState(temp_dir)
+            state.mark(first, "interactions")
+            with self.assertRaises(ValueError):
+                state.prepare_interaction(
+                    {"thread_id": "thread-history-shape", "turns": [{"role": "guest", "text": "Changed"}]}
+                )
+            with self.assertRaises(ValueError):
+                state.prepare_interaction({"thread_id": "thread-history-shape", "turns": []})
 
     def test_combined_airbnb_data_lake_new_only_updates_changed_reservation_snapshot(self):
         first_capture = {
