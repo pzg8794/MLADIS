@@ -49,6 +49,16 @@ reservation snapshots bootstrap the first checkpoint so current detailed
 captures are not appended again. The collector also deduplicates duplicate
 keys within one input file and reports skipped counts.
 
+The wrapper is the repeatable entry point for both agent-operated and later
+operator-operated collection. Once a private capture file exists, the same
+single shell file can resume the import without this chat, a particular agent,
+or a long-running browser process.
+
+During a normal resume, only records whose `scope:thread_id` or deterministic
+content key is not already marked in the checkpoint are written. Existing
+conversation and reservation records are skipped rather than appended again.
+Keep the input export private and outside Git.
+
 For a deliberate backfill or reconciliation run, call the management command
 without `--new-only`; this is an operator decision and may append interaction
 observations. Normal resume work must use the wrapper.
@@ -113,6 +123,16 @@ thread. The second enriches the reservation snapshot and writes sanitized
 conversation turns to `INTERACTIONS`. Use the same output root for both runs;
 reservation snapshots upsert by deterministic key. Keep the raw checkpoint
 outside Git and with restrictive file permissions.
+
+### Agent and no-agent execution paths
+
+With an authorized browser agent, use the read-only capture helper to write a
+private table/thread JSONL export, then run the same
+`scripts/resume_airbnb_data_lake.sh` command. Without an agent, an operator
+places a private JSON or JSONL export in the approved location and runs that
+same shell file. Both paths use the same checkpoint and idempotent writers.
+Neither path sends messages, edits or cancels reservations, charges guests,
+captures or releases deposits, or creates a live reservation.
 
 Add `--new-only` when invoking the combined command directly. The browser
 capture helper and this ingestion checkpoint are separate: the browser helper

@@ -2,6 +2,19 @@
 
 This tracker records evidence for the two data-lake outputs used during the Airbnb-to-MLADIS transition.
 
+## Current preparation pass
+
+The response and collection workflow is prepared for repeatable use, but this
+pass intentionally did **not** test with a real customer, send a response, or
+open, change, or cancel an Airbnb reservation. The operational entry point for
+continuing collection is `airbnb_agent/scripts/resume_airbnb_data_lake.sh`.
+It resumes from the private checkpoint and imports only new conversation and
+reservation captures. The historical collection evidence in the table below
+is retained as prior evidence; it is not a claim that a real-customer response
+test was performed in this preparation pass. The table's prior `Local user
+tested` values refer to read-only collection evidence, not outbound response
+automation.
+
 | Feature | Coded | Local dev tested | Local user tested | Production dev tested | Production user tested | Current evidence |
 |---|---|---|---|---|---|---|
 | Anonymous conversation lake | Yes | Yes, automated redaction/signal tests | Yes | Not yet | Not yet | Read-only DOM capture completed for 1,775 normal/archived Airbnb threads; 1,775 anonymized Airbnb interaction records are in the protected local runtime lake. |
@@ -42,15 +55,17 @@ reviewed reconciliation creates or links real `BookingInquiry` objects.
 ## Repeatable command
 
 Future collection does not require this chat or a particular agent. Produce one
-private combined JSON/JSONL export following the [Airbnb collection runbook](../data-store/airbnb-collection-runbook.md), then run:
+private combined JSON/JSONL export following the [Airbnb collection runbook](../data-store/airbnb-collection-runbook.md), then run the resumable wrapper:
 
 ```bash
 cd airbnb_agent
-.venv/bin/python manage.py collect_airbnb_data_lake \
-  --input /private/path/airbnb-combined-export.json
+./scripts/resume_airbnb_data_lake.sh \
+  /private/path/airbnb-combined-export.jsonl
 ```
 
-Add `--sync-drive` only after confirming the approved `rclone` configuration.
-The command reports counts and output paths, keeps reservation snapshots
-idempotent, sanitizes interactions before writing, and never sends or changes
-anything in Airbnb.
+The wrapper always passes `--new-only`, resumes the private checkpoint, reports
+counts and output paths, keeps reservation snapshots idempotent, sanitizes
+interactions before writing, and never sends or changes anything in Airbnb.
+Use the management command directly only for a deliberate backfill or
+reconciliation run. Add `--sync-drive` only after confirming the approved
+`rclone` configuration.

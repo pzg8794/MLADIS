@@ -2,13 +2,28 @@
 
 ## Status
 
-The current workflow is **draft-only**. It can use a real Airbnb customer
-message as input and produce a real MLADIS response draft, but it cannot send
-to Airbnb without a deliberately configured sender adapter and an immediate
-staff confirmation at action time.
+The workflow is **prepared and draft-only**. It can accept one private Airbnb
+message as input and produce an internal MLADIS response draft, but it cannot
+send to Airbnb and must not write directly to a customer. This preparation pass
+does **not** test the workflow with a real customer.
 
 This is intentional. The collector is read-only, and the response workflow
 must not silently represent MLADIS to a customer.
+
+## Prepared workflow artifacts
+
+| Responsibility | Reusable artifact | Boundary |
+|---|---|---|
+| Response decision and draft | `airbnb_agent/bookings/airbnb_response_workflow.py` | Produces an internal draft; it has no sender. |
+| One-message draft command | `airbnb_agent/bookings/management/commands/draft_airbnb_response.py` | Accepts one private structured message and returns a draft-only result. |
+| Read-only Airbnb capture | `airbnb_agent/scripts/capture_airbnb_messages.mjs` | Reads rendered DOM through an already-authorized host session. |
+| New-only lake resume | `airbnb_agent/scripts/resume_airbnb_data_lake.sh` | Imports only unseen conversation and reservation captures. |
+| Customer-service rules | `docs/business/operations/customer-service-playbook.md` | Supplies rules-first response and escalation guidance. |
+
+There is deliberately no Airbnb sender adapter in this workflow. A future
+sender requires a separate implementation, staff approval gate, and an
+explicitly authorized live test. The current prepared process ends at an
+internal draft and review record.
 
 ## Workflow
 
@@ -29,9 +44,10 @@ flowchart LR
 1. Capture only rendered Airbnb DOM through the authorized host session.
 2. Run the new-only lake wrapper. It resumes from
    `BOOKINGS/.airbnb_capture_state.json` and skips completed source threads.
-3. For a response test, pass one customer message to the draft command. The
-   command stores the normal MLADIS agent conversation and prints only the
-   structured draft result; the customer message is not written to Git.
+3. For a future controlled test, pass one customer message to the draft
+   command. The command stores the normal MLADIS agent conversation and prints
+   only the structured draft result; the customer message is not written to
+   Git. This preparation pass does not run the command against a real customer.
 4. Review the language, facts, promised actions, and escalation classification.
 5. Obtain staff confirmation immediately before any future send action.
 6. Record the result and evidence in the verification tracker.
@@ -83,7 +99,7 @@ sole responsible party for everything that happens during the reservation,
 regardless of who does what. This responsibility statement does not authorize
 visitors or change a property's guest-count, day-use, or gathering rules.
 
-## Actual-customer test protocol
+## Future controlled test protocol
 
 For a controlled test, the host may designate one real customer thread and
 confirm that the assigned staff member will not respond during the test
