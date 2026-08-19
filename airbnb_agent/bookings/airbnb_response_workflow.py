@@ -108,14 +108,15 @@ class AirbnbResponseWorkflow:
         return replace(draft, approved=True, sendable=sendable)
 
     def send(self, draft):
-        """Send only through an explicitly supplied, tested sender adapter."""
+        """Fail closed until durable outbound authorization exists."""
         if not draft.approved:
             raise ResponseWorkflowError("Staff confirmation is required before sending.")
         if not draft.sendable:
             raise ResponseWorkflowError("This response requires manual review and cannot be auto-sent.")
-        if not callable(self.sender):
-            raise ResponseWorkflowError("No Airbnb sender is configured; draft-only mode is active.")
-        return self.sender(draft.reply)
+        raise ResponseWorkflowError(
+            "Live Airbnb sending is disabled until durable ResponseReview or "
+            "OutboundResponseAuthorization is implemented."
+        )
 
     @classmethod
     def _is_low_stakes(cls, message, topic):

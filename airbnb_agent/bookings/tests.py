@@ -22,7 +22,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import resolve, reverse
 from django.utils import timezone
@@ -30,7 +30,8 @@ import stripe
 
 from .adapters import MLADISAccountAdapter, MLADISSocialAccountAdapter
 from .admin import DamageDepositAdmin
-from .airbnb_response_workflow import AirbnbResponseWorkflow, ResponseWorkflowError
+from .airbnb_capture_state import AirbnbCaptureState
+from .airbnb_response_workflow import CustomerResponseDraft, AirbnbResponseWorkflow, ResponseWorkflowError
 from .airbnb_import import AirbnbGuestEmailParser, AirbnbGuestImportService
 from .airbnb_reservation_lake import AirbnbReservationSnapshotWriter
 from .data_lake import MLADISDataLakeExporter
@@ -563,6 +564,71 @@ class DataLakeExporterTests(TestCase):
         self.assertEqual(first_path, second_path)
         self.assertEqual(len(rows), 1)
 
+    def test_anonymous_interaction_writer_keeps_distinct_source_observations(self):
+        kwargs = {
+            "source_system": "airbnb",
+            "channel": "host_messages",
+            "language": "en",
+            "topic": "arrival",
+            "turns": [{"role": "guest", "text": "Can I arrive early?"}],
+        }
+        with TemporaryDirectory() as temp_dir:
+            writer = AnonymousInteractionLakeWriter(temp_dir)
+            path = writer.write_conversation(**kwargs, occurred_at="2026-08-18T12:00:00Z")
+            writer.write_conversation(**kwargs, occurred_at="2026-08-18T13:00:00Z")
+            rows = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+        self.assertEqual(len(rows), 2)
+
+    def test_airbnb_capture_state_migrates_scope_keys_and_deduplicates(self):
+        with TemporaryDirectory() as temp_dir:
+            state_path = Path(temp_dir) / "BOOKINGS" / AirbnbCaptureState.FILENAME
+            state_path.parent.mkdir(parents=True)
+            state_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "threads": {
+                            "normal:thread-1": {
+                                "interactions": True,
+                                "fingerprints": {"interactions": ["same", "same"]},
+                                "observation_counts": {"interactions": 1},
+                            },
+                            "archived:thread-1": {
+                                "interactions": True,
+                                "fingerprints": {"interactions": ["same"]},
+                                "observation_counts": {"interactions": 1},
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            state = AirbnbCaptureState.load(temp_dir)
+            entry = state.entries["thread:thread-1"]
+
+        self.assertEqual(entry["fingerprints"]["interactions"], ["same"])
+        self.assertEqual(entry["reconciliation_required"], "interaction_prefix_not_available")
+
+    def test_airbnb_capture_state_does_not_grow_fingerprints_on_reload(self):
+        document = {
+            "source": {"scope": "normal", "thread_id": "thread-reload"},
+            "turns": [{"role": "guest", "text": "Can I arrive early?"}],
+        }
+        with TemporaryDirectory() as temp_dir:
+            state = AirbnbCaptureState(temp_dir)
+            state.mark(document, "interactions")
+            state.save()
+            reloaded = AirbnbCaptureState.load(temp_dir)
+            reloaded.save()
+            payload = json.loads(reloaded.path.read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            len(payload["threads"]["thread:thread-reload"]["fingerprints"]["interactions"]),
+            1,
+        )
+
     def test_agent_conversation_signal_writes_only_identity_free_interaction_record(self):
         with TemporaryDirectory() as temp_dir, override_settings(
             MLADIS_DATASTORE_ROOT=temp_dir,
@@ -660,6 +726,8 @@ class DataLakeExporterTests(TestCase):
         with TemporaryDirectory() as temp_dir:
             writer = AirbnbReservationSnapshotWriter(temp_dir)
             self.assertEqual(writer.write_snapshot(snapshot)[1], "created")
+            snapshot["guests"] = 3
+            self.assertEqual(writer.write_snapshot(snapshot)[1], "updated")
             snapshot["lifecycle"]["status"] = "canceled"
             self.assertEqual(writer.write_snapshot(snapshot)[1], "updated")
 
@@ -680,6 +748,12 @@ class DataLakeExporterTests(TestCase):
 
         writer = AirbnbReservationSnapshotWriter("/tmp/mladis-reservation-key-test")
         self.assertEqual(writer.reservation_key(base), writer.reservation_key(changed))
+        archived = {**base, "source": {**base["source"], "scope": "archived"}}
+        self.assertEqual(writer.reservation_key(base), writer.reservation_key(archived))
+
+    def test_airbnb_reservation_key_rejects_empty_fallback_identity(self):
+        with self.assertRaises(ValueError):
+            AirbnbReservationSnapshotWriter("/tmp/mladis-reservation-key-test").reservation_key({})
 
     def test_airbnb_reservation_snapshot_hashes_contact_after_decline_or_no_response(self):
         base = {
@@ -825,6 +899,29 @@ class DataLakeExporterTests(TestCase):
         self.assertEqual(interaction_records[1]["data"]["observation_semantics"], "delta")
         self.assertIn("We can review arrival options.", json.dumps(interaction_records[1]))
         self.assertIn("Skipped existing captures: 1 reservation(s), 1 interaction(s).", third_output.getvalue())
+
+    def test_combined_airbnb_data_lake_new_only_rejects_non_monotonic_history(self):
+        first_capture = {
+            "dataset": "normal",
+            "thread_id": "resume-thread-non-monotonic",
+            "messages": ["Private Guest · Booker\nCan we arrive early?"],
+            "captured_at": "2026-08-18T12:00:00-04:00",
+        }
+        changed_capture = {
+            **first_capture,
+            "messages": ["Private Guest · Booker\nCan we arrive tomorrow?", "Diana · Host\nLet me check."],
+            "captured_at": "2026-08-18T12:05:00-04:00",
+        }
+        with TemporaryDirectory() as temp_dir, TemporaryDirectory() as input_dir, override_settings(
+            MLADIS_DATASTORE_LIVE_SYNC_DRIVE=False,
+        ):
+            first_path = Path(input_dir) / "first-capture.json"
+            changed_path = Path(input_dir) / "changed-capture.json"
+            first_path.write_text(json.dumps([first_capture]), encoding="utf-8")
+            changed_path.write_text(json.dumps([changed_capture]), encoding="utf-8")
+            call_command("collect_airbnb_data_lake", input=first_path, root=temp_dir, new_only=True)
+            with self.assertRaises(CommandError):
+                call_command("collect_airbnb_data_lake", input=changed_path, root=temp_dir, new_only=True)
 
     def test_combined_airbnb_data_lake_new_only_updates_changed_reservation_snapshot(self):
         first_capture = {
@@ -1253,6 +1350,22 @@ class AgentAPITests(TestCase):
         self.assertEqual(draft.grounding_status, "property_unresolved")
         self.assertIn("property_not_resolved", draft.risk_reasons)
         self.assertFalse(workflow.approve(draft).sendable)
+
+    def test_airbnb_response_workflow_sender_is_hard_disabled(self):
+        draft = CustomerResponseDraft(
+            reply="The stay is available.",
+            topic="availability",
+            mode="openai",
+            conversation_id=None,
+            low_stakes=True,
+            grounding_status="property_resolved",
+            draft_hash="draft-hash",
+            approved=True,
+            sendable=True,
+        )
+        workflow = AirbnbResponseWorkflow(sender=lambda _reply: "sent")
+        with self.assertRaisesRegex(ResponseWorkflowError, "Live Airbnb sending is disabled"):
+            workflow.send(draft)
 
     @override_settings(OPENAI_AGENT_MODEL="gpt-5.4-nano")
     def test_agent_service_blocks_off_topic_question_before_openai(self):

@@ -15,7 +15,7 @@ from pathlib import Path
 class AirbnbCaptureState:
     """Track successfully written reservation and interaction captures."""
 
-    SCHEMA_VERSION = "1.1"
+    SCHEMA_VERSION = "1.2"
     FILENAME = ".airbnb_capture_state.json"
 
     def __init__(self, root, *, entries=None):
@@ -84,6 +84,8 @@ class AirbnbCaptureState:
         if fingerprint not in fingerprints:
             fingerprints.append(fingerprint)
         entry.setdefault("observation_counts", {})[kind] = self._observation_count(document, kind)
+        if kind == "interactions" and isinstance(document.get("turns"), list):
+            entry["turn_fingerprints"] = self._turn_fingerprints(document["turns"])
         entry["last_seen_at"] = datetime.now(timezone.utc).isoformat()
 
     def prepare_interaction(self, document):
@@ -101,10 +103,23 @@ class AirbnbCaptureState:
         entry = self.entries.get(self.key_for(document, "interactions"), {})
         counts = entry.get("observation_counts") if isinstance(entry, dict) else None
         previous_count = counts.get("interactions") if isinstance(counts, dict) else None
+        try:
+            previous_count = int(previous_count) if previous_count is not None else None
+        except (TypeError, ValueError):
+            previous_count = None
         if not isinstance(previous_count, int) or previous_count <= 0 or previous_count >= len(turns):
             prepared = dict(document)
             prepared["_observation_semantics"] = "initial_snapshot"
             return prepared
+        previous_turns = entry.get("turn_fingerprints") if isinstance(entry, dict) else None
+        if not isinstance(previous_turns, list) or len(previous_turns) < previous_count:
+            raise ValueError(
+                "Non-monotonic Airbnb interaction history requires reconciliation before --new-only can continue."
+            )
+        if self._turn_fingerprints(turns[:previous_count]) != previous_turns[:previous_count]:
+            raise ValueError(
+                "Non-monotonic Airbnb interaction history requires reconciliation before --new-only can continue."
+            )
         prepared = dict(document)
         prepared["turns"] = turns[previous_count:]
         prepared["_observation_semantics"] = "delta"
@@ -148,7 +163,7 @@ class AirbnbCaptureState:
             source = data.get("source") if isinstance(data, dict) else None
             if not isinstance(source, dict) or not source.get("thread_id"):
                 continue
-            key = self._thread_key(source.get("scope"), source.get("thread_id"))
+            key = self._thread_key(None, source.get("thread_id"))
             entry = self.entries.setdefault(key, {})
             entry.setdefault("reservations", True)
             fingerprints = entry.setdefault("fingerprints", {}).setdefault("reservations", [])
@@ -160,8 +175,12 @@ class AirbnbCaptureState:
 
     def _upgrade_entries(self, stored_schema_version):
         """Normalize legacy checkpoint state before bootstrap or selection."""
-        if stored_schema_version == self.SCHEMA_VERSION:
-            return
+        migrated_entries = {}
+        for raw_key, raw_entry in self.entries.items():
+            key = self._canonical_entry_key(raw_key)
+            target = migrated_entries.setdefault(key, {})
+            self._merge_entries(target, raw_entry)
+        self.entries = migrated_entries
         for entry in self.entries.values():
             fingerprints = entry.setdefault("fingerprints", {})
             for kind, values in list(fingerprints.items()):
@@ -176,6 +195,49 @@ class AirbnbCaptureState:
             if entry.get("interactions") and not fingerprints.get("interactions"):
                 entry.pop("interactions", None)
                 observation_counts.pop("interactions", None)
+            elif entry.get("interactions") and not entry.get("turn_fingerprints"):
+                entry["reconciliation_required"] = "interaction_prefix_not_available"
+
+    @classmethod
+    def _canonical_entry_key(cls, key):
+        key = str(key)
+        prefix, separator, thread_id = key.partition(":")
+        if separator and prefix in {"normal", "archived", "unknown"} and thread_id:
+            return cls._thread_key(None, thread_id)
+        return key
+
+    @staticmethod
+    def _merge_entries(target, source):
+        if not isinstance(source, dict):
+            return
+        for flag in ("reservations", "interactions"):
+            if source.get(flag):
+                target[flag] = True
+        for kind, values in (source.get("fingerprints") or {}).items():
+            if not isinstance(values, list):
+                continue
+            target_values = target.setdefault("fingerprints", {}).setdefault(kind, [])
+            for value in values:
+                if value and value not in target_values:
+                    target_values.append(value)
+        for kind, value in (source.get("observation_counts") or {}).items():
+            if value is None:
+                continue
+            existing = target.setdefault("observation_counts", {}).get(kind)
+            if existing is None or value > existing:
+                target["observation_counts"][kind] = value
+        source_turns = source.get("turn_fingerprints")
+        if isinstance(source_turns, list):
+            target_turns = target.get("turn_fingerprints")
+            if target_turns is None:
+                target["turn_fingerprints"] = list(source_turns)
+            elif target_turns != source_turns:
+                target.pop("turn_fingerprints", None)
+                target["reconciliation_required"] = "merged_thread_prefix_conflict"
+        if source.get("reconciliation_required"):
+            target["reconciliation_required"] = source["reconciliation_required"]
+        if source.get("last_seen_at") and source.get("last_seen_at", "") > target.get("last_seen_at", ""):
+            target["last_seen_at"] = source["last_seen_at"]
 
     @classmethod
     def key_for(cls, document, kind):
@@ -272,4 +334,20 @@ class AirbnbCaptureState:
 
     @staticmethod
     def _thread_key(scope, thread_id):
-        return f"{str(scope or 'unknown').strip()}:{str(thread_id).strip()}"
+        del scope
+        return f"thread:{str(thread_id).strip()}"
+
+    @staticmethod
+    def _turn_fingerprints(turns):
+        fingerprints = []
+        for turn in turns:
+            if not isinstance(turn, dict):
+                turn = {"value": str(turn)}
+            encoded = json.dumps(
+                {"role": turn.get("role", ""), "text": turn.get("text", "")},
+                default=str,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            fingerprints.append(hashlib.sha256(encoded.encode("utf-8")).hexdigest())
+        return fingerprints

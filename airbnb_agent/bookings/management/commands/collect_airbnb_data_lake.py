@@ -83,9 +83,12 @@ class Command(BaseCommand):
             capture_state.mark(document, "reservations")
         interaction_paths = set()
         for document in interactions:
-            prepared_document = (
-                capture_state.prepare_interaction(document) if options["new_only"] else document
-            )
+            try:
+                prepared_document = (
+                    capture_state.prepare_interaction(document) if options["new_only"] else document
+                )
+            except ValueError as error:
+                raise CommandError(str(error)) from error
             turns = prepared_document.get("turns")
             if not isinstance(turns, list):
                 raise CommandError("Each interaction document must contain a turns list.")
@@ -223,7 +226,7 @@ class Command(BaseCommand):
         return {
             "source_system": "airbnb",
             "channel": f"host_messages_{document.get('dataset', 'unknown')}",
-            "_capture_key": f"{document.get('dataset', 'unknown')}:{document.get('thread_id', '')}",
+            "thread_id": document.get("thread_id"),
             "known_names": known_names,
             "turns": turns,
             "occurred_at": document.get("captured_at"),

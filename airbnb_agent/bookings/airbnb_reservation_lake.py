@@ -101,24 +101,25 @@ class AirbnbReservationSnapshotWriter:
     @staticmethod
     def reservation_key(snapshot):
         source = snapshot.get("source", {})
-        scope = str(source.get("scope") or "unknown").strip().lower()
         confirmation_code = str(source.get("confirmation_code") or "").strip().lower()
         thread_id = str(source.get("thread_id") or "").strip().lower()
         if confirmation_code:
-            identity_parts = ["airbnb", scope, "confirmation", confirmation_code]
+            identity_parts = ["airbnb", "confirmation", confirmation_code]
         elif thread_id:
-            identity_parts = ["airbnb", scope, "thread", thread_id]
+            identity_parts = ["airbnb", "thread", thread_id]
         else:
             # This fallback is intentionally weaker. Mutable stay facts are
             # excluded from identity and remain part of the record fingerprint.
-            identity_parts = [
-                "airbnb",
-                scope,
-                "fallback",
+            fallback_parts = [
                 snapshot.get("property", {}).get("listing_id"),
                 snapshot.get("guest", {}).get("email") or snapshot.get("guest", {}).get("name"),
                 snapshot.get("lifecycle", {}).get("booking_date"),
             ]
+            if not any(str(value or "").strip() for value in fallback_parts):
+                raise ValueError(
+                    "Reservation snapshots need a confirmation code, thread, or real fallback discriminator."
+                )
+            identity_parts = ["airbnb", "fallback", *fallback_parts]
         identity = "|".join(str(value or "").strip().lower() for value in identity_parts)
         if not identity.strip("|"):
             raise ValueError("Reservation snapshots need a confirmation code, thread, guest, or stay identity.")

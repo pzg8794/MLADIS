@@ -7,10 +7,10 @@ restricted to authorized collaborators.
 
 | Source | Drive URL | GitHub repo | Submodule path | GitHub visibility | Data classification |
 |---|---|---|---|---|
-| AIRBNB | https://drive.google.com/drive/folders/14hfw3c8s8QgYFNe9yGoiKHvUuK_LT_J5 | https://github.com/pzg8794/MLADIS-AIRBNB | `sources/AIRBNB` | restricted | private source and business material |
-| SolOriens Apts | https://drive.google.com/drive/folders/1kc6RnaXLs3s7-7-YV8xA_4AZrEU_He6W | https://github.com/pzg8794/MLADIS-SolOriens-Apts | `sources/SolOriens-Apts` | restricted | private property material |
-| SolOriensV | https://drive.google.com/drive/folders/1BAwujmU1K9qFOSbU21o3606xDegy5n1i | https://github.com/pzg8794/MLADIS-SolOriensV | `sources/SolOriensV` | restricted | private property material |
-| DR Apartments | https://drive.google.com/drive/folders/1-pzbXWgYmVRv5PkYH0JW9H-61PyGA0Jr | https://github.com/pzg8794/MLADIS-DR-Apartments | `sources/DR-Apartments` | restricted | private property material |
+| AIRBNB | https://drive.google.com/drive/folders/14hfw3c8s8QgYFNe9yGoiKHvUuK_LT_J5 | https://github.com/pzg8794/MLADIS-AIRBNB | `sources/AIRBNB` | private | private source and business material |
+| SolOriens Apts | https://drive.google.com/drive/folders/1kc6RnaXLs3s7-7-YV8xA_4AZrEU_He6W | https://github.com/pzg8794/MLADIS-SolOriens-Apts | `sources/SolOriens-Apts` | private | private property material |
+| SolOriensV | https://drive.google.com/drive/folders/1BAwujmU1K9qFOSbU21o3606xDegy5n1i | https://github.com/pzg8794/MLADIS-SolOriensV | `sources/SolOriensV` | private | private property material |
+| DR Apartments | https://drive.google.com/drive/folders/1-pzbXWgYmVRv5PkYH0JW9H-61PyGA0Jr | https://github.com/pzg8794/MLADIS-DR-Apartments | `sources/DR-Apartments` | private | private property material |
 
 ## Import Policy
 

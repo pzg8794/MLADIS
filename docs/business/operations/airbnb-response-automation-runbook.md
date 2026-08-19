@@ -122,6 +122,9 @@ current factual sources, no conflicting source data, and no escalation signal.
 Classification alone is never permission to send. Setup-mode and fallback-mode
 drafts are never auto-send eligible; only a successful, recognized model mode
 can proceed to the approval checks.
+The current implementation remains draft-only and hard-disables sender
+execution, even when a callable is injected, until the durable authorization
+object and send-time validation below exist.
 
 Before a future sender is enabled, approval must be represented by a durable
 `ResponseReview` or `OutboundResponseAuthorization` object bound to the draft
