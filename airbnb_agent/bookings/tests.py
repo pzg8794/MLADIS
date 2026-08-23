@@ -125,7 +125,6 @@ class OpsNavigationContractTests(TestCase):
         ("Operations", "Reports", "/ops/reports/"),
         ("Operations", "FairAgent", "/ops/agent/"),
         ("Business", "Properties", "/ops/properties/"),
-        ("Business", "Tasks", "/ops/workboard/"),
         ("Admin", "Settings", "/ops/settings/"),
         ("Admin", "Admin", "/ops/admin/"),
     ]
@@ -147,12 +146,15 @@ class OpsNavigationContractTests(TestCase):
 
         self.assertEqual(actual_nav, self.expected_nav)
 
-    def _assert_route(self, href: str, expected_view_name: str):
+    def _assert_route(self, href: str, expected_view_name: str, expected_template: str | None = None):
         match = resolve(href)
         self.assertEqual(match.view_name, expected_view_name)
         self.assertEqual(reverse(expected_view_name), href)
         response = self.client.get(href)
         self.assertEqual(response.status_code, 200)
+        if expected_template:
+            self.assertTemplateUsed(response, expected_template)
+            self.assertTemplateNotUsed(response, "bookings/modern_dashboard.html")
         html_content = response.content.decode("utf-8")
         nav_match = re.search(
             r'<script id="mladis-ops-nav-items" type="application/json">(.*?)</script>',
@@ -180,7 +182,11 @@ class OpsNavigationContractTests(TestCase):
         self._assert_route("/ops/guests/", "bookings:ops-guests")
 
     def test_ops_maintenance_routes(self):
-        self._assert_route("/ops/maintenance/", "bookings:ops-maintenance")
+        self._assert_route(
+            "/ops/maintenance/",
+            "bookings:ops-maintenance",
+            "bookings/modern_ops_maintenance.html",
+        )
 
     def test_ops_payments_routes(self):
         self._assert_route("/ops/payments/", "bookings:ops-payments")
@@ -216,7 +222,16 @@ class OpsNavigationContractTests(TestCase):
         self._assert_route("/ops/reports/", "bookings:ops-reports")
 
     def test_ops_fairagent_routes(self):
-        self._assert_route("/ops/agent/", "bookings:ops-agent")
+        self._assert_route(
+            "/ops/agent/",
+            "bookings:ops-agent",
+            "bookings/modern_ops_agent.html",
+        )
+
+    def test_replacement_agent_and_maintenance_pages_are_removed(self):
+        frontend_pages = Path(__file__).resolve().parents[2] / "frontend" / "src" / "ui" / "pages"
+        self.assertFalse((frontend_pages / "OpsAgentPage.tsx").exists())
+        self.assertFalse((frontend_pages / "OpsMaintenancePage.tsx").exists())
 
     def test_ops_properties_routes(self):
         self._assert_route("/ops/properties/", "bookings:ops-properties")

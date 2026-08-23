@@ -67,6 +67,7 @@ from .ops_finance import DepositHoldOperationsService, PaymentsTransactionsServi
 from .guest_services import GuestService
 from .services import (
     AgentAccessContext,
+    AgentIntelligenceOperationsService,
     BookingCalendarService,
     CustomerAccountService,
     CustomersCRMService,
