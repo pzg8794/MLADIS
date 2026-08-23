@@ -21,15 +21,15 @@
           <span><strong>MLADIS</strong><small>Account access</small></span>
         </a>
         <div class="modern-auth-login-trust" aria-label="Account safeguards">
-          <span><i aria-hidden="true">S</i><strong>Secure &amp; Private</strong><small>Your data is always protected</small></span>
-          <span><i aria-hidden="true">F</i><strong>Fast &amp; Reliable</strong><small>Built for vacation rental pros</small></span>
-          <span><i aria-hidden="true">T</i><strong>Trusted by Hosts</strong><small>Powering great stays</small></span>
+          <span><i aria-hidden="true">A</i><strong>Authenticated access</strong><small>Account sign-in required</small></span>
+          <span><i aria-hidden="true">R</i><strong>Role-based controls</strong><small>Staff tools require permission</small></span>
+          <span><i aria-hidden="true">D</i><strong>Durable records</strong><small>Reservation-linked activity</small></span>
         </div>
-        <a class="modern-auth-help" href="mailto:support@mladis.com"><i aria-hidden="true">H</i><span><strong>Need help?</strong><small>Contact support</small></span></a>
+        <a class="modern-auth-help" href="mailto:{{ site_settings.contact_email|default:'support@mladis.com' }}"><i aria-hidden="true">H</i><span><strong>Need help?</strong><small>Contact support</small></span></a>
       </header>
 
       <section class="modern-auth-hero modern-auth-login-hero">
-        <div class="modern-auth-login-badge">Welcome back, Piter! <span aria-hidden="true">*</span></div>
+        <div class="modern-auth-login-badge">MLADIS account access <span aria-hidden="true">*</span></div>
         <h1>Manage your stays.<br>Grow your business.<br><em>All in one place.</em></h1>
         <div class="modern-auth-login-tools" aria-label="Account tools">
           <span>Reservations</span>
@@ -37,11 +37,6 @@
           <span>Deposits</span>
           <span>Messages</span>
         </div>
-        <aside class="modern-auth-login-stats" aria-label="Account summary">
-          <span><i aria-hidden="true">P</i><strong>3 Properties</strong><small>Active listings</small></span>
-          <span><strong>$12,450</strong><small>This month</small></span>
-          <span><strong>4.93 <b aria-hidden="true">*</b></strong><small>Guest rating</small></span>
-        </aside>
       </section>
 
       <section class="modern-auth-panel modern-auth-login-panel">
@@ -92,7 +87,7 @@
         <a class="modern-auth-link" href="{% url 'bookings:signup' %}"><span aria-hidden="true">U</span>{% trans "Create a new account" %}</a>
         <footer class="modern-auth-security">
           <i aria-hidden="true">L</i>
-          <span><strong>Your security is our priority</strong><small>We use industry-leading encryption to protect your data.</small></span>
+          <span><strong>Protected account session</strong><small>Credentials are handled by the authenticated application session.</small></span>
           <b aria-hidden="true">S</b>
         </footer>
       </section>

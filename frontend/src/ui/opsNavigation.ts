@@ -61,7 +61,6 @@ const fallbackOpsNavItems: RuntimeOpsNavItem[] = [
   { group: 'Operations', label: 'Reports', href: '/ops/reports/', icon: 'reports', description: 'Revenue, occupancy, trends', tone: '#6d28d9', bg: '#f3e8ff', shortcutAction: 'View', shortcutTone: 'violet' },
   { group: 'Operations', label: 'FairAgent', href: '/ops/agent/', icon: 'fairagent', description: 'AI suggestions and training', tone: '#0d9488', bg: '#ccfbf1', shortcutAction: 'Manage', shortcutTone: 'rose' },
   { group: 'Business', label: 'Properties', href: '/ops/properties/', icon: 'stays', description: 'Properties and availability', tone: '#059669', bg: '#d1fae5', shortcutAction: 'Manage', shortcutTone: 'blue' },
-  { group: 'Business', label: 'Tasks', href: '/ops/workboard/', icon: 'tasks', description: 'Assigned jobs and completion', tone: '#d97706', bg: '#fef3c7', shortcutAction: 'Open', shortcutTone: 'violet' },
   { group: 'Admin', label: 'Settings', href: '/ops/settings/', icon: 'settings', description: 'Public site copy and identity', tone: '#475569', bg: '#e2e8f0', shortcutAction: 'Manage', shortcutTone: 'amber' },
   { group: 'Admin', label: 'Admin', href: '/ops/admin/', icon: 'users-admin', description: 'Access, roles, operators', tone: '#1d4ed8', bg: '#dbeafe', shortcutAction: 'Manage', shortcutTone: 'violet' },
 ];

@@ -18734,6 +18734,7 @@ svg.modern-admin-rail-icon:not([stroke]) {
 .ops-res-v4-filters > button,
 .ops-res-v4-table-footer button,
 .ops-res-v4-mini-actions a,
+.ops-res-v4-mini-actions button,
 .ops-res-v4-message-actions button,
 .ops-res-v4-composer button,
 .ops-res-v4-deposit-panel button,
@@ -19186,6 +19187,24 @@ svg.modern-admin-rail-icon:not([stroke]) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.ops-res-v4-mini-actions button.is-danger {
+  border-color: #f3c7c4;
+  color: #b42318;
+  background: #fff7f6;
+}
+
+.ops-res-v4-mini-actions button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.ops-res-v4-status-notice {
+  border-left: 3px solid #13795b;
+  padding-left: 9px;
+  color: #245c4c !important;
+  font-weight: 750;
 }
 
 .ops-res-v4-guest-card section {

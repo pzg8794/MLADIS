@@ -1,11 +1,4 @@
-import {
-  Bell,
-  CalendarDays,
-  ChevronDown,
-  Menu,
-  Plus,
-  Search,
-} from 'lucide-react';
+import { CalendarDays, ChevronDown, Menu, Plus } from 'lucide-react';
 import { Fragment, ReactNode, useState } from 'react';
 import { OPS_NAV_ITEMS } from '../opsNavigation';
 import { getConfiguredLogoUrl } from '../helpers/brand';
@@ -24,6 +17,14 @@ function isNavActive(pathname: string, href: string) {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = window.location.pathname;
   const logoUrl = getConfiguredLogoUrl();
+  const currentUserName = document.querySelector<HTMLMetaElement>('meta[name="mladis-ops-user-name"]')?.content || 'Operator';
+  const currentUserInitials = currentUserName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase() || 'OP';
   const [sidebarPinned, setSidebarPinned] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [sidebarFocused, setSidebarFocused] = useState(false);
@@ -72,9 +73,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           })}
         </nav>
         <div className="v4-sidebar-user">
-          <span>PG</span>
+          <span>{currentUserInitials}</span>
           <div>
-            <strong>Piter Garcia</strong>
+            <strong>{currentUserName}</strong>
             <small>Operator</small>
           </div>
           <ChevronDown size={15} />
@@ -95,23 +96,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           >
             <Menu size={19} />
           </button>
-          <label className="dashboard-search v4-command-search">
-            <Search size={17} />
-            <input aria-label="Search dashboard" placeholder="Search reservations, guests, properties..." />
-            <kbd>⌘ K</kbd>
-          </label>
           <div className="v4-commandbar__actions">
-            <a className="v4-new-button" href="/ops/reservations/">
+            <a className="v4-new-button" href="/admin/bookings/bookinginquiry/add/">
               <Plus size={17} />
-              New
-              <ChevronDown size={15} />
+              New reservation
             </a>
-            <button className="v4-icon-button has-badge" type="button" aria-label="Notifications"><Bell size={18} /><span>8</span></button>
             <a className="v4-icon-button" href="/ops/calendar/" aria-label="Calendar"><CalendarDays size={18} /></a>
             <a className="v4-user-menu" href="/accounts/">
-              <span>PG</span>
+              <span>{currentUserInitials}</span>
               <div>
-                <strong>Piter Garcia</strong>
+                <strong>{currentUserName}</strong>
                 <small>Operator</small>
               </div>
               <ChevronDown size={15} />

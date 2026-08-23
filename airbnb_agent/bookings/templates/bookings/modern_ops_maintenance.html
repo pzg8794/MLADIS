@@ -15,10 +15,6 @@
       <p>Track, manage, and automate property maintenance and vendor work.</p>
     </div>
     <div class="ops-mnt-header-actions">
-      <a class="ops-mnt-btn" href="#work-orders">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-        Filters
-      </a>
       <a class="ops-mnt-btn" href="{% url 'bookings:ops-maintenance-api' %}">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Export
@@ -51,17 +47,6 @@
             <span>{{ card.trend }}</span>
           </div>
         </div>
-        <svg class="ops-mnt-sparkline" viewBox="0 0 140 28" preserveAspectRatio="none" aria-hidden="true">
-          {% if card.tone == "blue" %}
-            <path d="M0 18 L14 15 L30 21 L45 24 L58 16 L72 17 L86 10 L101 16 L116 15 L130 19 L140 21"/>
-          {% elif card.tone == "orange" %}
-            <path d="M0 22 L18 23 L34 21 L50 19 L65 6 L83 21 L100 17 L115 23 L128 24 L140 14"/>
-          {% elif card.tone == "violet" %}
-            <path d="M0 21 L18 22 L36 14 L52 14 L66 11 L82 18 L96 17 L112 21 L128 17 L140 25"/>
-          {% else %}
-            <path d="M0 22 L20 18 L40 21 L56 14 L72 7 L88 8 L104 14 L120 11 L134 16 L140 10"/>
-          {% endif %}
-        </svg>
       </article>
     {% endfor %}
   </section>
@@ -76,15 +61,14 @@
       </div>
       <nav class="ops-mnt-tabs" aria-label="Work order filters">
         {% for tab in tabs %}
-          <button class="{% if tab.active %}is-active{% endif %}" type="button">
+          <div class="ops-mnt-tab-count{% if tab.active %} is-active{% endif %}">
             {{ tab.label }} <span>{{ tab.count }}</span>
-          </button>
+          </div>
         {% endfor %}
       </nav>
       <div class="ops-mnt-table-shell">
         <table class="ops-mnt-table">
           <colgroup>
-            <col class="ops-mnt-col-check">
             <col class="ops-mnt-col-title">
             <col class="ops-mnt-col-property">
             <col class="ops-mnt-col-reservation">
@@ -96,7 +80,6 @@
           </colgroup>
           <thead>
             <tr>
-              <th><input type="checkbox" aria-label="Select all work orders" onclick="event.stopPropagation()"></th>
               <th>Title</th>
               <th>Property</th>
               <th>Reservation</th>
@@ -110,7 +93,6 @@
           <tbody>
             {% for row in rows %}
               <tr class="{% if row.id == selected_work_order_id %}is-selected{% endif %}" data-work-order-url="{{ row.toggle_url }}">
-                <td><input type="checkbox" aria-label="Select {{ row.work_order_id }}"{% if row.id == selected_work_order_id %} checked{% endif %}></td>
                 <td>
                   <a class="ops-mnt-cell-link ops-mnt-row-open" href="{{ row.toggle_url }}">
                     <strong>{{ row.title }}</strong>
@@ -133,19 +115,13 @@
                 </td>
               </tr>
             {% endfor %}
+            {% if not rows %}<tr><td colspan="8">No maintenance work orders have been recorded.</td></tr>{% endif %}
           </tbody>
         </table>
       </div>
       <footer class="ops-mnt-list-footer">
-        <span>Showing 1 to 8 of {{ total_results_display }}</span>
-        <nav class="ops-mnt-pagination" aria-label="Work order pagination">
-          <button type="button" aria-label="Previous page">‹</button>
-          <button class="is-active" type="button">1</button>
-          <button type="button">2</button>
-          <button type="button">3</button>
-          <button type="button" aria-label="Next page">›</button>
-        </nav>
-        <a href="/ops/maintenance/">View all work orders</a>
+        <span>Showing {{ rows|length }} of {{ total_results_display }}</span>
+        <a href="{{ work_order_admin_url }}">View all work orders</a>
       </footer>
     </section>
 
@@ -170,9 +146,7 @@
               <span>Reservation: {{ detail.reservation }} ({{ detail.reservation_range }})</span>
             </div>
             <div class="ops-mnt-detail-actions">
-              <button type="button">Edit</button>
-              <button type="button">More ▾</button>
-              <button class="is-primary" type="button">✣ Auto-generate</button>
+              <a href="{{ detail.admin_url }}">Edit authoritative record</a>
             </div>
           </div>
 
@@ -206,10 +180,10 @@
                     <div class="ops-mnt-photo ops-mnt-photo--{{ photo.css_class }}" role="img" aria-label="{{ photo.label }}"></div>
                   {% endif %}
                 {% endfor %}
-                <button type="button">
+                <a href="{{ detail.admin_url }}">
                   <span>+</span>
-                  Add
-                </button>
+                  Add in record
+                </a>
               </div>
             </section>
             <section class="ops-mnt-notes-panel">
@@ -243,37 +217,6 @@
             </a>
           </div>
 
-          <section class="ops-mnt-report">
-            <div class="ops-mnt-report-head">
-              <h3>AI-Generated Bill / Report Preview</h3>
-              <span>{{ detail.report.status }}</span>
-            </div>
-            <div class="ops-mnt-report-body">
-              <article class="ops-mnt-doc-preview">
-                <header>
-                  <img src="{% static 'frontend/modern-dashboard/assets/mladis-connected-intelligence.png' %}" alt="">
-                  <div>
-                    <strong>{{ detail.report.title }}</strong>
-                    <span>{{ detail.report.subtitle }}</span>
-                  </div>
-                  <i aria-hidden="true">↗</i>
-                </header>
-                <div class="ops-mnt-doc-brand">MLADIS</div>
-                <small>Property Management</small>
-                <dl>
-                  <div><dt>Property</dt><dd>{{ detail.report.property }}</dd></div>
-                  <div><dt>Date</dt><dd>{{ detail.report.date }}</dd></div>
-                </dl>
-              </article>
-              <div class="ops-mnt-report-checks">
-                <p>Auto-generate will include:</p>
-                {% for check in detail.report.checks %}
-                  <span>✓ {{ check }}</span>
-                {% endfor %}
-                <button type="button">Generate Report</button>
-              </div>
-            </div>
-          </section>
         </section>
       </aside>
     {% endif %}

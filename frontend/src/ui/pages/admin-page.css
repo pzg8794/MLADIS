@@ -821,6 +821,20 @@
   color: #0f172a;
 }
 
+.settings-v4-control--readonly {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 38px;
+  padding: 8px 10px;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.settings-v4-control--readonly strong {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: 0.74rem;
+}
+
 .settings-v4-control input,
 .settings-v4-control textarea,
 .settings-v4-control select {
