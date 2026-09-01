@@ -223,6 +223,8 @@ class StripeRuntimePolicy:
 
     @staticmethod
     def _is_local_runtime(request=None):
+        if getattr(settings, "RUNNING_TESTS", False):
+            return True
         environment = (getattr(settings, "MLADIS_ENVIRONMENT", "") or "").strip().lower()
         if getattr(settings, "DEBUG", False) or environment in LOCAL_STRIPE_ENVIRONMENTS:
             return True

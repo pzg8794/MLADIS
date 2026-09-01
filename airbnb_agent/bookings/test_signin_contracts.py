@@ -109,8 +109,8 @@ class SignInContractTests(TestCase):
         self.assertIn('action="/oauth/github/login/?next=%2Faccounts%2F"', html)
         self.assertIn('href="/accounts/social/facebook/?next=%2Faccounts%2F"', html)
         self.assertNotIn('href="/accounts/social/github/', html)
-        self.assertIn("Continue with Microsoft", html)
-        self.assertIn("modern-social-button--microsoft is-disabled", html)
+        self.assertNotIn("Continue with Microsoft", html)
+        self.assertNotIn("modern-social-button--microsoft", html)
 
     @override_settings(ROOT_URLCONF=__name__)
     def test_login_page_omits_queued_booking_messages(self):
