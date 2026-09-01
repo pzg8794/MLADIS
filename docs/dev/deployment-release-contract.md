@@ -105,6 +105,12 @@ Deployment performed by:
 Deployment timestamp:
 ```
 
+The deployment commit may be recorded as the exact full SHA or as
+`` `release/YYYY.MM.DD-N^{commit}` ``. The deploy script resolves the annotated
+release tag, verifies that it points to `HEAD`, and accepts that exact tag
+expression so a committed manifest is not required to contain its own
+self-referential SHA.
+
 The deploy script also stages a non-sensitive source identity file inside the
 archive, computes the archive SHA-256 before upload, verifies the same hash on
 the VM, and writes the successful deployment identity to:
