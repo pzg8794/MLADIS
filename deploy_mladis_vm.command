@@ -90,7 +90,9 @@ if [[ -z "$RELEASE_MANIFEST" ]]; then
   echo "Deployment blocked: no release manifest identifies $MLADIS_RELEASE_TAG." >&2
   exit 1
 fi
-if ! grep -Fq "$GIT_COMMIT" "$RELEASE_MANIFEST" || ! grep -Fq "$MLADIS_ROLLBACK_TAG" "$RELEASE_MANIFEST"; then
+MANIFEST_COMMIT_REF="Deployment commit: \`$MLADIS_RELEASE_TAG^{commit}\`"
+if { ! grep -Fq "$GIT_COMMIT" "$RELEASE_MANIFEST" && ! grep -Fq "$MANIFEST_COMMIT_REF" "$RELEASE_MANIFEST"; } ||
+  ! grep -Fq "$MLADIS_ROLLBACK_TAG" "$RELEASE_MANIFEST"; then
   echo "Deployment blocked: release manifest does not identify the commit and rollback target." >&2
   exit 1
 fi
