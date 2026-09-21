@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { DashboardLayout } from './ui/components/DashboardLayout';
 import { DashboardPage } from './ui/pages/DashboardPage';
 import { PublicSitePage } from './ui/pages/PublicSitePage';
+import { SaNDAIShowcasePage } from './ui/pages/SaNDAIShowcasePage';
 import { AdminPage } from './ui/pages/AdminPage';
 import { OpsBusinessPage } from './ui/pages/OpsBusinessPage';
 import { OpsCalendarPage } from './ui/pages/OpsCalendarPage';
@@ -17,6 +18,7 @@ import { OpsWorkboardPage } from './ui/pages/OpsWorkboardPage';
 import './styles.css';
 
 const pathname = window.location.pathname;
+const isSaNDAIShowcase = pathname.startsWith('/sandai');
 const isOpsDashboard = pathname.startsWith('/ops/dashboard');
 const isOpsAdmin = pathname.startsWith('/ops/admin');
 const isOpsReservations = pathname.startsWith('/ops/reservations');
@@ -50,7 +52,9 @@ function renderOpsPage() {
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    {isOps ? (
+    {isSaNDAIShowcase ? (
+      <SaNDAIShowcasePage />
+    ) : isOps ? (
       <DashboardLayout>
         {renderOpsPage()}
       </DashboardLayout>

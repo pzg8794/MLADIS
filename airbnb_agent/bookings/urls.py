@@ -81,6 +81,7 @@ app_name = "bookings"
 
 urlpatterns = [
     path("", ModernSiteView.as_view(), name="home"),
+    path("sandai/", ModernSiteView.as_view(), name="sandai-showcase"),
     path("legacy-home/", RedirectView.as_view(pattern_name="bookings:home", permanent=False), name="legacy-home"),
     path("about/", ModernSiteView.as_view(), name="about"),
     path("legacy-about/", RedirectView.as_view(pattern_name="bookings:about", permanent=False), name="legacy-about"),
