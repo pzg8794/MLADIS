@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import {
   ArrowRight,
   BarChart3,
@@ -188,7 +188,7 @@ function Funnel() {
   );
 }
 
-function ExternalButton({ href, children, primary = false }: { href: string; children: React.ReactNode; primary?: boolean }) {
+function ExternalButton({ href, children, primary = false }: { href: string; children: ReactNode; primary?: boolean }) {
   return (
     <a className={primary ? 'sandai-button sandai-button--primary' : 'sandai-button'} href={href} target="_blank" rel="noreferrer">
       {children}
