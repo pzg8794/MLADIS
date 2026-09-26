@@ -62,9 +62,9 @@ export function OpsBusinessPage() {
           <p>Public operating area shown to guests.</p>
         </article>
         <article>
-          <span>Booking deposit</span>
-          <strong>{snapshot.depositAmount}</strong>
-          <p>Current security hold displayed before checkout.</p>
+          <span>Deposit terms</span>
+          <strong>Confirm with quote</strong>
+          <p>Amount and treatment are not shown publicly before MLADIS confirms the booking terms.</p>
         </article>
       </section>
 

@@ -225,6 +225,78 @@
   }
 }
 
+.public-consent-banner {
+  position: fixed;
+  z-index: 120;
+  inset-inline: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 980px;
+  margin-inline: auto;
+  padding: 14px 16px;
+  border: 1px solid #cbd5d2;
+  border-radius: 6px;
+  background: #fff;
+  color: #172b2a;
+  box-shadow: 0 8px 28px rgb(12 36 34 / 18%);
+}
+
+.public-consent-banner p {
+  margin: 0;
+  max-width: 620px;
+  line-height: 1.45;
+}
+
+.public-consent-banner div {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.public-consent-banner button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #28736e;
+  border-radius: 4px;
+  background: #fff;
+  color: #174d49;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.public-consent-banner button:last-child {
+  background: #176d67;
+  color: #fff;
+}
+
+.public-booking-form [id="booking-request-form"] {
+  scroll-margin-top: 96px;
+}
+
+@media (max-width: 650px) {
+  .public-consent-banner {
+    inset-inline: 10px;
+    bottom: 10px;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .public-consent-banner div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .public-consent-banner button {
+    padding-inline: 8px;
+    font-size: 0.85rem;
+  }
+}
+
 /* Real-data Command Center. */
 .ops-command-center { color: #0b1734; }
 

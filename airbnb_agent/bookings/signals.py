@@ -1,6 +1,7 @@
 from django.contrib.auth.signals import user_logged_in
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
+from uuid import UUID, uuid5
 
 
 LIVE_OBJECT_STATE_APP_LABELS = {"bookings", "operations", "auth", "account", "socialaccount"}
@@ -47,6 +48,38 @@ def write_data_lake_object_state_on_delete(sender, instance, using=None, **kwarg
         using=using,
         update_fields=None,
     )
+
+
+@receiver(post_save, sender="bookings.BookingInquiry")
+def record_attributed_reservation_confirmation(sender, instance, raw=False, **kwargs):
+    if raw or instance.is_admin_test or instance.status != "confirmed":
+        return
+    attribution = instance.marketing_attribution or {}
+    if not attribution.get("first_touch") and not attribution.get("last_non_direct_touch"):
+        return
+    try:
+        anonymous_id = UUID(str(attribution.get("anonymous_id", "")))
+    except (TypeError, ValueError, AttributeError):
+        return
+
+    def write_event():
+        from .models import PageVisit
+
+        PageVisit.objects.get_or_create(
+            event_id=uuid5(anonymous_id, f"reservation-confirmed:{instance.pk}"),
+            defaults={
+                "path": "/reservation-confirmed/",
+                "event_name": "reservation_confirmed",
+                "anonymous_id": anonymous_id,
+                "campaign_attribution": {
+                    key: value for key, value in attribution.items() if key != "anonymous_id"
+                },
+            },
+        )
+
+    from django.db import transaction
+
+    transaction.on_commit(write_event, using=kwargs.get("using"))
 
 
 def _should_write_object_state(instance):

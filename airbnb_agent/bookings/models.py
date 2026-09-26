@@ -414,6 +414,12 @@ class BookableItem(models.Model):
         choices=BookingCategory.choices,
         default=BookingCategory.STAY,
     )
+    physical_components = models.ManyToManyField(
+        "self",
+        symmetrical=False,
+        related_name="combined_offers",
+        blank=True,
+    )
     short_description = models.CharField(max_length=220)
     description = models.TextField(blank=True)
     marketing_headline = models.CharField(max_length=180, blank=True)
@@ -726,6 +732,7 @@ class BookingInquiry(models.Model):
     total_cents = models.PositiveIntegerField(default=0)
     currency = models.CharField(max_length=3, default="usd")
     is_admin_test = models.BooleanField(default=False)
+    marketing_attribution = models.JSONField(default=dict, blank=True)
     is_blacklist_flagged = models.BooleanField(default=False)
     payment_confirmation_token = models.UUIDField(default=uuid4, unique=True, editable=False)
     accepted_damage_terms_version = models.CharField(max_length=32, blank=True)
@@ -1554,6 +1561,10 @@ class PageVisit(models.Model):
     session_key = models.CharField(max_length=80, blank=True, db_index=True)
     language = models.CharField(max_length=8, default="en")
     user_agent = models.CharField(max_length=300, blank=True)
+    event_id = models.UUIDField(null=True, blank=True, unique=True)
+    event_name = models.CharField(max_length=40, blank=True)
+    anonymous_id = models.UUIDField(null=True, blank=True, db_index=True)
+    campaign_attribution = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

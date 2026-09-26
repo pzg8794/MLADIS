@@ -23,6 +23,7 @@ from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import CommandError, call_command
+from django.http import HttpResponse
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import resolve, reverse
 from django.utils import timezone
@@ -41,6 +42,7 @@ from .data_lake import MLADISDataLakeExporter
 from .interaction_lake import AnonymousInteractionLakeWriter
 from .forms import BookingInquiryForm
 from .guest_services import GuestService
+from .marketing import sanitize_utm
 from .models import (
     AdminAccess,
     AgentFAQ,
@@ -77,6 +79,7 @@ from .models import (
     ReservationPaymentHold,
     SiteSettings,
 )
+from .middleware import PageVisitMiddleware
 from .ops_navigation import OPS_NAV_ITEMS
 from .ops_finance import _item_image_url
 from .services import (
@@ -92,6 +95,7 @@ from .services import (
     ReservationRequestService,
     ReservationPricingService,
     ReservationPaymentHoldService,
+    StayAvailabilityService,
 )
 
 
@@ -1786,16 +1790,17 @@ class BookingInquiryViewTests(TestCase):
         inquiry = BookingInquiry.objects.get()
         self.assertRedirects(
             response,
-            f"{reverse('bookings:home')}?submitted=1&deposit_for={inquiry.id}#deposit",
+            f"{reverse('bookings:home')}?submitted=1#booking",
             fetch_redirect_response=False,
         )
         self.assertEqual(DamageDeposit.objects.count(), 0)
+        self.assertNotIn("payment_inquiry_id", self.client.session)
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
         BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
     )
-    def test_booking_inquiry_json_flow_returns_deposit_modal_payload_and_logs_object_event(self):
+    def test_booking_inquiry_json_flow_returns_quote_request_without_payment_action(self):
         item = BookableItem.objects.create(
             name="Test Stay JSON",
             slug="test-stay-json",
@@ -1826,8 +1831,13 @@ class BookingInquiryViewTests(TestCase):
             self.assertTrue(payload["ok"])
             self.assertEqual(payload["inquiry"]["id"], inquiry.id)
             self.assertEqual(payload["inquiry"]["request_key"], inquiry.request_key)
-            self.assertEqual(payload["inquiry"]["display_deposit"], "$200.00 USD")
+            self.assertEqual(payload["inquiry"]["quote_state"], "requested")
+            self.assertNotIn("display_deposit", payload["inquiry"])
+            self.assertNotIn("deposit_checkout_url", payload["inquiry"])
+            self.assertNotIn("email", payload["inquiry"])
+            self.assertNotIn("payment_inquiry_id", self.client.session)
             self.assertEqual(inquiry.phone, "")
+            self.assertIn("No payment or deposit is collected", mail.outbox[1].body)
 
             event_file = Path(temp_dir) / "BOOKINGS" / "_events.jsonl"
             self.assertTrue(event_file.exists())
@@ -1866,6 +1876,277 @@ class BookingInquiryViewTests(TestCase):
         inquiry = BookingInquiry.objects.get()
         self.assertEqual(inquiry.email_delivery_status, EmailDeliveryStatus.PENDING)
         self.assertEqual(mail.outbox, [])
+
+
+class MarketingFunnelAvailabilityTests(TestCase):
+    def setUp(self):
+        self.combined = BookableItem.objects.create(
+            name="Six Bedroom Combined Stay", slug="combined-test", category=BookingCategory.STAY,
+            short_description="Combined test stay", is_active=True, bedrooms=6, max_guests=14,
+        )
+        self.g101 = BookableItem.objects.create(
+            name="G-101", slug="g101-test", category=BookingCategory.STAY,
+            short_description="Unit 101", is_active=True, bedrooms=3, max_guests=7,
+        )
+        self.g102 = BookableItem.objects.create(
+            name="G-102", slug="g102-test", category=BookingCategory.STAY,
+            short_description="Unit 102", is_active=True, bedrooms=3, max_guests=7,
+        )
+        self.combined.physical_components.add(self.g101, self.g102)
+        self.today = timezone.localdate()
+        self.check_in = self.today + timedelta(days=10)
+        self.check_out = self.today + timedelta(days=13)
+        self.service = StayAvailabilityService()
+
+    def add_inquiry(self, item, *, check_in=None, check_out=None, status=BookingStatus.CONFIRMED, is_admin_test=False, **kwargs):
+        return BookingInquiry.objects.create(
+            item=item,
+            guest_name="Synthetic Test Guest",
+            email="synthetic@example.test",
+            check_in=check_in or self.check_in,
+            check_out=check_out or self.check_out,
+            guests=2,
+            status=status,
+            is_admin_test=is_admin_test,
+            **kwargs,
+        )
+
+    def test_unit_bookings_block_combined_but_not_the_other_physical_unit(self):
+        for unit, other in ((self.g101, self.g102), (self.g102, self.g101)):
+            with self.subTest(unit=unit.slug):
+                self.add_inquiry(unit)
+                self.assertFalse(self.service.is_available(self.combined, self.check_in, self.check_out))
+                self.assertTrue(self.service.is_available(other, self.check_in, self.check_out))
+                self.assertTrue(self.service.is_available(
+                    self.combined, self.check_out, self.check_out + timedelta(days=2)
+                ))
+                BookingInquiry.objects.all().delete()
+
+    def test_combined_booking_blocks_both_units_for_overlapping_dates(self):
+        self.add_inquiry(self.combined)
+        self.assertFalse(self.service.is_available(self.g101, self.check_in, self.check_out))
+        self.assertFalse(self.service.is_available(self.g102, self.check_in, self.check_out))
+
+    def test_admin_test_records_do_not_block_sellable_dates(self):
+        self.add_inquiry(self.g101, is_admin_test=True)
+        self.assertTrue(self.service.is_available(self.combined, self.check_in, self.check_out))
+
+    def test_availability_block_on_a_unit_blocks_combined(self):
+        AvailabilityBlock.objects.create(item=self.g101, start_date=self.check_in, end_date=self.check_out - timedelta(days=1))
+        self.assertFalse(self.service.is_available(self.combined, self.check_in, self.check_out))
+
+    def test_public_availability_endpoint_reports_status_without_guest_data(self):
+        response = self.client.get(reverse("bookings:public-stay-availability"), {
+            "slug": self.combined.slug,
+            "check_in": self.check_in.isoformat(),
+            "check_out": self.check_out.isoformat(),
+            "guests": 12,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["availability_status"], "confirmation_required")
+        self.assertTrue(response.json()["quote_required"])
+        self.assertNotIn("total", response.json())
+        self.add_inquiry(self.g101)
+        blocked = self.client.get(reverse("bookings:public-stay-availability"), {
+            "slug": self.combined.slug,
+            "check_in": self.check_in.isoformat(),
+            "check_out": self.check_out.isoformat(),
+            "guests": 12,
+        })
+        self.assertEqual(blocked.json()["availability_status"], "unavailable")
+        self.assertNotIn("available", blocked.json())
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
+    )
+    def test_inquiry_submission_rechecks_and_rejects_a_new_collision(self):
+        self.add_inquiry(self.g101)
+        response = self.client.post(
+            reverse("bookings:inquiry-create"),
+            data={
+                "item": self.combined.pk,
+                "guest_name": "Synthetic Guest",
+                "email": "synthetic@example.test",
+                "check_in": self.check_in,
+                "check_out": self.check_out,
+                "guests": 12,
+            },
+            HTTP_ACCEPT="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(BookingInquiry.objects.count(), 1)
+
+
+class MarketingAttributionTests(TestCase):
+    def setUp(self):
+        self.item = BookableItem.objects.create(
+            name="Synthetic Stay", slug="synthetic-stay", category=BookingCategory.STAY,
+            short_description="Synthetic test stay", is_active=True,
+        )
+        self.client.cookies["mladis_analytics_consent"] = "granted"
+        self.event_url = reverse("bookings:public-marketing-events")
+
+    def post_event(self, payload, **extra):
+        return self.client.post(
+            self.event_url,
+            data=json.dumps(payload),
+            content_type="application/json",
+            **extra,
+        )
+
+    def test_public_page_tracking_obeys_consent_and_stores_anonymous_fields_only(self):
+        factory = RequestFactory()
+        middleware = PageVisitMiddleware(lambda _request: HttpResponse())
+        request = factory.get("/")
+        request.COOKIES = {}
+        request.session = {}
+        request.user = AnonymousUser()
+        request.LANGUAGE_CODE = "en"
+        middleware(request)
+        self.assertEqual(PageVisit.objects.count(), 0)
+
+        request = factory.get("/")
+        request.COOKIES = {"mladis_analytics_consent": "granted"}
+        request.session = {}
+        request.user = AnonymousUser()
+        request.LANGUAGE_CODE = "en"
+        middleware(request)
+        visit = PageVisit.objects.get(event_name="landing_visit")
+        self.assertIsNone(visit.user_id)
+        self.assertEqual(visit.session_key, "")
+        self.assertEqual(visit.user_agent, "")
+        self.assertIsNotNone(visit.anonymous_id)
+
+    def test_consent_suppresses_events_and_dnt_overrides_granted_cookie(self):
+        self.client.cookies.pop("mladis_analytics_consent")
+        response = self.post_event({"event_name": "landing_visit", "utm_source": "facebook"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(PageVisit.objects.count(), 0)
+        self.client.cookies["mladis_analytics_consent"] = "granted"
+        self.post_event({"event_name": "landing_visit", "utm_source": "facebook"}, HTTP_DNT="1")
+        self.assertEqual(PageVisit.objects.count(), 0)
+
+    def test_utm_is_sanitized_and_event_writes_are_idempotent_and_pii_free(self):
+        self.assertEqual(
+            sanitize_utm({
+                "utm_source": "facebook",
+                "utm_campaign": "C01_G101",
+                "utm_content": "1234567890",
+                "utm_id": "2026-09-26",
+                "utm_medium": "guest@example.com",
+            }),
+            {"utm_source": "facebook", "utm_campaign": "C01_G101", "campaign_id": "C01_G101"},
+        )
+        payload = {
+            "event_name": "landing_visit",
+            "utm_source": "facebook",
+            "utm_medium": "organic_social",
+            "utm_campaign": "C01_G101",
+            "utm_content": "hero_01",
+            "utm_id": "C01",
+        }
+        first = self.post_event(payload)
+        second = self.post_event(payload)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(PageVisit.objects.filter(event_name="landing_visit").count(), 1)
+        visit = PageVisit.objects.get(event_name="landing_visit")
+        self.assertEqual(visit.campaign_attribution["first_touch"]["campaign_id"], "C01")
+        self.assertIsNone(visit.user_id)
+        self.assertEqual(visit.session_key, "")
+        self.assertNotIn("email", visit.campaign_attribution)
+        self.assertNotIn("message", visit.campaign_attribution)
+        self.assertNotIn("check_in", visit.campaign_attribution)
+        rejected = self.post_event({**payload, "message": "guest private text"})
+        self.assertEqual(rejected.status_code, 400)
+        rejected_slug = self.post_event({"event_name": "landing_visit", "item_slug": "guest-private-value"})
+        self.assertEqual(rejected_slug.status_code, 400)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        BOOKING_INQUIRY_RECIPIENTS=["owner@example.com"],
+    )
+    def test_attribution_persists_to_inquiry_and_confirmation_conversion_is_deduplicated(self):
+        self.post_event({
+            "event_name": "landing_visit",
+            "utm_source": "instagram",
+            "utm_medium": "organic_social",
+            "utm_campaign": "C02_G102",
+            "utm_content": "room_02",
+            "utm_id": "C02",
+        })
+        self.post_event({"event_name": "inquiry_start", "item_slug": self.item.slug})
+        today = timezone.localdate()
+        response = self.client.post(
+            reverse("bookings:inquiry-create"),
+            data={
+                "item": self.item.pk,
+                "guest_name": "Synthetic Guest",
+                "email": "synthetic@example.test",
+                "check_in": today + timedelta(days=15),
+                "check_out": today + timedelta(days=17),
+                "guests": 2,
+            },
+            HTTP_ACCEPT="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 201)
+        inquiry = BookingInquiry.objects.get()
+        self.assertEqual(inquiry.marketing_attribution["latest"]["utm_campaign"], "C02_G102")
+        self.assertIn("anonymous_id", inquiry.marketing_attribution)
+        submitted = PageVisit.objects.get(event_name="inquiry_submitted")
+        self.assertEqual(submitted.path, f"stay:{self.item.slug}")
+        self.assertIsNone(submitted.user_id)
+        self.assertEqual(submitted.session_key, "")
+        self.assertEqual(PageVisit.objects.filter(event_name="inquiry_submitted").count(), 1)
+        with self.captureOnCommitCallbacks(execute=True):
+            inquiry.status = BookingStatus.CONFIRMED
+            inquiry.save(update_fields=["status", "updated_at"])
+            inquiry.save(update_fields=["status", "updated_at"])
+        self.assertEqual(PageVisit.objects.filter(event_name="reservation_confirmed").count(), 1)
+        converted = PageVisit.objects.get(event_name="reservation_confirmed")
+        self.assertNotIn("guest_name", converted.campaign_attribution)
+        self.assertNotIn("email", converted.campaign_attribution)
+        self.assertNotIn("message", converted.campaign_attribution)
+
+    def test_submission_event_retry_is_idempotent_without_collapsing_distinct_inquiries(self):
+        from .marketing import record_marketing_event
+
+        request = RequestFactory().post("/inquiries/")
+        request.COOKIES = {"mladis_analytics_consent": "granted"}
+        request.META["HTTP_DNT"] = "0"
+        request.session = {"mladis_marketing_anonymous_id": "18d94b2c-0ab0-4c47-9692-87541932e2f7"}
+        request.LANGUAGE_CODE = "en"
+        payload = {
+            "path": f"stay:{self.item.slug}",
+            "item_slug": self.item.slug,
+            "utm_payload": {"utm_campaign": "C01_G101", "utm_id": "C01"},
+        }
+        record_marketing_event(request, "inquiry_submitted", **payload, idempotency_key="request-1")
+        record_marketing_event(request, "inquiry_submitted", **payload, idempotency_key="request-1")
+        record_marketing_event(request, "inquiry_submitted", **payload, idempotency_key="request-2")
+        self.assertEqual(PageVisit.objects.filter(event_name="inquiry_submitted").count(), 2)
+
+    def test_admin_test_reservation_does_not_emit_campaign_conversion(self):
+        today = timezone.localdate()
+        with self.captureOnCommitCallbacks(execute=True):
+            BookingInquiry.objects.create(
+                item=self.item,
+                guest_name="Synthetic Test Guest",
+                email="synthetic@example.test",
+                check_in=today + timedelta(days=20),
+                check_out=today + timedelta(days=22),
+                guests=1,
+                status=BookingStatus.CONFIRMED,
+                is_admin_test=True,
+                marketing_attribution={
+                    "anonymous_id": "18d94b2c-0ab0-4c47-9692-87541932e2f7",
+                    "first_touch": {"utm_campaign": "C01_G101", "campaign_id": "C01"},
+                },
+            )
+        self.assertFalse(PageVisit.objects.filter(event_name="reservation_confirmed").exists())
 
 
 class ReservationPricingAndPaymentHoldTests(TestCase):
@@ -2767,7 +3048,7 @@ class PublicMediaRoutingTests(TestCase):
         inquiry = BookingInquiry.objects.get()
         self.assertRedirects(
             response,
-            f"{reverse('bookings:home')}?submitted=1&deposit_for={inquiry.id}#deposit",
+            f"{reverse('bookings:home')}?submitted=1#booking",
             fetch_redirect_response=False,
         )
         self.assertEqual(DamageDeposit.objects.count(), 0)
@@ -2783,14 +3064,24 @@ class MarketingPageTests(TestCase):
         self.assertContains(response, "frontend/modern-dashboard/assets/app.js")
         self.assertContains(response, 'name="available-languages" content="en,es"')
 
-    def test_site_summary_api_keeps_airbnb_images_and_review_proof(self):
+    def test_site_summary_api_keeps_photos_but_suppresses_unapproved_review_copy(self):
         response = self.client.get(reverse("bookings:site-summary-api"))
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertTrue(payload["stays"])
         self.assertIn("https://a0.muscache.com/im/pictures/", payload["stays"][0]["image_url"])
-        self.assertIn("Airbnb", payload["stays"][0]["review_label"])
+        self.assertEqual(payload["stays"][0]["rating"], "")
+        self.assertEqual(payload["stays"][0]["review_label"], "")
+        self.assertNotIn("deposit_amount", payload)
+        self.assertTrue(all(not image["caption"] for stay in payload["stays"] for image in stay["gallery"]))
+        self.assertTrue(all("property photo" in image["alt_text"] for stay in payload["stays"] for image in stay["gallery"]))
+        by_slug = {stay["slug"]: stay for stay in payload["stays"]}
+        self.assertEqual(by_slug["mladis-santo-domingo-guest-home"]["pricing"], {"max_guests": 7})
+        self.assertEqual(by_slug["mladis-three-bedroom-vacation-home"]["pricing"], {"max_guests": 7})
+        self.assertEqual(by_slug["mladis-santo-domingo-vacation-home"]["pricing"], {"max_guests": 14})
+        self.assertIn("7 guests", by_slug["mladis-santo-domingo-guest-home"]["stat_list"])
+        self.assertIn("14 guests", by_slug["mladis-santo-domingo-vacation-home"]["stat_list"])
         self.assertIsNone(payload["chatkit"])
 
     @override_settings(

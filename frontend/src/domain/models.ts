@@ -205,7 +205,7 @@ export class PublicStay {
     public readonly statList: string[],
     public readonly detailUrl: string,
     public readonly airbnbUrl: string,
-    public readonly pricing: ReservationPricingPolicy,
+    public readonly maxGuests: number,
     public readonly gallery: PublicGalleryImage[],
     public readonly highlights: PublicReviewHighlight[],
     public readonly rules: PublicHouseRule[],
@@ -369,19 +369,6 @@ export class ReservationRequestDraft {
     );
   }
 
-  withStayPricing(policy: ReservationPricingPolicy | null): ReservationRequestDraft {
-    if (!policy) return this;
-    const currentGuests = Math.max(Number(this.guests) || 1, 1);
-    let nextGuests = currentGuests;
-    if (policy.includedGuests > 1 && currentGuests <= 1) {
-      nextGuests = policy.includedGuests;
-    }
-    if (nextGuests > policy.maxGuests) {
-      nextGuests = policy.maxGuests;
-    }
-    return this.withField('guests', String(nextGuests));
-  }
-
   toFormData(csrfTokenValue: string): FormData {
     const formData = new FormData();
     formData.set('csrfmiddlewaretoken', csrfTokenValue);
@@ -404,7 +391,6 @@ export class PublicSiteSnapshot {
     public readonly logoUrl: string,
     public readonly contactEmail: string,
     public readonly publicAddressLabel: string,
-    public readonly depositAmount: string,
     public readonly stays: PublicStay[],
     public readonly areaTiles: AreaTile[],
     public readonly missionCauses: MissionCauseSummary[],

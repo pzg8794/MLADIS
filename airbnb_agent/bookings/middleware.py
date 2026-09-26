@@ -1,8 +1,6 @@
 from django.db.utils import OperationalError, ProgrammingError
 from django.shortcuts import redirect
-from django.utils.translation import get_language
-
-from .models import PageVisit
+from .marketing import analytics_allowed, record_marketing_event, sanitize_utm
 from .social_auth import provider_auth_origin, provider_from_oauth_path, request_origin
 
 
@@ -34,15 +32,18 @@ class PageVisitMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        if self._should_record(request, response):
+        if self._should_record(request, response) and analytics_allowed(request):
             try:
-                PageVisit.objects.create(
-                    path=request.path[:500],
-                    user=request.user if request.user.is_authenticated else None,
-                    session_key=request.session.session_key or "",
-                    language=(get_language() or "en")[:8],
-                    user_agent=request.META.get("HTTP_USER_AGENT", "")[:300],
-                )
+                path_parts = request.path.strip("/").split("/")
+                item_slug = path_parts[1] if len(path_parts) == 2 and path_parts[0] == "stays" else ""
+                if request.path == "/" or item_slug:
+                    record_marketing_event(
+                        request,
+                        "landing_visit",
+                        path=request.path,
+                        item_slug=item_slug,
+                        utm_payload=sanitize_utm(request.GET),
+                    )
             except (OperationalError, ProgrammingError):
                 pass
         return response

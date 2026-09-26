@@ -116,6 +116,14 @@ class BookingInquiryForm(forms.ModelForm):
                     _("This stay allows up to %(max_guests)s guests.")
                     % {"max_guests": policy.max_guests},
                 )
+            if check_in and check_out and check_out > check_in and not cleaned.get("is_admin_test"):
+                from .services import StayAvailabilityService
+
+                if not StayAvailabilityService().is_available(item, check_in, check_out):
+                    self.add_error(
+                        "check_in",
+                        _("Those dates are not available for this stay. Choose different dates or ask MLADIS for help."),
+                    )
 
         coupon_code = (cleaned.get("coupon_code") or "").strip().upper()
         if coupon_code:

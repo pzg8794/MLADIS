@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   ArrowUpRight,
   Bot,
@@ -52,16 +52,10 @@ import { formatStayName } from '../helpers/stayNames';
 type Language = 'en' | 'es';
 type LegalKind = 'business' | 'privacy' | 'terms' | 'data-deletion';
 
-const SOL_ORIENS_MAP_EMBED_URL = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3782.782382437169!2d-69.9484538248079!3d18.538733682558327!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8eaf897e8fbf9ce9%3A0x2e510419521c5941!2sResidential%20Sol%20Oriens%20V!5e0!3m2!1sen!2sus!4v1781349935983!5m2!1sen!2sus';
-const SOL_ORIENS_STAY_MAP_EMBED_URL = mapEmbedWithDistance(SOL_ORIENS_MAP_EMBED_URL, '7600');
-const SOL_ORIENS_DIRECTIONS_URL = 'https://maps.app.goo.gl/EhA3JTQ685awyX9T9';
+const SANTO_DOMINGO_NORTE_MAP_URL = 'https://www.google.com/maps?q=Santo+Domingo+Norte%2C+Dominican+Republic&output=embed';
+const SANTO_DOMINGO_NORTE_SEARCH_URL = 'https://www.google.com/maps/search/?api=1&query=Santo+Domingo+Norte%2C+Dominican+Republic';
 const AGENT_MESSAGE_LIMIT = 500;
 const AGENT_MESSAGE_PLACEHOLDER = 'Type your message here...';
-
-function mapEmbedWithDistance(url: string, distance: string) {
-  return url.replace('!1d3782.782382437169!', `!1d${distance}!`);
-}
-
 
 type AdminReservation = {
   id: number;
@@ -208,38 +202,46 @@ const copy = {
     signIn: 'Sign in',
     heroTitle: 'Vacation stays in Santo Domingo Norte.',
     heroText:
-      'Pool-ready apartments near Colinas del Arroyo II, Jacobo Majluta, malls, restaurants, and the Embassy corridor.',
+      'Apartments in Santo Domingo Norte, near Colinas del Arroyo II, Jacobo Majluta, malls, and restaurants.',
     primary: 'Start booking',
     secondary: 'Explore stays',
     proof: 'Guest rating',
     staysTitle: 'Choose your stay',
-    staysText: 'Photos, reviews, rules, and direct booking in one clean view.',
+    staysText: 'Photos, property details, rules, and direct inquiries in one place.',
     areaTitle: 'More than a place to sleep',
     areaText:
       'Beyond the room: city errands, food, malls, beach-day options, and hosted support from Santo Domingo Norte.',
     bookingTitle: 'Ask first, then book with confidence',
     bookingText: '',
     agentTitle: 'Booking agent',
-    agentText: 'Ask about availability, guest count, deposit holds, house rules, transportation, or which apartment fits your group.',
+    agentText: 'Ask about availability, guest count, house rules, transportation, or which apartment fits your group.',
     formTitle: 'Start a reservation request',
-    formText: 'Send the request first. The $200 secure deposit hold opens next in a secure step.',
-    pricePreview: 'Price preview',
-    stayPayment: 'Stay payment hold',
+    formText: 'Choose a stay, dates, and guest count. MLADIS will confirm availability and send the complete quote. No payment is collected with this inquiry.',
+    pricePreview: 'Quote',
+    stayPayment: 'Availability',
     highlights: 'Top guest highlights',
     rules: 'Apartment rules',
     mission: 'Travel with mission',
     signInToAskAgent: 'Sign in to ask agent',
     agentAction: 'Ask agent',
+    inquiryFallback: 'Ask through the inquiry form',
+    availabilityChoose: 'Choose a stay and dates to check availability.',
+    availabilityChecking: 'Checking dates…',
+    availabilityUnknown: 'Availability could not be checked just now. You can still request these dates; MLADIS will verify them before confirming.',
+    availabilityNeedsConfirmation: 'No conflict appears in MLADIS records. MLADIS must confirm against the current booking-channel calendar before booking.',
+    availabilityUnavailable: 'These dates are not currently available for this stay.',
+    quoteRequest: 'A complete, date-specific quote is provided by MLADIS after the inquiry. Fees and deposit treatment are confirmed before booking.',
+    noPaymentAtInquiry: 'No payment or deposit is collected when you send an inquiry.',
     agentLimitReached: 'Question limit reached',
     agentLimitText: 'You have reached the current question limit for this account.',
     submit: 'Send request',
     autofill: 'Use my account info',
     required: 'required',
     depositTitle: 'Make secure deposit',
-    depositText: 'Your request is saved. Continue with the refundable damage-deposit hold for this stay.',
+    depositText: 'Your inquiry is received. MLADIS will confirm availability, fees, deposit treatment, and booking terms before any payment.',
     depositAction: 'Make secure deposit',
     paymentTitle: 'Hold reservation payment',
-    paymentText: 'Deposit hold recorded. Now place the stay-payment authorization hold; it is captured 24 hours before check-in.',
+    paymentText: 'No payment is collected with an inquiry. Payment timing and any deposit are confirmed before a reservation.',
     paymentAction: 'Hold reservation payment',
     details: 'Details',
     airbnb: 'Airbnb',
@@ -261,38 +263,46 @@ const copy = {
     signIn: 'Entrar',
     heroTitle: 'Estadías en Santo Domingo Norte.',
     heroText:
-      'Apartamentos con piscina cerca de Colinas del Arroyo II, Los Guaricanos, Jacobo Majluta, plazas, restaurantes y la zona de la Embajada.',
+      'Apartamentos en Santo Domingo Norte, cerca de Colinas del Arroyo II, Jacobo Majluta, plazas y restaurantes.',
     primary: 'Empezar reserva',
     secondary: 'Ver estadías',
     proof: 'Valoración de huéspedes',
     staysTitle: 'Elige tu estadía',
-    staysText: 'Fotos, reseñas, reglas y reserva directa en una vista clara.',
+    staysText: 'Fotos, detalles, reglas y consultas directas en un solo lugar.',
     areaTitle: 'Más que un lugar para dormir',
     areaText:
       'Más allá del cuarto: diligencias, comida, plazas, playa y apoyo anfitrión desde Santo Domingo Norte.',
     bookingTitle: 'Pregunta primero y reserva con confianza',
     bookingText: '',
     agentTitle: 'Agente de reservas',
-    agentText: 'Pregunta por disponibilidad, cantidad de huéspedes, depósito, reglas, transporte o cuál apartamento te conviene.',
+    agentText: 'Pregunta por disponibilidad, cantidad de huéspedes, reglas, transporte o cuál apartamento te conviene.',
     formTitle: 'Iniciar solicitud de reserva',
-    formText: 'Envía la solicitud primero. El depósito seguro de $200 se abre después en un paso seguro.',
-    pricePreview: 'Vista previa del precio',
-    stayPayment: 'Retención de estadía',
+    formText: 'Elige el apartamento, las fechas y la cantidad de huéspedes. MLADIS confirmará la disponibilidad y enviará la cotización completa. No se cobra al enviar esta consulta.',
+    pricePreview: 'Cotización',
+    stayPayment: 'Disponibilidad',
     highlights: 'Comentarios destacados',
     rules: 'Reglas del apartamento',
     mission: 'Viaja con misión',
     signInToAskAgent: 'Entra para preguntar al agente',
     agentAction: 'Preguntar',
+    inquiryFallback: 'Consultar mediante el formulario',
+    availabilityChoose: 'Elige un apartamento y fechas para consultar disponibilidad.',
+    availabilityChecking: 'Consultando las fechas…',
+    availabilityUnknown: 'No pudimos consultar la disponibilidad ahora. Puedes solicitar estas fechas; MLADIS las verificará antes de confirmar.',
+    availabilityNeedsConfirmation: 'No aparece un conflicto en los registros de MLADIS. MLADIS debe confirmar con el calendario actual del canal de reservas antes de reservar.',
+    availabilityUnavailable: 'Estas fechas no están disponibles actualmente para este apartamento.',
+    quoteRequest: 'MLADIS enviará la cotización completa para esas fechas después de recibir la consulta. Los cargos y el depósito se confirman antes de reservar.',
+    noPaymentAtInquiry: 'No se cobra ningún pago ni depósito al enviar una consulta.',
     agentLimitReached: 'Límite de preguntas alcanzado',
     agentLimitText: 'Has alcanzado el límite actual de preguntas para esta cuenta.',
     submit: 'Enviar solicitud',
     autofill: 'Usar mi cuenta',
     required: 'requerido',
     depositTitle: 'Hacer depósito seguro',
-    depositText: 'Tu solicitud está guardada. Continúa con el depósito reembolsable por daños para esta estadía.',
+    depositText: 'Recibimos tu consulta. MLADIS confirmará disponibilidad, cargos, depósito y condiciones antes de cualquier pago.',
     depositAction: 'Hacer depósito seguro',
     paymentTitle: 'Retener pago de reserva',
-    paymentText: 'El depósito quedó registrado. Ahora haz la retención del pago de estadía; se captura 24 horas antes del check-in.',
+    paymentText: 'No se cobra al enviar una consulta. MLADIS confirmará el momento de pago y cualquier depósito antes de reservar.',
     paymentAction: 'Retener pago de reserva',
     details: 'Detalles',
     airbnb: 'Airbnb',
@@ -312,6 +322,28 @@ function csrfToken() {
   if (meta) return meta;
   const cookie = document.cookie.split('; ').find((row) => row.startsWith('csrftoken='));
   return cookie ? decodeURIComponent(cookie.split('=')[1]) : '';
+}
+
+function campaignUtmPayload() {
+  const params = new URLSearchParams(window.location.search);
+  const values: Record<string, string> = {};
+  for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_id']) {
+    const value = params.get(key)?.trim() ?? '';
+    if (/^[A-Za-z0-9._-]{1,100}$/.test(value)
+      && value.replace(/\D/g, '').length < 7
+      && !/^\d{4}[-_.]?\d{2}[-_.]?\d{2}$/.test(value)) values[key] = value;
+  }
+  return values;
+}
+
+function recordMarketingEvent(eventName: 'landing_visit' | 'inquiry_start', itemSlug = '') {
+  const payload = { event_name: eventName, item_slug: itemSlug, ...campaignUtmPayload() };
+  return fetch('/api/marketing/events/', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+    body: JSON.stringify(payload),
+  }).catch(() => undefined);
 }
 
 function currentPath() {
@@ -372,20 +404,10 @@ function normaliseStayStatLabel(stat: string) {
   return stat.replace(/\bbedrooms\b/gi, 'bedrooms').replace(/\bbaths\b/gi, 'baths');
 }
 
-function HomeStars({ rating }: { rating?: string }) {
-  return (
-    <span className="public-home-v5-stars" aria-label={`${rating || '4.93'} guest rating`}>
-      {Array.from({ length: 5 }, (_, index) => (
-        <Star key={index} size={15} fill="currentColor" />
-      ))}
-    </span>
-  );
-}
-
 function stayGalleryImages(stay: PublicStay) {
   const gallery = stay.gallery.length
     ? stay.gallery
-    : [{ imageUrl: stay.imageUrl, altText: formatStayName(stay.name), caption: formatStayName(stay.name) }];
+    : [{ imageUrl: stay.imageUrl, altText: stay.name, caption: stay.name }];
   const seen = new Set<string>();
   return gallery.filter((image) => {
     if (!image.imageUrl || seen.has(image.imageUrl)) return false;
@@ -413,38 +435,6 @@ function useRotatingList<T>(items: T[], intervalMs = 5000) {
     if (items.length <= 1) return items;
     return items.map((_, index) => items[(index + offset) % items.length]);
   }, [items, offset]);
-}
-
-function useGuestRatingItems(snapshot: PublicSiteSnapshot) {
-  return useMemo(() => {
-    const voices = [
-      { guest: 'Airbnb guest', initials: 'AG', avatar: 'https://i.pravatar.cc/96?img=12', title: 'Clean, bright, and easy to enjoy', body: 'Guests consistently mention the pool, clean spaces, and helpful arrival support.' },
-      { guest: 'Family stay', initials: 'FS', avatar: 'https://i.pravatar.cc/96?img=32', title: 'Great for groups and families', body: 'The apartments work well for families who want space, privacy, and quick access to Santo Domingo Norte.' },
-      { guest: 'Verified guest', initials: 'VG', avatar: 'https://i.pravatar.cc/96?img=47', title: 'Simple check-in and local guidance', body: 'Clear rules, host support, and nearby food and shopping help guests plan with confidence.' },
-    ];
-    const derived = snapshot.stays.flatMap((stay, stayIndex) => {
-      const voice = voices[stayIndex % voices.length];
-      const nextVoice = voices[(stayIndex + 1) % voices.length];
-      return [voice, nextVoice].map((reviewVoice) => ({
-        stayName: formatStayName(stay.name),
-        title: reviewVoice.title,
-        body: reviewVoice.body,
-        guest: reviewVoice.guest,
-        initials: reviewVoice.initials,
-        avatar: reviewVoice.avatar,
-        rating: stay.rating || '4.9',
-      }));
-    });
-    return derived.length ? derived : [{
-      stayName: 'Guest stays',
-      title: 'Loved by guests',
-      body: 'Clean spaces, local support, and clear booking steps.',
-      guest: 'Guest review',
-      initials: 'GR',
-      avatar: 'https://i.pravatar.cc/96?img=56',
-      rating: '4.93',
-    }];
-  }, [snapshot.stays]);
 }
 
 function StayImageRotator({
@@ -482,8 +472,8 @@ function StayImageRotator({
 
   return (
     <div className={`public-stay-rotator ${className}`}>
-      <a className="public-stay-rotator__link" href={linkUrl} aria-label={`View ${formatStayName(stay.name)}`}>
-        <img src={image?.imageUrl || stay.imageUrl} alt={image?.altText || formatStayName(stay.name)} loading="eager" />
+      <a className="public-stay-rotator__link" href={linkUrl} aria-label={`View ${stay.name}`}>
+        <img src={image?.imageUrl || stay.imageUrl} alt={image?.altText || stay.name} loading="eager" />
       </a>
       {showControls && images.length > 1 && (
         <button
@@ -592,7 +582,7 @@ function PublicNav({
 
 function StayCard({ stay, language }: { stay: PublicStay; language: Language }) {
   const t = copy[language];
-  const displayName = formatStayName(stay.name);
+  const displayName = stay.name.replace(/^MLADIS\s+/i, '');
   return (
     <article className="public-stay-card">
       <StayImageRotator stay={stay} linkUrl={stay.detailUrl} className="public-stay-rotator--card" />
@@ -602,7 +592,6 @@ function StayCard({ stay, language }: { stay: PublicStay; language: Language }) 
           <p>{stay.headline || stay.description}</p>
         </div>
         <div className="public-stay-card__stats">
-          <span><Star size={14} /> {stay.rating || 'Airbnb'}</span>
           {stay.statList.slice(0, 3).map((stat) => <span key={stat}>{stat}</span>)}
         </div>
         <div className="public-stay-card__actions">
@@ -682,18 +671,8 @@ function LegacyAgentPrompt({
   if (!agentAccess.isAuthenticated) {
     return (
       <div className="public-agent-prompt">
-        <label>
-          <MessageSquareText size={16} />
-          <textarea
-            name="message"
-            value={agentMessage}
-            onChange={(event) => setAgentMessage(event.target.value)}
-            maxLength={AGENT_MESSAGE_LIMIT}
-            placeholder={AGENT_MESSAGE_PLACEHOLDER}
-          />
-        </label>
-        <small className="public-agent-prompt__count">{agentMessage.length} / {AGENT_MESSAGE_LIMIT}</small>
-        <a className="public-agent-action" href={agentAccess.loginUrl}><Send size={15} /> {t.agentAction}</a>
+        <p>{stay ? `Ask about ${stay.name} using the inquiry form.` : 'Use the inquiry form to ask about dates and stays.'}</p>
+        <a className="public-agent-action" href="#booking-request-form"><Send size={15} /> {t.inquiryFallback}</a>
       </div>
     );
   }
@@ -701,19 +680,8 @@ function LegacyAgentPrompt({
   if (!agentAccess.canAsk) {
     return (
       <div className="public-agent-prompt">
-        <label>
-          <MessageSquareText size={16} />
-          <textarea
-            name="message"
-            value={agentMessage}
-            onChange={(event) => setAgentMessage(event.target.value)}
-            maxLength={AGENT_MESSAGE_LIMIT}
-            placeholder={AGENT_MESSAGE_PLACEHOLDER}
-          />
-        </label>
-        <small className="public-agent-prompt__count">{agentMessage.length} / {AGENT_MESSAGE_LIMIT}</small>
-        <button type="button" disabled><Send size={15} /> {t.agentLimitReached}</button>
         <p className="public-agent-reply">{t.agentLimitText}</p>
+        <a className="public-agent-action" href="#booking-request-form"><Send size={15} /> {t.inquiryFallback}</a>
       </div>
     );
   }
@@ -779,18 +747,16 @@ function AgentBookingSection({
   const token = csrfToken();
   const submitted = new URLSearchParams(window.location.search).get('submitted') === '1';
   const [draft, setDraft] = useState(() => ReservationRequestDraft.forStay(stay?.id));
-  const [requestResult, setRequestResult] = useState<CreatedReservationRequest | null>(null);
   const [requestMessage, setRequestMessage] = useState('');
   const [requestErrors, setRequestErrors] = useState<string[]>([]);
   const [requestBusy, setRequestBusy] = useState(false);
+  const [availability, setAvailability] = useState<'idle' | 'checking' | 'confirmation_required' | 'unavailable' | 'unknown'>('idle');
+  const trackedInquiryStarts = useRef(new Set<string>());
   const selectedStay = useMemo(
     () => snapshot.stays.find((availableStay) => String(availableStay.id) === draft.item) ?? null,
     [draft.item, snapshot.stays],
   );
-  const quote = selectedStay
-    ? selectedStay.pricing.quote(draft.guests, nightsBetween(draft.checkIn, draft.checkOut))
-    : null;
-  const guestLimit = selectedStay?.pricing.maxGuests ?? null;
+  const guestLimit = selectedStay?.maxGuests ?? null;
   const guestsNumber = Math.max(Number(draft.guests) || 1, 1);
   const overGuestLimit = Boolean(guestLimit && guestsNumber > guestLimit);
 
@@ -798,21 +764,57 @@ function AgentBookingSection({
     setDraft((currentDraft) => {
       const itemValue = stay?.id ? String(stay.id) : currentDraft.item;
       const nextStay = snapshot.stays.find((availableStay) => String(availableStay.id) === itemValue) ?? null;
-      return currentDraft.withField('item', itemValue).withStayPricing(nextStay?.pricing ?? null);
+      return currentDraft.withField('item', itemValue);
     });
   }, [snapshot.stays, stay?.id]);
+
+  useEffect(() => {
+    if (!selectedStay || !draft.checkIn || !draft.checkOut || draft.checkOut <= draft.checkIn || overGuestLimit) {
+      setAvailability('idle');
+      return undefined;
+    }
+    const controller = new AbortController();
+    setAvailability('checking');
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams({
+        slug: selectedStay.slug,
+        check_in: draft.checkIn,
+        check_out: draft.checkOut,
+        guests: String(guestsNumber),
+      });
+      fetch(`/api/public/stay-availability/?${params}`, { credentials: 'same-origin', signal: controller.signal })
+        .then(async (response) => {
+          const data = await response.json() as { ok?: boolean; availability_status?: string };
+          if (!response.ok || !data.ok) throw new Error('availability unavailable');
+          setAvailability(data.availability_status === 'unavailable' ? 'unavailable' : 'confirmation_required');
+        })
+        .catch((error: unknown) => {
+          if (!(error instanceof DOMException && error.name === 'AbortError')) setAvailability('unknown');
+        });
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [selectedStay, draft.checkIn, draft.checkOut, guestsNumber, overGuestLimit]);
 
   function updateDraft(field: ReservationRequestField, value: string) {
     setDraft((currentDraft) => {
       const nextDraft = currentDraft.withField(field, value);
       if (field !== 'item') return nextDraft;
       const nextStay = snapshot.stays.find((availableStay) => String(availableStay.id) === value) ?? null;
-      return nextDraft.withStayPricing(nextStay?.pricing ?? null);
+      return nextDraft;
     });
   }
 
   function autofillAccount() {
     setDraft((currentDraft) => currentDraft.withAccount(userContext));
+  }
+
+  function trackInquiryStart() {
+    if (!selectedStay || trackedInquiryStarts.current.has(selectedStay.slug)) return;
+    trackedInquiryStarts.current.add(selectedStay.slug);
+    void recordMarketingEvent('inquiry_start', selectedStay.slug);
   }
 
   async function submitReservationRequest(event: FormEvent<HTMLFormElement>) {
@@ -842,8 +844,7 @@ function AgentBookingSection({
         setRequestErrors(errors.length ? errors : ['Could not send this request yet. Check the required fields.']);
         return;
       }
-      setRequestResult(data.inquiry);
-      setRequestMessage('');
+      setRequestMessage(`${data.message || 'Request received.'} Reference: ${data.inquiry.request_key}.`);
     } catch {
       setRequestErrors(['Could not reach the reservation request service from this browser session.']);
     } finally {
@@ -873,8 +874,8 @@ function AgentBookingSection({
         </article>
 
         <div className="public-booking__form-stack">
-          <GuestRatingSpotlight snapshot={snapshot} />
-        <form className="public-booking-form" method="post" action="/inquiries/" onSubmit={submitReservationRequest}>
+        <form className="public-booking-form" method="post" action="/inquiries/" onSubmit={submitReservationRequest} onFocusCapture={trackInquiryStart}>
+          <div id="booking-request-form" />
           <input type="hidden" name="csrfmiddlewaretoken" value={token} />
           <div className="public-booking-form__header">
             <div>
@@ -887,7 +888,7 @@ function AgentBookingSection({
               </button>
             )}
           </div>
-          {submitted && <p className="public-success">Request received. Continue with the secure deposit hold.</p>}
+          {submitted && <p className="public-success">Your inquiry was received. MLADIS will verify availability and send the complete quote before booking.</p>}
           {requestMessage && <p className="public-success">{requestMessage}</p>}
           {requestErrors.length > 0 && (
             <div className="public-error-list">
@@ -899,7 +900,7 @@ function AgentBookingSection({
             <select name="item" value={draft.item} onChange={(event) => updateDraft('item', event.target.value)}>
               <option value="">Flexible / help me choose</option>
               {snapshot.stays.map((availableStay) => (
-                <option value={availableStay.id} key={availableStay.id}>{formatStayName(availableStay.name)}</option>
+                <option value={availableStay.id} key={availableStay.id}>{availableStay.name.replace(/^MLADIS\s+/i, '')}</option>
               ))}
             </select>
           </label>
@@ -914,47 +915,27 @@ function AgentBookingSection({
           </div>
           <div className="public-form-row">
             <label><span className="public-label-text"><Users size={15} /> Guests <span className="public-required" aria-label={t.required}>*</span></span><input type="number" name="guests" min="1" max={guestLimit ?? undefined} value={draft.guests} onChange={(event) => updateDraft('guests', event.target.value)} required /></label>
-            <label>Coupon<input name="coupon_code" value={draft.couponCode} onChange={(event) => updateDraft('coupon_code', event.target.value)} /></label>
           </div>
           <div className="public-price-preview" aria-live="polite">
             <div className="public-price-preview__box public-price-preview__box--quote">
               <span>{t.pricePreview}</span>
-              <strong>{quote ? quote.displaySubtotal : 'Choose a stay for an exact quote'}</strong>
-              <small>{quote ? `${quote.displayNightly}/night · ${quote.nights} night${quote.nights === 1 ? '' : 's'}` : 'G-101/G-102 pricing appears here before you send.'}</small>
+              <strong>{t.quoteRequest}</strong>
+              <small>{t.noPaymentAtInquiry}</small>
             </div>
             <div className="public-price-preview__box public-price-preview__box--payment">
               <span>{t.stayPayment}</span>
-              <strong>{quote ? quote.displaySubtotal : '$0.00 USD'}</strong>
-              <small>Held now, charged 24 hours before check-in.</small>
-            </div>
-            <div className="public-price-preview__box public-price-preview__box--deposit">
-              <span>Damage deposit</span>
-              <strong>{snapshot.depositAmount}</strong>
-              <small>Refundable hold.</small>
+              <strong>{availability === 'checking' ? t.availabilityChecking : availability === 'confirmation_required' ? t.availabilityNeedsConfirmation : availability === 'unavailable' ? t.availabilityUnavailable : availability === 'unknown' ? t.availabilityUnknown : t.availabilityChoose}</strong>
+              <small>Availability is rechecked when your inquiry is submitted.</small>
             </div>
           </div>
-          <p className="public-price-note">
-            <strong>{selectedStay?.pricing.extraGuestRuleLabel() ?? '$10/night per added guest, max 7 guests.'}</strong>
-            {quote && quote.extraGuestCount > 0 && (
-              <span>{quote.extraGuestCount} added guest{quote.extraGuestCount === 1 ? '' : 's'} included at {selectedStay?.pricing.displayExtraGuestPrice}/night each.</span>
-            )}
-          </p>
           {overGuestLimit && (
             <p className="public-deposit-modal__error" role="alert">This stay allows up to {guestLimit} guests.</p>
           )}
           <label>Notes<textarea name="message" rows={3} value={draft.message} onChange={(event) => updateDraft('message', event.target.value)} /></label>
-          <button type="submit" disabled={requestBusy || overGuestLimit}><Send size={16} /> {requestBusy ? 'Sending...' : t.submit}</button>
+          <button type="submit" disabled={requestBusy || overGuestLimit || availability === 'checking' || availability === 'unavailable'}><Send size={16} /> {requestBusy ? 'Sending...' : t.submit}</button>
         </form>
         </div>
       </div>
-      {requestResult && (
-        <DepositHoldModal
-          request={requestResult}
-          token={token}
-          onClose={() => setRequestResult(null)}
-          language={language}
-        />
-      )}
     </section>
   );
 }
@@ -1256,10 +1237,10 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
     { title: 'Registered guests only', description: 'Guest count must match the reservation unless MLADIS approves a change.' },
     { title: 'Respect quiet hours', description: 'Keep noise reasonable, especially late at night and in common areas.' },
     { title: 'Protect keys and locks', description: 'Report lost keys, codes, or access issues immediately so MLADIS can help.' },
-    { title: 'Keep shared areas clean', description: 'Leave the pool, halls, parking, and common spaces ready for the next guest.' },
+    { title: 'Keep shared areas clean', description: 'Leave halls, parking, and common spaces ready for the next guest.' },
   ], []);
   const ruleSupplements = useMemo(() => [
-    { title: 'Keep shared areas clean', description: 'Leave the pool, halls, parking, and common spaces ready for the next guest.' },
+    { title: 'Keep shared areas clean', description: 'Leave halls, parking, and common spaces ready for the next guest.' },
     { title: 'Ask before exceptions', description: 'Message MLADIS before bringing visitors, changing plans, or using amenities differently.' },
     { title: 'Report issues early', description: 'Send photos or details quickly if something breaks, leaks, or needs host attention.' },
   ], []);
@@ -1278,7 +1259,7 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
       id: 'arrival-prep',
       label: 'Arrival prep',
       cards: [
-        { title: 'Ask before booking', description: 'Use the agent for rules, transport, deposit, and fit questions.', icon: 'agent', tone: 'teal' },
+        { title: 'Ask before booking', description: 'Use the inquiry form for stay, dates, and fit questions.', icon: 'agent', tone: 'teal' },
         { title: 'Correct guest count', description: 'Guest count controls pricing and must match the reservation.', icon: 'guest', tone: 'orange' },
         { title: 'Host review', description: 'MLADIS reviews requests before confirming details.', icon: 'document', tone: 'blue' },
         { title: 'Check-in timing', description: 'Plan arrival around confirmed instructions and account updates.', icon: 'calendar', tone: 'violet' },
@@ -1312,9 +1293,9 @@ function AgentRulesTabs({ stay, language }: { stay: PublicStay; language: Langua
       id: 'faqs',
       label: 'FAQs',
       cards: [
-        { title: 'Stay-payment hold', description: 'The stay payment is held now and captured 24 hours before check-in.', icon: 'payment', tone: 'blue' },
-        { title: 'Refundable deposit', description: 'The damage deposit remains a secure refundable hold unless an issue is documented.', icon: 'shield', tone: 'teal' },
-        { title: 'Account records', description: 'Requests, invoices, and updates stay attached to the guest account.', icon: 'document', tone: 'violet' },
+        { title: 'No inquiry payment', description: 'Sending an inquiry does not authorize a payment or deposit.', icon: 'payment', tone: 'blue' },
+        { title: 'Terms before booking', description: 'MLADIS confirms the applicable deposit treatment and terms with the complete quote.', icon: 'shield', tone: 'teal' },
+        { title: 'Host confirmation', description: 'An inquiry is not a confirmed reservation.', icon: 'document', tone: 'violet' },
         { title: 'Human support', description: 'Ask for practical help before the reservation is finalized.', icon: 'agent', tone: 'green' },
         { title: 'Cancellation windows', description: 'Review reservation dates and policy details before submitting.', icon: 'calendar', tone: 'orange' },
         { title: 'Messages stay saved', description: 'Important answers remain connected to the booking account.', icon: 'document', tone: 'blue' },
@@ -1402,11 +1383,6 @@ function RulesBook({ stay, language, compact = false }: { stay: PublicStay; lang
     { title: 'Respect quiet hours', description: 'Keep noise reasonable, especially late at night and in common areas.' },
     { title: 'Protect keys and locks', description: 'Report lost keys, codes, or access issues immediately so the host can help.' },
   ]).slice(0, 6);
-  const highlights = (stay.highlights.length ? stay.highlights : [
-    { title: 'Trusted by guests', body: stay.reviewLabel || 'Reliable host support for Santo Domingo stays.', sourceLabel: 'Guest reviews' },
-    { title: 'Secure booking', body: 'Payment holds keep the reservation process structured and reviewable.', sourceLabel: 'MLADIS' },
-    { title: 'Local support', body: 'Area guidance helps guests plan malls, errands, restaurants, and beach days.', sourceLabel: 'MLADIS' },
-  ]).slice(0, 6);
   const spreads = useMemo(() => [
     {
       leftTitle: language === 'es' ? t.rules : 'House rules',
@@ -1417,22 +1393,26 @@ function RulesBook({ stay, language, compact = false }: { stay: PublicStay; lang
       rightItems: rules.slice(3, 6).map((rule) => ({ ...rule, icon: 'shield' })),
     },
     {
-      leftTitle: 'Guest care',
+      leftTitle: 'Availability & quote',
       leftTone: 'blue',
-      leftItems: highlights.slice(0, 3).map((highlight) => ({ title: highlight.title, description: highlight.body, icon: 'guest' })),
-      rightTitle: 'Secure booking',
+      leftItems: [
+        { title: 'Choose dates', description: 'Check the dates and requested guest count for this stay.', icon: 'calendar' },
+        { title: 'Request a complete quote', description: 'MLADIS confirms the full price and any applicable charges before booking.', icon: 'document' },
+        { title: 'No payment with inquiry', description: 'Sending an inquiry does not create a payment or deposit hold.', icon: 'shield' },
+      ],
+      rightTitle: 'Before confirmation',
       rightTone: 'teal',
       rightItems: [
-        { title: 'Refundable deposit hold', description: 'The damage deposit is handled as a secure refundable hold.', icon: 'shield' },
-        { title: 'Stay-payment hold', description: 'The stay-payment hold is captured 24 hours before check-in.', icon: 'payment' },
-        { title: 'Account records', description: 'Requests, invoices, and updates stay tied to the guest account.', icon: 'document' },
+        { title: 'Availability review', description: 'Calendar availability is rechecked when MLADIS reviews the request.', icon: 'calendar' },
+        { title: 'Terms confirmed', description: 'Applicable fees, deposit treatment, and terms are provided before booking.', icon: 'document' },
+        { title: 'Host confirmation', description: 'An inquiry is not a confirmed reservation.', icon: 'agent' },
       ],
     },
     {
       leftTitle: 'Arrival prep',
       leftTone: 'indigo',
       leftItems: [
-        { title: 'Ask before booking', description: 'Use the agent for rules, transport, deposit, and fit questions.', icon: 'agent' },
+        { title: 'Ask before booking', description: 'Use the inquiry form for questions about the stay and dates.', icon: 'agent' },
         { title: 'Correct guest count', description: 'Guest count controls pricing and must match the reservation.', icon: 'guest' },
         { title: 'Host review', description: 'MLADIS reviews requests before confirming details.', icon: 'document' },
       ],
@@ -1448,9 +1428,9 @@ function RulesBook({ stay, language, compact = false }: { stay: PublicStay; lang
       leftTitle: 'FAQs',
       leftTone: 'gold',
       leftItems: [
-        { title: 'When is the stay charged?', description: 'The stay-payment hold is captured 24 hours before check-in.', icon: 'payment' },
-        { title: 'Is the deposit a charge?', description: 'It is a refundable authorization hold unless a documented issue is found.', icon: 'shield' },
-        { title: 'Can guests ask first?', description: 'Yes. Use the booking agent before sending a request.', icon: 'agent' },
+        { title: 'When do I pay?', description: 'MLADIS confirms payment timing and any deposit before a reservation is finalized.', icon: 'payment' },
+        { title: 'Is this a reservation?', description: 'No. This form sends an inquiry; MLADIS must confirm the booking.', icon: 'shield' },
+        { title: 'Can I ask a question?', description: 'Yes. Use the inquiry form and include your question.', icon: 'agent' },
       ],
       rightTitle: 'Booking fit',
       rightTone: 'indigo',
@@ -1460,7 +1440,7 @@ function RulesBook({ stay, language, compact = false }: { stay: PublicStay; lang
         { title: 'Host confirmation', description: 'MLADIS reviews each request before final confirmation.', icon: 'document' },
       ],
     },
-  ], [highlights, language, rules, t.rules]);
+  ], [language, rules, t.rules]);
   const [spreadIndex, setSpreadIndex] = useState(0);
   const spread = spreads[spreadIndex] ?? spreads[0];
 
@@ -1529,10 +1509,6 @@ function HomeAreaExperience({ snapshot, language }: { snapshot: PublicSiteSnapsh
   const t = copy[language];
   const tiles = useMemo(() => snapshot.areaTiles.slice(0, 4), [snapshot.areaTiles]);
   const rotatedTiles = useRotatingList(tiles, 5000);
-  const [areaDistance, setAreaDistance] = useState(52000);
-  const areaMapUrl = useMemo(() => mapEmbedWithDistance(SOL_ORIENS_MAP_EMBED_URL, String(areaDistance)), [areaDistance]);
-  const zoomIn = () => setAreaDistance((current) => Math.max(22000, Math.round(current * 0.74)));
-  const zoomOut = () => setAreaDistance((current) => Math.min(82000, Math.round(current * 1.26)));
   return (
     <section id="area" className="public-section public-home-v5-area">
       <div className="public-home-v5-area__copy">
@@ -1555,19 +1531,15 @@ function HomeAreaExperience({ snapshot, language }: { snapshot: PublicSiteSnapsh
         <div className="public-home-v5-map-card__header">
           <span><MapPin size={15} /> Santo Domingo Norte</span>
           <strong>Residential Sol Oriens V</strong>
-          <a href={SOL_ORIENS_DIRECTIONS_URL} target="_blank" rel="noreferrer">Directions <ArrowUpRight size={14} /></a>
+          <a href={SANTO_DOMINGO_NORTE_SEARCH_URL} target="_blank" rel="noreferrer">Directions <ArrowUpRight size={14} /></a>
         </div>
         <iframe
           title="Residential Sol Oriens V area map"
           loading="lazy"
           allowFullScreen
           referrerPolicy="no-referrer-when-downgrade"
-          src={areaMapUrl}
+          src={SANTO_DOMINGO_NORTE_MAP_URL}
         />
-        <div className="public-home-v5-map-zoom" aria-label="Map zoom controls">
-          <button type="button" onClick={zoomIn} aria-label="Zoom in">+</button>
-          <button type="button" onClick={zoomOut} aria-label="Zoom out">-</button>
-        </div>
         <div className="public-home-v5-map-card__legend">
           <strong>Explore nearby</strong>
           <span><i className="public-home-v5-pin public-home-v5-pin--purple"><ShoppingBag size={13} /></i> Mall / Shopping</span>
@@ -1581,109 +1553,32 @@ function HomeAreaExperience({ snapshot, language }: { snapshot: PublicSiteSnapsh
   );
 }
 
-function HomeRulesMapSection({ snapshot, stay, language }: { snapshot: PublicSiteSnapshot; stay: PublicStay; language: Language }) {
+function HomeRulesMapSection({ snapshot }: { snapshot: PublicSiteSnapshot }) {
   const mapStays = snapshot.stays.slice(0, 3);
-  const trustGroups = [
-    {
-      label: language === 'es' ? 'Cuidado del huésped' : 'Guest care',
-      tone: 'blue',
-      items: [
-        {
-          icon: <Sparkles size={21} />,
-          title: 'Top cleanliness signal',
-          body: 'This stay carries one of the strongest cleanliness scores in the MLADIS set.',
-        },
-        {
-          icon: <MessageSquareText size={21} />,
-          title: 'Trusted communication',
-          body: 'Public review scoring shows communication as a consistent strength.',
-        },
-        {
-          icon: <Users size={21} />,
-          title: 'High guest proof',
-          body: 'The review count and rating make this a strong confidence pick.',
-        },
-      ],
-    },
-    {
-      label: language === 'es' ? 'Reserva segura' : 'Secure booking',
-      tone: 'teal',
-      items: [
-        {
-          icon: <ShieldCheck size={21} />,
-          title: 'Refundable deposit hold',
-          body: 'The damage deposit is handled as a secure refundable hold.',
-        },
-        {
-          icon: <CreditCard size={21} />,
-          title: 'Stay-payment hold',
-          body: 'The stay-payment hold is captured 24 hours before check-in.',
-        },
-        {
-          icon: <ReceiptText size={21} />,
-          title: 'Account records',
-          body: 'Requests, invoices, and updates stay tied to the guest account.',
-        },
-      ],
-    },
-  ];
   return (
     <section id="rules" className="public-section public-home-v5-rules-map">
       <div className="public-home-v5-rules-copy">
-        <p className="public-home-v5-rules-alert"><ShieldCheck size={18} /> MLADIS trust promise</p>
-        <h2>Know where you’re staying</h2>
-        <p>Transparent locations, clear rules, and verified stays so you can book with total confidence.</p>
+        <p className="public-home-v5-rules-alert"><MapPin size={18} /> Santo Domingo Norte</p>
+        <h2>Choose the right stay for your dates</h2>
+        <p>Compare the available apartment options, request your dates, and receive availability confirmation and a complete quote from MLADIS.</p>
         <div className="public-home-v5-rules-promise" aria-label="Booking promise">
-          <span><ShieldCheck size={17} /> Verified homes</span>
-          <span><FileText size={17} /> Clear rules</span>
-          <span><Bot size={17} /> Guest-first support</span>
+          <span><CalendarDays size={17} /> Date check</span>
+          <span><FileText size={17} /> Complete quote</span>
+          <span><Bot size={17} /> Host confirmation</span>
         </div>
-        <article className="public-home-v5-trust-card" aria-label="MLADIS trust details">
-          <div className="public-home-v5-trust-card__tabs" aria-label="Trust detail groups">
-            {trustGroups.map((group, index) => (
-              <span className={`public-home-v5-trust-card__tab public-home-v5-trust-card__tab--${group.tone}${index === 0 ? ' is-active' : ''}`} key={group.label}>
-                {index === 0 ? <Users size={19} /> : <ShieldCheck size={19} />}
-                {group.label}
-              </span>
-            ))}
-          </div>
-          <div className="public-home-v5-trust-card__grid">
-            {trustGroups.map((group) => (
-              <div className="public-home-v5-trust-card__column" key={`${group.label}-items`}>
-                {group.items.map((item) => (
-                  <article className={`public-home-v5-trust-card__item public-home-v5-trust-card__item--${group.tone}`} key={item.title}>
-                    <span>{item.icon}</span>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <p>{item.body}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ))}
-          </div>
-          <footer className="public-home-v5-trust-card__pager" aria-label="Trust promise rotation">
-            <ChevronLeft size={16} />
-            <span>1</span>
-            <span className="is-active">2</span>
-            <span>3</span>
-            <ChevronRight size={16} />
-            <small><Clock size={15} /> Auto-advances every 15 seconds</small>
-          </footer>
-        </article>
       </div>
       <article className="public-home-v5-map-card public-home-v5-map-card--large">
         <div className="public-home-v5-map-card__header">
-          <span><MapPin size={15} /> Sol Oriens V stay area</span>
-          <strong>Residential Sol Oriens V, Santo Domingo, Dominican Republic</strong>
-          <a className="public-home-v5-map-card__button" href={SOL_ORIENS_DIRECTIONS_URL} target="_blank" rel="noreferrer">View full map <ArrowUpRight size={14} /></a>
+          <span><MapPin size={15} /> Santo Domingo Norte</span>
+          <strong>Santo Domingo Norte, Dominican Republic</strong>
+          <a className="public-home-v5-map-card__button" href={SANTO_DOMINGO_NORTE_SEARCH_URL} target="_blank" rel="noreferrer">View area map <ArrowUpRight size={14} /></a>
         </div>
         <iframe
           title="Sol Oriens V apartment location map"
           loading="eager"
           allowFullScreen
           referrerPolicy="no-referrer-when-downgrade"
-          src={SOL_ORIENS_STAY_MAP_EMBED_URL}
+          src={SANTO_DOMINGO_NORTE_MAP_URL}
         />
         <div className="public-home-v5-stay-markers">
           {mapStays.map((mapStay, index) => (
@@ -1691,7 +1586,7 @@ function HomeRulesMapSection({ snapshot, stay, language }: { snapshot: PublicSit
               <img src={mapStay.imageUrl} alt={formatStayName(mapStay.name)} />
               <span>
                 <strong>{formatStayName(mapStay.name)}</strong>
-                <small><Star size={13} fill="currentColor" /> {mapStay.rating || '4.9'} · {mapStay.statList.slice(0, 2).map(normaliseStayStatLabel).join(' · ')}</small>
+                <small>{mapStay.statList.slice(0, 2).map(normaliseStayStatLabel).join(' · ')}</small>
               </span>
             </a>
           ))}
@@ -1701,81 +1596,13 @@ function HomeRulesMapSection({ snapshot, stay, language }: { snapshot: PublicSit
   );
 }
 
-function HomeTrustStrip({ snapshot }: { snapshot: PublicSiteSnapshot }) {
-  const rating = snapshot.stays[0]?.rating || '4.93';
-  const trustItems = useMemo(() => [
-    {
-      title: 'Trusted by guests',
-      body: `${rating} average guest rating from Airbnb reviews`,
-      icon: <ShieldCheck size={22} />,
-    },
-    {
-      title: 'Secure booking',
-      body: `${snapshot.depositAmount} deposit hold opens next in a secure step.`,
-      icon: <CreditCard size={22} />,
-    },
-    {
-      title: 'Human support',
-      body: 'Real people, local knowledge, and agent support when guests need help.',
-      icon: <Bot size={22} />,
-    },
-  ], [rating, snapshot.depositAmount]);
-  const visibleTrustItems = useRotatingList(trustItems, 5000).slice(0, 3);
-  return (
-    <section className="public-home-v5-trust-strip" aria-label="Trust signals">
-      {visibleTrustItems.map((item) => (
-        <article key={item.title}>
-          {item.icon}
-          <strong>{item.title}</strong>
-          <span>{item.body}</span>
-        </article>
-      ))}
-    </section>
-  );
-}
-
-function GuestRatingSpotlight({ snapshot }: { snapshot: PublicSiteSnapshot }) {
-  const [current] = useRotatingList(useGuestRatingItems(snapshot), 5000);
-
-  return (
-    <section className="public-guest-spotlight" aria-label="Top guest rating">
-      <span className="public-guest-spotlight__avatar" aria-hidden="true">
-        <img src={current.avatar} alt="" />
-      </span>
-      <div>
-        <span><Star size={16} fill="currentColor" /> {current.rating}</span>
-        <strong>{current.title}</strong>
-        <p>{current.body}</p>
-      </div>
-      <small>{current.guest}</small>
-    </section>
-  );
-}
-
-function HomeLovedGuestsCard({ snapshot }: { snapshot: PublicSiteSnapshot }) {
-  const [current] = useRotatingList(useGuestRatingItems(snapshot), 5000);
-  return (
-    <article className="public-home-loved-card" aria-label="Loved by guests">
-      <span className="public-home-loved-card__avatar" aria-hidden="true">
-        <img src={current.avatar} alt="" />
-      </span>
-      <div>
-        <strong>Loved by guests</strong>
-        <span className="public-home-loved-card__rating"><HomeStars rating={current.rating} /> {current.rating}</span>
-        <small>{current.body}</small>
-      </div>
-    </article>
-  );
-}
-
 function HomeExperience({ snapshot, userContext, language }: { snapshot: PublicSiteSnapshot; userContext: PublicUserContext; language: Language }) {
   const t = copy[language];
   const heroStay = snapshot.stays[0];
   const heroStats = [
-    { label: 'Ready stays', value: String(snapshot.stays.length), icon: <Home size={18} />, tone: 'green' },
-    { label: 'Guest rating', value: heroStay?.rating || '4.9', icon: <Star size={18} />, tone: 'blue', detail: heroStay?.reviewLabel },
-    { label: 'Deposit hold', value: snapshot.depositAmount, icon: <CreditCard size={18} />, tone: 'orange' },
-    { label: 'Agent limit', value: `${userContext.agent.questionLimit}/user`, icon: <Bot size={18} />, tone: 'indigo' },
+    { label: 'Stays', value: String(snapshot.stays.length), icon: <Home size={18} />, tone: 'green' },
+    { label: 'Inquiry first', value: 'No payment at inquiry', icon: <FileText size={18} />, tone: 'blue' },
+    { label: 'Host confirmation', value: 'Required', icon: <Bot size={18} />, tone: 'indigo' },
   ];
 
   return (
@@ -1791,21 +1618,13 @@ function HomeExperience({ snapshot, userContext, language }: { snapshot: PublicS
         </div>
         {heroStay && (
           <article className="public-hero__stay public-home-v5-hero-card">
-            <span className="public-home-v5-favorite"><HeartHandshake size={15} /> Guest favorite</span>
-            <b className="public-home-v5-rating-badge"><Star size={16} fill="currentColor" /> {heroStay.rating || '4.93'}</b>
             <StayImageRotator stay={heroStay} linkUrl={heroStay.detailUrl} className="public-stay-rotator--hero" defaultRotating showControls={false} />
             <div className="public-home-v5-hero-card__body">
-              <span>{t.proof}</span>
               <a className="public-home-v5-hero-card__title-link" href={heroStay.detailUrl}>
                 <h2>{formatStayName(heroStay.name)}</h2>
               </a>
-              <p><HomeStars rating={heroStay.rating} /> {heroStay.reviewLabel}</p>
               <div className="public-hero__stay-metrics">
                 {heroStay.statList.slice(0, 3).map((stat) => <b key={stat}>{normaliseStayStatLabel(stat)}</b>)}
-              </div>
-              <div className="public-home-v5-hero-card__split">
-                <strong><span>{snapshot.depositAmount}</span>Deposit hold</strong>
-                <strong><span>{userContext.agent.questionLimit}/user</span>Agent limit</strong>
               </div>
             </div>
           </article>
@@ -1820,7 +1639,6 @@ function HomeExperience({ snapshot, userContext, language }: { snapshot: PublicS
             <small>{stat.label}</small>
           </article>
         ))}
-        <HomeLovedGuestsCard snapshot={snapshot} />
       </section>
 
       <section id="stays" className="public-section public-home-v5-stays">
@@ -1831,9 +1649,7 @@ function HomeExperience({ snapshot, userContext, language }: { snapshot: PublicS
         <RotatingStayGrid stays={snapshot.stays} language={language} />
       </section>
 
-      {heroStay && <HomeRulesMapSection snapshot={snapshot} stay={heroStay} language={language} />}
-
-      <HomeTrustStrip snapshot={snapshot} />
+      {heroStay && <HomeRulesMapSection snapshot={snapshot} />}
 
       <AgentBookingSection snapshot={snapshot} userContext={userContext} stay={heroStay} language={language} />
 
@@ -1893,12 +1709,12 @@ function StayDetailExperience({ snapshot, userContext, stay, language }: { snaps
       <section className="public-subhero public-stay-detail-hero">
         <div>
           <a className="public-subtle-link" href="/#stays">All stays</a>
-          <h1>{formatStayName(stay.name)}</h1>
+          <h1>{stay.name}</h1>
           <p>{stay.description}</p>
           <div className="public-proof-strip">
-            <span><Star size={16} /> {stay.rating || 'Airbnb'} rating</span>
+            <span><MapPin size={16} /> {stay.location}</span>
             {stay.statList.slice(0, 4).map((stat) => <span key={stat}>{stat}</span>)}
-            <span><ShieldCheck size={16} /> {snapshot.depositAmount} deposit hold</span>
+            <span><ShieldCheck size={16} /> No payment with inquiry</span>
           </div>
           <div className="public-hero__actions">
             <a href="#booking" onClick={handleBookingLinkClick}>{t.primary} <ArrowUpRight size={17} /></a>
@@ -1911,7 +1727,7 @@ function StayDetailExperience({ snapshot, userContext, stay, language }: { snaps
       <section className="public-section public-gallery-section">
         <div className="public-section__heading">
           <h2>{t.gallery}</h2>
-          <p>Every stay page now has a dedicated visual gallery area, ready for more apartment-specific images as we add them.</p>
+          <p>Apartment photos</p>
         </div>
         <div className="public-feature-gallery">
           {gallery.slice(0, 8).map((image) => (
@@ -1923,20 +1739,17 @@ function StayDetailExperience({ snapshot, userContext, stay, language }: { snaps
         </div>
       </section>
 
-      <section className="public-section public-feature-shell">
+      {stay.highlights.length > 0 && <section className="public-section public-feature-shell">
         <div className="public-two-col">
           <article>
             <h3>{t.highlights}</h3>
-            {(stay.highlights.length ? stay.highlights : [
-              { title: 'Strong Airbnb signal', body: stay.reviewLabel, sourceLabel: 'Airbnb' },
-              { title: 'Group-friendly stay', body: 'A clear layout for families, travel groups, and Santo Domingo plans.', sourceLabel: 'MLADIS' },
-            ]).slice(0, 4).map((highlight) => (
+            {stay.highlights.slice(0, 4).map((highlight) => (
               <p key={highlight.title}><Sparkles size={15} /> <strong>{highlight.title}</strong> {highlight.body}</p>
             ))}
           </article>
           <RulesBook stay={stay} language={language} />
         </div>
-      </section>
+      </section>}
 
       <AgentBookingSection snapshot={snapshot} userContext={userContext} stay={stay} language={language} />
     </>
@@ -2645,10 +2458,26 @@ export function PublicSitePage() {
   const [error, setError] = useState('');
   const [language, setLanguage] = useState<Language>(() => (window.localStorage.getItem('mladis_language') === 'es' ? 'es' : 'en'));
   const [navOpen, setNavOpen] = useState(false);
+  const [analyticsConsent, setAnalyticsConsent] = useState<'unknown' | 'granted' | 'denied'>(() => {
+    const cookie = document.cookie.split('; ').find((row) => row.startsWith('mladis_analytics_consent='));
+    return cookie?.split('=')[1] === 'granted' ? 'granted' : cookie?.split('=')[1] === 'denied' ? 'denied' : 'unknown';
+  });
 
   useEffect(() => {
     window.localStorage.setItem('mladis_language', language);
   }, [language]);
+
+  useEffect(() => {
+    if (analyticsConsent !== 'granted') return;
+    const slug = window.location.pathname.match(/^\/stays\/([^/]+)\/?$/)?.[1] ?? '';
+    if (window.location.pathname === '/' || slug) void recordMarketingEvent('landing_visit', slug);
+  }, [analyticsConsent]);
+
+  function chooseAnalyticsConsent(choice: 'granted' | 'denied') {
+    const secure = window.location.protocol === 'https:' ? '; secure' : '';
+    document.cookie = `mladis_analytics_consent=${choice}; path=/; max-age=15552000; samesite=lax${secure}`;
+    setAnalyticsConsent(choice);
+  }
 
   useEffect(() => {
     let active = true;
@@ -2744,6 +2573,29 @@ export function PublicSitePage() {
         onSignOutStart={() => setUserContext(PublicUserContext.anonymous(resolvedUserContext.agent))}
       />
       {content}
+      {analyticsConsent === 'unknown' && (
+        <AnalyticsConsentBanner language={language} onChoice={chooseAnalyticsConsent} />
+      )}
     </main>
+  );
+}
+
+function AnalyticsConsentBanner({
+  language,
+  onChoice,
+}: {
+  language: Language;
+  onChoice: (choice: 'granted' | 'denied') => void;
+}) {
+  return (
+    <aside className="public-consent-banner" aria-label={language === 'es' ? 'Preferencias de medición' : 'Measurement preferences'}>
+      <p>{language === 'es'
+        ? '¿Permites medición anónima de campañas para mejorar las consultas y reservas? No se incluyen nombres, mensajes, pagos ni fechas.'
+        : 'Allow anonymous campaign measurement to improve inquiries and bookings? Names, messages, payments, and dates are not included.'}</p>
+      <div>
+        <button type="button" onClick={() => onChoice('denied')}>{language === 'es' ? 'Solo lo necesario' : 'Necessary only'}</button>
+        <button type="button" onClick={() => onChoice('granted')}>{language === 'es' ? 'Permitir medición' : 'Allow measurement'}</button>
+      </div>
+    </aside>
   );
 }

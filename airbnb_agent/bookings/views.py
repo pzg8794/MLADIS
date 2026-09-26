@@ -77,6 +77,7 @@ from .services import (
     OpsReservationProjection,
     ReservationPricingService,
     ReservationPaymentHoldService,
+    StayAvailabilityService,
     StayListingService,
     TransactionDocumentService,
 )
@@ -250,7 +251,6 @@ class PublicSiteSummaryAPIView(View):
             "logo_url": logo_url,
             "contact_email": settings_obj.contact_email,
             "public_address_label": settings_obj.public_address_label,
-            "deposit_amount": f"${settings.DEPOSIT_AMOUNT_CENTS / 100:,.0f}",
             "stays": [self._stay_payload(request, stay) for stay in stays],
             "area_tiles": self._area_tiles(),
             "mission_causes": [
@@ -302,47 +302,46 @@ class PublicSiteSummaryAPIView(View):
 
     def _stay_payload(self, request, stay):
         gallery = list(stay.gallery_images.all())
+        public_names = {
+            "mladis-santo-domingo-vacation-home": "MLADIS Santo Domingo Vacation Home",
+            "mladis-three-bedroom-vacation-home": "MLADIS Three-Bedroom Vacation Home G-102",
+            "mladis-santo-domingo-guest-home": "MLADIS Santo Domingo Guest Home G-101",
+        }
         image_url = stay.image or (gallery[0].image_url if gallery else "")
         if image_url and image_url.startswith("/"):
             image_url = request.build_absolute_uri(image_url)
         detail_url = request.build_absolute_uri(stay.get_absolute_url())
         return {
             "id": stay.id,
-            "name": stay.name,
+            "name": public_names.get(stay.slug, stay.name),
             "slug": stay.slug,
             "headline": stay.marketing_headline or stay.short_description,
             "description": stay.marketing_description or stay.description or stay.short_description,
             "location": stay.location_label,
             "image_url": image_url,
-            "rating": str(stay.airbnb_rating or ""),
-            "review_label": stay.review_label,
+            "rating": "",
+            "review_label": "",
             "price_label": stay.headline_price,
             "stat_list": stay.stat_list,
             "detail_url": detail_url,
             "airbnb_url": stay.airbnb_embed_url,
-            "pricing": ReservationPricingService().preview_payload(stay),
+            "pricing": {"max_guests": ReservationPricingService().policy_for_item(stay).max_guests},
             "gallery": [
                 {
                     "image_url": image.image_url,
-                    "alt_text": image.alt_text,
-                    "caption": image.caption,
+                    "alt_text": f"{public_names.get(stay.slug, stay.name)} property photo",
+                    "caption": "",
                 }
                 for image in gallery[:8]
             ],
-            "highlights": [
-                {
-                    "title": highlight.title,
-                    "body": highlight.body,
-                    "source_label": highlight.source_label,
-                }
-                for highlight in stay.guest_review_highlights.all()[:4]
-            ],
+            "highlights": [],
             "rules": [
                 {
                     "title": rule.title,
                     "description": rule.description,
                 }
                 for rule in stay.house_rules.filter(is_active=True)[:6]
+                if "pool" not in f"{rule.title} {rule.description}".lower()
             ],
         }
 
@@ -360,6 +359,72 @@ class PublicSiteSummaryAPIView(View):
                 "domain_key": settings.OPENAI_CHATKIT_DOMAIN_KEY,
             }
         return None
+
+
+class PublicStayAvailabilityAPIView(View):
+    def get(self, request):
+        slug = (request.GET.get("slug") or "").strip()
+        item = get_object_or_404(
+            BookableItem,
+            slug=slug,
+            is_active=True,
+            category=BookingCategory.STAY,
+        )
+        try:
+            check_in = date.fromisoformat(request.GET.get("check_in", ""))
+            check_out = date.fromisoformat(request.GET.get("check_out", ""))
+            guests = int(request.GET.get("guests", "1"))
+        except (TypeError, ValueError):
+            return JsonResponse({"ok": False, "message": "Choose valid dates and guest count."}, status=400)
+        policy = ReservationPricingService().policy_for_item(item)
+        if check_out <= check_in or check_in < timezone.localdate() or guests < 1 or guests > policy.max_guests:
+            return JsonResponse({"ok": False, "message": "Choose valid future dates and a guest count this stay allows."}, status=400)
+        no_known_conflict = StayAvailabilityService().is_available(item, check_in, check_out)
+        return JsonResponse({
+            "ok": True,
+            "availability_status": "confirmation_required" if no_known_conflict else "unavailable",
+            "message": (
+                "No conflict appears in MLADIS records. Confirm against the current booking-channel calendar before booking."
+                if no_known_conflict
+                else "These dates overlap a booking or calendar block in MLADIS records."
+            ),
+            "quote_required": True,
+        })
+
+
+class PublicMarketingEventAPIView(View):
+    ALLOWED_EVENTS = {"landing_visit", "inquiry_start"}
+
+    def post(self, request):
+        from .marketing import record_marketing_event, request_json
+
+        payload = request_json(request)
+        if payload is None:
+            return JsonResponse({"ok": False}, status=400)
+        allowed_keys = {"event_name", "item_slug", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_id"}
+        if set(payload) - allowed_keys:
+            return JsonResponse({"ok": False}, status=400)
+        event_name = payload.get("event_name")
+        if event_name not in self.ALLOWED_EVENTS:
+            return JsonResponse({"ok": False}, status=400)
+        item_slug = str(payload.get("item_slug") or "").strip()
+        if item_slug and not BookableItem.objects.filter(
+            slug=item_slug, is_active=True, category=BookingCategory.STAY
+        ).exists():
+            return JsonResponse({"ok": False}, status=400)
+        if event_name == "inquiry_start" and not BookableItem.objects.filter(
+            slug=item_slug, is_active=True, category=BookingCategory.STAY
+        ).exists():
+            return JsonResponse({"ok": False}, status=400)
+        path = f"/stays/{item_slug}/" if item_slug else "/"
+        record_marketing_event(
+            request,
+            event_name,
+            path=path,
+            item_slug=item_slug,
+            utm_payload=payload,
+        )
+        return JsonResponse({"ok": True})
 
 
 @method_decorator(never_cache, name="dispatch")
@@ -608,25 +673,25 @@ class BookingInquiryCreateView(View):
         if form.is_valid():
             from .services import BookingEmailService, ReservationRequestService
 
-            inquiry = ReservationRequestService().create_from_form(form, request)
-            request.session["payment_inquiry_id"] = inquiry.id
-            BookingEmailService().send_inquiry_notifications(inquiry, request=request)
-            messages.success(
-                request,
-                f"Thanks, {inquiry.guest_name}. Your booking is started.",
-            )
-            if self._wants_json(request):
-                return JsonResponse(
-                    {
-                        "ok": True,
-                        "message": "Request received. Continue with the secure deposit hold.",
-                        "inquiry": self._inquiry_payload(request, inquiry),
-                    },
-                    status=201,
-                )
-            if inquiry.is_admin_test:
-                return redirect(reverse("bookings:dashboard"))
-            return redirect(reverse("bookings:home") + f"?submitted=1&deposit_for={inquiry.id}#deposit")
+            try:
+                inquiry = ReservationRequestService().create_from_form(form, request)
+            except ValidationError as error:
+                form.add_error(None, error.messages[0] if error.messages else str(error))
+            else:
+                BookingEmailService().send_inquiry_notifications(inquiry, request=request)
+                messages.success(request, "Your request was received. MLADIS will confirm availability and the complete quote.")
+                if self._wants_json(request):
+                    return JsonResponse(
+                        {
+                            "ok": True,
+                            "message": "Request received. MLADIS will confirm availability, fees, deposit treatment, and the complete quote before booking.",
+                            "inquiry": self._inquiry_payload(inquiry),
+                        },
+                        status=201,
+                    )
+                if inquiry.is_admin_test:
+                    return redirect(reverse("bookings:dashboard"))
+                return redirect(reverse("bookings:home") + "?submitted=1#booking")
 
         if self._wants_json(request):
             return JsonResponse({"ok": False, "errors": form.errors}, status=400)
@@ -645,44 +710,18 @@ class BookingInquiryCreateView(View):
         )
 
     @staticmethod
-    def _inquiry_payload(request, inquiry):
-        site_settings = SiteSettings.current()
+    def _inquiry_payload(inquiry):
         item = inquiry.item
         return {
             "id": inquiry.id,
             "request_key": inquiry.request_key,
-            "guest_name": inquiry.guest_name,
-            "email": inquiry.email,
-            "phone": inquiry.phone,
             "item_id": inquiry.item_id,
             "stay_name": item.business_display_name if item else "Flexible / help me choose",
             "check_in": inquiry.check_in.isoformat(),
             "check_out": inquiry.check_out.isoformat(),
             "nights": inquiry.nights,
             "guests": inquiry.guests,
-            "coupon_code": inquiry.coupon_code,
-            "display_subtotal": inquiry.display_subtotal,
-            "display_discount": inquiry.display_discount,
-            "display_deposit": inquiry._display_money(inquiry.deposit_cents),
-            "display_reservation_payment": inquiry.display_reservation_payment,
-            "display_total": inquiry.display_total,
-            "reservation_payment_cents": inquiry.reservation_payment_cents,
-            "deposit_checkout_url": request.build_absolute_uri(reverse("bookings:deposit-checkout")),
-            "reservation_payment_checkout_url": request.build_absolute_uri(
-                reverse("bookings:reservation-payment-checkout")
-            ),
-            "payment_confirmation_url": request.build_absolute_uri(
-                reverse("bookings:payment-confirmation", kwargs={"token": inquiry.payment_confirmation_token})
-            ),
-            "property_rules_url": request.build_absolute_uri(reverse("bookings:property-rules")),
-            "damage_terms_url": request.build_absolute_uri(reverse("bookings:damage-deposit-terms")),
-            "documents_accepted": inquiry.required_documents_accepted,
-            "property_rules_title": site_settings.property_rules_title,
-            "property_rules_version": site_settings.property_rules_version,
-            "property_rules_body": site_settings.property_rules_body,
-            "damage_terms_title": site_settings.damage_terms_title,
-            "damage_terms_version": site_settings.damage_terms_version,
-            "damage_terms_body": site_settings.damage_terms_body,
+            "quote_state": "requested",
             "admin_test": inquiry.is_admin_test,
         }
 

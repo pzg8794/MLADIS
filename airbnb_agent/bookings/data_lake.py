@@ -985,6 +985,7 @@ class MLADISDataLakeExporter:
             "total_cents": inquiry.total_cents,
             "currency": inquiry.currency,
             "is_admin_test": inquiry.is_admin_test,
+            "marketing_attribution": inquiry.marketing_attribution,
             "is_blacklist_flagged": inquiry.is_blacklist_flagged,
             "canceled_at": inquiry.canceled_at,
             "cancellation_reason": "" if self.redacted else inquiry.cancellation_reason,
@@ -1078,16 +1079,16 @@ class MLADISDataLakeExporter:
             )
 
     def _records_page_visits(self, collection):
-        queryset = PageVisit.objects.select_related("user").order_by("created_at", "id")
+        queryset = PageVisit.objects.order_by("created_at", "id")
         for visit in queryset:
-            email = visit.user.email if visit.user else ""
             data = {
                 "page_visit_id": visit.id,
                 "path": visit.path,
-                "user_id": visit.user_id,
-                "session_key_hash" if self.redacted else "session_key": self.record_builder.identity(visit.session_key),
+                "event_id": str(visit.event_id or ""),
+                "event_name": visit.event_name,
+                "anonymous_id": str(visit.anonymous_id or ""),
+                "campaign_attribution": visit.campaign_attribution,
                 "language": visit.language,
-                "user_agent": "" if self.redacted else visit.user_agent,
                 "created_at": visit.created_at,
             }
             yield self.record_builder.build(
@@ -1095,7 +1096,7 @@ class MLADISDataLakeExporter:
                 source_model="bookings.PageVisit",
                 entity_id=visit.id,
                 occurred_at=visit.created_at,
-                natural_keys=self._base_natural_keys(email=email),
+                natural_keys={},
                 data=data,
             )
 

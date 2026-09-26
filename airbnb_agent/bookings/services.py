@@ -767,6 +767,52 @@ class ReservationPricingService:
         )
 
 
+class StayAvailabilityService:
+    ACTIVE_BOOKING_STATUSES = {
+        BookingStatus.NEW,
+        BookingStatus.REVIEWING,
+        BookingStatus.QUOTED,
+        BookingStatus.CONFIRMED,
+    }
+
+    @staticmethod
+    def physical_items(item):
+        if item is None:
+            return BookableItem.objects.none()
+        if item.physical_components.exists():
+            ids = [item.pk, *item.physical_components.values_list("pk", flat=True)]
+        else:
+            combined_ids = list(item.combined_offers.values_list("pk", flat=True))
+            ids = [item.pk, *combined_ids]
+        return BookableItem.objects.filter(pk__in=set(ids)).order_by("pk")
+
+    def is_available(self, item, check_in, check_out, *, exclude_inquiry_id=None):
+        if not item or not check_in or not check_out or check_out <= check_in:
+            return False
+        item_ids = list(self.physical_items(item).values_list("pk", flat=True))
+        bookings = BookingInquiry.objects.filter(
+            item_id__in=item_ids,
+            status__in=self.ACTIVE_BOOKING_STATUSES,
+            is_admin_test=False,
+            check_in__lt=check_out,
+            check_out__gt=check_in,
+        )
+        if exclude_inquiry_id:
+            bookings = bookings.exclude(pk=exclude_inquiry_id)
+        if bookings.exists():
+            return False
+        return not AvailabilityBlock.objects.filter(
+            item_id__in=item_ids,
+            is_active=True,
+            start_date__lt=check_out,
+            end_date__gte=check_in,
+        ).exists()
+
+    def lock_physical_items(self, item):
+        ids = list(self.physical_items(item).values_list("pk", flat=True))
+        return list(BookableItem.objects.select_for_update().filter(pk__in=ids).order_by("pk"))
+
+
 class PayPalAPIError(Exception):
     pass
 
@@ -1930,9 +1976,32 @@ class ReservationRequestService:
         inquiry = form.save(commit=False)
         if request.user.is_authenticated:
             inquiry.user = request.user
-        self.prepare(inquiry, coupon=form.coupon, redeem_coupon=True)
-        inquiry.save()
+        from .marketing import analytics_allowed, get_anonymous_id
+
+        if analytics_allowed(request):
+            inquiry.marketing_attribution = {
+                **request.session.get("mladis_marketing_attribution", {}),
+                "anonymous_id": str(get_anonymous_id(request)),
+            }
+        with transaction.atomic():
+            if inquiry.item and not inquiry.is_admin_test:
+                availability = StayAvailabilityService()
+                availability.lock_physical_items(inquiry.item)
+                if not availability.is_available(inquiry.item, inquiry.check_in, inquiry.check_out):
+                    raise ValidationError("Those dates are no longer available for this stay. Please choose other dates or ask MLADIS to help.")
+            self.prepare(inquiry, coupon=form.coupon, redeem_coupon=True)
+            inquiry.save()
         self.log_object_event(inquiry, "reservation_request.created", request=request)
+        if inquiry.item and not inquiry.is_admin_test:
+            from .marketing import record_marketing_event
+
+            record_marketing_event(
+                request,
+                "inquiry_submitted",
+                path=f"stay:{inquiry.item.slug}",
+                item_slug=inquiry.item.slug,
+                idempotency_key=str(inquiry.pk),
+            )
         return inquiry
 
     def prepare(self, inquiry: BookingInquiry, coupon=None, redeem_coupon=False):
@@ -2755,11 +2824,8 @@ class BookingEmailService:
                 f"{self._mode_header()}We received your request for {item_name}.",
                 f"Dates: {inquiry.check_in} to {inquiry.check_out}",
                 f"Guests: {inquiry.guests}",
-                f"Reservation payment hold: {inquiry.display_reservation_payment}",
-                f"Security deposit hold: {inquiry.display_deposit}",
-                f"Estimated total authorization: {inquiry.display_total}",
                 "",
-                "This is an admin-confirmed request. We will review availability and follow up with the next step.",
+                "This is an inquiry, not a confirmed reservation. MLADIS will check availability and send the complete quote, including any applicable fees, deposit treatment, and booking terms. No payment or deposit is collected with this request.",
                 "",
                 "MLADIS",
             ]

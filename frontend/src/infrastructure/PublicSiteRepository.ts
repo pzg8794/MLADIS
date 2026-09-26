@@ -6,7 +6,6 @@ import {
   PublicGalleryImage,
   PublicHouseRule,
   PublicReviewHighlight,
-  ReservationPricingPolicy,
   PublicSiteSnapshot,
   PublicStay,
   SocialLoginProvider,
@@ -44,16 +43,7 @@ interface ApiStay {
   stat_list: string[];
   detail_url: string;
   airbnb_url: string;
-  pricing: {
-    base_price_cents: number;
-    included_guests: number;
-    extra_guest_cents: number;
-    max_guests: number;
-    currency: string;
-    label: string;
-    display_base_price: string;
-    display_extra_guest_price: string;
-  };
+  pricing: { max_guests: number };
   gallery: ApiGalleryImage[];
   highlights: ApiReviewHighlight[];
   rules: ApiHouseRule[];
@@ -98,7 +88,6 @@ interface ApiPublicSiteSnapshot {
   logo_url: string;
   contact_email: string;
   public_address_label: string;
-  deposit_amount: string;
   stays: ApiStay[];
   area_tiles: ApiAreaTile[];
   mission_causes: ApiMissionCause[];
@@ -131,7 +120,6 @@ export class ApiPublicSiteRepository implements PublicSiteRepository {
       data.logo_url,
       data.contact_email,
       data.public_address_label,
-      data.deposit_amount,
       data.stays.map((stay) => new PublicStay(
         stay.id,
         stay.name,
@@ -146,16 +134,7 @@ export class ApiPublicSiteRepository implements PublicSiteRepository {
         stay.stat_list,
         stay.detail_url,
         stay.airbnb_url,
-        new ReservationPricingPolicy(
-          stay.pricing.base_price_cents,
-          stay.pricing.included_guests,
-          stay.pricing.extra_guest_cents,
-          stay.pricing.max_guests,
-          stay.pricing.currency,
-          stay.pricing.label,
-          stay.pricing.display_base_price,
-          stay.pricing.display_extra_guest_price,
-        ),
+        stay.pricing.max_guests,
         stay.gallery.map((image) => new PublicGalleryImage(image.image_url, image.alt_text, image.caption)),
         stay.highlights.map((highlight) => new PublicReviewHighlight(highlight.title, highlight.body, highlight.source_label)),
         stay.rules.map((rule) => new PublicHouseRule(rule.title, rule.description)),
