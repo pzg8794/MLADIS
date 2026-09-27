@@ -1,6 +1,8 @@
 from django.db.utils import OperationalError, ProgrammingError
 from django.shortcuts import redirect
+
 from .marketing import analytics_allowed, record_marketing_event, sanitize_utm
+from .models import BookableItem, BookingCategory
 from .social_auth import provider_auth_origin, provider_from_oauth_path, request_origin
 
 
@@ -36,7 +38,12 @@ class PageVisitMiddleware:
             try:
                 path_parts = request.path.strip("/").split("/")
                 item_slug = path_parts[1] if len(path_parts) == 2 and path_parts[0] == "stays" else ""
-                if request.path == "/" or item_slug:
+                is_public_stay = bool(item_slug) and BookableItem.objects.filter(
+                    slug=item_slug,
+                    category=BookingCategory.STAY,
+                    is_active=True,
+                ).exists()
+                if request.path == "/" or is_public_stay:
                     record_marketing_event(
                         request,
                         "landing_visit",

@@ -2019,6 +2019,20 @@ class MarketingAttributionTests(TestCase):
         self.assertEqual(visit.user_agent, "")
         self.assertIsNotNone(visit.anonymous_id)
 
+    def test_unknown_stay_path_is_not_recorded_as_analytics(self):
+        middleware = PageVisitMiddleware(lambda _request: HttpResponse())
+        unknown_request = RequestFactory().get("/stays/SyntheticGuest_1234567/")
+        unknown_request.COOKIES = {"mladis_analytics_consent": "granted"}
+        unknown_request.session = {}
+        middleware(unknown_request)
+        self.assertFalse(PageVisit.objects.exists())
+
+        known_request = RequestFactory().get(f"/stays/{self.item.slug}/")
+        known_request.COOKIES = {"mladis_analytics_consent": "granted"}
+        known_request.session = {}
+        middleware(known_request)
+        self.assertEqual(PageVisit.objects.get().path, f"/stays/{self.item.slug}/")
+
     def test_consent_suppresses_events_and_dnt_overrides_granted_cookie(self):
         self.client.cookies.pop("mladis_analytics_consent")
         response = self.post_event({"event_name": "landing_visit", "utm_source": "facebook"})
