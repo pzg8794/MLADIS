@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import threading
 from urllib.parse import parse_qs, urlparse
 from io import StringIO
 from pathlib import Path
@@ -20,11 +21,13 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sites.models import Site
+from django.core.exceptions import ValidationError
 from django.core import mail
+from django.db import close_old_connections
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import CommandError, call_command
 from django.http import HttpResponse
-from django.test import RequestFactory, TestCase, override_settings
+from django.test import RequestFactory, TestCase, TransactionTestCase, override_settings, skipUnlessDBFeature
 from django.urls import resolve, reverse
 from django.utils import timezone
 import stripe
@@ -86,6 +89,7 @@ from .services import (
     AgentAccessContext,
     AgentRequest,
     BookingAgentService,
+    BookingConfirmationService,
     BookingCalendarService,
     BookingEmailService,
     DamageDepositService,
@@ -1922,10 +1926,123 @@ class MarketingFunnelAvailabilityTests(TestCase):
                 ))
                 BookingInquiry.objects.all().delete()
 
+    def test_new_inquiries_do_not_consume_single_or_combined_inventory(self):
+        for item, available_items in (
+            (self.g101, (self.g101, self.combined)),
+            (self.g102, (self.g102, self.combined)),
+            (self.combined, (self.g101, self.g102, self.combined)),
+        ):
+            with self.subTest(item=item.slug):
+                self.add_inquiry(item, status=BookingStatus.NEW)
+                for available_item in available_items:
+                    self.assertTrue(
+                        self.service.is_available(available_item, self.check_in, self.check_out),
+                        f"A NEW inquiry for {item.slug} blocked {available_item.slug}.",
+                    )
+                BookingInquiry.objects.all().delete()
+
+    def test_review_and_quote_inquiries_do_not_consume_inventory(self):
+        for status in (BookingStatus.REVIEWING, BookingStatus.QUOTED):
+            with self.subTest(status=status):
+                self.add_inquiry(self.g101, status=status)
+                self.assertTrue(self.service.is_available(self.g101, self.check_in, self.check_out))
+                self.assertTrue(self.service.is_available(self.combined, self.check_in, self.check_out))
+                BookingInquiry.objects.all().delete()
+
     def test_combined_booking_blocks_both_units_for_overlapping_dates(self):
         self.add_inquiry(self.combined)
         self.assertFalse(self.service.is_available(self.g101, self.check_in, self.check_out))
         self.assertFalse(self.service.is_available(self.g102, self.check_in, self.check_out))
+
+    def test_confirmation_rejects_collisions_through_normal_model_save(self):
+        for existing_item, attempted_item in (
+            (self.g101, self.combined),
+            (self.g102, self.combined),
+            (self.combined, self.g101),
+            (self.combined, self.g102),
+        ):
+            with self.subTest(existing=existing_item.slug, attempted=attempted_item.slug):
+                self.add_inquiry(existing_item, status=BookingStatus.CONFIRMED)
+                candidate = self.add_inquiry(attempted_item, status=BookingStatus.REVIEWING)
+                candidate.status = BookingStatus.CONFIRMED
+                with self.assertRaises(ValidationError):
+                    candidate.save(update_fields=["status", "updated_at"])
+                candidate.refresh_from_db()
+                self.assertEqual(candidate.status, BookingStatus.REVIEWING)
+                BookingInquiry.objects.all().delete()
+
+    def test_confirmation_service_rechecks_overlapping_inventory(self):
+        self.add_inquiry(self.g101, status=BookingStatus.CONFIRMED)
+        candidate = self.add_inquiry(self.combined, status=BookingStatus.REVIEWING)
+        candidate.status = BookingStatus.CONFIRMED
+        with self.assertRaises(ValidationError):
+            BookingConfirmationService().save_confirmed(candidate, update_fields=["status", "updated_at"])
+        candidate.refresh_from_db()
+        self.assertEqual(candidate.status, BookingStatus.REVIEWING)
+
+    def test_model_validation_rejects_admin_confirmation_on_collision(self):
+        self.add_inquiry(self.g102, status=BookingStatus.CONFIRMED)
+        candidate = self.add_inquiry(self.combined, status=BookingStatus.REVIEWING)
+        candidate.status = BookingStatus.CONFIRMED
+        with self.assertRaises(ValidationError):
+            candidate.full_clean()
+
+    def test_unassigned_inquiry_cannot_be_confirmed(self):
+        candidate = self.add_inquiry(None, status=BookingStatus.REVIEWING)
+        candidate.status = BookingStatus.CONFIRMED
+        with self.assertRaises(ValidationError):
+            candidate.save(update_fields=["status", "updated_at"])
+        candidate.refresh_from_db()
+        self.assertEqual(candidate.status, BookingStatus.REVIEWING)
+
+    def test_confirmed_record_can_update_itself_without_self_collision(self):
+        inquiry = self.add_inquiry(self.g101, status=BookingStatus.CONFIRMED)
+        inquiry.admin_notes = "Updated without changing its stay inventory."
+        inquiry.save(update_fields=["admin_notes", "updated_at"])
+        inquiry.refresh_from_db()
+        self.assertEqual(inquiry.status, BookingStatus.CONFIRMED)
+        self.assertEqual(inquiry.admin_notes, "Updated without changing its stay inventory.")
+
+    def test_adjacent_confirmed_bookings_are_allowed(self):
+        self.add_inquiry(self.g101, status=BookingStatus.CONFIRMED)
+        next_stay = self.add_inquiry(
+            self.combined,
+            check_in=self.check_out,
+            check_out=self.check_out + timedelta(days=2),
+            status=BookingStatus.REVIEWING,
+        )
+        next_stay.status = BookingStatus.CONFIRMED
+        next_stay.save(update_fields=["status", "updated_at"])
+        self.assertEqual(
+            BookingInquiry.objects.get(pk=next_stay.pk).status,
+            BookingStatus.CONFIRMED,
+        )
+
+    def test_staff_cannot_confirm_overlapping_single_and_combined_bookings(self):
+        user = get_user_model().objects.create_user(
+            username="inventory-confirmation-ops",
+            password="secret",
+            is_staff=True,
+        )
+        self.client.force_login(user)
+        for existing_item, attempted_item in (
+            (self.g101, self.combined),
+            (self.g102, self.combined),
+            (self.combined, self.g101),
+            (self.combined, self.g102),
+        ):
+            with self.subTest(existing=existing_item.slug, attempted=attempted_item.slug):
+                self.add_inquiry(existing_item, status=BookingStatus.CONFIRMED)
+                candidate = self.add_inquiry(attempted_item, status=BookingStatus.REVIEWING)
+                response = self.client.post(
+                    reverse("bookings:ops-reservation-status-api", args=[candidate.pk]),
+                    data=json.dumps({"status": "confirmed"}),
+                    content_type="application/json",
+                )
+                self.assertEqual(response.status_code, 409)
+                candidate.refresh_from_db()
+                self.assertEqual(candidate.status, BookingStatus.REVIEWING)
+                BookingInquiry.objects.all().delete()
 
     def test_admin_test_records_do_not_block_sellable_dates(self):
         self.add_inquiry(self.g101, is_admin_test=True)
@@ -1977,6 +2094,90 @@ class MarketingFunnelAvailabilityTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(BookingInquiry.objects.count(), 1)
+
+
+class BookingConfirmationConcurrencyTests(TransactionTestCase):
+    @skipUnlessDBFeature("has_select_for_update")
+    def test_competing_confirmations_cannot_both_claim_shared_units(self):
+        combined = BookableItem.objects.create(
+            name="Concurrency Combined Stay",
+            slug="concurrency-combined",
+            category=BookingCategory.STAY,
+            short_description="Concurrency test stay",
+            is_active=True,
+            bedrooms=6,
+            max_guests=14,
+        )
+        g101 = BookableItem.objects.create(
+            name="Concurrency G-101",
+            slug="concurrency-g101",
+            category=BookingCategory.STAY,
+            short_description="Concurrency unit 101",
+            is_active=True,
+            bedrooms=3,
+            max_guests=7,
+        )
+        g102 = BookableItem.objects.create(
+            name="Concurrency G-102",
+            slug="concurrency-g102",
+            category=BookingCategory.STAY,
+            short_description="Concurrency unit 102",
+            is_active=True,
+            bedrooms=3,
+            max_guests=7,
+        )
+        combined.physical_components.add(g101, g102)
+        check_in = timezone.localdate() + timedelta(days=30)
+        check_out = check_in + timedelta(days=3)
+        inquiries = [
+            BookingInquiry.objects.create(
+                item=g101,
+                guest_name="Concurrency G-101 Guest",
+                email="g101@example.test",
+                check_in=check_in,
+                check_out=check_out,
+                guests=2,
+                status=BookingStatus.REVIEWING,
+            ),
+            BookingInquiry.objects.create(
+                item=combined,
+                guest_name="Concurrency Combined Guest",
+                email="combined@example.test",
+                check_in=check_in,
+                check_out=check_out,
+                guests=8,
+                status=BookingStatus.REVIEWING,
+            ),
+        ]
+        start = threading.Barrier(2)
+        outcomes = []
+        unexpected_errors = []
+
+        def confirm(inquiry_id):
+            close_old_connections()
+            try:
+                inquiry = BookingInquiry.objects.get(pk=inquiry_id)
+                start.wait(timeout=10)
+                inquiry.status = BookingStatus.CONFIRMED
+                inquiry.save(update_fields=["status", "updated_at"])
+                outcomes.append("confirmed")
+            except ValidationError:
+                outcomes.append("rejected")
+            except Exception as error:  # surfaced in the parent test thread
+                unexpected_errors.append(error)
+            finally:
+                close_old_connections()
+
+        threads = [threading.Thread(target=confirm, args=(inquiry.pk,)) for inquiry in inquiries]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        self.assertFalse(any(thread.is_alive() for thread in threads), "Confirmation threads did not finish.")
+        self.assertEqual(unexpected_errors, [])
+        self.assertCountEqual(outcomes, ["confirmed", "rejected"])
+        self.assertEqual(BookingInquiry.objects.filter(status=BookingStatus.CONFIRMED).count(), 1)
 
 
 class MarketingAttributionTests(TestCase):
@@ -2672,7 +2873,15 @@ class ReservationPricingAndPaymentHoldTests(TestCase):
     def test_due_reservation_payment_hold_is_reconciled_and_captured(self, retrieve, capture):
         retrieve.return_value = SimpleNamespace(id="pi_due", status="requires_capture")
         capture.return_value = SimpleNamespace(id="pi_due", status="succeeded")
+        item = BookableItem.objects.create(
+            name="Due Reservation Stay",
+            slug="due-reservation-stay",
+            category=BookingCategory.STAY,
+            short_description="A confirmed stay for the payment lifecycle test.",
+            is_active=True,
+        )
         inquiry = BookingInquiry.objects.create(
+            item=item,
             guest_name="Due Guest",
             email="due@example.com",
             check_in=timezone.localdate() + timedelta(days=1),
@@ -2786,6 +2995,25 @@ class BookingCalendarServiceTests(TestCase):
             check_out=date(2026, 6, 17),
             guests=2,
             status=BookingStatus.CANCELED,
+        )
+        BookingInquiry.objects.create(
+            item=item,
+            guest_name="Inquiry Guest",
+            email="inquiry@example.com",
+            check_in=date(2026, 6, 10),
+            check_out=date(2026, 6, 13),
+            guests=2,
+            status=BookingStatus.NEW,
+        )
+        BookingInquiry.objects.create(
+            item=item,
+            guest_name="Admin Test Guest",
+            email="admin-test@example.com",
+            check_in=date(2026, 6, 10),
+            check_out=date(2026, 6, 13),
+            guests=2,
+            status=BookingStatus.CONFIRMED,
+            is_admin_test=True,
         )
         AvailabilityBlock.objects.create(
             item=item,

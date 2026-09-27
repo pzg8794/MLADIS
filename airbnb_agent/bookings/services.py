@@ -13,7 +13,7 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import router, transaction
 from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import Coalesce
 from django.urls import reverse
@@ -33,6 +33,7 @@ from .models import (
     BookingCategory,
     BookingInquiry,
     BookingStatus,
+    INVENTORY_BLOCKING_BOOKING_STATUSES,
     CancellationPolicy,
     ClientSegment,
     ContactSource,
@@ -768,31 +769,30 @@ class ReservationPricingService:
 
 
 class StayAvailabilityService:
-    ACTIVE_BOOKING_STATUSES = {
-        BookingStatus.NEW,
-        BookingStatus.REVIEWING,
-        BookingStatus.QUOTED,
-        BookingStatus.CONFIRMED,
-    }
+    INVENTORY_BLOCKING_STATUSES = INVENTORY_BLOCKING_BOOKING_STATUSES
 
     @staticmethod
-    def physical_items(item):
+    def physical_items(item, *, using=None):
         if item is None:
-            return BookableItem.objects.none()
-        if item.physical_components.exists():
-            ids = [item.pk, *item.physical_components.values_list("pk", flat=True)]
+            return BookableItem.objects.using(using).none() if using else BookableItem.objects.none()
+        components = item.physical_components.using(using) if using else item.physical_components
+        combined_offers = item.combined_offers.using(using) if using else item.combined_offers
+        if components.exists():
+            ids = [item.pk, *components.values_list("pk", flat=True)]
         else:
-            combined_ids = list(item.combined_offers.values_list("pk", flat=True))
+            combined_ids = list(combined_offers.values_list("pk", flat=True))
             ids = [item.pk, *combined_ids]
-        return BookableItem.objects.filter(pk__in=set(ids)).order_by("pk")
+        queryset = BookableItem.objects.using(using) if using else BookableItem.objects
+        return queryset.filter(pk__in=set(ids)).order_by("pk")
 
-    def is_available(self, item, check_in, check_out, *, exclude_inquiry_id=None):
+    def is_available(self, item, check_in, check_out, *, exclude_inquiry_id=None, using=None):
         if not item or not check_in or not check_out or check_out <= check_in:
             return False
-        item_ids = list(self.physical_items(item).values_list("pk", flat=True))
-        bookings = BookingInquiry.objects.filter(
+        item_ids = list(self.physical_items(item, using=using).values_list("pk", flat=True))
+        inquiry_queryset = BookingInquiry.objects.using(using) if using else BookingInquiry.objects
+        bookings = inquiry_queryset.filter(
             item_id__in=item_ids,
-            status__in=self.ACTIVE_BOOKING_STATUSES,
+            status__in=self.INVENTORY_BLOCKING_STATUSES,
             is_admin_test=False,
             check_in__lt=check_out,
             check_out__gt=check_in,
@@ -801,16 +801,64 @@ class StayAvailabilityService:
             bookings = bookings.exclude(pk=exclude_inquiry_id)
         if bookings.exists():
             return False
-        return not AvailabilityBlock.objects.filter(
+        block_queryset = AvailabilityBlock.objects.using(using) if using else AvailabilityBlock.objects
+        return not block_queryset.filter(
             item_id__in=item_ids,
             is_active=True,
             start_date__lt=check_out,
             end_date__gte=check_in,
         ).exists()
 
-    def lock_physical_items(self, item):
-        ids = list(self.physical_items(item).values_list("pk", flat=True))
-        return list(BookableItem.objects.select_for_update().filter(pk__in=ids).order_by("pk"))
+    def lock_physical_items(self, item, *, using=None):
+        ids = list(self.physical_items(item, using=using).values_list("pk", flat=True))
+        queryset = BookableItem.objects.using(using) if using else BookableItem.objects
+        return list(queryset.select_for_update().filter(pk__in=ids).order_by("pk"))
+
+
+class BookingConfirmationService:
+    """Persist confirmed stays only after locking and rechecking their inventory."""
+
+    def save_confirmed(self, inquiry, *args, **kwargs):
+        using = kwargs.get("using") or inquiry._state.db or router.db_for_write(type(inquiry), instance=inquiry)
+        with transaction.atomic(using=using):
+            if not inquiry.item_id:
+                existing_unassigned_confirmation = (
+                    inquiry.pk
+                    and BookingInquiry.objects.using(using).filter(
+                        pk=inquiry.pk,
+                        status=BookingStatus.CONFIRMED,
+                        item__isnull=True,
+                    ).exists()
+                )
+                if existing_unassigned_confirmation:
+                    return inquiry.save(*args, _skip_confirmation_guard=True, **kwargs)
+                raise ValidationError("Select a property or product before confirming this inquiry.")
+            item = BookableItem.objects.using(using).filter(pk=inquiry.item_id).first()
+            if not item:
+                raise ValidationError("The selected property or product no longer exists.")
+            if item.category == BookingCategory.STAY and not inquiry.is_admin_test:
+                if not inquiry.check_in or not inquiry.check_out or inquiry.check_out <= inquiry.check_in:
+                    raise ValidationError("A confirmed stay must have a valid check-in and check-out date.")
+
+                availability = StayAvailabilityService()
+                locked_items = availability.lock_physical_items(item, using=using)
+                if not locked_items:
+                    raise ValidationError("The stay's physical inventory could not be locked.")
+
+                inquiry_queryset = BookingInquiry.objects.using(using)
+                if inquiry.pk and not inquiry_queryset.select_for_update().filter(pk=inquiry.pk).first():
+                    raise ValidationError("This inquiry no longer exists and cannot be confirmed.")
+
+                if not availability.is_available(
+                    item,
+                    inquiry.check_in,
+                    inquiry.check_out,
+                    exclude_inquiry_id=inquiry.pk,
+                    using=using,
+                ):
+                    raise ValidationError("These dates overlap a confirmed booking or availability block.")
+
+            return inquiry.save(*args, _skip_confirmation_guard=True, **kwargs)
 
 
 class PayPalAPIError(Exception):
@@ -818,12 +866,7 @@ class PayPalAPIError(Exception):
 
 
 class BookingCalendarService:
-    ACTIVE_BOOKING_STATUSES = {
-        BookingStatus.NEW,
-        BookingStatus.REVIEWING,
-        BookingStatus.QUOTED,
-        BookingStatus.CONFIRMED,
-    }
+    ACTIVE_BOOKING_STATUSES = INVENTORY_BLOCKING_BOOKING_STATUSES
 
     def build_month(self, item: BookableItem, month_start: date | None = None):
         month_start = (month_start or timezone.localdate()).replace(day=1)
@@ -835,6 +878,7 @@ class BookingCalendarService:
             BookingInquiry.objects.filter(
                 item=item,
                 status__in=self.ACTIVE_BOOKING_STATUSES,
+                is_admin_test=False,
                 check_in__lt=visible_end + timedelta(days=1),
                 check_out__gt=visible_start,
             ).order_by("check_in", "id")

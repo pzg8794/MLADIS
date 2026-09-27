@@ -29,6 +29,9 @@ class BookingStatus(models.TextChoices):
     DECLINED = "declined", "Declined"
 
 
+INVENTORY_BLOCKING_BOOKING_STATUSES = frozenset({BookingStatus.CONFIRMED})
+
+
 class ClientSegment(models.TextChoices):
     FAVORITE = "favorite", "Favorite"
     VIP = "vip", "VIP"
@@ -758,6 +761,48 @@ class BookingInquiry(models.Model):
     def __str__(self):
         item_name = self.item.business_display_name if self.item else "Any booking"
         return f"{self.guest_name} - {item_name}"
+
+    def clean(self):
+        super().clean()
+        if (
+            self.status != BookingStatus.CONFIRMED
+            or self.is_admin_test
+        ):
+            return
+        if not self.item_id:
+            if self.pk and type(self).objects.filter(
+                pk=self.pk,
+                status=BookingStatus.CONFIRMED,
+                item__isnull=True,
+            ).exists():
+                return
+            raise ValidationError({"item": "Select a property or product before confirming this inquiry."})
+        if self.item.category != BookingCategory.STAY:
+            return
+        if not self.check_in or not self.check_out:
+            raise ValidationError({"check_in": "A confirmed stay must have check-in and check-out dates."})
+
+        from .services import StayAvailabilityService
+
+        if not StayAvailabilityService().is_available(
+            self.item,
+            self.check_in,
+            self.check_out,
+            exclude_inquiry_id=self.pk,
+        ):
+            raise ValidationError({"check_in": "These dates overlap a confirmed booking or availability block."})
+
+    def save(self, *args, **kwargs):
+        skip_confirmation_guard = kwargs.pop("_skip_confirmation_guard", False)
+        if (
+            not skip_confirmation_guard
+            and self.status == BookingStatus.CONFIRMED
+            and not self.is_admin_test
+        ):
+            from .services import BookingConfirmationService
+
+            return BookingConfirmationService().save_confirmed(self, *args, **kwargs)
+        return super().save(*args, **kwargs)
 
     @property
     def request_key(self):

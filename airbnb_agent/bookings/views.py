@@ -2189,12 +2189,18 @@ class OpsReservationStatusAPIView(View):
 
         reservation = get_object_or_404(BookingInquiry, pk=pk)
         reservation.status = next_status
-        if next_status == BookingStatus.CANCELED and not reservation.canceled_at:
-            reservation.canceled_at = timezone.now()
-            reservation.cancellation_reason = reservation.cancellation_reason or "Updated from modern reservations dashboard."
-            reservation.save(update_fields=["status", "canceled_at", "cancellation_reason", "updated_at"])
-        else:
-            reservation.save(update_fields=["status", "updated_at"])
+        try:
+            if next_status == BookingStatus.CANCELED and not reservation.canceled_at:
+                reservation.canceled_at = timezone.now()
+                reservation.cancellation_reason = reservation.cancellation_reason or "Updated from modern reservations dashboard."
+                reservation.save(update_fields=["status", "canceled_at", "cancellation_reason", "updated_at"])
+            else:
+                reservation.save(update_fields=["status", "updated_at"])
+        except ValidationError as error:
+            return JsonResponse(
+                {"error": error.messages[0] if error.messages else str(error)},
+                status=409,
+            )
 
         view = OpsReservationsView()
         view.setup(request)
