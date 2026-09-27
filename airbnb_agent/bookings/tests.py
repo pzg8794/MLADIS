@@ -27,7 +27,7 @@ from django.db import close_old_connections
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import CommandError, call_command
 from django.http import HttpResponse
-from django.test import RequestFactory, TestCase, TransactionTestCase, override_settings, skipUnlessDBFeature
+from django.test import RequestFactory, TestCase, TransactionTestCase, override_settings
 from django.urls import resolve, reverse
 from django.utils import timezone
 import stripe
@@ -1798,7 +1798,7 @@ class BookingInquiryViewTests(TestCase):
             fetch_redirect_response=False,
         )
         self.assertEqual(DamageDeposit.objects.count(), 0)
-        self.assertNotIn("payment_inquiry_id", self.client.session)
+        self.assertEqual(self.client.session["payment_inquiry_id"], inquiry.id)
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
@@ -1836,12 +1836,23 @@ class BookingInquiryViewTests(TestCase):
             self.assertEqual(payload["inquiry"]["id"], inquiry.id)
             self.assertEqual(payload["inquiry"]["request_key"], inquiry.request_key)
             self.assertEqual(payload["inquiry"]["quote_state"], "requested")
-            self.assertNotIn("display_deposit", payload["inquiry"])
-            self.assertNotIn("deposit_checkout_url", payload["inquiry"])
-            self.assertNotIn("email", payload["inquiry"])
-            self.assertNotIn("payment_inquiry_id", self.client.session)
+            self.assertIn("display_subtotal", payload["inquiry"])
+            self.assertIn("display_reservation_payment", payload["inquiry"])
+            self.assertIn("display_deposit", payload["inquiry"])
+            self.assertIn("deposit_checkout_url", payload["inquiry"])
+            self.assertIn("reservation_payment_checkout_url", payload["inquiry"])
+            self.assertEqual(self.client.session["payment_inquiry_id"], inquiry.id)
+            self.assertEqual(DamageDeposit.objects.count(), 0)
+            self.assertEqual(ReservationPaymentHold.objects.count(), 0)
             self.assertEqual(inquiry.phone, "")
             self.assertIn("No payment or deposit is collected", mail.outbox[1].body)
+
+            context_response = self.client.get(reverse("bookings:reservation-payment-context"))
+            self.assertEqual(context_response.status_code, 200)
+            context_inquiry = context_response.json()["inquiry"]
+            self.assertEqual(context_inquiry["id"], inquiry.id)
+            self.assertIn("display_subtotal", context_inquiry)
+            self.assertIn("reservation_payment_checkout_url", context_inquiry)
 
             event_file = Path(temp_dir) / "BOOKINGS" / "_events.jsonl"
             self.assertTrue(event_file.exists())
@@ -1980,6 +1991,19 @@ class MarketingFunnelAvailabilityTests(TestCase):
         candidate.refresh_from_db()
         self.assertEqual(candidate.status, BookingStatus.REVIEWING)
 
+    def test_status_only_confirmation_uses_locked_database_stay_not_stale_instance(self):
+        self.add_inquiry(self.g102, status=BookingStatus.CONFIRMED)
+        stale_candidate = self.add_inquiry(self.g101, status=BookingStatus.REVIEWING)
+        BookingInquiry.objects.filter(pk=stale_candidate.pk).update(item_id=self.g102.pk)
+
+        stale_candidate.status = BookingStatus.CONFIRMED
+        with self.assertRaises(ValidationError):
+            stale_candidate.save(update_fields=["status", "updated_at"])
+
+        stale_candidate.refresh_from_db()
+        self.assertEqual(stale_candidate.item_id, self.g102.pk)
+        self.assertEqual(stale_candidate.status, BookingStatus.REVIEWING)
+
     def test_model_validation_rejects_admin_confirmation_on_collision(self):
         self.add_inquiry(self.g102, status=BookingStatus.CONFIRMED)
         candidate = self.add_inquiry(self.combined, status=BookingStatus.REVIEWING)
@@ -2097,7 +2121,6 @@ class MarketingFunnelAvailabilityTests(TestCase):
 
 
 class BookingConfirmationConcurrencyTests(TransactionTestCase):
-    @skipUnlessDBFeature("has_select_for_update")
     def test_competing_confirmations_cannot_both_claim_shared_units(self):
         combined = BookableItem.objects.create(
             name="Concurrency Combined Stay",
@@ -2129,55 +2152,61 @@ class BookingConfirmationConcurrencyTests(TransactionTestCase):
         combined.physical_components.add(g101, g102)
         check_in = timezone.localdate() + timedelta(days=30)
         check_out = check_in + timedelta(days=3)
-        inquiries = [
-            BookingInquiry.objects.create(
-                item=g101,
-                guest_name="Concurrency G-101 Guest",
-                email="g101@example.test",
-                check_in=check_in,
-                check_out=check_out,
-                guests=2,
-                status=BookingStatus.REVIEWING,
-            ),
-            BookingInquiry.objects.create(
-                item=combined,
-                guest_name="Concurrency Combined Guest",
-                email="combined@example.test",
-                check_in=check_in,
-                check_out=check_out,
-                guests=8,
-                status=BookingStatus.REVIEWING,
-            ),
-        ]
-        start = threading.Barrier(2)
-        outcomes = []
-        unexpected_errors = []
+        for unit in (g101, g102):
+            with self.subTest(unit=unit.slug):
+                inquiries = [
+                    BookingInquiry.objects.create(
+                        item=unit,
+                        guest_name=f"{unit.slug} Guest",
+                        email=f"{unit.slug}@example.test",
+                        check_in=check_in,
+                        check_out=check_out,
+                        guests=2,
+                        status=BookingStatus.REVIEWING,
+                    ),
+                    BookingInquiry.objects.create(
+                        item=combined,
+                        guest_name="Concurrency Combined Guest",
+                        email="combined@example.test",
+                        check_in=check_in,
+                        check_out=check_out,
+                        guests=8,
+                        status=BookingStatus.REVIEWING,
+                    ),
+                ]
+                start = threading.Barrier(2)
+                outcomes = []
+                unexpected_errors = []
 
-        def confirm(inquiry_id):
-            close_old_connections()
-            try:
-                inquiry = BookingInquiry.objects.get(pk=inquiry_id)
-                start.wait(timeout=10)
-                inquiry.status = BookingStatus.CONFIRMED
-                inquiry.save(update_fields=["status", "updated_at"])
-                outcomes.append("confirmed")
-            except ValidationError:
-                outcomes.append("rejected")
-            except Exception as error:  # surfaced in the parent test thread
-                unexpected_errors.append(error)
-            finally:
-                close_old_connections()
+                def confirm(inquiry_id):
+                    close_old_connections()
+                    try:
+                        inquiry = BookingInquiry.objects.get(pk=inquiry_id)
+                        start.wait(timeout=10)
+                        inquiry.status = BookingStatus.CONFIRMED
+                        inquiry.save(update_fields=["status", "updated_at"])
+                        outcomes.append("confirmed")
+                    except ValidationError:
+                        outcomes.append("rejected")
+                    except Exception as error:  # surfaced in the parent test thread
+                        unexpected_errors.append(error)
+                    finally:
+                        close_old_connections()
 
-        threads = [threading.Thread(target=confirm, args=(inquiry.pk,)) for inquiry in inquiries]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join(timeout=20)
+                threads = [threading.Thread(target=confirm, args=(inquiry.pk,)) for inquiry in inquiries]
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join(timeout=20)
 
-        self.assertFalse(any(thread.is_alive() for thread in threads), "Confirmation threads did not finish.")
-        self.assertEqual(unexpected_errors, [])
-        self.assertCountEqual(outcomes, ["confirmed", "rejected"])
-        self.assertEqual(BookingInquiry.objects.filter(status=BookingStatus.CONFIRMED).count(), 1)
+                self.assertFalse(any(thread.is_alive() for thread in threads), "Confirmation threads did not finish.")
+                self.assertEqual(unexpected_errors, [])
+                self.assertCountEqual(outcomes, ["confirmed", "rejected"])
+                self.assertEqual(
+                    BookingInquiry.objects.filter(pk__in=[row.pk for row in inquiries], status=BookingStatus.CONFIRMED).count(),
+                    1,
+                )
+                BookingInquiry.objects.filter(pk__in=[row.pk for row in inquiries]).delete()
 
 
 class MarketingAttributionTests(TestCase):

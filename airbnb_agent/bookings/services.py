@@ -13,8 +13,9 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
-from django.db import router, transaction
+from django.db import connections, router, transaction
 from django.db.models import Count, F, Q, Sum
+from django.db.utils import OperationalError
 from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils import timezone
@@ -816,49 +817,103 @@ class StayAvailabilityService:
 
 
 class BookingConfirmationService:
-    """Persist confirmed stays only after locking and rechecking their inventory."""
+    """Serialize confirmations and validate the exact persisted stay state."""
+
+    @staticmethod
+    def _reserve_sqlite_writer(inquiry, using):
+        if connections[using].vendor != "sqlite":
+            return
+
+        # SQLite ignores SELECT FOR UPDATE. A no-op UPDATE obtains its single
+        # writer reservation before the confirmation reads availability.
+        acquired = False
+        if inquiry.pk:
+            acquired = bool(
+                BookingInquiry.objects.using(using)
+                .filter(pk=inquiry.pk)
+                .update(updated_at=F("updated_at"))
+            )
+        if not acquired and inquiry.item_id:
+            acquired = bool(
+                BookableItem.objects.using(using)
+                .filter(pk=inquiry.item_id)
+                .update(name=F("name"))
+            )
+        if not acquired:
+            raise ValidationError("Select an existing property or inquiry before confirming this stay.")
+
+    @staticmethod
+    def _is_sqlite_busy(error):
+        code = getattr(error, "sqlite_errorcode", None)
+        if code is not None and (code & 0xFF) in {5, 6}:  # SQLITE_BUSY / SQLITE_LOCKED
+            return True
+        message = str(error).lower()
+        return "database is locked" in message or "database table is locked" in message
 
     def save_confirmed(self, inquiry, *args, **kwargs):
         using = kwargs.get("using") or inquiry._state.db or router.db_for_write(type(inquiry), instance=inquiry)
-        with transaction.atomic(using=using):
-            if not inquiry.item_id:
-                existing_unassigned_confirmation = (
-                    inquiry.pk
-                    and BookingInquiry.objects.using(using).filter(
-                        pk=inquiry.pk,
-                        status=BookingStatus.CONFIRMED,
-                        item__isnull=True,
-                    ).exists()
-                )
-                if existing_unassigned_confirmation:
+        update_fields = kwargs.get("update_fields")
+        update_fields = set(update_fields) if update_fields is not None else None
+
+        try:
+            with transaction.atomic(using=using):
+                self._reserve_sqlite_writer(inquiry, using)
+
+                current = None
+                if inquiry.pk:
+                    current = (
+                        BookingInquiry.objects.using(using)
+                        .select_for_update()
+                        .filter(pk=inquiry.pk)
+                        .first()
+                    )
+                    if not current:
+                        raise ValidationError("This inquiry no longer exists and cannot be confirmed.")
+
+                if current and update_fields is not None:
+                    # update_fields is the proposed delta; omitted stay fields
+                    # must remain the values from the locked database row.
+                    for field in ("item_id", "check_in", "check_out", "guests", "is_admin_test"):
+                        if field not in update_fields and not (field == "item_id" and "item" in update_fields):
+                            setattr(inquiry, field, getattr(current, field))
+                    if "status" not in update_fields:
+                        inquiry.status = current.status
+
+                target_status = inquiry.status
+                if target_status != BookingStatus.CONFIRMED or inquiry.is_admin_test:
                     return inquiry.save(*args, _skip_confirmation_guard=True, **kwargs)
-                raise ValidationError("Select a property or product before confirming this inquiry.")
-            item = BookableItem.objects.using(using).filter(pk=inquiry.item_id).first()
-            if not item:
-                raise ValidationError("The selected property or product no longer exists.")
-            if item.category == BookingCategory.STAY and not inquiry.is_admin_test:
-                if not inquiry.check_in or not inquiry.check_out or inquiry.check_out <= inquiry.check_in:
-                    raise ValidationError("A confirmed stay must have a valid check-in and check-out date.")
 
-                availability = StayAvailabilityService()
-                locked_items = availability.lock_physical_items(item, using=using)
-                if not locked_items:
-                    raise ValidationError("The stay's physical inventory could not be locked.")
+                if not inquiry.item_id:
+                    if current and current.status == BookingStatus.CONFIRMED and current.item_id is None:
+                        return inquiry.save(*args, _skip_confirmation_guard=True, **kwargs)
+                    raise ValidationError("Select a property or product before confirming this inquiry.")
 
-                inquiry_queryset = BookingInquiry.objects.using(using)
-                if inquiry.pk and not inquiry_queryset.select_for_update().filter(pk=inquiry.pk).first():
-                    raise ValidationError("This inquiry no longer exists and cannot be confirmed.")
+                item = BookableItem.objects.using(using).filter(pk=inquiry.item_id).first()
+                if not item:
+                    raise ValidationError("The selected property or product no longer exists.")
+                if item.category == BookingCategory.STAY:
+                    if not inquiry.check_in or not inquiry.check_out or inquiry.check_out <= inquiry.check_in:
+                        raise ValidationError("A confirmed stay must have a valid check-in and check-out date.")
 
-                if not availability.is_available(
-                    item,
-                    inquiry.check_in,
-                    inquiry.check_out,
-                    exclude_inquiry_id=inquiry.pk,
-                    using=using,
-                ):
-                    raise ValidationError("These dates overlap a confirmed booking or availability block.")
+                    availability = StayAvailabilityService()
+                    locked_items = availability.lock_physical_items(item, using=using)
+                    if not locked_items:
+                        raise ValidationError("The stay's physical inventory could not be locked.")
 
-            return inquiry.save(*args, _skip_confirmation_guard=True, **kwargs)
+                    if not availability.is_available(
+                        item,
+                        inquiry.check_in,
+                        inquiry.check_out,
+                        exclude_inquiry_id=inquiry.pk,
+                        using=using,
+                    ):
+                        raise ValidationError("These dates overlap a confirmed booking or availability block.")
+
+                return inquiry.save(*args, _skip_confirmation_guard=True, **kwargs)
+        except OperationalError as error:
+            if connections[using].vendor == "sqlite" and self._is_sqlite_busy(error):
+                raise ValidationError("Inventory is busy confirming another stay. Please retry shortly.") from error
+            raise
 
 
 class PayPalAPIError(Exception):

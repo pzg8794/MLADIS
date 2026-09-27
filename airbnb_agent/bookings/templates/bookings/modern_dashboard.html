@@ -11,12 +11,12 @@
       <meta name="mladis-logo-url" content="{{ site_settings.logo_display_url }}">
     {% endif %}
     <link rel="icon" href="{% static 'frontend/modern-dashboard/favicon.svg' %}" type="image/svg+xml">
-    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}?v=ops-approved-restore-20260822-1">
+    <link rel="stylesheet" href="{% static 'frontend/modern-dashboard/assets/app.css' %}?v=marketing-funnel-release-20260927-1">
     <title>MLADIS Command Center</title>
   </head>
   <body>
     <div id="root"></div>
     {{ ops_nav_public_items|json_script:"mladis-ops-nav-items" }}
-    <script type="module" src="{% static 'frontend/modern-dashboard/assets/app.js' %}?v=ops-approved-restore-20260822-1"></script>
+    <script type="module" src="{% static 'frontend/modern-dashboard/assets/app.js' %}?v=marketing-funnel-release-20260927-1"></script>
   </body>
 </html>

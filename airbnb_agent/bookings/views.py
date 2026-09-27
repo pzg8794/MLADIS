@@ -678,6 +678,7 @@ class BookingInquiryCreateView(View):
             except ValidationError as error:
                 form.add_error(None, error.messages[0] if error.messages else str(error))
             else:
+                request.session["payment_inquiry_id"] = inquiry.id
                 BookingEmailService().send_inquiry_notifications(inquiry, request=request)
                 messages.success(request, "Your request was received. MLADIS will confirm availability and the complete quote.")
                 if self._wants_json(request):
@@ -685,7 +686,7 @@ class BookingInquiryCreateView(View):
                         {
                             "ok": True,
                             "message": "Request received. MLADIS will confirm availability, fees, deposit treatment, and the complete quote before booking.",
-                            "inquiry": self._inquiry_payload(inquiry),
+                            "inquiry": self._inquiry_payload(request, inquiry),
                         },
                         status=201,
                     )
@@ -710,19 +711,46 @@ class BookingInquiryCreateView(View):
         )
 
     @staticmethod
-    def _inquiry_payload(inquiry):
+    def _inquiry_payload(request, inquiry):
+        site_settings = SiteSettings.current()
         item = inquiry.item
         return {
             "id": inquiry.id,
             "request_key": inquiry.request_key,
+            "guest_name": inquiry.guest_name,
+            "email": inquiry.email,
+            "phone": inquiry.phone,
             "item_id": inquiry.item_id,
             "stay_name": item.business_display_name if item else "Flexible / help me choose",
             "check_in": inquiry.check_in.isoformat(),
             "check_out": inquiry.check_out.isoformat(),
             "nights": inquiry.nights,
             "guests": inquiry.guests,
-            "quote_state": "requested",
+            "coupon_code": inquiry.coupon_code,
+            "display_subtotal": inquiry.display_subtotal,
+            "display_discount": inquiry.display_discount,
+            "display_deposit": inquiry._display_money(inquiry.deposit_cents),
+            "display_reservation_payment": inquiry.display_reservation_payment,
+            "display_total": inquiry.display_total,
+            "reservation_payment_cents": inquiry.reservation_payment_cents,
+            "deposit_checkout_url": request.build_absolute_uri(reverse("bookings:deposit-checkout")),
+            "reservation_payment_checkout_url": request.build_absolute_uri(
+                reverse("bookings:reservation-payment-checkout")
+            ),
+            "payment_confirmation_url": request.build_absolute_uri(
+                reverse("bookings:payment-confirmation", kwargs={"token": inquiry.payment_confirmation_token})
+            ),
+            "property_rules_url": request.build_absolute_uri(reverse("bookings:property-rules")),
+            "damage_terms_url": request.build_absolute_uri(reverse("bookings:damage-deposit-terms")),
+            "documents_accepted": inquiry.required_documents_accepted,
+            "property_rules_title": site_settings.property_rules_title,
+            "property_rules_version": site_settings.property_rules_version,
+            "property_rules_body": site_settings.property_rules_body,
+            "damage_terms_title": site_settings.damage_terms_title,
+            "damage_terms_version": site_settings.damage_terms_version,
+            "damage_terms_body": site_settings.damage_terms_body,
             "admin_test": inquiry.is_admin_test,
+            "quote_state": "requested",
         }
 
 
