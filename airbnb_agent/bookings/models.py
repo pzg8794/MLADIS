@@ -330,6 +330,80 @@ class CustomerProfile(models.Model):
         return cls.objects.create(email=normalized, **defaults)
 
 
+class AudienceSubscription(models.Model):
+    """Voluntary public offers preferences, separate from reservation contact data."""
+
+    public_id = models.UUIDField(default=uuid4, unique=True, editable=False)
+    email = models.EmailField(unique=True)
+    pending_welcome_discount = models.BooleanField(default=False)
+    pending_seasonal_offers = models.BooleanField(default=False)
+    seasonal_offers = models.BooleanField(default=False)
+    verification_nonce = models.UUIDField(default=uuid4, editable=False)
+    unsubscribe_nonce = models.UUIDField(default=uuid4, editable=False)
+    requested_at = models.DateTimeField(null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    verification_used_at = models.DateTimeField(null=True, blank=True)
+    unsubscribed_at = models.DateTimeField(null=True, blank=True)
+    consent_version = models.CharField(max_length=32, blank=True)
+    consent_text = models.TextField(blank=True)
+    source = models.CharField(max_length=80, default="mladis_public_offers")
+    coupon = models.OneToOneField(
+        Coupon, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="welcome_audience_member",
+    )
+    redeemed_inquiry = models.ForeignKey(
+        "BookingInquiry", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="welcome_offer_redemptions",
+    )
+    customer_profile = models.ForeignKey(
+        CustomerProfile, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="public_offer_subscriptions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
+
+    @property
+    def can_receive_promotions(self):
+        return bool(self.confirmed_at and self.seasonal_offers and not self.unsubscribed_at)
+
+    def __str__(self):
+        return self.email
+
+
+class AudienceCampaignSettings(models.Model):
+    """Operator-supplied public mailing address required before promotional sends."""
+
+    postal_address = models.TextField(blank=True, help_text="A verified public business mailing address for commercial-email footers. Never copy a private legal address without authorization.")
+    signup_enabled = models.BooleanField(default=False, help_text="Enable only after a confirmation email has been delivered and verified using the existing SMTP provider.")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def current(cls):
+        return cls.objects.filter(pk=1).first()
+
+    def __str__(self):
+        return "Offers email footer"
+
+
+class PublicOfferRateLimit(models.Model):
+    """Short-lived, keyed hashes; never stores a visitor's raw IP address."""
+
+    key = models.CharField(max_length=64, primary_key=True)
+    window_start = models.DateTimeField()
+    request_count = models.PositiveIntegerField(default=0)
+
+
 class AirbnbGuestRecord(models.Model):
     customer_profile = models.ForeignKey(
         CustomerProfile,

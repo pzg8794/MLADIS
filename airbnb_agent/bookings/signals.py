@@ -7,6 +7,8 @@ from uuid import UUID, uuid5
 LIVE_OBJECT_STATE_APP_LABELS = {"bookings", "operations", "auth", "account", "socialaccount"}
 LIVE_OBJECT_STATE_EXCLUDED_MODELS = {
     "bookings.PageVisit",
+    # One-day hashed anti-abuse counters are operational, not audience records.
+    "bookings.PublicOfferRateLimit",
     # Conversation text is written through the identity-free interaction lake
     # instead of the generic model-state serializer.
     "bookings.AgentConversation",

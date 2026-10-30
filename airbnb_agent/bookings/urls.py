@@ -4,6 +4,10 @@ from django.views.generic import RedirectView
 
 from .forms import MLADISAuthenticationForm
 from .reports import ModernOpsReportsView, OpsReportsAPIView
+from .public_guest_resources import (
+    AirbnbStayGuideView, OffersSignupView, OffersPrivacyView,
+    OffersConfirmView, OffersUnsubscribeView,
+)
 from .views import (
     AgentAPIView,
     AccountSummaryAPIView,
@@ -82,6 +86,11 @@ from .views import (
 app_name = "bookings"
 
 urlpatterns = [
+    path("airbnb-stay-guide/", AirbnbStayGuideView.as_view(), name="airbnb-stay-guide"),
+    path("offers/", OffersSignupView.as_view(), name="offers-signup"),
+    path("offers/privacy/", OffersPrivacyView.as_view(), name="offers-privacy"),
+    path("offers/confirm/<str:token>/", OffersConfirmView.as_view(), name="offers-confirm"),
+    path("offers/unsubscribe/<str:token>/", OffersUnsubscribeView.as_view(), name="offers-unsubscribe"),
     path("", ModernSiteView.as_view(), name="home"),
     path("legacy-home/", RedirectView.as_view(pattern_name="bookings:home", permanent=False), name="legacy-home"),
     path("about/", ModernSiteView.as_view(), name="about"),

@@ -19,6 +19,8 @@ from .airbnb_import import AirbnbGuestImportService
 from .forms import AirbnbGuestImportForm
 from .models import (
     AdminAccess,
+    AudienceSubscription,
+    AudienceCampaignSettings,
     AgentKnowledgeSource,
     AgentFAQ,
     AgentConversation,
@@ -67,6 +69,31 @@ from .services import (
 admin.site.site_header = "MLADIS Admin"
 admin.site.site_title = "MLADIS Admin"
 admin.site.index_title = "Booking platform controls"
+
+
+@admin.register(AudienceSubscription)
+class AudienceSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ("email", "seasonal_offers", "confirmed_at", "unsubscribed_at", "coupon", "source")
+    list_filter = ("seasonal_offers", "source")
+    search_fields = ("email",)
+    readonly_fields = tuple(field.name for field in AudienceSubscription._meta.fields)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(AudienceCampaignSettings)
+class AudienceCampaignSettingsAdmin(admin.ModelAdmin):
+    fields = ("signup_enabled", "postal_address")
+
+    def has_add_permission(self, request):
+        return not AudienceCampaignSettings.objects.exists() and super().has_add_permission(request)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(AdminAccess)

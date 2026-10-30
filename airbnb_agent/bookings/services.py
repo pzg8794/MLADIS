@@ -2090,6 +2090,13 @@ class ReservationRequestService:
                     raise ValidationError("Those dates are no longer available for this stay. Please choose other dates or ask MLADIS to help.")
             self.prepare(inquiry, coupon=form.coupon, redeem_coupon=True)
             inquiry.save()
+            if form.coupon and not inquiry.is_admin_test:
+                from .models import AudienceSubscription
+
+                member = AudienceSubscription.objects.filter(coupon=form.coupon).first()
+                if member:
+                    member.redeemed_inquiry = inquiry
+                    member.save(update_fields=["redeemed_inquiry", "updated_at"])
         self.log_object_event(inquiry, "reservation_request.created", request=request)
         if inquiry.item and not inquiry.is_admin_test:
             from .marketing import record_marketing_event
@@ -2131,10 +2138,13 @@ class ReservationRequestService:
         self.apply_pricing(inquiry)
 
         if coupon:
+            from .public_guest_resources import validate_welcome_coupon
+
+            welcome_coupon = validate_welcome_coupon(coupon, inquiry.email, redeem=redeem_coupon, inquiry=inquiry)
             inquiry.coupon = coupon
             inquiry.coupon_code = coupon.code
             inquiry.discount_cents = coupon.discount_for(inquiry.subtotal_cents)
-            if redeem_coupon:
+            if redeem_coupon and not welcome_coupon:
                 type(coupon).objects.filter(pk=coupon.pk).update(redemption_count=F("redemption_count") + 1)
         elif not inquiry.coupon_id:
             inquiry.discount_cents = 0
@@ -3097,6 +3107,21 @@ class PromotionEmailService:
                 body += f"\n\nCoupon code: {promotion.coupon.code}"
             if promotion.discount_percent:
                 body += f"\n\nPromotion discount: {promotion.discount_percent}%"
+            from .models import AudienceSubscription, AudienceCampaignSettings
+            from .public_guest_resources import AudienceService
+
+            public_member = AudienceSubscription.objects.filter(email__iexact=recipient.email).first()
+            if public_member:
+                campaign_settings = AudienceCampaignSettings.current()
+                address = campaign_settings.postal_address.strip() if campaign_settings else ""
+                if not address:
+                    recipient.status = EmailDeliveryStatus.FAILED
+                    recipient.error = "Set the verified public mailing address in Offers email footer before sending promotional email."
+                    recipient.save(update_fields=["status", "error"])
+                    continue
+                # Public signup recipients always have a self-service opt-out.
+                body += "\n\nMLADIS Bookings promotional offer\n" + address
+                body += "\nUnsubscribe from MLADIS offers: " + AudienceService().unsubscribe_url(public_member)
             try:
                 send_mail(
                     promotion.subject,
@@ -3122,8 +3147,13 @@ class PromotionEmailService:
         return sent
 
     def _recipient_has_opted_in(self, recipient):
+        from .models import AudienceSubscription
+
         profile = recipient.customer_profile
         if profile is None:
+            return False
+        public_member = AudienceSubscription.objects.filter(email__iexact=recipient.email).first()
+        if public_member is not None and not public_member.can_receive_promotions:
             return False
         return profile.can_receive_promotions and recipient.email.lower() == profile.email.lower()
 

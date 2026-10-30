@@ -1,0 +1,19 @@
+{% extends "bookings/guest_resources_base.html" %}
+{% block title %}Offers privacy | MLADIS Bookings{% endblock %}
+{% block content %}
+<article class="gr-panel gr-status">
+  <p class="gr-eyebrow">MLADIS Bookings · Updated October 29, 2026</p>
+  <h1>Your email, your choice</h1>
+  <p>The offers form is optional. You can request a 10% welcome code, occasional seasonal offers, or both. It is separate from reservations and never a condition of a stay.</p>
+  <h2>What we keep</h2>
+  <p>We store your email address, selected purposes, the consent wording and version, request and confirmation dates, subscription status, and any issued code. We also keep short-lived keyed hashes and counters to limit abuse; we do not put your email address in public URLs.</p>
+  <h2>How we use it</h2>
+  <p>We send an email verification link. Nothing activates until you confirm on that page. If you select seasonal offers, we use your confirmed address for those messages. Requesting a discount alone does not subscribe you to recurring marketing.</p>
+  <h2>Access and retention</h2>
+  <p>MLADIS staff with authorized access can manage the audience. Records are stored in our protected booking database and operational backups/object store. Our existing email provider processes messages for delivery. We do not publish or sell the audience.</p>
+  <h2>Stop or change your preferences</h2>
+  <p>Use the unsubscribe link in your confirmation email, confirmation page or subsequent offers. Unsubscribing stops seasonal offers and cancels pending signup requests; it does not change reservations. We retain the minimum suppression and consent history needed to respect your choice and prevent duplicate welcome codes.</p>
+  <p>For access, correction or deletion requests, contact <a href="mailto:{{ site_settings.contact_email|default:'garcp37@mladis.com' }}">{{ site_settings.contact_email|default:'garcp37@mladis.com' }}</a>.</p>
+  <p><a href="{% url 'bookings:offers-signup' %}">Back to the offers form</a></p>
+</article>
+{% endblock %}

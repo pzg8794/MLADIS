@@ -131,8 +131,14 @@ class BookingInquiryForm(forms.ModelForm):
             if not coupon or not coupon.is_valid():
                 self.add_error("coupon_code", _("This coupon is not active or has expired."))
             else:
-                self.coupon = coupon
-                cleaned["coupon_code"] = coupon.code
+                from .public_guest_resources import validate_welcome_coupon
+                try:
+                    validate_welcome_coupon(coupon, cleaned.get("email"))
+                except forms.ValidationError as error:
+                    self.add_error("coupon_code", error)
+                else:
+                    self.coupon = coupon
+                    cleaned["coupon_code"] = coupon.code
 
         return cleaned
 

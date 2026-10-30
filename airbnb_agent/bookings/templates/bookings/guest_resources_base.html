@@ -1,0 +1,15 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>{% block title %}MLADIS Bookings{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'bookings/guest-resources.css' %}?v=3">
+</head>
+<body class="guest-resources">
+  <header class="gr-header"><div class="gr-wrap"><span class="gr-brand"><img src="{% static 'bookings/brand/mladis-bookings.jpg' %}" alt="" width="52" height="52" style="border-radius:50%;object-fit:contain"><span>MLADIS <small>Bookings</small></span></span></div></header>
+  <main id="main" class="gr-wrap">{% block content %}{% endblock %}</main>
+  <footer class="gr-footer"><div class="gr-wrap">MLADIS Bookings</div></footer>
+</body>
+</html>
