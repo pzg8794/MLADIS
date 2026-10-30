@@ -25,10 +25,11 @@ from .models import (
     AudienceSubscription, Coupon, CouponDiscountType, CustomerProfile,
     MarketingConsentStatus, PublicOfferRateLimit, AudienceCampaignSettings,
 )
+from .guest_resource_language import GuestResourceLanguageMixin, localized_url, supported_language, translated
 
 
 PUBLIC_ORIGIN = "https://mladis.com"
-CONSENT_VERSION = "2026-10-29"
+CONSENT_VERSION = "2026-10-29-i18n-v1"
 DISCOUNT_CONSENT = "Get a 10% welcome discount after confirming my email."
 SEASONAL_CONSENT = "Email me occasional seasonal offers and future discounts from MLADIS Bookings."
 GENERIC_PENDING = "If your request can be processed, we will email a confirmation link. Check your inbox and spam folder. A recent request may already be waiting there."
@@ -40,13 +41,24 @@ class OffersSignupForm(forms.Form):
     seasonal_offers = forms.BooleanField(required=False, label=SEASONAL_CONSENT)
     website = forms.CharField(required=False, widget=forms.HiddenInput)
 
+    def __init__(self, *args, language="en", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.language = supported_language(language) or "en"
+        for name, text in (("welcome_discount", DISCOUNT_CONSENT), ("seasonal_offers", SEASONAL_CONSENT)):
+            self.fields[name].label = translated(text, self.language)
+        self.fields["email"].error_messages.update({
+            "required": translated("Enter your email address.", self.language),
+            "invalid": translated("Enter a valid email address.", self.language),
+            "max_length": translated("Use an email address with no more than 254 characters.", self.language),
+        })
+
     def clean_email(self):
         return self.cleaned_data["email"].strip().lower()
 
     def clean(self):
         cleaned = super().clean()
         if not cleaned.get("welcome_discount") and not cleaned.get("seasonal_offers"):
-            raise forms.ValidationError("Choose the welcome discount, seasonal offers, or both.")
+            raise forms.ValidationError(translated("Choose the welcome discount, seasonal offers, or both.", self.language))
         return cleaned
 
 
@@ -71,7 +83,7 @@ class AudienceService:
         )
 
     def unsubscribe_url(self, member):
-        return self.absolute_url("bookings:offers-unsubscribe", token=self.unsubscribe_token(member))
+        return localized_url(self.absolute_url("bookings:offers-unsubscribe", token=self.unsubscribe_token(member)), member.preferred_language)
 
     def resolve(self, token, *, unsubscribe=False, lock=False):
         try:
@@ -108,7 +120,9 @@ class AudienceService:
             row, _ = PublicOfferRateLimit.objects.get_or_create(key=key, defaults={"window_start": window})
             return bool(PublicOfferRateLimit.objects.filter(pk=row.pk, request_count__lt=30).update(request_count=F("request_count") + 1))
 
-    def request_signup(self, *, email, welcome_discount, seasonal_offers):
+    def request_signup(self, *, email, welcome_discount, seasonal_offers, language="en"):
+        language = supported_language(language) or "en"
+        tr = lambda text: translated(text, language)
         now = timezone.now()
         with transaction.atomic():
             member, _ = AudienceSubscription.objects.get_or_create(email=email.strip().lower())
@@ -117,32 +131,36 @@ class AudienceService:
                 return
             member.pending_welcome_discount = welcome_discount
             member.pending_seasonal_offers = seasonal_offers
+            member.preferred_language = language
+            member.pending_consent_version = CONSENT_VERSION
+            member.pending_consent_text = "\n".join(
+                tr(text) for selected, text in ((welcome_discount, DISCOUNT_CONSENT), (seasonal_offers, SEASONAL_CONSENT)) if selected
+            )
             member.requested_at = now
             member.verification_nonce = uuid4()
             member.verification_used_at = None
             member.save()
-        link = self.absolute_url("bookings:offers-confirm", token=self.confirmation_token(member))
+        link = localized_url(self.absolute_url("bookings:offers-confirm", token=self.confirmation_token(member)), language)
         choices = []
         if welcome_discount:
-            choices.append("a 10% welcome discount for one eligible future direct booking")
+            choices.append(tr("a 10% welcome discount for one eligible future direct booking"))
         if seasonal_offers:
-            choices.append("occasional seasonal offers and future discounts")
+            choices.append(tr("occasional seasonal offers and future discounts"))
         body = (
-            "Someone entered this email address on MLADIS Bookings and requested "
-            + " and ".join(choices)
-            + ".\n\nTo confirm that it was you, open this link and select Confirm my email:\n"
+            tr("Someone entered this email address on MLADIS Bookings and requested ")
+            + tr(" and ").join(choices)
+            + tr(".\n\nTo confirm that it was you, open this link and select Confirm my email:\n")
             + link
-            + "\n\nThe link expires in 48 hours. Nothing is activated until you confirm. "
-            "If you did not request this, ignore this email or cancel the request here:\n"
+            + tr("\n\nThe link expires in 48 hours. Nothing is activated until you confirm. If you did not request this, ignore this email or cancel the request here:\n")
             + self.unsubscribe_url(member)
-            + "\n\nMLADIS Bookings\nThis email confirms a request; it is not a booking or payment request."
+            + tr("\n\nMLADIS Bookings\nThis email confirms a request; it is not a booking or payment request.")
         )
         # Do not report a console/dummy backend as real production delivery.
         non_delivery = ("console.EmailBackend", "dummy.EmailBackend", "filebased.EmailBackend")
         if any(settings.EMAIL_BACKEND.endswith(item) for item in non_delivery) and not settings.DEBUG:
             return
         try:
-            send_mail("Confirm your MLADIS email preferences", body, settings.DEFAULT_FROM_EMAIL, [member.email], fail_silently=False, connection=get_connection(timeout=10))
+            send_mail(tr("Confirm your MLADIS email preferences"), body, settings.DEFAULT_FROM_EMAIL, [member.email], fail_silently=False, connection=get_connection(timeout=10))
         except Exception:
             # Public response stays generic and no benefits/marketing are activated.
             return
@@ -153,6 +171,14 @@ class AudienceService:
             if member.verification_used_at:
                 return member
             now = timezone.now()
+            if not member.consent_history and member.consent_text and member.confirmed_at:
+                # Keep pre-localization evidence when an existing member reconfirms.
+                member.consent_history = [{
+                    "confirmed_at": member.confirmed_at.isoformat(),
+                    "language": member.consent_language or "en",
+                    "version": member.consent_version, "text": member.consent_text,
+                    "legacy": True,
+                }]
             if member.pending_welcome_discount and not member.coupon_id:
                 member.coupon = Coupon.objects.create(
                     code="WELCOME10-" + secrets.token_hex(10).upper(),
@@ -165,19 +191,27 @@ class AudienceService:
                 profile.marketing_consent_status = MarketingConsentStatus.OPTED_IN
                 profile.marketing_consent_at = now
                 profile.marketing_consent_source = "verified public offers form " + CONSENT_VERSION
-                profile.save(update_fields=["marketing_consent_status", "marketing_consent_at", "marketing_consent_source", "updated_at"])
+                profile.preferred_language = member.preferred_language
+                profile.save(update_fields=["marketing_consent_status", "marketing_consent_at", "marketing_consent_source", "preferred_language", "updated_at"])
                 member.customer_profile = profile
                 member.seasonal_offers = True
                 member.unsubscribed_at = None
             member.confirmed_at = now
             member.verification_used_at = now
-            member.consent_version = CONSENT_VERSION
-            member.consent_text = "\n".join(
+            member.consent_version = member.pending_consent_version or "2026-10-29"
+            member.consent_language = member.preferred_language
+            member.consent_text = member.pending_consent_text or "\n".join(
                 text for selected, text in (
                     (member.pending_welcome_discount, DISCOUNT_CONSENT),
                     (member.pending_seasonal_offers, SEASONAL_CONSENT),
                 ) if selected
             )
+            member.consent_history = [*member.consent_history, {
+                "confirmed_at": now.isoformat(), "language": member.consent_language,
+                "version": member.consent_version, "text": member.consent_text,
+                "welcome_discount": member.pending_welcome_discount,
+                "seasonal_offers": member.pending_seasonal_offers,
+            }]
             member.save()
             return member
 
@@ -217,74 +251,86 @@ def validate_welcome_coupon(coupon, email, *, redeem=False, inquiry=None):
     return True
 
 
-class AirbnbStayGuideView(TemplateView):
+class AirbnbStayGuideView(GuestResourceLanguageMixin, TemplateView):
     template_name = "bookings/airbnb_stay_guide.html"
 
 
-class OffersPrivacyView(TemplateView):
+class OffersPrivacyView(GuestResourceLanguageMixin, TemplateView):
     template_name = "bookings/offers_privacy.html"
 
 
 @method_decorator(never_cache, name="dispatch")
-class OffersSignupView(View):
+class GuestResourceView(GuestResourceLanguageMixin, View):
+    def render(self, request, template, context, *, status=200):
+        return render(request, template, {**context, **self.language_context()}, status=status)
+
+    def status_page(self, request, title, message, *, status=200, **context):
+        return self.render(request, "bookings/offers_status.html", {
+            "title": self.tr(title), "message": self.tr(message),
+            "button_label": self.tr("Confirm my email"), **context,
+        }, status=status)
+
+
+@method_decorator(never_cache, name="dispatch")
+class OffersSignupView(GuestResourceView):
     @staticmethod
     def signup_available():
         config = AudienceCampaignSettings.current()
         return bool(config and config.signup_enabled)
 
     def get(self, request):
-        return render(request, "bookings/offers_signup.html", {"form": OffersSignupForm(), "signup_available": self.signup_available()})
+        return self.render(request, "bookings/offers_signup.html", {"form": OffersSignupForm(language=self.resource_language), "signup_available": self.signup_available()})
 
     def post(self, request):
         if not self.signup_available():
-            return render(request, "bookings/offers_signup.html", {"form": OffersSignupForm(), "signup_available": False}, status=503)
-        form = OffersSignupForm(request.POST)
+            return self.render(request, "bookings/offers_signup.html", {"form": OffersSignupForm(language=self.resource_language), "signup_available": False}, status=503)
+        form = OffersSignupForm(request.POST, language=self.resource_language)
         if not form.is_valid():
-            return render(request, "bookings/offers_signup.html", {"form": form, "signup_available": True}, status=400)
+            return self.render(request, "bookings/offers_signup.html", {"form": form, "signup_available": True}, status=400)
         service = AudienceService()
         if not form.cleaned_data["website"] and service.allow_request(request):
             service.request_signup(
                 email=form.cleaned_data["email"],
                 welcome_discount=form.cleaned_data["welcome_discount"],
                 seasonal_offers=form.cleaned_data["seasonal_offers"],
+                language=self.resource_language,
             )
-        return render(request, "bookings/offers_status.html", {"title": "Check your inbox", "message": GENERIC_PENDING})
+        return self.status_page(request, "Check your inbox", GENERIC_PENDING)
 
 
 @method_decorator(never_cache, name="dispatch")
-class OffersConfirmView(View):
+class OffersConfirmView(GuestResourceView):
     def get(self, request, token):
         try:
             AudienceService().resolve(token)
         except ValidationError as error:
-            return render(request, "bookings/offers_status.html", {"title": "Link unavailable", "message": error.messages[0]}, status=400)
-        return render(request, "bookings/offers_status.html", {"title": "Confirm your email", "message": "Activate only the choices you selected. This does not change any reservation.", "confirmation": True})
+            return self.status_page(request, "Link unavailable", error.messages[0], status=400)
+        return self.status_page(request, "Confirm your email", "Activate only the choices you selected. This does not change any reservation.", confirmation=True)
 
     def post(self, request, token):
         service = AudienceService()
         try:
             member = service.confirm(token)
         except ValidationError as error:
-            return render(request, "bookings/offers_status.html", {"title": "Link unavailable", "message": error.messages[0]}, status=400)
-        return render(request, "bookings/offers_status.html", {
-            "title": "Your email is confirmed", "message": "Your selected preferences are active. Save your welcome code below if you requested one.",
-            "coupon_code": member.coupon.code if member.coupon_id else "",
-            "unsubscribe_url": service.unsubscribe_url(member),
-        })
+            return self.status_page(request, "Link unavailable", error.messages[0], status=400)
+        return self.status_page(request, "Your email is confirmed", "Your selected preferences are active. Save your welcome code below if you requested one.",
+            coupon_code=member.coupon.code if member.coupon_id else "",
+            unsubscribe_url=localized_url(service.absolute_url("bookings:offers-unsubscribe", token=service.unsubscribe_token(member)), self.resource_language),
+        )
 
 
 @method_decorator(never_cache, name="dispatch")
-class OffersUnsubscribeView(View):
+class OffersUnsubscribeView(GuestResourceView):
     def get(self, request, token):
         try:
             AudienceService().resolve(token, unsubscribe=True)
         except ValidationError:
-            return render(request, "bookings/offers_status.html", {"title": "Link unavailable", "message": "This unsubscribe link is invalid."}, status=400)
-        return render(request, "bookings/offers_status.html", {"title": "Unsubscribe from offers", "message": "Confirm to stop seasonal offers and cancel any pending email confirmation. Your reservation and any already issued welcome code stay unchanged.", "confirmation": True, "button_label": "Unsubscribe"})
+            return self.status_page(request, "Link unavailable", "This unsubscribe link is invalid.", status=400)
+        return self.status_page(request, "Unsubscribe from offers", "Confirm to stop seasonal offers and cancel any pending email confirmation. Your reservation and any already issued welcome code stay unchanged.", confirmation=True, button_label=self.tr("Unsubscribe"))
 
     def post(self, request, token):
         try:
             AudienceService().unsubscribe(token)
         except ValidationError:
-            return render(request, "bookings/offers_status.html", {"title": "Link unavailable", "message": "This unsubscribe link is invalid."}, status=400)
-        return render(request, "bookings/offers_status.html", {"title": "You are unsubscribed", "message": "Seasonal offers have been stopped. Your reservation and any already issued welcome code are unchanged."})
+            return self.status_page(request, "Link unavailable", "This unsubscribe link is invalid.", status=400)
+        return self.status_page(request, "You are unsubscribed", "Seasonal offers have been stopped. Your reservation and any already issued welcome code are unchanged.")

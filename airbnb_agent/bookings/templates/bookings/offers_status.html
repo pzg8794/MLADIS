@@ -2,8 +2,8 @@
 {% block title %}{{ title }} | MLADIS Bookings{% endblock %}
 {% block content %}
 <section class="gr-status gr-panel" aria-labelledby="status-title"><p class="gr-eyebrow">MLADIS Bookings</p><h1 id="status-title">{{ title }}</h1><p class="gr-lead">{{ message }}</p>
-{% if coupon_code %}<p>Your 10% welcome code</p><p class="gr-code">{{ coupon_code }}</p><p>Use this code with the same confirmed email address on one future eligible direct booking request. The discount applies to the lodging subtotal, excluding taxes, fees and deposits. Availability and the final quote apply. It cannot be combined with other codes or used on an existing reservation.</p>{% endif %}
-{% if confirmation %}<form method="post">{% csrf_token %}<button type="submit" class="gr-button">{{ button_label|default:"Confirm my email" }}</button></form>{% endif %}
-{% if unsubscribe_url %}<p><a href="{{ unsubscribe_url }}">Manage or unsubscribe from offers</a></p>{% endif %}
-<p><a href="{% url 'bookings:offers-privacy' %}">Offers privacy notice</a></p></section>
+{% if coupon_code %}<p>{{ copy.code_label }}</p><p class="gr-code">{{ coupon_code }}</p><p>{{ copy.code_terms }}</p>{% endif %}
+{% if confirmation %}<form method="post">{% csrf_token %}<button type="submit" class="gr-button">{{ button_label }}</button></form>{% endif %}
+{% if unsubscribe_url %}<p><a href="{{ unsubscribe_url }}">{{ copy.unsubscribe_link }}</a></p>{% endif %}
+<p><a href="{{ privacy_url }}">{{ copy.privacy_link }}</a></p></section>
 {% endblock %}

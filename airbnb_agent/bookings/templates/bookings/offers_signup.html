@@ -1,25 +1,16 @@
 {% extends 'bookings/guest_resources_base.html' %}
-{% block title %}Offers by email | MLADIS Bookings{% endblock %}
+{% block title %}{{ copy.signup_title }} | MLADIS Bookings{% endblock %}
 {% block content %}
-<section class="gr-hero gr-hero--compact">
-  <p class="gr-eyebrow">MLADIS Bookings</p><h1>Stay in the loop, your way.</h1>
-  <p class="gr-lead">Choose what you would like to receive. Confirm your email to activate your choices. Signing up is optional, and you can unsubscribe at any time.</p>
-</section>
-<div class="gr-form-layout">
-  <section class="gr-panel" aria-labelledby="offer-title"><h2 id="offer-title">Your email preferences</h2>
-    {% if signup_available %}<form method="post" novalidate>{% csrf_token %}
-      {% if form.non_field_errors %}<div class="gr-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
-      <div class="gr-field"><label for="{{ form.email.id_for_label }}">Email address</label>{{ form.email }}{% if form.email.errors %}<div class="gr-errors">{{ form.email.errors }}</div>{% endif %}</div>
-      <fieldset class="gr-options"><legend>Select one or both</legend>
-        <div class="gr-option">{{ form.welcome_discount }}<label for="{{ form.welcome_discount.id_for_label }}"><strong>10% welcome offer</strong><span>{{ form.welcome_discount.label }}</span></label></div>{% if form.welcome_discount.errors %}<div class="gr-errors">{{ form.welcome_discount.errors }}</div>{% endif %}
-        <div class="gr-option">{{ form.seasonal_offers }}<label for="{{ form.seasonal_offers.id_for_label }}"><strong>Seasonal offers</strong><span>{{ form.seasonal_offers.label }}</span></label></div>{% if form.seasonal_offers.errors %}<div class="gr-errors">{{ form.seasonal_offers.errors }}</div>{% endif %}
-      </fieldset>
-      <div class="gr-trap" aria-hidden="true"><label for="{{ form.website.id_for_label }}">Website</label>{{ form.website }}</div>
-      <p class="gr-privacy">We use your email to provide the choices you select. Read our <a href="{% url 'bookings:offers-privacy' %}">offers privacy notice</a>.</p>
-      <button class="gr-button" type="submit">Send my confirmation link</button>
-    </form>
-    {% else %}<p role="status">Email signup is temporarily unavailable while we restore confirmation delivery. No email preferences are activated. Please check back soon.</p>{% endif %}
-  </section>
-  <aside class="gr-panel gr-terms"><p class="gr-eyebrow">Welcome offer</p><h2>10% for a future stay</h2><p>After confirming your email, save your unique code for one future eligible direct booking request using the same address. The discount applies to the lodging subtotal, subject to availability and the final quote. Taxes, fees and deposits are excluded. It cannot be combined with other codes or applied to existing reservations.</p><p>A welcome-code request alone does not subscribe you to seasonal emails.</p></aside>
-</div>
+<section class="gr-hero gr-hero--compact"><p class="gr-eyebrow">MLADIS Bookings</p><h1>{{ copy.signup_heading }}</h1><p class="gr-lead">{{ copy.signup_intro }}</p></section>
+<div class="gr-form-layout"><section class="gr-panel" aria-labelledby="offer-title"><h2 id="offer-title">{{ copy.preferences }}</h2>
+{% if signup_available %}<form method="post" novalidate>{% csrf_token %}
+{% if form.non_field_errors %}<div class="gr-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+<div class="gr-field"><label for="{{ form.email.id_for_label }}">{{ copy.email }}</label>{{ form.email }}{% if form.email.errors %}<div class="gr-errors" role="alert">{{ form.email.errors }}</div>{% endif %}</div>
+<fieldset class="gr-options"><legend>{{ copy.select_choices }}</legend>
+<div class="gr-option">{{ form.welcome_discount }}<label for="{{ form.welcome_discount.id_for_label }}"><strong>{{ copy.welcome }}</strong><span>{{ form.welcome_discount.label }}</span></label></div>{% if form.welcome_discount.errors %}<div class="gr-errors">{{ form.welcome_discount.errors }}</div>{% endif %}
+<div class="gr-option">{{ form.seasonal_offers }}<label for="{{ form.seasonal_offers.id_for_label }}"><strong>{{ copy.seasonal }}</strong><span>{{ form.seasonal_offers.label }}</span></label></div>{% if form.seasonal_offers.errors %}<div class="gr-errors">{{ form.seasonal_offers.errors }}</div>{% endif %}</fieldset>
+<div class="gr-trap" aria-hidden="true"><label for="{{ form.website.id_for_label }}">{{ copy.website }}</label>{{ form.website }}</div>
+<p class="gr-privacy">{{ copy.privacy_intro }} <a href="{{ privacy_url }}">{{ copy.privacy_link }}</a>.</p><button class="gr-button" type="submit">{{ copy.signup_button }}</button></form>
+{% else %}<p role="status">{{ copy.signup_unavailable }}</p>{% endif %}</section>
+<aside class="gr-panel gr-terms"><p class="gr-eyebrow">{{ copy.welcome }}</p><h2>{{ copy.offer_heading }}</h2><p>{{ copy.offer_terms }}</p><p>{{ copy.offer_separate }}</p></aside></div>
 {% endblock %}

@@ -335,6 +335,11 @@ class AudienceSubscription(models.Model):
 
     public_id = models.UUIDField(default=uuid4, unique=True, editable=False)
     email = models.EmailField(unique=True)
+    preferred_language = models.CharField(max_length=2, default="en")
+    pending_consent_text = models.TextField(blank=True)
+    pending_consent_version = models.CharField(max_length=32, blank=True)
+    consent_language = models.CharField(max_length=2, blank=True)
+    consent_history = models.JSONField(default=list, blank=True)
     pending_welcome_discount = models.BooleanField(default=False)
     pending_seasonal_offers = models.BooleanField(default=False)
     seasonal_offers = models.BooleanField(default=False)

@@ -1,33 +1,8 @@
 {% extends 'bookings/guest_resources_base.html' %}
-{% block title %}Airbnb Stay Guide | MLADIS Bookings{% endblock %}
+{% block title %}{{ copy.guide_title }} | MLADIS Bookings{% endblock %}
 {% block content %}
-<section class="gr-hero">
-  <p class="gr-eyebrow">MLADIS Bookings · Sol Oriens V</p>
-  <h1>Airbnb Stay Guide</h1>
-  <p class="gr-lead">Current listing guidance, updated October 29, 2026. Your reservation’s Airbnb house rules and requests apply. Earlier bookings keep their original terms; this summary does not change a booking or add fees, deposits, contracts, or checkout tasks.</p>
-  <p class="gr-lead" lang="es">Guía de los anuncios actuales, actualizada el 29 de octubre de 2026. Se aplican las reglas y solicitudes de Airbnb de tu reservación. Las reservas anteriores conservan sus términos originales; este resumen no cambia una reserva ni añade cargos, depósitos, contratos o tareas de salida.</p>
-  <nav class="gr-languages" aria-label="Guide languages"><a href="#english">English</a><a href="#espanol" lang="es">Español</a></nav>
-</section>
-<section id="english" class="gr-language" lang="en" aria-labelledby="english-title">
-  <h2 id="english-title">Your stay, at a glance</h2>
-  <div class="gr-grid">
-    <article class="gr-card"><span class="gr-number">01</span><h3>Guests and visitors</h3><p>Make sure your Airbnb reservation accurately reflects everyone staying overnight. Maximum overnight occupancy is 7 for G-101, 7 for G-102, and 14 for the combined home. One-night stays are not day-use bookings and do not allow visitors. For longer stays, visitors require prior approval and must leave by 11 p.m. They may not stay overnight.</p></article>
-    <article class="gr-card"><span class="gr-number">02</span><h3>Be a good neighbor</h3><p>No parties or events, indoor smoking, or disruptive noise. Respect neighbors and security staff. Follow your reserved listing’s quiet hours, pet limit, and outdoor smoking rules. Keep pets on a leash and hallways clear.</p></article>
-    <article class="gr-card"><span class="gr-number">03</span><h3>Care and security</h3><p>Secure doors when leaving. Take ordinary care of keys, access devices, furniture, and shared facilities. Use cutting boards, avoid pouring water on floors, and do not flush paper or other objects. Report damage or access problems through Airbnb.</p></article>
-    <article class="gr-card"><span class="gr-number">04</span><h3>Shared amenities</h3><p>Pool and BBQ access and conditions are those disclosed for your booked listing. Coordinate use with your host; seek advance approval for private use. This guide does not grant additional amenity or day-pass rights.</p></article>
-    <article class="gr-card"><span class="gr-number">05</span><h3>Before you leave</h3><p>Follow the checkout time and requests in your Airbnb reservation. Lock the doors and leave keys or access devices in the designated place.</p></article>
-  </div>
-  <div class="gr-note"><h3>Your Airbnb listing</h3><p><a href="https://www.airbnb.com/rooms/582161420407543691">G-101</a> · <a href="https://www.airbnb.com/rooms/587194328968598250">G-102</a> · <a href="https://www.airbnb.com/rooms/588632365342578374">G-101 + G-102 combined</a></p></div>
-</section>
-<section id="espanol" class="gr-language" lang="es" aria-labelledby="spanish-title">
-  <h2 id="spanish-title">Tu estadía, de un vistazo</h2>
-  <div class="gr-grid">
-    <article class="gr-card"><span class="gr-number">01</span><h3>Huéspedes y visitas</h3><p>Asegúrate de que tu reservación de Airbnb refleje a todas las personas que pernoctarán. La ocupación máxima nocturna es 7 en G-101, 7 en G-102 y 14 en ambas unidades juntas. Las estadías de una noche no son reservas de uso diurno y no permiten visitas. En estadías más largas, las visitas requieren autorización previa y deben salir antes de las 11 p. m. No pueden pernoctar.</p></article>
-    <article class="gr-card"><span class="gr-number">02</span><h3>Convivencia</h3><p>No se permiten fiestas, eventos, fumar en interiores ni ruidos molestos. Respeta a los vecinos y al personal de seguridad. Sigue el horario de silencio, el límite de mascotas y las reglas para fumar al aire libre de tu anuncio reservado. Mantén las mascotas con correa y los pasillos despejados.</p></article>
-    <article class="gr-card"><span class="gr-number">03</span><h3>Cuidado y seguridad</h3><p>Asegura las puertas al salir. Cuida las llaves, los dispositivos de acceso, los muebles y las instalaciones compartidas. Usa tablas de cortar, evita verter agua en el piso y no arrojes papel ni objetos al inodoro. Reporta daños o problemas de acceso por Airbnb.</p></article>
-    <article class="gr-card"><span class="gr-number">04</span><h3>Áreas compartidas</h3><p>El acceso a la piscina y al BBQ y sus condiciones son los publicados en tu anuncio reservado. Coordina su uso con el anfitrión y solicita autorización anticipada para uso privado. Esta guía no concede acceso adicional ni pases de día.</p></article>
-    <article class="gr-card"><span class="gr-number">05</span><h3>Antes de salir</h3><p>Sigue la hora y las solicitudes de salida de tu reservación de Airbnb. Cierra las puertas con llave y deja las llaves o dispositivos de acceso en el lugar indicado.</p></article>
-  </div>
-  <div class="gr-note"><h3>Tu anuncio de Airbnb</h3><p><a href="https://www.airbnb.com/rooms/582161420407543691">G-101</a> · <a href="https://www.airbnb.com/rooms/587194328968598250">G-102</a> · <a href="https://www.airbnb.com/rooms/588632365342578374">G-101 + G-102 juntos</a></p></div>
-</section>
+<section class="gr-hero"><p class="gr-eyebrow">MLADIS Bookings · Sol Oriens V</p><h1>{{ copy.guide_title }}</h1><p class="gr-lead">{{ copy.guide_intro }}</p></section>
+<section class="gr-language" aria-labelledby="guide-title"><h2 id="guide-title">{{ copy.guide_heading }}</h2><div class="gr-grid">
+{% for heading, text in copy.guide_cards %}<article class="gr-card"><span class="gr-number">0{{ forloop.counter }}</span><h3>{{ heading }}</h3><p>{{ text }}</p></article>{% endfor %}
+</div><div class="gr-note"><h3>{{ copy.listing_heading }}</h3><p><a href="https://www.airbnb.com/rooms/582161420407543691">G-101</a> · <a href="https://www.airbnb.com/rooms/587194328968598250">G-102</a> · <a href="https://www.airbnb.com/rooms/588632365342578374">{{ copy.combined }}</a></p></div></section>
 {% endblock %}
